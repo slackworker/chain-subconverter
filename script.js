@@ -1,6 +1,6 @@
 // script.js (V3 - 与新API和HTML结构对齐)
 
-const MAX_MANUAL_PAIRS = 10; 
+const MAX_MANUAL_PAIRS = 50;
 let actionButtons; 
 let feedbackHistory = [];
 const MAX_LOG_ENTRIES = 100; 
