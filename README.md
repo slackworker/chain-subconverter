@@ -25,7 +25,7 @@ Mihomo 内核拥有强大的分流功能和完善的规则生态，通过订阅�
 ## ✨ 尝鲜预览
 
 您可以通过以下链接在线预览和体验本项目：
-[➡️ 点击这里进行在线预览](https://brilliant-belita-slackworker-0f86511e.koyeb.app/)
+[➡️ 点击这里进行在线预览](https://fantastic-loise-slackers-134ea8cc.koyeb.app/)
 
 **⚠️ 重要提醒：**
 * 以上仅供项目预览 / 调试，服务器具有超时休眠➡冷启动机制，无法用于生产环境。
