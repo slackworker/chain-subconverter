@@ -56,6 +56,26 @@ docker run -d --name chain-subconverter -p 11200:11200 --restart unless-stopped 
 
 ➡️ **详细部署步骤、参数说明及更新指南，请参阅：[GitHub Wiki - 部署指南](https://github.com/slackworker/chain-subconverter/wiki/Deployment-Guide)**
 
+### (可选) 从源码构建和运行
+
+如果您希望自行构建镜像，或者在本地对代码进行修改和测试，可以使用项目根目录下的 `update.sh` 脚本。
+
+**使用方法：**
+
+1.  克隆本仓库到本地。
+2.  确保您已安装 Docker 并且有权限执行脚本。
+3.  在项目根目录下运行：
+
+```bash
+bash update.sh
+```
+该脚本会自动完成以下操作：
+*   基于当前的 `Dockerfile` 构建一个新的本地 Docker 镜像。
+*   停止并移除任何名为 `chain-subconverter` 的旧容器。
+*   使用新构建的镜像启动容器，监听 `11200` 端口。
+
+**注意：** 此方法适用于开发和测试。对于生产部署，建议使用从 `ghcr.io` 拉取的官方镜像以确保稳定性。
+
 ### 2. 使用前端配置订阅
 
 1.  **访问前端**：部署成功后，在浏览器中打开 `http://<运行Docker设备的IP或域名>:<映射的宿主机端口>/`。
