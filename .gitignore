@@ -99,7 +99,7 @@ celerybeat.pid
 .env
 .venv
 env/
-venv/ # <--- 忽略名为 venv 的文件夹
+venv/
 .idea/  # <--- 忽略 JetBrains IDEs (PyCharm, IntelliJ IDEA) 的配置文件夹
 .vscode/ # <--- 忽略 VS Code 的配置文件夹
 *.DS_Store # <--- 忽略 macOS 的 .DS_Store 文件
