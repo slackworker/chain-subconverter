@@ -27,8 +27,8 @@
 | 文档 | 说明 |
 |------|------|
 | [01-overview](01-overview.md) | 项目目标、范围、数据流 |
-| [02-prerequisites](02-prerequisites.md) | **依赖结构 / 前置条件**：配置文件、落地节点、端口转发（选填）、统一节点格式 |
-| [03-config-flow](03-config-flow.md) | 配置来源、落地识别、三种添加方式 |
+| [02-prerequisites](02-prerequisites.md) | **输入模型 / 依赖与约束**：基准完整配置（可生成）、中转信息、落地信息、修改方式、统一节点格式、基准配置选择规则 |
+| [03-config-flow](03-config-flow.md) | **主流程**：解析 → 合成 → 修改 → 输出（四阶段流水线） |
 | [04-api-output](04-api-output.md) | API 设计、输出方式、编码约定 |
 | [05-review](05-review.md) | Review 结论：遗漏、逻辑问题、待澄清 |
 

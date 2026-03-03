@@ -6,51 +6,44 @@
 
 ## 项目目标
 
-为 **Mihomo** 配置文件添加**链式代理**和/或**端口转发**配置，打通 Mihomo 中转配置最后一公里。
+帮助用户基于其**已有信息**（订阅/YAML/节点/中转机 `server:port` 等），通过 **Web 前端**集中完成 **Mihomo** 的**链式代理**和/或**端口转发**配置生成与输出，避免用户手动编辑 YAML 或进行任何代码操作。
 
 ## 范围限定
 
-- **仅针对 Mihomo 内核**：暂不涉及 Surge、Quantumult X 等其他内核
+- **仅针对 Mihomo 内核**：暂不涉及 sing-box、Xray 等其他内核
 - **配置结构**：遵循 Mihomo 的 `proxies`、`proxy-groups`、`proxy-providers`、`rules` 等结构
 
 ## 核心价值
 
-- 用户提供**配置文件**与**落地节点**（以及可选的端口转发节点）的多种输入形式
-- 系统统一解析为 Mihomo 节点格式，并生成链式代理 / 端口转发配置
-- 输出完整的 Mihomo YAML 或订阅链接
+- 用户通过 Web 前端提供两份信息：**中转信息输入**与**落地信息输入**（形式多样：订阅/YAML/节点-only/节点链接/填表等）
+- 系统先解析并判定是否包含**完整 Mihomo 配置**；当缺少完整配置时，使用内置订阅转换服务生成可用的完整配置骨架
+- 在统一节点格式后，按用户指定方式生成**链式代理**和/或**端口转发**改写
+- 输出可直接供 Mihomo 使用的完整 YAML（可选订阅链接）
 
 ## 数据流概览
 
 ```mermaid
 flowchart LR
-    subgraph Input [输入]
-        C[配置文件]
-        L[落地节点]
-        F[端口转发节点(选填)]
-    end
+  subgraph Input[输入（Web 前端）]
+    T[中转信息输入]
+    L[落地信息输入]
+  end
 
-    subgraph Parse [解析与统一]
-        P[解析各源]
-        U[统一节点格式]
-    end
+  subgraph Flow[主流程]
+    P[解析]
+    S[合成基准完整配置]
+    M[修改（链式/端口转发）]
+  end
 
-    subgraph Action [配置动作]
-        A1[dialer-proxy]
-        A2[端口转发]
-    end
+  subgraph Output[输出]
+    O[完整 Mihomo YAML]
+  end
 
-    subgraph Output [输出]
-        O[Mihomo YAML]
-    end
-
-    C --> P
-    L --> P
-    F --> P
-    P --> U
-    U --> A1
-    U --> A2
-    A1 --> O
-    A2 --> O
+  T --> P
+  L --> P
+  P --> S
+  S --> M
+  M --> O
 ```
 
 ## 与前置条件的依赖
