@@ -11,14 +11,15 @@
 ### 1.1 传参约定
 
 - **统一**：所有业务接口统一使用 `POST` + **JSON body** 传参（不再使用 query 承载业务参数）
-- **两份输入源**：Web App 的主交互是“中转信息输入 + 落地信息输入”，因此所有生成类接口都必须显式区分：
-  - `transit_source`: 中转信息输入
-  - `landing_source`: 落地信息输入
+- **一份或两份输入源**：Web App 的主交互是“中转信息输入 + 落地信息输入”，但**可以只提供其中一份**。因此生成类接口需要预留两个槽位：
+  - `transit_source`: 中转信息输入（可为空/省略）
+  - `landing_source`: 落地信息输入（可为空/省略）
+- **最低要求**：`transit_source` 与 `landing_source` 不能同时为空，至少要有一份有效输入。
 - **弃用**：旧版 query 形式（如 `remote_url=...`、`manual_pairs=...` 以及 `/subscription.yaml?...`）在重构后 **直接弃用**（不再支持）
 
 **内置订阅转换（节点-only → 完整配置）**：
 
-- 当任一输入源解析后**没有完整配置**，且最终无法选出“基准完整配置”时（见 02 的 1.5），服务端必须启用内置订阅转换服务生成完整配置（见 [02-prerequisites](02-prerequisites.md) 的 1.4）。
+- 当所有有效输入源解析后**都没有完整配置**，且因此无法选出“基准完整配置”时（见 02 的 1.5），服务端必须启用内置订阅转换服务生成完整配置（见 [02-prerequisites](02-prerequisites.md) 的 1.4）。
 - **固定模板**：使用 [Custom_Clash.ini](https://github.com/Aethersailor/Custom_OpenClash_Rules/blob/main/cfg/Custom_Clash.ini)（远程拉取建议使用 raw：`https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/main/cfg/Custom_Clash.ini`），并支持远程拉取 + 本地缓存（失败时回退到本地缓存）。
 
 ### 1.2 输入源结构（`transit_source` / `landing_source`）
@@ -36,16 +37,16 @@
 
 `POST /api/validate_configuration` 必须包含：
 
-- `transit_source` / `landing_source`：两份输入源
+- 至少一个非空的 `transit_source` 或 `landing_source`（当用户勾选“当前配置已包含落地节点”时，通常只会有一份输入，但仍需提供落地节点名称列表）
 - `modification_mode`：用户指定修改方式（见 02「四、修改方式」）
   - `"chain"`：链式代理
   - `"port_forward"`：端口转发
   - `"chain_and_port_forward"`：同时启用
-- `selected_landing_names[]`：用户确认的落地节点名称列表（必须提供，自动识别只能作为默认值）
+- `selected_landing_names[]`：用户确认的落地节点名称列表（必须提供，自动识别只能作为默认值）。当用户跳过单独的落地节点输入时，该列表应来自“基准配置/中转输入解析得到的节点候选”。
 
 条件必填字段：
 
-- `base_config_preference`：当 **两份输入源都包含完整配置**时必填（见 02 的 1.5）
+- `base_config_preference`：当 **两份输入源都存在且都包含完整配置**时必填（见 02 的 1.5）。仅有一份输入时不需要该字段。
   - `"transit"`：以中转输入的完整配置为基准
   - `"landing"`：以落地输入的完整配置为基准
 - `forward_relays[]`：当 `modification_mode` 包含端口转发时必填
