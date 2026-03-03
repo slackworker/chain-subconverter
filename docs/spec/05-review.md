@@ -10,10 +10,10 @@
 |------|------|
 | 代理链接解析 | `ss://`、`vmess://` 等 URI 的解析与转换为 Mihomo 节点格式，需实现或对接现有解析库 |
 | 填表模式 UI | 02 中定义的 6 字段（仅 SOCKS5）需有对应前端表单与校验 |
-| 文件上传 / 粘贴 API | `/api/parse_config` 或等效接口未实现。YAML 解析需得到完整配置，可参考 MetaCubeX/subconverter 的 explodeClash 及 yaml-cpp |
+| 文件上传 API | `/api/parse_config` 或等效接口未实现。YAML 解析需得到完整配置，可参考 MetaCubeX/subconverter 的 explodeClash 及 yaml-cpp |
 | provider 为空 | 无 `proxy-providers` 时，选项二应隐藏或禁用。02 澄清：不需要解析 proxy-providers 内节点，仅需 use 引用 |
 | 协议字段映射 | 端口转发时，所有协议均只需替换 server 与 port 字段，见 02 |
-| manual_pairs 编码 | 节点名含 `:` 或 `,` 时当前解析会出错，需改用 base64/JSON 等 |
+| 旧 query 入参弃用 | `manual_pairs`（`landing:front,landing:front`）等分隔符编码会被节点名中的 `:` / `,` 破坏。重构后统一改为 `POST` + JSON body（`pairs: [{"landing": "...","front":"..."}]`），并弃用 `remote_url`/`manual_pairs` 等 query 传参 |
 
 ---
 
