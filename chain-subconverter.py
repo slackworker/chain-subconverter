@@ -53,6 +53,24 @@ REGION_KEYWORD_CONFIG = [
 ]
 LANDING_NODE_KEYWORDS = ["Landing", "落地"]
 
+# 匹配 reality-opts 中的 short-id: <未加引号的值>，且值形如 6314e825（含字母 e 的十六进制风格）
+# 此类值会被 YAML 解析为科学计数法 (6314×10^825) 导致浮点溢出为 inf，写出时变成 .inf
+_SHORT_ID_SCI_NOTATION_PATTERN = re.compile(
+    r"(short-id\s*:\s*)([0-9a-fA-F]+e[0-9a-fA-F]+)(\s*[,}\]\r\n]|\s*$)",
+    re.MULTILINE
+)
+
+
+def _protect_reality_short_id_from_scientific_notation(yaml_content):
+    """在 YAML 解析前，将 short-id 中形如 6314e825 的未加引号标量改为带引号字符串，避免被解析为科学计数法 (inf)。"""
+    if isinstance(yaml_content, bytes):
+        yaml_content = yaml_content.decode("utf-8", errors="replace")
+    def replacer(m):
+        prefix, value, suffix = m.group(1), m.group(2), m.group(3)
+        return f'{prefix}"{value}"{suffix}'
+    return _SHORT_ID_SCI_NOTATION_PATTERN.sub(replacer, yaml_content)
+
+
 yaml = YAML()
 yaml.preserve_quotes = True
 yaml.indent(mapping=2, sequence=4, offset=2)
@@ -322,6 +340,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             if config_content.startswith(b'\xef\xbb\xbf'): #
                 config_content = config_content[3:] #
                 _add_log_entry(logs_list_ref, "debug", "已移除UTF-8 BOM。") #
+            config_content = _protect_reality_short_id_from_scientific_notation(config_content)
             config_object = yaml.load(config_content) #
             if not isinstance(config_object, dict) or \
                not isinstance(config_object.get("proxies"), list): #
