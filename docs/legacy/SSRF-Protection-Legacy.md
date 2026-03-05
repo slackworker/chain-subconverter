@@ -1,6 +1,6 @@
-# SSRF 防护说明
+# SSRF 防护说明（旧版）
 
-本文档说明 chain-subconverter 的 SSRF（Server-Side Request Forgery，服务端请求伪造）防护策略、配置方式及使用风险。
+本文档说明 chain-subconverter 的 SSRF（Server-Side Request Forgery，服务端请求伪造）防护策略、配置方式及使用风险。**基于旧版本编写，策略仍可参考；当前实现以代码与 [spec](../spec/README.md) 为准。**
 
 ---
 

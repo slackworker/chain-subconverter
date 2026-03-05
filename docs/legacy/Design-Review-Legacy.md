@@ -1,7 +1,8 @@
-# chain-subconverter 项目设计 Review
+# chain-subconverter 项目设计 Review（旧版）
 
 > 生成日期：2025-03-01  
-> 目的：为大版本（涉及新功能逻辑）开发前的架构与设计评估
+> 目的：为大版本（涉及新功能逻辑）开发前的架构与设计评估  
+> **说明**：本文档针对当时旧版单文件架构，仅作历史参考。
 
 ---
 
@@ -50,7 +51,7 @@ chain-subconverter/
 
 ### 1. SSRF 防护未落实（重要）
 
-文档 `docs/SSRF-Protection.md` 中描述的防护策略**当前代码未实现**：
+文档 [SSRF-Protection-Legacy.md](SSRF-Protection-Legacy.md) 中描述的防护策略**当前代码未实现**：
 
 | 文档描述 | 实际实现 |
 |---------|----------|
