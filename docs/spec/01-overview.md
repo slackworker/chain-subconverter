@@ -4,34 +4,35 @@
 
 本项目当前处于 **spec-driven 的彻底重构阶段**：任何既有架构、代码、逻辑、文档与历史决策都可以被质疑；遇到歧义或隐含假设时，必须在 spec 中提出并要求澄清；同时鼓励提出更优实现与最佳实践，并以 spec 的结论作为唯一准绳。
 
-## 项目目标
+## 项目目标与核心价值
 
-帮助用户基于其**已有信息**（订阅/YAML/节点/中转机 `server:port` 等），通过 **Web 前端**集中完成 **Mihomo** 的**链式代理**和/或**端口转发**配置生成与输出，避免用户手动编辑 YAML 或进行任何代码操作。
+帮助用户基于其**已有信息**（订阅/YAML/节点/中转机 `server:port` 等），通过 **Web 前端**集中完成 **Mihomo** 的**链式代理**和/或**端口转发**配置生成与输出：系统自动解析输入、自动检测中转信息是否包含**通用配置**（见下文术语），必要时通过 **模板 + subconverter** 生成**完整配置**，随后按用户指定方式完成改写并输出可直接供 Mihomo 使用的最终 YAML（可选提供订阅链接或 YAML 文件下载），避免用户手动编辑 YAML 或进行任何代码操作。
 
 ## 范围限定
 
 - **仅针对 Mihomo 内核**：暂不涉及 sing-box、Xray 等其他内核
 - **配置结构**：遵循 Mihomo 的 `proxies`、`proxy-groups`、`proxy-providers`、`rules` 等结构
 
-## 核心价值
+## 关键术语（概览）
 
-- 用户通过 Web 前端提供**中转信息输入**与**落地信息输入**，既可以是两份分别输入，也可以是一份同时包含两者（形式多样：订阅/YAML/节点-only/节点链接/填表等）
-- 系统先解析并判定是否包含**完整 Mihomo 配置**；当缺少完整配置时，使用内置订阅转换服务生成可用的完整配置骨架
-- 在统一节点格式后，按用户指定方式生成**链式代理**和/或**端口转发**改写
-- 输出可直接供 Mihomo 使用的完整 YAML，并提供转换后的订阅链接或 YAML 文件供下载
+- **通用配置（GeneralConfig）**：使 Mihomo 可运行并支撑后续改写的最小非节点结构（例如 `mixed-port/port`、`mode`、`external-controller`、`proxy-groups`、`rules`）。
+- **模板（Template）**：用于生成/补齐通用配置（有默认模板，也允许用户自定义）。
+- **完整配置（CompleteConfig）**：`通用配置 + 节点集合`，是后续修改的基础。
 
 ## 数据流概览
 
 ```mermaid
 flowchart LR
   subgraph Input[输入（Web 前端）]
-    T[中转信息输入]
-    L[落地信息输入]
+    T[中转信息输入<br/>可能含通用配置或仅节点]
+    L[落地信息输入<br/>通常为仅节点]
+    TP[模板<br/>默认或用户自定义]
+    F[端口转发服务信息<br/>可选]
   end
 
   subgraph Flow[主流程]
-    P[解析]
-    S[合成基准完整配置]
+    P[解析与检测<br/>中转是否包含通用配置?]
+    S[生成完整配置<br/>用户通用配置整合 或 模板+subconverter]
     M[修改（链式/端口转发）]
   end
 
@@ -41,6 +42,8 @@ flowchart LR
 
   T --> P
   L --> P
+  TP --> S
+  F --> M
   P --> S
   S --> M
   M --> O
@@ -48,4 +51,4 @@ flowchart LR
 
 ## 与前置条件的依赖
 
-输出完整 Mihomo YAML 的**输入依赖**与**约束**统一在 [02-prerequisites](02-prerequisites.md) 维护；本篇仅描述目标、范围与数据流。
+完整配置的生成规则（通用配置判定、模板选择、subconverter 路径等）见 [02-generate-complete-config](02-generate-complete-config.md)；修改规则见 [03-modify-config](03-modify-config.md)；接口与输出契约见 [04-output-and-api](04-output-and-api.md)。

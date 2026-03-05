@@ -9,16 +9,16 @@
 | 项目 | 说明 |
 |------|------|
 | 代理链接解析 | `ss://`、`vmess://` 等 URI 的解析与转换为 Mihomo 节点格式，需实现或对接现有解析库 |
-| 节点-only 转完整配置 | 当输入只有节点而缺少 `rules` / `proxy-groups` 等结构时，需要内置基础订阅转换服务生成完整配置（固定模板 `Custom_Clash.ini`，远程拉取 + 本地缓存） |
-| 填表模式 UI | 02 中定义的 6 字段（仅 SOCKS5）需有对应前端表单与校验 |
-| 文件上传 API | `/api/parse_config` 或等效接口未实现。YAML 解析需得到完整配置，可参考 MetaCubeX/subconverter 的 explodeClash 及 yaml-cpp |
+| 节点-only → 完整配置 | 当输入仅包含节点而不包含**通用配置**（如缺少 `mixed-port/port`、`mode`、`external-controller`、`proxy-groups`、`rules`）时，必须使用 **模板 + subconverter** 生成完整配置（默认模板 + 允许用户自定义模板）。 |
+| 填表模式 UI | 04 中 `source.type="socks5_form"` 定义的字段需有对应前端表单与校验 |
+| 文件上传 API | `/api/parse_config` 或等效接口未实现。YAML 解析需得到“通用配置是否存在”的检测结果与节点集合；subconverter 整合路径见 02。 |
 | provider 为空 | 无 `proxy-providers` 时，选项二应隐藏或禁用。02 澄清：不需要解析 proxy-providers 内节点，仅需 use 引用 |
-| 协议字段映射 | 端口转发时，所有协议均只需替换 server 与 port 字段，见 02 |
+| 协议字段映射 | 端口转发时，所有协议均只需替换 server 与 port 字段，reality 走“复制新节点”，见 03 |
 | 旧 query 入参弃用 | 旧版将业务参数塞进 query 的方式一律弃用；重构后统一 `POST` + JSON body（见 04）。 |
-| 基准配置选择字段 | 当“中转输入”和“落地输入”**都包含完整配置**时，API 必须要求显式 `base_config_preference`，否则会出现“默认选哪份”的歧义（见 02 的 1.5 与 04）。 |
-| 修改方式字段 | API 必须显式要求 `modification_mode`，避免后端推断用户意图（链式/端口转发/同时启用）（见 02 与 04）。 |
+| 生成完整配置的分流字段 | 当中转输入包含通用配置时，用户可选择“使用自己的通用配置”或“使用模板+subconverter”；该选择必须通过 API 显式传入（见 02 与 04）。 |
+| 修改方式字段 | API 必须显式要求 `modification_mode`，避免后端推断用户意图（链式/端口转发/同时启用）（见 03 与 04）。 |
 | 落地节点确认字段 | API 必须显式要求 `selected_landing_names[]`（自动识别只能作为建议默认值），避免误改写普通节点（见 03 与 04）。 |
-| 链式 dialer 成员选择字段 | 链式代理需要由前端把“每个落地节点 dialer 组成员”显式传入（如 `chain_dialer_membership`），后端不应猜测 UI 选择（见 04）。 |
+| 链式 dialer 成员选择字段 | 链式代理需要由前端把“每个落地节点 dialer 组成员”显式传入（如 `chain_dialer_membership`），后端不应猜测 UI 选择（见 03 与 04）。 |
 
 ---
 
@@ -46,7 +46,7 @@
 | 现有能力 | 重构后预期 |
 |----------|------------|
 | 仅 URL 拉取 | 新增文件上传、粘贴、端口转发（仅地址+端口） |
-| 单一输入 | 升级为“两份输入源（中转输入 + 落地输入）”，并支持两份都含完整配置时由用户选择基准配置 |
+| 单一输入 | 升级为“两份输入源（中转输入 + 落地输入）”，并支持当中转侧存在多份“包含通用配置”的输入时由用户选择“通用配置来源”（仅在选择 `generation_mode="use_transit_general_config"` 时需要） |
 | 落地仅来自订阅 | 新增代理链接、填表、手动指定 |
 | 简单关键字识别 | 扩展 7 区域正则 + 手动指定落地 |
 | 仅 dialer-proxy | 支持 dialer-proxy + 端口转发（含协议字段映射） |

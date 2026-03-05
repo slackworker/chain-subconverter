@@ -7,9 +7,9 @@
 | 文档 | 说明 |
 |------|------|
 | [spec/01-overview](spec/01-overview.md) | 项目目标、范围 |
-| [spec/02-prerequisites](spec/02-prerequisites.md) | 前置条件：中转节点、落地节点、统一节点格式 |
-| [spec/03-config-flow](spec/03-config-flow.md) | 配置流程、三种添加方式 |
-| [spec/04-api-output](spec/04-api-output.md) | API 与输出 |
+| [spec/02-generate-complete-config](spec/02-generate-complete-config.md) | 生成完整配置：通用配置、模板、subconverter、检测与分流 |
+| [spec/03-modify-config](spec/03-modify-config.md) | 修改完整配置：链式代理 / 端口转发 |
+| [spec/04-output-and-api](spec/04-output-and-api.md) | 输出与 API 契约 |
 | [spec/05-review](spec/05-review.md) | Review 结论 |
 
 ## 其他文档
