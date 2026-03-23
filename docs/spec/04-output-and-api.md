@@ -8,6 +8,7 @@
 ## 输出
 
 - **最终产物**：可直接供 Mihomo 使用的完整 YAML（通用配置 + 节点）。
+- **附带信息**：应返回或持久化一份角色元信息快照，供后续继续修改。
 - **交付形态**：
   - 直接返回 YAML（供复制/下载）
   - 可选：生成可供客户端周期拉取的订阅短链接（`/subscription/<id>.yaml`）
@@ -19,8 +20,8 @@
 - **无状态优先**：生成接口尽量一次性返回 YAML；如需长期订阅地址，使用短 ID 而不是把参数塞进 URL。
 - **统一 POST + JSON body**：所有业务参数统一放 JSON body；旧版 query 入参形式一律弃用。
 - **解析与生成分离**：
-  - `/api/parse_config`：用于前端预览/引导（检测“是否包含通用配置”、列出节点供用户勾选）
-  - `/api/validate_configuration`：一次性完成：解析 → 生成完整配置（两条路径）→ 修改 → 输出
+  - `/api/parse_config`：用于前端预览/引导（提取节点、展示候选、辅助角色确认）
+  - `/api/validate_configuration`：一次性完成：解析 → 统一调用 subconverter 生成完整配置 → 修改 → 输出
 
 ---
 
@@ -28,16 +29,17 @@
 
 ### 1) `POST /api/parse_config`
 
-用途：解析单份输入源，返回结构化信息，用于前端做引导与选择（尤其是：中转输入是否包含通用配置）。
+用途：解析单份输入源，返回结构化信息，用于前端做引导与选择。
 
 请求（概念字段）：
 
 - `source`: 一个输入源（见“输入源模型”）
+- `role_hint?`: `"transit"` / `"landing"`，仅用于前端展示提示，不影响解析语义
 
 响应（最低要求）：
 
-- `general_config_present`: `boolean`（按 02 的“通用配置判定规则”）
 - `nodes[]`: 解析得到的节点摘要列表（至少含 `name` 与 `type`；可选含 `server/port` 供 UI 展示）
+- `source_summary?`: 输入源摘要信息（如总节点数、可疑格式提示等）
 - `errors[]`: 解析错误（可为空）
 - `warnings[]`: 非致命告警（可为空）
 
@@ -47,21 +49,24 @@
 
 请求（概念字段，后续实现可调整命名，但语义必须保持）：
 
-#### A. 输入源（至少提供一份）
+#### A. 输入源与角色前提
 
-- `transit_source?`: 中转信息输入（可省略/为空）
-- `landing_source?`: 落地信息输入（可省略/为空）
-- 约束：`transit_source` 与 `landing_source` 不能同时为空
+- `transit_source`: 中转信息输入（必填）
+- `landing_source?`: 落地信息输入（条件必填）
+- `landing_included_in_transit`: `boolean`
+- 约束：
+  - `transit_source` 必填
+  - 当 `landing_included_in_transit=false` 时，`landing_source` 必填
+  - 当 `landing_included_in_transit=true` 时，允许不提供 `landing_source`
 
-#### B. 生成完整配置的路径选择（与 02 对齐）
+#### B. 角色确认与完整配置生成（与 02 对齐）
 
-- `generation_mode`：
-  - `"use_transit_general_config"`：使用用户中转输入中的通用配置（仅当检测到 `general_config_present=true` 时可用）
-  - `"use_template_subconverter"`：使用模板 + subconverter 生成通用配置
-- `template_source?`: 当 `generation_mode="use_template_subconverter"` 时必填（可用默认模板或用户自定义模板）
-- `subconverter_params?`: 当 `generation_mode="use_template_subconverter"` 时可选（用于传递必要参数）
+- `selected_transit_names[]`: 用户确认的中转节点名称列表
+- `selected_landing_names[]`: 用户确认的落地节点名称列表
+- `template_source?`: 可选；未提供时默认使用内置模板
+- `subconverter_params?`: 可选；用于传递少量必要参数
 
-> 规则：若服务端检测到中转输入不包含通用配置，则必须强制走 `"use_template_subconverter"`（前端应在 UI 上引导，但后端也必须强校验）。
+> 规则：服务端统一走“模板 + subconverter”生成完整配置；不得再基于“输入中是否已包含通用配置”做路径分流。
 
 #### C. 修改方式与必要输入（与 03 对齐）
 
@@ -69,7 +74,6 @@
   - `"chain"`
   - `"port_forward"`
   - `"chain_and_port_forward"`
-- `selected_landing_names[]`: 用户确认的落地节点名称列表（必填）
 
 链式代理（当 `modification_mode` 包含 `chain`）：
 
@@ -92,6 +96,11 @@
 响应（最低要求）：
 
 - `yaml`: 最终 YAML 字符串
+- `role_metadata`: 规范化后的角色元信息快照，至少包含：
+  - `selected_transit_names[]`
+  - `selected_landing_names[]`
+  - `landing_included_in_transit`
+  - `forward_relays[]`
 - `subscription_url?`: 当 `return_subscription=true` 时返回（如 `/subscription/<id>.yaml`）
 - `warnings[]`
 - `errors[]`（若有错误则应以失败响应返回，不应同时返回 YAML）
@@ -124,11 +133,13 @@
 
 `template_source` 建议支持：
 
-- `type: "default"`：使用内置默认模板
+- `type: "default"`：使用内置默认模板（当前主路径）
 - `type: "remote_url"`：
   - `url: string`
 - `type: "upload_file"`：
   - `content: string`（模板内容；具体格式由实现决定）
+
+> 当前迭代可以只实现默认模板；远程或上传自定义模板可作为后续增强能力。
 
 ---
 

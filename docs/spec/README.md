@@ -17,7 +17,7 @@
 ## 文档职责边界（避免重复）
 
 - `01-overview.md`：只放**目标/范围/高层数据流**，不重复列举依赖细节
-- `02-generate-complete-config.md`：定义**完整配置生成流程**：通用配置判定、模板选择、subconverter 生成/整合路径
+- `02-generate-complete-config.md`：定义**完整配置生成流程**：前端输入收集、角色元信息保留、统一走模板 + subconverter
 - `03-modify-config.md`：定义**修改流程**：链式代理/端口转发（在完整配置基础上）
 - `04-output-and-api.md`：只描述**接口与输出契约**，引用 02/03 的业务规则
 - `05-review.md`：只记录**差异/风险/待澄清项**
@@ -27,7 +27,7 @@
 | 文档 | 说明 |
 |------|------|
 | [01-overview](01-overview.md) | 项目目标、范围、数据流 |
-| [02-generate-complete-config](02-generate-complete-config.md) | **生成完整配置**：通用配置、模板、subconverter、自动检测与分流 |
+| [02-generate-complete-config](02-generate-complete-config.md) | **生成完整配置**：角色确认、模板、subconverter、统一生成路径 |
 | [03-modify-config](03-modify-config.md) | **修改完整配置**：链式代理 / 端口转发 |
 | [04-output-and-api](04-output-and-api.md) | API 设计、输出方式、编码约定 |
 | [05-review](05-review.md) | Review 结论：遗漏、逻辑问题、待澄清 |
