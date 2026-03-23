@@ -65,3 +65,4 @@ flowchart LR
 ## 与前置条件的依赖
 
 完整配置的生成规则（统一输入收集、节点角色保留、subconverter 生成）见 [02-generate-complete-config](02-generate-complete-config.md)；修改规则见 [03-modify-config](03-modify-config.md)；接口与输出契约见 [04-output-and-api](04-output-and-api.md)。
+

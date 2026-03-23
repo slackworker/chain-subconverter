@@ -150,3 +150,4 @@
 - 当 `landing_included_in_transit = false` 且用户未提供任何落地信息时：必须报错。
 - 当 subconverter 生成失败时：必须报错。
 - 当生成出的配置缺少通用配置最小字段集合（例如缺少 `external-controller`）时：必须视为生成失败并报错。
+

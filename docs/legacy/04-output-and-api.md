@@ -145,4 +145,5 @@
 
 ## SSRF 与安全约束（最低要求）
 
-- 当 `source.type="remote_url"` 或 `template_source.type="remote_url"` 时，必须做 SSRF 防护（策略可参考旧版说明 [docs/legacy/SSRF-Protection-Legacy.md](../legacy/SSRF-Protection-Legacy.md)，实现以当前代码为准）。
+- 当 `source.type="remote_url"` 或 `template_source.type="remote_url"` 时，必须做 SSRF 防护（策略可参考旧版说明 [docs/archive/SSRF-Protection-Legacy.md](../archive/SSRF-Protection-Legacy.md)，实现以当前代码为准）。
+
