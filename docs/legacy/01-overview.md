@@ -32,33 +32,27 @@
 
 ```mermaid
 flowchart LR
-  subgraph Input[输入（Web 前端）]
+  subgraph Input[输入]
     T[中转信息输入<br/>订阅或节点<br/>必选]
-    L[落地信息输入<br/>订阅或节点<br/>条件必选]
-    C[少量配置项<br/>默认模板/少量 subconverter 参数<br/>可选]
-    F[端口转发服务信息<br/>可选]
-    R[角色确认<br/>哪些是中转/落地<br/>落地是否已包含在中转中]
+    L[落地信息输入<br/>订阅或节点<br/>必选]
+    C[转换模板/subconverter参数<br/>可选]
+    P[链式代理/端口转发配置<br/>条件可选]
   end
 
   subgraph Flow[主流程]
-    P[解析与前端引导<br/>仅用于提取节点/辅助选择]
-    S[统一调用 subconverter<br/>生成完整配置]
+    S[调用 subconverter<br/>生成完整配置]
     M[修改阶段<br/>链式代理/端口转发]
   end
 
   subgraph Output[输出]
-    O[完整 Mihomo YAML]
-    K[保留角色元信息<br/>供后续继续修改]
+    O[完整 Mihomo YAML<br/>长链接<br/>短链接]
   end
 
-  T --> P
-  L --> P
+  T --> S
+  L --> S
   C --> S
-  R --> S
-  P --> S
-  F --> M
+  P --> M
   S --> M
-  S --> K
   M --> O
 ```
 
