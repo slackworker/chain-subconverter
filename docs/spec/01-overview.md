@@ -52,7 +52,7 @@ flowchart LR
 flowchart TD
   subgraph Stage1[阶段1：转换区]
     L1[落地节点输入<br/>左侧 + SOCKS5表单]
-    T1[中转信息输入<br/>右侧 + 端口转发]
+    T1[中转信息输入<br/>右侧 + 端口转发开关/输入区]
     ADV[高级选项折叠区<br/>客户端/模板/参数]
     BTN1[自动识别按钮]
   end
