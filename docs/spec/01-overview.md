@@ -52,8 +52,8 @@ flowchart LR
 flowchart TD
   subgraph Stage1[阶段1：转换区]
     L1[落地节点输入<br/>左侧 + SOCKS5表单]
-    T1[中转信息输入<br/>右侧 + 端口转发开关/输入区]
-    ADV[高级选项折叠区<br/>客户端/模板/参数]
+    T1[中转信息输入<br/>右侧]
+    ADV[高级选项折叠区<br/>客户端/模板/参数/实验性功能]
     BTN1[自动识别按钮]
   end
 
@@ -78,7 +78,7 @@ flowchart TD
 |------|------|
 | 落地节点（Landing Node） | 最终出口节点，流量从此节点离开到达目标。必须由用户从左侧输入区提供 |
 | 中转节点（Transit Node） | 流量中继节点，作为落地节点的前置代理。由用户从右侧输入区提供 |
-| 端口转发服务（Port Forward Relay） | `server:port` 格式的转发服务地址，用于替换落地节点的连接地址；该信息不进入 subconverter，仅用于后处理修改 |
+| 端口转发服务（Port Forward Relay） | `server:port` 格式的转发服务地址，用于替换落地节点的连接地址；仅在开启实验性端口转发功能后录入，且不进入 subconverter |
 | 链式代理（Chain Proxy） | 通过 Mihomo `dialer-proxy` 实现 中转→落地 的代理链路 |
 | 端口转发（Port Forward） | 将落地节点的 `server:port` 替换为端口转发服务地址 |
 | 完整配置（CompleteConfig） | subconverter 生成的包含通用配置 + 节点集合的 Mihomo YAML |
@@ -89,6 +89,7 @@ flowchart TD
 ## 关键业务约束
 
 - **落地与中转不允许同源**：禁止在左右输入区使用同一份订阅
+- **端口转发为实验性次要功能**：默认隐藏在高级选项中，不在主界面直接展示
 - **端口转发独立输入**：端口转发信息独立于中转节点输入区，且不进入 subconverter
 - **链式代理不支持 reality 协议**：落地节点为 reality 时，给出用户警告提示
 - **链式代理端口提示**：落地节点端口号大于等于 `10000` 时，提示部分机场可能不支持
