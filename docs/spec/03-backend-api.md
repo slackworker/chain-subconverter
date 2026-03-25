@@ -208,7 +208,7 @@
 
 ### 2. `POST /api/generate`
 
-用途：接收阶段 1 快照、阶段 2 快照与短链接开关，返回最终 YAML、长链接与可选短链接。
+用途：接收阶段 1 快照、阶段 2 快照与短链接开关，完成最终校验并返回可消费的长链接与可选短链接。
 
 请求：
 
@@ -245,12 +245,12 @@
 
 - 请求体不包含 `completeConfig`
 - 生成前校验与改写规则统一见 [04-business-rules](04-business-rules.md)
+- 本接口不返回 YAML 文本；YAML 在订阅链接被访问时交付
 
 成功响应：
 
 ```json
 {
-  "yaml": "string",
   "longUrl": "https://example.com/subscription?data=...",
   "shortUrl": "https://example.com/subscription/abc123.yaml",
   "messages": [],
@@ -344,5 +344,8 @@
 
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
+- 长链接本身也是订阅资源地址；访问该链接时返回 YAML
 - 短链接只是不透明别名，不是另一套状态源
+- 短链接与长链接在外部契约上都表现为“可直接消费的订阅链接”
+- 前端阶段 3 只消费 `longUrl` / `shortUrl` 本身，不通过额外接口获取 YAML 文本
 
