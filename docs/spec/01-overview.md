@@ -31,8 +31,8 @@ flowchart LR
 
   subgraph Flow[流程]
     C[阶段1 转换并自动填充]
-    S[阶段2 配置与确认]
-    G[阶段3 生成输出]
+    S[阶段2 配置]
+    G[阶段3 输出]
   end
 
   subgraph Output[输出]
@@ -57,8 +57,8 @@ flowchart LR
 | 阶段 | 职责 |
 |------|------|
 | 阶段 1：输入区 | 收集落地节点信息、中转节点信息、模板与转换参数、端口转发服务信息；调用 `subconverter`；生成阶段 2 初始化数据 |
-| 阶段 2：配置区 | 以“每个落地节点一行”的方式展示配置；根据自动识别结果给出默认值；允许用户调整 `mode` 和第三列目标 |
-| 阶段 3：输出区 | 基于阶段 1 与阶段 2 快照重新调用 `subconverter`，得到新的 `completeConfig` 后完成校验、改写，并生成最终 YAML、长链接，以及可选短链接 |
+| 阶段 2：配置区 | 以“每个落地节点一行”的方式展示配置；根据自动识别结果给出默认值；允许用户调整 `mode` 和第三列目标；通过主按钮发起“生成链接” |
+| 阶段 3：输出区 | 展示最终 YAML、长链接与可选短链接 |
 
 ## 关键术语
 
@@ -77,7 +77,7 @@ flowchart LR
 - 阶段 2 固定为一节点一行；同一落地节点不能出现多行
 - 落地副本只能在阶段 1 创建；完全一致的 URI 需要稳定重命名
 - 端口转发输入独立于中转输入，且不参与 `subconverter`
-- 阶段 2 的自动识别、候选收集和配置改写规则统一定义在 [04-business-rules](04-business-rules.md)
+- 阶段 2 的自动识别、候选收集、生成前校验与改写规则统一定义在 [04-business-rules](04-business-rules.md)
 - 前端只负责渲染和交互；接口字段与消息结构以 [03-backend-api](03-backend-api.md) 为准
 
 ## 文档结构
@@ -88,5 +88,5 @@ flowchart LR
 | [01-overview](01-overview.md) | 本文档：目标、术语、阶段职责与全局约束 |
 | [02-frontend-spec](02-frontend-spec.md) | 前端 UI 规格：界面结构、展示语义、交互约束 |
 | [03-backend-api](03-backend-api.md) | 后端 API 契约：快照、阶段 1 产物、生成接口、长短链接 |
-| [04-business-rules](04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
+| [04-business-rules](04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、生成前校验与改写 |
 | 05-tech-stack（待补） | 技术选型与项目结构 |

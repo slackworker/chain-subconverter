@@ -1,6 +1,6 @@
 # 03 - 后端 API 契约
 
-> 本章定义接口字段与响应结构。转换并自动填充、阶段 2 初始化和配置改写的业务语义见 [04-business-rules](04-business-rules.md)。
+> 本章定义接口字段与响应结构。转换并自动填充、阶段 2 初始化、生成前校验与改写的业务语义见 [04-business-rules](04-business-rules.md)。
 
 ---
 
@@ -208,7 +208,7 @@
 
 ### 2. `POST /api/generate`
 
-用途：基于阶段 1 快照重新调用 `subconverter` 生成新的 `completeConfig`，校验阶段 2 快照后完成改写，最终返回 YAML、长链接与可选短链接。
+用途：接收阶段 1 快照、阶段 2 快照与短链接开关，返回最终 YAML、长链接与可选短链接。
 
 请求：
 
@@ -241,12 +241,10 @@
 }
 ```
 
-生成规则：
+接口约束：
 
 - 请求体不包含 `completeConfig`
-- 后端必须仅根据 `stage1Input` 重新调用 `subconverter`，生成本次输出所使用的 `completeConfig`
-- 后端必须基于本次重新生成的 `completeConfig` 校验 `stage2Snapshot` 中的 `landingNodeName`、`mode` 与 `targetName` 是否仍然有效
-- 校验通过后，后端才可执行链式代理或端口转发改写，并生成最终 YAML
+- 生成前校验与改写规则统一见 [04-business-rules](04-business-rules.md)
 
 成功响应：
 

@@ -1,6 +1,6 @@
 # 04 - 业务规则
 
-> 本章是“转换并自动填充”“阶段 2 初始化”“阶段 2 配置操作”的唯一权威定义。前端展示见 [02-frontend-spec](02-frontend-spec.md)，接口字段见 [03-backend-api](03-backend-api.md)。
+> 本章是“转换并自动填充”“阶段 2 初始化”“生成前校验与改写”的唯一权威定义。前端展示见 [02-frontend-spec](02-frontend-spec.md)，接口字段见 [03-backend-api](03-backend-api.md)。
 
 ---
 
@@ -130,9 +130,9 @@
 
 ---
 
-## 3. 阶段 2 配置操作
+## 3. 生成前校验与改写
 
-### 3.1 配置快照语义
+### 3.1 阶段 2 快照语义
 
 每个落地节点对应一行配置：
 
@@ -150,7 +150,7 @@
 
 ### 3.3 链式代理改写
 
-点击“配置”后，后端必须在本次重新生成的 `completeConfig` 基础上执行如下改写：
+生成阶段开始后，后端必须在本次重新生成的 `completeConfig` 基础上执行如下改写：
 
 - 按 `landingNodeName` 定位落地节点
 - 当 `mode = chain` 时，为该落地节点添加 `dialer-proxy: <targetName>`
