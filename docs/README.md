@@ -2,7 +2,14 @@
 
 ## 新 Spec 入口（待你重新阐述）
 
-**[docs/spec/](spec/)** — 当前为空目录；你后续会将新的 spec-driven 重构设计放在此处作为准绳。
+**[docs/spec/](spec/)** — 当前 spec-driven 重构的权威目录。
+
+| 文档 | 说明 |
+|------|------|
+| [spec/00-governance](spec/00-governance.md) | 治理与总则：当前阶段、核心规则、权威顺序 |
+| [spec/01-overview](spec/01-overview.md) | 项目概览：目标、数据流、术语与约束 |
+| [spec/02-frontend-spec](spec/02-frontend-spec.md) | 前端 UI 规格 |
+| [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
 
 ## 旧 Spec（Legacy Spec）
 

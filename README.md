@@ -7,6 +7,9 @@
 
 一个为 [Mihomo(Clash Meta) 内核](https://github.com/MetaCubeX/mihomo/tree/Meta) 设计的、用于链式代理 (`dialer-proxy`) 配置的订阅转换工具。它包含一个Python后端服务和直观的前端配置界面。
 
+> **当前阶段声明**  
+> 本项目处于 **spec-driven 彻底重构阶段**。既有实现仅供参考；如 spec 存在歧义或隐含假设，必须先澄清；最终以 [docs/spec](docs/spec) 的已确认结论为准。
+
 > **📌 项目状态**  
 > 当前仓库中的实现为**旧版本**，仍可部署使用（见下方快速开始）。新一轮重构以 [docs/spec](docs/spec) 规格为准推进；旧版相关文档见 [docs/legacy](docs/legacy)。
 
