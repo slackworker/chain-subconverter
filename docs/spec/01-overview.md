@@ -30,7 +30,7 @@ flowchart LR
   end
 
   subgraph Flow[流程]
-    C[阶段1 转换并自动识别]
+    C[阶段1 转换并自动填充]
     S[阶段2 配置与确认]
     G[阶段3 生成输出]
   end
@@ -88,5 +88,5 @@ flowchart LR
 | [01-overview](01-overview.md) | 本文档：目标、术语、阶段职责与全局约束 |
 | [02-frontend-spec](02-frontend-spec.md) | 前端 UI 规格：界面结构、展示语义、交互约束 |
 | [03-backend-api](03-backend-api.md) | 后端 API 契约：快照、阶段 1 产物、生成接口、长短链接 |
-| [04-business-rules](04-business-rules.md) | 业务规则：转换并自动识别、阶段 2 初始化、阶段 2 配置操作 |
+| [04-business-rules](04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
 | 05-tech-stack（待补） | 技术选型与项目结构 |

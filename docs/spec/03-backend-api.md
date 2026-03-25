@@ -1,6 +1,6 @@
 # 03 - 后端 API 契约
 
-> 本章定义接口字段与响应结构。转换并自动识别、阶段 2 初始化和配置改写的业务语义见 [04-business-rules](04-business-rules.md)。
+> 本章定义接口字段与响应结构。转换并自动填充、阶段 2 初始化和配置改写的业务语义见 [04-business-rules](04-business-rules.md)。
 
 ---
 
