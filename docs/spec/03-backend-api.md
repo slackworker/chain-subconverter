@@ -4,15 +4,6 @@
 
 ---
 
-## 设计原则
-
-- 阶段 1 与阶段 3 分离：先转换并初始化阶段 2，再基于快照生成最终 YAML
-- 阶段 2 初始化由后端完成，前端不解析 `completeConfig`
-- 长链接是规范化快照；短链接只是长链接的后端别名
-- 后端统一返回 `messages[]` 与 `blockingErrors[]`
-
----
-
 ## 通用数据模型
 
 ### 1. 阶段 1 输入快照
@@ -142,7 +133,7 @@
 
 ### 1. `POST /api/stage1/convert`
 
-用途：接收阶段 1 输入，调用 `subconverter`，并返回 `completeConfig` 与 `stage2Init`。
+用途：接收阶段 1 输入，调用 `subconverter`，并返回本次转换得到的 `completeConfig` 与 `stage2Init`。
 
 请求：
 
@@ -211,13 +202,13 @@
 
 补充规则：
 
-- `completeConfig` 是阶段 2 和阶段 3 的唯一配置基础
+- 本接口返回的 `completeConfig` 只用于本次阶段 2 初始化语义，不要求前端在阶段 3 回传
 - 多条完全一致的落地 URI 不得被静默去重
 - 名称冲突必须在后端稳定消歧，不得交给前端猜测
 
 ### 2. `POST /api/generate`
 
-用途：基于 `completeConfig` 对应的阶段 1 快照与阶段 2 快照生成最终 YAML，并返回长链接与可选短链接。
+用途：基于阶段 1 快照重新调用 `subconverter` 生成新的 `completeConfig`，校验阶段 2 快照后完成改写，最终返回 YAML、长链接与可选短链接。
 
 请求：
 
@@ -249,6 +240,13 @@
   "createShortUrl": true
 }
 ```
+
+生成规则：
+
+- 请求体不包含 `completeConfig`
+- 后端必须仅根据 `stage1Input` 重新调用 `subconverter`，生成本次输出所使用的 `completeConfig`
+- 后端必须基于本次重新生成的 `completeConfig` 校验 `stage2Snapshot` 中的 `landingNodeName`、`mode` 与 `targetName` 是否仍然有效
+- 校验通过后，后端才可执行链式代理或端口转发改写，并生成最终 YAML
 
 成功响应：
 
@@ -350,14 +348,3 @@
 - 长链接必须可逆，能恢复页面状态
 - 短链接只是不透明别名，不是另一套状态源
 
----
-
-## 与 `subconverter` 的边界
-
-- `subconverter` 负责：基于阶段 1 输入生成 `completeConfig`
-- 本项目额外负责：
-  - 解析 `completeConfig`，生成 `stage2Init`
-  - 维护阶段 1 与阶段 2 快照
-  - 将链式代理选择写入 `dialer-proxy`
-  - 将端口转发服务写回落地节点的 `server` 与 `port`
-  - 提供长短链接解析与恢复能力
