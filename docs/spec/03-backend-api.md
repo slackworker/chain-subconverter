@@ -280,7 +280,7 @@
 
 ### 3. `POST /api/resolve-url`
 
-用途：输入长链接或短链接，返回规范化长链接与页面恢复所需快照。
+用途：输入长链接或短链接，返回规范化长链接、页面恢复所需快照，以及该快照当前是否允许继续编辑和继续生成。
 
 请求：
 
@@ -295,6 +295,7 @@
 ```json
 {
   "longUrl": "https://example.com/subscription?data=...",
+  "restoreStatus": "replayable",
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -325,8 +326,14 @@
 
 规则：
 
-- 传入长链接时，直接解码快照
-- 传入短链接时，先解析为长链接，再返回同一份快照
+- `restoreStatus` 只能是 `replayable` 或 `conflicted`
+- 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
+- 传入短链接时，先解析为长链接，再解码同一份快照
+- 解码后，后端必须基于恢复出的 `stage1Input` 重新执行一次阶段 1 转换，并按 [04-business-rules](04-business-rules.md) 中“恢复链接时的可重放性判定”给出 `restoreStatus`
+- `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
+- `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
+- `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input` 与 `stage2Snapshot`
+- `restoreStatus = conflicted` 时，`messages[]` 必须包含冲突提示，供前端进入只读冲突态
 
 ### 4. `GET /subscription/<id>.yaml`
 
@@ -354,6 +361,7 @@
 
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
+- 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 短链接只是不透明别名，不是另一套状态源
 - 短链接与长链接在外部契约上都表现为“可直接消费的订阅链接”
