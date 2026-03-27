@@ -400,10 +400,95 @@
 规则：
 
 - `data` 必须可逆编码 `stage1Input` 与 `stage2Snapshot`
-- `data` 编码必须 URL-safe 且具确定性；当前推荐实现为“规范化 JSON -> gzip -> base64url”
+- `data` 编码必须 URL-safe 且具确定性；编码规范见下文“长链接编码规范”
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
+
+---
+
+## 长链接编码规范
+
+### 1. 权威边界
+
+- 规范长链接只能由后端生成；前端不得自行构造、重写或“规范化” `longUrl`
+- 前端只提交 `stage1Input` 与 `stage2Snapshot`，并消费后端返回的 `longUrl`
+- 后端是唯一权威编码器，也是 `resolve-url` 与 `GET /subscription?data=...` 的唯一权威解码器
+
+### 2. 规范载荷
+
+`data` 解码后的逻辑载荷必须是如下结构：
+
+```json
+{
+  "v": 1,
+  "stage1Input": {
+    "landingRawText": "...",
+    "transitRawText": "...",
+    "forwardRelayRawText": "...",
+    "advancedOptions": {
+      "client": "mihomo",
+      "template": "default",
+      "emoji": true,
+      "udp": true,
+      "skipCertVerify": false,
+      "enablePortForward": true
+    }
+  },
+  "stage2Snapshot": {
+    "rows": [
+      {
+        "rowId": "row-1",
+        "landingNodeName": "HK 01",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      }
+    ]
+  }
+}
+```
+
+规则：
+
+- `v` 是长链接编码版本字段，当前固定为 `1`
+- 当前版本的规范长链接必须完整编码 `stage1Input` 与 `stage2Snapshot`，不得额外编码其他业务字段
+- 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
+
+### 3. 规范编码算法
+
+编码步骤固定为：
+
+1. 将逻辑载荷按当前版本结构组装为 JSON 对象
+2. 将该对象序列化为 UTF-8 的规范化 JSON
+3. 将规范化 JSON 字节做 gzip 压缩
+4. 将压缩结果做 base64url 编码，且不带 `=` padding
+5. 作为 `data` 查询参数拼接到 `GET /subscription?data=...`
+
+规范化 JSON 规则：
+
+- 对象键必须按字典序递归排序
+- 数组顺序必须保持原语义顺序，不得重排
+- JSON 文本不得包含额外空白
+- 布尔值、`null`、数字与字符串必须使用标准 JSON 表示
+- 当前版本的规范编码输出中，不得包含 schema 未定义字段
+
+gzip 规则：
+
+- 必须使用 gzip 格式
+- 为保证同一份快照得到完全相同的 `longUrl`，gzip header 中会影响字节稳定性的时间戳字段必须固定为 `0`
+
+### 4. 解码与错误处理
+
+- 后端解码长链接时，必须执行 `base64url -> gunzip -> JSON parse -> version check`
+- 任一步骤失败，都必须视为“不是可识别的规范长链接”
+- `POST /api/resolve-url` 与 `POST /api/short-links` 对无效长链接的错误语义必须保持一致
+
+### 5. 长度约束
+
+- 单条规范化 `longUrl` 的总长度必须受限
+- 早期原型默认上限为 `2048` bytes
+- `POST /api/generate` 若生成结果超过上限，必须返回阻断错误，不得静默截断、不得自动改为短链接
+- 超限时建议错误码为 `LONG_URL_TOO_LONG`
 
 ---
 
@@ -412,6 +497,7 @@
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份快照必须生成相同的长链接
+- 长链接编码版本必须显式包含在载荷中；当前版本固定为 `v = 1`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接是唯一规范化状态源
