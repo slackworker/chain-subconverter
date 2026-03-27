@@ -418,7 +418,11 @@
 - 短链接只是不透明别名，不是另一套状态源
 - 短链接 ID 必须由规范化 `longUrl` 通过确定性算法生成；同一个 `longUrl` 必须得到同一个 `shortUrl`
 - 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为对应 `longUrl`
+- 短链接索引的默认持久化实现使用本地 SQLite 文件
 - 短链接索引记录至少包含 `shortId`、`longUrl` 与 `lastAccessedAt`
+- 短链接索引容量必须可配置；早期原型默认上限为 `1000` 条记录
+- 单条 `longUrl` 存储长度必须可配置；早期原型默认上限为 `2048` bytes
+- 设计目标支持约 `100` 到 `100000` 条记录、约 `100KB` 到 `100MB` 存储规模
 - `POST /api/short-links` 命中既有 `longUrl` 时，必须返回既有 `shortUrl`，并刷新其 `lastAccessedAt`
 - 短链接被后端成功解析时，必须刷新其 `lastAccessedAt`
 - 短链接索引存在容量上限；达到上限后创建新的不同 `longUrl` 映射时，必须淘汰 `lastAccessedAt` 最早的一条记录，再写入新记录
