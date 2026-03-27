@@ -1,6 +1,6 @@
 # 03 - 后端 API 契约
 
-> 本章定义接口字段与响应结构。转换并自动填充、阶段 2 初始化、生成前校验与改写的业务语义见 [04-business-rules](04-business-rules.md)。
+> 本章只定义接口字段与响应结构。`subconverter` 集成口径、转换管线、阶段 2 初始化、生成前校验与订阅渲染语义统一见 [04-business-rules](04-business-rules.md)。
 
 ---
 
@@ -133,7 +133,7 @@
 
 ### 1. `POST /api/stage1/convert`
 
-用途：接收阶段 1 输入，调用 `subconverter`，并返回本次转换得到的 `completeConfig` 与 `stage2Init`。
+用途：接收阶段 1 输入，并返回本次转换得到的 `stage2Init`。
 
 请求：
 
@@ -159,7 +159,6 @@
 
 ```json
 {
-  "completeConfig": "string",
   "stage2Init": {
     "landingNodes": [
       { "name": "HK 01", "type": "ss" }
@@ -202,8 +201,8 @@
 
 补充规则：
 
-- 本接口返回的 `completeConfig` 只用于本次阶段 2 初始化语义，不要求前端在阶段 3 回传
-- 本接口返回的 `completeConfig` 是后端按 [04-business-rules](04-business-rules.md) 完成转换后处理后的最终结果，不是 `subconverter` 原始输出
+- 本接口不返回 `completeConfig` 或 `baseCompleteConfig`
+- `stage2Init` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md)
 - 多条完全一致的落地 URI 不得被静默去重
 - 名称冲突必须在后端稳定消歧，不得交给前端猜测
 
@@ -244,8 +243,8 @@
 接口约束：
 
 - 请求体不包含 `completeConfig`
-- 生成前校验与改写规则统一见 [04-business-rules](04-business-rules.md)
-- 本接口不返回 YAML 文本；YAML 在订阅链接被访问时交付
+- 本接口返回规范化长链接；生成前校验规则见 [04-business-rules](04-business-rules.md)
+- 本接口不返回 YAML 文本
 
 成功响应：
 
@@ -281,6 +280,7 @@
 
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
+- 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
 
 ### 3. `POST /api/short-links`
 
@@ -377,7 +377,7 @@
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
 - 传入短链接时，先解析为长链接，再解码同一份快照
-- 解码后，后端必须基于恢复出的 `stage1Input` 重新执行一次阶段 1 转换，并按 [04-business-rules](04-business-rules.md) 中“恢复链接时的可重放性判定”给出 `restoreStatus`
+- `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
 - `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input` 与 `stage2Snapshot`
@@ -390,6 +390,7 @@
 规则：
 
 - 短链接必须稳定映射到某个长链接
+- YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
 
@@ -400,6 +401,7 @@
 规则：
 
 - `data` 必须可逆编码 `stage1Input` 与 `stage2Snapshot`
+- YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
 

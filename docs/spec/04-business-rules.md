@@ -4,11 +4,19 @@
 
 ---
 
+## 0. `subconverter` 集成前提
+
+- 后端统一通过本地 HTTP 服务访问 `subconverter`
+- `subconverter` 作为本项目部署内的内部转换组件存在
+- 本章定义的转换规则均建立在该集成前提之上
+
+---
+
 ## 1. 转换并自动填充
 
 ### 1.1 输入
 
-“转换并自动填充”使用以下输入：
+统一转换管线使用以下输入：
 
 - 落地节点信息
 - 中转节点信息
@@ -18,10 +26,33 @@
 
 其中：
 
-- 调用 `subconverter` 时只使用落地节点信息、中转节点信息、转换模板与其他 `subconverter` 参数
-- 端口转发服务信息不传入 `subconverter`，只作为阶段 2 和阶段 3 的附加输入保留
+- `subconverter` 使用落地节点信息、中转节点信息、转换模板与其他 `subconverter` 配置参数
+- 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
 
-### 1.1.1 端口转发服务输入校验（权威口径）
+### 1.1.1 统一转换管线（权威口径）
+
+一次“转换”必须复用同一条 3-pass 转换管线：
+
+1. `landing-discovery pass`
+   - 仅使用落地节点输入
+   - 产出落地身份集合
+   - 输出形态以节点列表为主
+2. `transit-discovery pass`
+   - 仅使用中转节点输入
+   - 产出中转身份集合与阶段 2 所需的链式候选基础数据
+   - 输出形态以中转候选发现所需的最小结果为主
+3. `full-base pass`
+   - 使用落地节点输入、中转节点输入、转换模板与其他 `subconverter` 参数
+   - 产出后续校验与订阅渲染所需的基底配置
+
+复用范围：
+
+- 阶段 1 的“转换并自动填充”必须复用该 3-pass 管线
+- `POST /api/generate` 的生成前校验必须复用该 3-pass 管线
+- `POST /api/resolve-url` 的恢复可重放性判定必须复用该 3-pass 管线
+- 订阅链接实际被打开或下载时的 YAML 渲染必须复用该 3-pass 管线
+
+### 1.1.2 端口转发服务输入校验（权威口径）
 
 本项目当前对端口转发服务输入只做简单校验。
 
@@ -37,21 +68,27 @@
 
 ### 1.2 输出
 
-阶段 1 必须产出两类结果：
+统一转换管线存在两类结果语义：
 
-- `completeConfig`：`subconverter` 输出并经后端后处理后的最终完整配置
-- `stage2Init`：供阶段 2 直接渲染的初始化数据
+- `stage2Init`：阶段 1 对前端暴露的初始化数据
+- `baseCompleteConfig`：`full-base pass` 生成并经后端后处理后的基底完整配置，供后端校验与订阅渲染使用
+
+补充规则：
+
+- 阶段 1 对外返回 `stage2Init`
+- `POST /api/generate` 返回校验通过后的链接
+- 面向用户消费的最终 `completeConfig` 在订阅链接被打开或下载时即时生成并返回
 
 ### 1.3 转换后立即后处理
 
-后端在调用 `subconverter` 并拿到可解析配置后，必须立刻完成一次“落地节点出组”后处理，再产出最终 `completeConfig`。
+后端在 `full-base pass` 拿到可解析配置后，必须立刻完成一次“落地节点出组”后处理，再产出 `baseCompleteConfig`。
 
 处理规则：
 
 1. 识别默认模板生成的 6 个区域策略组
 2. 从这些区域策略组的成员列表中剔除所有落地节点
 3. 若某落地节点同时出现在多个区域策略组中，必须在每个命中的区域策略组内都剔除
-4. 完成剔除后的结果，才是后续阶段统一使用的最终 `completeConfig`
+4. 完成剔除后的结果，才是后续校验与订阅渲染统一使用的 `baseCompleteConfig`
 
 ---
 
@@ -59,7 +96,7 @@
 
 ### 2.1 收集落地节点
 
-- 从解析后的落地节点结果中收集所有落地节点
+- 必须从 `landing-discovery pass` 的结果中收集所有落地节点
 - 这些节点按稳定名称写入 `stage2Init.landingNodes[]`
 - 同时按“每个落地节点一行”生成 `stage2Init.rows[]`
 - 阶段 2 第一列只展示这些落地节点，不允许在阶段 2 重新选择或新增
@@ -67,6 +104,7 @@
 ### 2.1.1 落地节点命名与身份边界
 
 - 在当前规格中，`landingNodeName` 是阶段 2 快照、生成改写与恢复重放的唯一定位键
+- `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合
 - 名称冲突消歧与稳定重命名完全由后端负责，前端只消费 `stage2Init`，不得自行重命名、去重或补算映射
 - 当前实现约定：同名冲突按 `NodeName`、`NodeName 2`、`NodeName 3`… 规则稳定产出，并直接返回在 `stage2Init`
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
@@ -90,20 +128,20 @@
 
 ### 2.3 收集链式候选
 
-链式候选统一来自最终 `completeConfig`，写入 `stage2Init.chainTargets[]`。
+链式候选统一来自 `transit-discovery pass` 的结果，写入 `stage2Init.chainTargets[]`。
 
 收集范围：
 
-- 默认模板生成的 6 个区域策略组
-- `completeConfig.proxies` 中除所有落地节点外的单个 `proxy`
+- 中转输入单独转换后可用的默认模板 6 个区域策略组
+- `transit-discovery pass` 识别出的单个中转 `proxy`
 
 处理规则：
 
-1. 对区域策略组，读取最终 `completeConfig` 中已经完成“落地节点出组”后的成员列表
+1. 对区域策略组，读取“仅中转输入”语义下可用的区域策略组结果
 2. 若某区域策略组成员数为 `0`，则该区域策略组不进入 `chainTargets[]`
-3. 对单个 `proxy` 候选，必须从 `completeConfig.proxies` 中剔除所有落地节点，避免把落地节点重新暴露为可选目标
+3. 对单个 `proxy` 候选，收集 `transit-discovery pass` 明确识别出的中转节点
 4. `chainTargets[]` 中保留区域策略组和单个 `proxy` 两类候选
-5. 无论候选来源是区域策略组还是单个 `proxy`，链式候选范围都不得包含任何落地节点
+5. 链式候选范围由区域策略组与中转 `proxy` 构成
 
 ### 2.4 收集端口转发候选
 
@@ -192,11 +230,12 @@
 
 ### 3.2 生成前校验
 
-- 生成时必须先根据 `stage1Input` 重新调用 `subconverter`，得到本次输出使用的 `completeConfig`
-- 任一行若无法在本次 `completeConfig` 中按 `landingNodeName` 定位到对应落地节点，必须阻断生成
+- 生成时必须先根据 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
+- 任一行若无法在本次 `baseCompleteConfig` 中按 `landingNodeName` 定位到对应落地节点，必须阻断生成
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
 - 若某行选择 `chain` 但该落地节点协议不支持链式代理，必须阻断生成
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
+- `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 
 ### 3.2.1 恢复链接时的可重放性判定
 
@@ -204,7 +243,7 @@
 
 判定规则：
 
-- 后端必须基于恢复出的 `stage1Input` 重新执行一次阶段 1 转换，得到当前的 `completeConfig` 与候选集合
+- 后端必须基于恢复出的 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
 - 后端必须用恢复出的 `stage2Snapshot` 执行与生成阶段一致的逐行校验
 - 只要每一行的 `landingNodeName` 仍可定位、`mode` 仍合法、`targetName` 仍可在对应候选集合中解析，则该恢复快照应视为可重放
 - 任一行只要出现引用失效，即应判定整个恢复快照不可重放
@@ -223,7 +262,7 @@
 
 ### 3.3 链式代理改写
 
-生成阶段开始后，后端必须在本次重新生成的 `completeConfig` 基础上执行如下改写：
+订阅链接被访问时，后端必须在本次重新生成的 `baseCompleteConfig` 基础上执行如下改写：
 
 - 按 `landingNodeName` 定位落地节点
 - 当 `mode = chain` 时，为该落地节点添加 `dialer-proxy: <targetName>`
@@ -231,7 +270,7 @@
 
 ### 3.4 端口转发改写
 
-- 改写基础必须是阶段 3 本次重新生成的 `completeConfig`
+- 改写基础必须是订阅渲染阶段本次重新生成的 `baseCompleteConfig`
 - 按 `landingNodeName` 定位落地节点
 - 当 `mode = port_forward` 时，用选中的端口转发服务替换该落地节点的 `server` 与 `port`
 - 仅替换 `server` 与 `port`，不联动修改其他字段
@@ -241,4 +280,11 @@
 - `vless-reality` 不支持链式代理
 - `vless-reality` 允许端口转发
 - 端口转发对 `vless-reality` 仍只替换 `server` 与 `port`
+
+### 3.6 最终配置交付时机
+
+- 订阅链接被打开或下载时，后端即时生成并返回最终 `completeConfig`
+- 订阅渲染时，后端必须先重新执行同一条 3-pass 转换管线，得到当前 `baseCompleteConfig`
+- 后端随后基于请求中的 `stage2Snapshot` 应用 3.3 与 3.4 改写
+- 改写完成后的结果作为本次返回给用户消费的最终 `completeConfig`
 
