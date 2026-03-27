@@ -285,7 +285,7 @@
 
 ### 3. `POST /api/short-links`
 
-用途：为既有 `longUrl` 创建或获取其稳定短链接。
+用途：为既有 `longUrl` 创建或获取其确定性短链接。
 
 请求：
 
@@ -324,8 +324,7 @@
 
 - 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
-- 同一个 `longUrl` 应稳定映射到同一个 `shortUrl`
-- `shortUrl` 只是不透明别名；其绑定目标始终是对应的 `longUrl`
+- 成功响应的 `messages[]` 可包含短链接存储淘汰相关 warning
 
 ### 4. `POST /api/resolve-url`
 
@@ -390,7 +389,6 @@
 
 规则：
 
-- 短链接必须稳定映射到某个长链接
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
@@ -418,6 +416,11 @@
 - 长链接本身也是订阅资源地址
 - 长链接是唯一规范化状态源
 - 短链接只是不透明别名，不是另一套状态源
-- 短链接必须稳定绑定到唯一的长链接
+- 短链接 ID 必须由规范化 `longUrl` 通过确定性算法生成；同一个 `longUrl` 必须得到同一个 `shortUrl`
+- 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为对应 `longUrl`
+- 短链接索引记录至少包含 `shortId`、`longUrl` 与 `lastAccessedAt`
+- `POST /api/short-links` 命中既有 `longUrl` 时，必须返回既有 `shortUrl`，并刷新其 `lastAccessedAt`
+- 短链接被后端成功解析时，必须刷新其 `lastAccessedAt`
+- 短链接索引存在容量上限；达到上限后创建新的不同 `longUrl` 映射时，必须淘汰 `lastAccessedAt` 最早的一条记录，再写入新记录
+- 因淘汰而失去索引记录的短链接不再保证可解析
 - 短链接与长链接在外部契约上都表现为“可直接消费的订阅链接”
-
