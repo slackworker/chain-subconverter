@@ -25,8 +25,19 @@
 
 阶段 1 必须产出两类结果：
 
-- `completeConfig`：`subconverter` 生成的完整配置
+- `completeConfig`：`subconverter` 输出并经后端后处理后的最终完整配置
 - `stage2Init`：供阶段 2 直接渲染的初始化数据
+
+### 1.3 转换后立即后处理
+
+后端在调用 `subconverter` 并拿到可解析配置后，必须立刻完成一次“落地节点出组”后处理，再产出最终 `completeConfig`。
+
+处理规则：
+
+1. 识别默认模板生成的 6 个区域策略组
+2. 从这些区域策略组的成员列表中剔除所有落地节点
+3. 若某落地节点同时出现在多个区域策略组中，必须在每个命中的区域策略组内都剔除
+4. 完成剔除后的结果，才是后续阶段统一使用的最终 `completeConfig`
 
 ---
 
@@ -58,24 +69,20 @@
 
 ### 2.3 收集链式候选
 
-链式候选统一来自解析后的中转信息，写入 `stage2Init.chainTargets[]`。
+链式候选统一来自最终 `completeConfig`，写入 `stage2Init.chainTargets[]`。
 
 收集范围：
 
 - 默认模板生成的 6 个区域策略组
-- `completeConfig.proxies` 中的所有 `proxies`
+- `completeConfig.proxies` 中除所有落地节点外的单个 `proxy`
 
 处理规则：
 
-1. 对区域策略组，先读取其成员节点列表
-2. 从每个区域策略组中剔除所有落地节点，避免链式代理递归死循环
-3. 若某区域策略组剔除后节点数为 `0`，则该区域策略组不进入 `chainTargets[]`
-4. `chainTargets[]` 中保留区域策略组和单个 proxy 两类候选
-
-说明：
-
-- 本规范当前只要求对区域策略组执行“剔除落地节点”
-- 单个 proxy 候选保持 `completeConfig.proxies` 中的原始可引用集合
+1. 对区域策略组，读取最终 `completeConfig` 中已经完成“落地节点出组”后的成员列表
+2. 若某区域策略组成员数为 `0`，则该区域策略组不进入 `chainTargets[]`
+3. 对单个 `proxy` 候选，必须从 `completeConfig.proxies` 中剔除所有落地节点，避免把落地节点重新暴露为可选目标
+4. `chainTargets[]` 中保留区域策略组和单个 `proxy` 两类候选
+5. 无论候选来源是区域策略组还是单个 `proxy`，链式候选范围都不得包含任何落地节点
 
 ### 2.4 收集端口转发候选
 

@@ -203,6 +203,7 @@
 补充规则：
 
 - 本接口返回的 `completeConfig` 只用于本次阶段 2 初始化语义，不要求前端在阶段 3 回传
+- 本接口返回的 `completeConfig` 是后端按 [04-business-rules](04-business-rules.md) 完成转换后处理后的最终结果，不是 `subconverter` 原始输出
 - 多条完全一致的落地 URI 不得被静默去重
 - 名称冲突必须在后端稳定消歧，不得交给前端猜测
 
