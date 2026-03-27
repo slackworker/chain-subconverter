@@ -281,6 +281,7 @@
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
+- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的 `longUrl`
 
 ### 3. `POST /api/short-links`
 
@@ -401,6 +402,7 @@
 规则：
 
 - `data` 必须可逆编码 `stage1Input` 与 `stage2Snapshot`
+- `data` 编码必须 URL-safe 且具确定性；当前推荐实现为“规范化 JSON -> gzip -> base64url”
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
@@ -411,6 +413,7 @@
 
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
+- 长链接编码必须 URL-safe 且具确定性；同一份快照必须生成相同的长链接
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接是唯一规范化状态源
