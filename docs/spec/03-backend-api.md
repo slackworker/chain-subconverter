@@ -209,7 +209,7 @@
 
 ### 2. `POST /api/generate`
 
-用途：接收阶段 1 快照、阶段 2 快照与短链接开关，完成最终校验并返回可消费的长链接与可选短链接。
+用途：接收阶段 1 快照与阶段 2 快照，完成最终校验并返回可消费的长链接。
 
 请求：
 
@@ -237,8 +237,7 @@
         "targetName": "🇭🇰 香港节点"
       }
     ]
-  },
-  "createShortUrl": true
+  }
 }
 ```
 
@@ -253,7 +252,6 @@
 ```json
 {
   "longUrl": "https://example.com/subscription?data=...",
-  "shortUrl": "https://example.com/subscription/abc123.yaml",
   "messages": [],
   "blockingErrors": []
 }
@@ -279,7 +277,56 @@
 }
 ```
 
-### 3. `POST /api/resolve-url`
+补充规则：
+
+- `longUrl` 是本系统唯一的规范化状态链接
+- 本接口不负责创建短链接；短链接创建由单独接口处理
+
+### 3. `POST /api/short-links`
+
+用途：为既有 `longUrl` 创建或获取其稳定短链接。
+
+请求：
+
+```json
+{
+  "longUrl": "https://example.com/subscription?data=..."
+}
+```
+
+成功响应：
+
+```json
+{
+  "longUrl": "https://example.com/subscription?data=...",
+  "shortUrl": "https://example.com/subscription/abc123.yaml",
+  "messages": [],
+  "blockingErrors": []
+}
+```
+
+失败响应：
+
+```json
+{
+  "messages": [],
+  "blockingErrors": [
+    {
+      "code": "INVALID_LONG_URL",
+      "message": "longUrl 不是可识别的规范长链接"
+    }
+  ]
+}
+```
+
+规则：
+
+- 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
+- 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
+- 同一个 `longUrl` 应稳定映射到同一个 `shortUrl`
+- `shortUrl` 只是不透明别名；其绑定目标始终是对应的 `longUrl`
+
+### 4. `POST /api/resolve-url`
 
 用途：输入长链接或短链接，返回规范化长链接、页面恢复所需快照，以及该快照当前是否允许继续编辑和继续生成。
 
@@ -336,7 +383,7 @@
 - `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input` 与 `stage2Snapshot`
 - `restoreStatus = conflicted` 时，`messages[]` 必须包含冲突提示，供前端进入只读冲突态
 
-### 4. `GET /subscription/<id>.yaml`
+### 5. `GET /subscription/<id>.yaml`
 
 用途：供 Mihomo 客户端拉取 YAML。
 
@@ -346,7 +393,7 @@
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
 
-### 5. `GET /subscription?data=...`
+### 6. `GET /subscription?data=...`
 
 用途：长链接对应的订阅资源地址；访问时返回 YAML。
 
@@ -364,6 +411,8 @@
 - 长链接必须可逆，能恢复页面状态
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
+- 长链接是唯一规范化状态源
 - 短链接只是不透明别名，不是另一套状态源
+- 短链接必须稳定绑定到唯一的长链接
 - 短链接与长链接在外部契约上都表现为“可直接消费的订阅链接”
 
