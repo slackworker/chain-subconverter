@@ -105,8 +105,8 @@
 
 - 在当前规格中，`landingNodeName` 是阶段 2 快照、生成改写与恢复重放的唯一定位键
 - `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合
-- 名称冲突消歧与稳定重命名完全由后端负责，前端只消费 `stage2Init`，不得自行重命名、去重或补算映射
-- 当前实现约定：同名冲突按 `NodeName`、`NodeName 2`、`NodeName 3`… 规则稳定产出，并直接返回在 `stage2Init`
+- 落地节点名称的产出、重名处理与相关实现细节由 `subconverter` 服务负责；本规格不规定具体命名或消歧算法
+- 前端只消费 `stage2Init` 中返回的 `landingNodeName`，不得自行重命名、去重或补算映射
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
 
 ### 2.2 判断每行可选模式

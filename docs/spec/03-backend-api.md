@@ -204,7 +204,7 @@
 - 本接口不返回 `completeConfig` 或 `baseCompleteConfig`
 - `stage2Init` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md)
 - 多条完全一致的落地 URI 不得被静默去重
-- 名称冲突必须在后端稳定消歧，不得交给前端猜测
+- `landingNodeName` 的具体命名与重名处理由转换服务负责；前端只消费接口返回结果，不得自行猜测
 
 ### 2. `POST /api/generate`
 
