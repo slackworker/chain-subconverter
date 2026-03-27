@@ -17,7 +17,7 @@
     "advancedOptions": {
       "client": "mihomo",
       "template": "default",
-      "emoji": false,
+      "emoji": true,
       "udp": true,
       "skipCertVerify": false,
       "enablePortForward": false
@@ -146,7 +146,7 @@
     "advancedOptions": {
       "client": "mihomo",
       "template": "default",
-      "emoji": false,
+      "emoji": true,
       "udp": true,
       "skipCertVerify": false,
       "enablePortForward": true
@@ -222,7 +222,7 @@
     "advancedOptions": {
       "client": "mihomo",
       "template": "default",
-      "emoji": false,
+      "emoji": true,
       "udp": true,
       "skipCertVerify": false,
       "enablePortForward": true
@@ -351,7 +351,7 @@
     "advancedOptions": {
       "client": "mihomo",
       "template": "default",
-      "emoji": false,
+      "emoji": true,
       "udp": true,
       "skipCertVerify": false,
       "enablePortForward": true
