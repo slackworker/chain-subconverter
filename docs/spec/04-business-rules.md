@@ -90,9 +90,16 @@
 - 保留用户输入顺序
 - 当端口转发功能未开启时，`forwardRelays[]` 为空
 
-### 2.5 自动填写第三列
+### 2.5 自动填写 `mode` 与第三列
 
-阶段 2 初始化时，后端应为每行尝试生成默认的 `mode` 与 `targetName`。
+阶段 2 初始化时，后端必须直接为每行产出默认的 `mode` 与 `targetName`；前端只消费 `stage2Init.rows[]`，不得自行补算初始状态。
+
+#### 初始化决策顺序
+
+1. 先按 `2.2` 为该行确定 `allowedModes`
+2. 若 `chain` 在 `allowedModes` 中，则优先按“当链式代理可用”规则尝试自动识别
+3. 若 `chain` 不在 `allowedModes` 中、但 `port_forward` 在 `allowedModes` 中，则该行默认 `mode = port_forward`，并按“当 `mode = port_forward`”规则填写 `targetName`
+4. 若 `allowedModes` 只有 `none`，则该行默认 `mode = none`，且 `targetName = null`
 
 #### 当链式代理可用
 
@@ -110,10 +117,23 @@
    - `targetName = null`
    - 保留完整 `chainTargets[]` 供用户手动选择
 
-#### 当用户切换为端口转发
+#### 当 `mode = port_forward`
 
-- 若 `forwardRelays[]` 中仅有 1 个服务，则自动填写该服务
-- 若不唯一，则保持为空，并提供完整 `forwardRelays[]` 供手动选择
+- 本规则同时适用于“初始化直接落到 `port_forward`”和“用户后续手动切换到 `port_forward`”
+- 若 `forwardRelays[]` 中仅有 1 个服务，则 `targetName` 自动填写该服务
+- 若 `forwardRelays[]` 中有多个服务，则 `targetName = null`，并保留完整 `forwardRelays[]` 供用户手动选择
+
+#### 初始化决策表
+
+| `allowedModes` | 链式自动识别结果 | `forwardRelays[]` 数量 | 初始化 `mode` | 初始化 `targetName` |
+|----------------|------------------|------------------------|---------------|---------------------|
+| `["none"]` | 不适用 | 不适用 | `none` | `null` |
+| `["none", "chain"]` | 唯一命中 | 不适用 | `chain` | 对应区域策略组名称 |
+| `["none", "chain"]` | 未唯一命中 | 不适用 | `none` | `null` |
+| `["none", "port_forward"]` | 不适用 | `1` | `port_forward` | 唯一 relay 名称 |
+| `["none", "port_forward"]` | 不适用 | `>1` | `port_forward` | `null` |
+| `["none", "chain", "port_forward"]` | 唯一命中 | 任意 | `chain` | 对应区域策略组名称 |
+| `["none", "chain", "port_forward"]` | 未唯一命中 | 任意 | `none` | `null` |
 
 ### 2.6 区域识别口径
 
