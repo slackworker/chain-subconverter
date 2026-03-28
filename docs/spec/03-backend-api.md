@@ -449,6 +449,8 @@
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
+- 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
+- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」，不得返回 YAML；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
 
 ### 6. `GET /subscription?data=...`
 
@@ -461,6 +463,7 @@
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
+- HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`。增量失败：`400` `INVALID_REQUEST`（例如缺少 `data`）；`422` `INVALID_LONG_URL`（与「长链接编码规范」及 `POST /api/resolve-url` 对齐）
 
 ---
 
