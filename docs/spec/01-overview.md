@@ -89,4 +89,4 @@ flowchart LR
 | [02-frontend-spec](02-frontend-spec.md) | 前端 UI 规格：界面结构、展示语义、交互约束 |
 | [03-backend-api](03-backend-api.md) | 后端 API 契约：快照、阶段 1 产物、生成接口、长短链接 |
 | [04-business-rules](04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、生成前校验与改写 |
-| 05-tech-stack（待补） | 技术选型与项目结构 |
+| [05-tech-stack](05-tech-stack.md) | 技术选型与项目结构 |
