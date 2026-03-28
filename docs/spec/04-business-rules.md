@@ -65,6 +65,7 @@
 - 不做自动纠错；非空行若包含首尾空白、缺失 `:`、端口非数字或越界，都视为非法行
 - 非法行报错；重复行（`server` 与 `port` 完全一致）报错
 - 只要存在任一报错，阶段 1 视为失败，不产出 `stage2Init.forwardRelays[]`
+- 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 
 ### 1.2 输出
 
@@ -235,6 +236,7 @@
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
 - 若某行选择 `chain` 但该落地节点协议不支持链式代理，必须阻断生成
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
+- 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 - `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 
 ### 3.2.1 恢复链接时的可重放性判定
@@ -246,7 +248,7 @@
 - 后端必须基于恢复出的 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
 - 后端必须用恢复出的 `stage2Snapshot` 执行与生成阶段一致的逐行校验
 - 只要每一行的 `landingNodeName` 仍可定位、`mode` 仍合法、`targetName` 仍可在对应候选集合中解析，则该恢复快照应视为可重放
-- 任一行只要出现引用失效，即应判定整个恢复快照不可重放
+- 任一行只要出现引用失效，即应判定整个恢复快照不可重放，并返回 `restoreStatus = conflicted`
 
 补充说明：
 
@@ -254,6 +256,7 @@
 - 若 `targetName` 引用的是区域策略组，只要该区域策略组在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
 - 若 `targetName` 引用的是单个 proxy，则该 proxy 名称必须仍存在于当前候选集合中，否则视为引用失效
 - 若某行的 `landingNodeName` 在当前转换结果中已不存在、被重命名或无法唯一对应，则视为引用失效
+- `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
 
 示例：
 

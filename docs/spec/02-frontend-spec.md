@@ -89,6 +89,7 @@
 - 按钮文案：`转换并自动填充`
 - 功能：调用 `POST /api/stage1/convert`
 - 成功后：使用后端返回的 `stage2Init` 直接初始化阶段 2
+- 当接口返回失败时，前端按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - 阶段 1 成功不代表前端已拿到 `completeConfig`；前端只消费初始化结果
 
 ### 1.6 阶段 1 交互约束
@@ -147,7 +148,7 @@
 - 功能：提交阶段 1 输入快照与阶段 2 配置快照，调用 `POST /api/generate`，获取可消费的长链接
 - 成功后：进入阶段 3
 - 请求进行中时按钮禁用，避免重复提交
-- 当接口返回 `blockingErrors[]` 时，按钮恢复默认文案；前端显著展示校验失败信息，并保持在阶段 2
+- 当接口返回失败时，按钮恢复默认文案；前端按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`，并保持在阶段 2
 
 ---
 
@@ -180,7 +181,9 @@
 
 - 展示后端返回的 `messages[]` 与 `blockingErrors[]`
 - 前端统一按 `level` 渲染普通消息
-- 阻断错误应显著展示，并阻止进入成功态
+- `blockingErrors[]` 的展示位置由 `scope` 决定：`global` 渲染到当前阶段顶部错误区，`stage1_field` 渲染到阶段 1 对应输入区，`stage2_row` 渲染到阶段 2 对应行
+- 前端优先按 `retryable` 渲染重试导向；未提供时可按 HTTP 状态码兜底，`503` 视为可重试，其余阻断错误视为需修改输入或配置
+- 阻断错误应显著展示，并阻止进入成功态；toast 不能作为阻断错误的唯一承载方式
 
 ---
 
@@ -189,7 +192,7 @@
 - 三个阶段依次展开，或用 stepper/tab 导航
 - 重新执行阶段 1 后，阶段 2 必须完全按新的 `stage2Init` 重建
 - 阶段 3 的长链接可作为页面状态恢复来源
-- 前端通过 `resolve-url` 恢复页面时，只消费后端返回的 `stage1Input`、`stage2Snapshot`、`restoreStatus` 与 `messages[]`
+- 前端通过 `resolve-url` 恢复页面时，成功响应只消费后端返回的 `stage1Input`、`stage2Snapshot`、`restoreStatus` 与 `messages[]`；失败响应按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - `restoreStatus = replayable` 时，前端按正常可编辑态恢复阶段 1 与阶段 2，用户可直接继续编辑和生成
 - `restoreStatus = conflicted` 时，前端仍恢复阶段 1 输入与阶段 2 快照用于展示，但阶段 2 必须进入只读冲突态
 - 只读冲突态下，前端必须禁用阶段 2 编辑控件与“生成链接”按钮，并显著提示“当前恢复快照引用的配置已失效，恢复结果仅供查看；请重新执行转换并自动填充后再继续”

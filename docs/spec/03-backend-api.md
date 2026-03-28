@@ -117,7 +117,8 @@
   {
     "code": "MISSING_TARGET",
     "message": "存在未完成配置的行",
-    "context": { "rowId": "row-2" }
+    "scope": "stage2_row",
+    "context": { "rowId": "row-2", "field": "targetName" }
   }
 ]
 ```
@@ -125,7 +126,22 @@
 约束：
 
 - `messages[]` 只承载 `info` 与 `warning`
-- `blockingErrors[]` 非空时，本次请求视为失败
+- `blockingErrors[]` 只承载阻断当前请求的错误
+- `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`
+- `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
+- `scope` 只能是 `global`、`stage1_field` 或 `stage2_row`
+- `scope = stage1_field` 时，`context.field` 必填
+- `scope = stage2_row` 时，`context.rowId` 必填；若错误落在具体列上，`context.field` 必填
+- `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
+
+### 5. HTTP 状态码
+
+- `200`：请求成功；`blockingErrors[]` 必须为空
+- `400`：请求体结构、字段类型或 URL 形态不符合接口契约；`blockingErrors[]` 必须包含 `INVALID_REQUEST` 或 `INVALID_URL`
+- `422`：请求体结构合法，但业务校验未通过；`blockingErrors[]` 必须非空
+- `503`：依赖暂时不可用；`blockingErrors[]` 必须非空；若返回 `retryable`，其值必须为 `true`
+- `500`：未知内部错误；`blockingErrors[]` 必须非空
+- `POST /api/resolve-url` 返回 `restoreStatus = conflicted` 时仍是 `200`，不视为接口失败
 
 ---
 
@@ -192,8 +208,10 @@
   "messages": [],
   "blockingErrors": [
     {
-      "code": "SUBCONVERTER_FAILED",
-      "message": "subconverter 转换失败"
+      "code": "SUBCONVERTER_UNAVAILABLE",
+      "message": "subconverter 暂时不可用",
+      "retryable": true,
+      "scope": "global"
     }
   ]
 }
@@ -205,6 +223,13 @@
 - `stage2Init` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md)
 - 多条完全一致的落地 URI 不得被静默去重
 - `landingNodeName` 的具体命名与重名处理由转换服务负责；前端只消费接口返回结果，不得自行猜测
+
+最小失败语义：
+
+- `400`：`INVALID_REQUEST`，`scope = global`
+- `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`；两者都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayRawText`
+- `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
+- `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
 ### 2. `POST /api/generate`
 
@@ -260,17 +285,13 @@
 
 ```json
 {
-  "messages": [
-    {
-      "level": "warning",
-      "code": "REALITY_CHAIN_UNSUPPORTED",
-      "message": "vless-reality 不支持链式代理"
-    }
-  ],
+  "messages": [],
   "blockingErrors": [
     {
       "code": "MISSING_TARGET",
-      "message": "存在未完成配置的行"
+      "message": "存在未完成配置的行",
+      "scope": "stage2_row",
+      "context": { "rowId": "row-2", "field": "targetName" }
     }
   ]
 }
@@ -282,6 +303,18 @@
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
 - `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的 `longUrl`
+
+最小失败语义：
+
+- `400`：`INVALID_REQUEST`，`scope = global`
+- `422`：`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
+- `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.rowId`
+- `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = targetName`
+- `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = mode`
+- `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = targetName`
+- `LONG_URL_TOO_LONG`：必须返回 `scope = global`
+- `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
+- `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
 ### 3. `POST /api/short-links`
 
@@ -314,7 +347,8 @@
   "blockingErrors": [
     {
       "code": "INVALID_LONG_URL",
-      "message": "longUrl 不是可识别的规范长链接"
+      "message": "longUrl 不是可识别的规范长链接",
+      "scope": "global"
     }
   ]
 }
@@ -325,6 +359,13 @@
 - 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
 - 成功响应的 `messages[]` 可包含短链接存储淘汰相关 warning
+
+最小失败语义：
+
+- `400`：`INVALID_REQUEST`，`scope = global`
+- `422`：`INVALID_LONG_URL`；必须返回 `scope = global`
+- `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
+- `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
 ### 4. `POST /api/resolve-url`
 
@@ -381,7 +422,14 @@
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
 - `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input` 与 `stage2Snapshot`
-- `restoreStatus = conflicted` 时，`messages[]` 必须包含冲突提示，供前端进入只读冲突态
+- `restoreStatus = conflicted` 时，`messages[]` 必须包含 `RESTORE_CONFLICT`，供前端进入只读冲突态
+
+最小失败语义：
+
+- `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = global`
+- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`；两者都必须返回 `scope = global`
+- `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
+- `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
 ### 5. `GET /subscription/<id>.yaml`
 
@@ -480,7 +528,7 @@ gzip 规则：
 ### 4. 解码与错误处理
 
 - 后端解码长链接时，必须执行 `base64url -> gunzip -> JSON parse -> version check`
-- 任一步骤失败，都必须视为“不是可识别的规范长链接”
+- 任一步骤失败，都必须返回 `INVALID_LONG_URL`
 - `POST /api/resolve-url` 与 `POST /api/short-links` 对无效长链接的错误语义必须保持一致
 
 ### 5. 长度约束
@@ -488,7 +536,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 早期原型默认上限为 `2048` bytes
 - `POST /api/generate` 若生成结果超过上限，必须返回阻断错误，不得静默截断、不得自动改为短链接
-- 超限时建议错误码为 `LONG_URL_TOO_LONG`
+- 超限时错误码必须为 `LONG_URL_TOO_LONG`
 
 ---
 
