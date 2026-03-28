@@ -10,6 +10,20 @@
 - `subconverter` 作为本项目部署内的内部转换组件存在
 - 本章定义的转换规则均建立在该集成前提之上
 
+### 0.1 `subconverter` 运行边界
+
+- 后端统一调用同部署内常驻的 `subconverter` HTTP 服务
+- 后端对 `subconverter` 的每次调用都必须设置超时；超时值必须可配置，默认 `15s`
+- 后端对 `subconverter` 的同时在途请求数必须受控且可配置，默认 `10`
+- 达到并发上限时，后端必须立即失败；不得继续转发、不得排队等待
+- 业务层默认不对失败的 `subconverter` 调用自动重试
+- 若显式启用重试，最多只允许 `1` 次串行重试，且不得并行放大请求
+- 后端必须在转发给 `subconverter` 前先校验参与本次转换的输入边界；超限时必须直接拒绝，不得转发给 `subconverter`
+- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小上限必须可配置，默认 `2 MiB`
+- 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的 URL 数量上限都必须可配置，默认每个字段最多 `20` 条
+- `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
+- `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
+
 ---
 
 ## 1. 转换并自动填充
@@ -237,6 +251,7 @@
 ### 3.2 生成前校验
 
 - 生成时必须先根据 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
+- 若任一必需 pass 失败，必须直接阻断生成
 - 任一行若无法在本次 `baseCompleteConfig` 中按 `landingNodeName` 定位到对应落地节点，必须阻断生成
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
 - 若某行选择 `chain` 但该落地节点协议不支持链式代理，必须阻断生成
@@ -251,6 +266,7 @@
 判定规则：
 
 - 后端必须基于恢复出的 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
+- 若任一必需 pass 失败，`resolve-url` 必须直接返回失败响应；该情形不是 `restoreStatus = conflicted`
 - 后端必须用恢复出的 `stage2Snapshot` 执行与生成阶段一致的逐行校验
 - 只要每一行的 `landingNodeName` 仍可定位、`mode` 仍合法、`targetName` 仍可在对应候选集合中解析，则该恢复快照应视为可重放
 - 任一行只要出现引用失效，即应判定整个恢复快照不可重放，并返回 `restoreStatus = conflicted`
@@ -293,6 +309,7 @@
 
 - 订阅链接被打开或下载时，后端即时生成并返回最终 `completeConfig`
 - 订阅渲染时，后端必须先重新执行同一条 3-pass 转换管线，得到当前 `baseCompleteConfig`
+- 若任一必需 pass 失败，订阅渲染必须直接失败
 - 后端随后基于请求中的 `stage2Snapshot` 应用 3.3 与 3.4 改写
 - 改写完成后的结果作为本次返回给用户消费的最终 `completeConfig`
 

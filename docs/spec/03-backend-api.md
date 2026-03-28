@@ -30,6 +30,8 @@
 
 - `forwardRelayRawText` 在未开启端口转发时可为空字符串
 - `advancedOptions` 只保留会影响转换和生成结果的字段
+- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2 MiB`
+- 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
 
 ### 2. 阶段 2 配置快照
 
@@ -133,6 +135,8 @@
 - `scope = stage1_field` 时，`context.field` 必填
 - `scope = stage2_row` 时，`context.rowId` 必填；若错误落在具体列上，`context.field` 必填
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
+- `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
+- `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
 
 ### 5. HTTP 状态码
 
@@ -227,7 +231,9 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`；两者都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayRawText`
+- `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`
+- `INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`：都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayRawText`
+- `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -307,7 +313,8 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
+- `422`：`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
+- `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.rowId`
 - `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = targetName`
 - `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = mode`
@@ -418,6 +425,7 @@
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
 - 传入短链接时，先解析为长链接，再解码同一份快照
+- 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，必须直接返回失败响应，不得返回 `restoreStatus`
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
@@ -528,7 +536,7 @@ gzip 规则：
 ### 4. 解码与错误处理
 
 - 后端解码长链接时，必须执行 `base64url -> gunzip -> JSON parse -> version check`
-- 任一步骤失败，都必须返回 `INVALID_LONG_URL`
+- 任一步骤失败，或解码后的载荷不满足当前版本接口契约与输入上限时，都必须返回 `INVALID_LONG_URL`
 - `POST /api/resolve-url` 与 `POST /api/short-links` 对无效长链接的错误语义必须保持一致
 
 ### 5. 长度约束
