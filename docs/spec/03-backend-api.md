@@ -15,11 +15,12 @@
     "transitRawText": "...",
     "forwardRelayRawText": "...",
     "advancedOptions": {
-      "client": "mihomo",
-      "template": "default",
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": "",
+      "exclude": "",
       "enablePortForward": false
     }
   }
@@ -29,7 +30,9 @@
 约束：
 
 - `forwardRelayRawText` 在未开启端口转发时可为空字符串
-- `advancedOptions` 只保留会影响转换和生成结果的字段
+- `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
+- `config`、`include`、`exclude` 都是字符串；可为空字符串
+- `emoji`、`udp`、`skipCertVerify` 记录的是前端勾选状态；实际 `GET /sub` 传参规则见 [04-business-rules](04-business-rules.md)
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2 MiB`
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
 
@@ -164,11 +167,12 @@
     "transitRawText": "...",
     "forwardRelayRawText": "...",
     "advancedOptions": {
-      "client": "mihomo",
-      "template": "default",
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": "",
+      "exclude": "",
       "enablePortForward": true
     }
   }
@@ -250,11 +254,12 @@
     "transitRawText": "...",
     "forwardRelayRawText": "...",
     "advancedOptions": {
-      "client": "mihomo",
-      "template": "default",
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": "",
+      "exclude": "",
       "enablePortForward": true
     }
   },
@@ -398,11 +403,12 @@
     "transitRawText": "...",
     "forwardRelayRawText": "...",
     "advancedOptions": {
-      "client": "mihomo",
-      "template": "default",
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": "",
+      "exclude": "",
       "enablePortForward": true
     }
   },
@@ -487,11 +493,12 @@
     "transitRawText": "...",
     "forwardRelayRawText": "...",
     "advancedOptions": {
-      "client": "mihomo",
-      "template": "default",
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": "",
+      "exclude": "",
       "enablePortForward": true
     }
   },

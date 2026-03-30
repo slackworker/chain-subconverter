@@ -74,15 +74,18 @@
 
 - 位置：位于中转信息区下方；若端口转发输入区显示，则位于其下方
 - 形态：默认折叠
+- 阶段 1 中可配置的 `subconverter` 参数统一收纳在此区域
+- 隐藏固定参数不展示控件；其传递规则统一见 [04-business-rules](04-business-rules.md)
 
-| 选项 | 类型 | 说明 |
-|------|------|------|
-| 客户端 | 下拉菜单 | 当前仅 Clash/Mihomo |
-| 转换模板 | 只读展示或单选项下拉 | 当前仅默认模板 |
-| Emoji | checkbox | 是否在节点名前加 emoji（默认开启） |
-| 启用 UDP | checkbox | 是否启用 UDP（默认开启） |
-| 跳过证书验证 | checkbox | 是否跳过 SSL 证书验证（默认关闭） |
-| 启用端口转发（实验性） | switch | 开启后显示端口转发服务输入区（默认关闭） |
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| Emoji | checkbox | 勾选 | 控制是否传 `emoji=true` |
+| 启用 UDP | checkbox | 勾选 | 控制是否传 `udp=true` |
+| 跳过证书验证 | checkbox | 不勾选 | 控制是否传 `skip_cert_verify=true` |
+| `config` | text | `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini` | 默认非空，允许自定义 |
+| `include` | text | 空 | 非空时参与转换 |
+| `exclude` | text | 空 | 非空时参与转换 |
+| 启用端口转发（实验性） | switch | 关闭 | 开启后显示端口转发服务输入区 |
 
 ### 1.5 转换按钮
 

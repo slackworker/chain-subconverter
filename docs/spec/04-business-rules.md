@@ -28,13 +28,42 @@
 ### 0.2 `subconverter` 调用契约
 
 - 本项目当前只定义一种内部转换入口：`GET /sub`
-- 三个 pass 的 `target` 必须固定为 `clash`
-- `landing-discovery pass`：`url` 只传落地节点信息，携带 `list=true`
-- `transit-discovery pass`：`url` 只传中转节点信息，携带 `list=true`
-- `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不携带 `list=true`
-- 除 `url` 与 `list` 外，三个 pass 都必须复用同一套转换模板与其他 `subconverter` 配置参数
+- 三个 pass 都必须复用同一组固定参数与阶段 1 高级选项映射结果
 - 三个 pass 必须属于同一条转换管线；`full-base pass` 必须与同一管线中的两个 discovery pass 保持输入快照一致
 - 实现必须核对 discovery pass 返回的每个 `proxy.name`，都能在同一管线的 `full-base pass` 完整代理集合中按同名定位；若不能定位，视为 pass 失败
+
+### 0.2.1 pass 级参数约束
+
+- 三个 pass 的 `target` 都必须传 `clash`
+- `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true`
+- `transit-discovery pass`：`url` 只传中转节点信息，传 `list=true`
+- `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不传 `list`
+- `url` 的拼接与编码沿用既有逻辑；本 spec 不再展开
+
+### 0.2.2 `subconverter` 参数表
+
+本表是 `GET /sub` 查询参数的唯一权威定义位置。前端展示只见 [02-frontend-spec](02-frontend-spec.md)，接口快照字段只见 [03-backend-api](03-backend-api.md)。
+
+| 参数 | 前端状态 | 默认值 | 传递规则 |
+|------|----------|--------|----------|
+| `target` | 隐藏 | `clash` | 必传，固定传 `clash` |
+| `url` | 隐藏 | 无 | 必传；按 `0.2.1` 的 pass 规则传 |
+| `emoji` | 展示 | 勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
+| `udp` | 展示 | 勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
+| `scv` | 展示 | 不勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
+| `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
+| `config` | 展示 | 见下方补充 | 非空才传；前端默认非空，允许自定义 |
+| `include` | 展示 | 空 | 非空才传 |
+| `exclude` | 展示 | 空 | 非空才传 |
+| `expand` | 隐藏 | `false` | 必传，固定传 `false` |
+| `classic` | 隐藏 | `true` | 必传，固定传 `true` |
+
+补充规则：
+
+- 前端展示的 `scv` 对应上游参数 `skip_cert_verify`
+- `config` 的前端默认值为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
+- 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`skip_cert_verify`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
+- `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
 ---
 
@@ -46,13 +75,12 @@
 
 - 落地节点信息
 - 中转节点信息
-- 转换模板
-- 其他 `subconverter` 配置参数
+- `config` 与其他 `subconverter` 配置参数
 - 端口转发服务信息
 
 其中：
 
-- `subconverter` 使用落地节点信息、中转节点信息、转换模板与其他 `subconverter` 配置参数
+- `subconverter` 使用落地节点信息、中转节点信息、`config` 与其他 `subconverter` 配置参数
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
 
 ### 1.1.1 统一转换管线（权威口径）
