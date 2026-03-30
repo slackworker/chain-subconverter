@@ -1,9 +1,5 @@
 # 01 - 项目概览
 
-## 当前阶段
-
-本项目处于 **spec-driven 的彻底重构阶段**。治理与权威顺序见 [00-governance](00-governance.md)。
-
 ## 项目目标
 
 帮助用户基于已有的**落地节点**和**中转节点**信息，通过 Web 前端完成 **Mihomo** 的**链式代理**与**端口转发**配置生成，并输出可直接消费的长链接和可选短链接。
@@ -79,14 +75,3 @@ flowchart LR
 - 端口转发输入独立于中转输入，且不参与 `subconverter`
 - 阶段 2 的自动识别、候选收集、生成前校验与改写规则统一定义在 [04-business-rules](04-business-rules.md)
 - 前端只负责渲染和交互；接口字段与消息结构以 [03-backend-api](03-backend-api.md) 为准
-
-## 文档结构
-
-| 文档 | 说明 |
-|------|------|
-| [00-governance](00-governance.md) | 治理与总则 |
-| [01-overview](01-overview.md) | 本文档：目标、术语、阶段职责与全局约束 |
-| [02-frontend-spec](02-frontend-spec.md) | 前端 UI 规格：界面结构、展示语义、交互约束 |
-| [03-backend-api](03-backend-api.md) | 后端 API 契约：快照、阶段 1 产物、生成接口、长短链接 |
-| [04-business-rules](04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、生成前校验与改写 |
-| [05-tech-stack](05-tech-stack.md) | 技术选型与项目结构 |

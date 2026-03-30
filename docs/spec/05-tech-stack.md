@@ -104,15 +104,5 @@ chain-subconverter/
 - `web` 目录只承载前端工程与构建产物
 - `deploy` 目录只承载部署清单与相关示例配置
 
-## 9. 明确排除项
 
-- 不选 `NestJS`
-- 不选 `Next.js`
-- 不选 `Vue` 作为本轮前端主栈
-- 不拆分微服务
-- 不引入 `Kubernetes`
-- 不引入 `Redis`
-- 不引入消息队列
-- 不引入独立 `nginx` 作为当前默认部署前提
-- 不采用源码级强绑定 `subconverter`
 

@@ -7,11 +7,8 @@
 
 一个为 [Mihomo(Clash Meta) 内核](https://github.com/MetaCubeX/mihomo/tree/Meta) 设计的、用于链式代理 (`dialer-proxy`) 配置的订阅转换工具。它包含一个Python后端服务和直观的前端配置界面。
 
-> **当前阶段声明**  
-> 本项目处于 **spec-driven 彻底重构阶段**。既有实现仅供参考；如 spec 存在歧义或隐含假设，必须先澄清；最终以 [docs/spec](docs/spec) 的已确认结论为准。
-
-> **📌 项目状态**  
-> 当前仓库中的实现为**旧版本**，仍可部署使用（见下方快速开始）。新一轮重构以 [docs/spec](docs/spec) 规格为准推进；旧版相关文档见 [docs/legacy](docs/legacy)。
+> **📌 项目状态**
+> 本项目处于 **spec-driven 彻底重构阶段**。新架构以 [docs/spec](docs/spec) 为准推进；当前仓库中的实现为旧版本，仍可部署使用（见下方快速开始）。旧版相关文档见 [docs/legacy](docs/legacy)。
 
 ---
 
@@ -66,8 +63,8 @@ docker run -d --name chain-subconverter -p 11200:11200 --restart unless-stopped 
 
 1.  **访问前端**：部署成功后，在浏览器中打开 `http://<运行Docker设备的IP或域名>:<映射的宿主机端口>/`。
 2.  **原订阅链接**：粘贴您的有效 Mihomo/Clash Meta 订阅链接。
-3.  **链式配置**：通过“自动识别”功能或“手动添加”，指定落地节点及其对应的前置节点/组。
-4.  **生成**：点击“生成”按钮，验证并生成增加链式代理配置的新订阅链接，并应用于您的客户端。
+3.  **链式配置**：通过"自动识别"功能或"手动添加"，指定落地节点及其对应的前置节点/组。
+4.  **生成**：点击"生成"按钮，验证并生成增加链式代理配置的新订阅链接，并应用于您的客户端。
 
 ➡️ **完整使用教程、界面说明及节点命名建议，请参阅：[GitHub Wiki - 快速上手与使用教程](https://github.com/slackworker/chain-subconverter/wiki)**
 
@@ -77,17 +74,6 @@ docker run -d --name chain-subconverter -p 11200:11200 --restart unless-stopped 
 * **[📜 版本发布历史](https://github.com/slackworker/chain-subconverter/releases)**
 * **[🐛 问题反馈 / ✨ 功能建议](https://github.com/slackworker/chain-subconverter/issues)**
 * **[🐱Mihomo `dialer-proxy` 特性 官方文档](https://wiki.metacubex.one/config/proxies/dialer-proxy/)**
-
-## 🚧 未来计划 (Todo List)
-
-* 补充优化自动识别节点规则。
-* (可能) 使用 JavaScript 重构整个项目以实现更灵活的部署方式。
-* 探索支持更多内核的链式配置功能。
-* UI/UX 持续改进。
-* 在**自动识别**中增加对前置节点相关关键字识别的功能。
-* 持续评估并优化镜像体积与资源占用，力求进一步降低（目前约 150MB 磁盘 / 25MB 内存）。
-
-<!-- ➡️ **更详细的未来计划，请参阅：[GitHub Wiki - 未来计划 (Todo List)](https://github.com/YOUR_USERNAME/YOUR_REPOSITORY/wiki/TODO)**  -->
 
 ## 🤝 贡献
 

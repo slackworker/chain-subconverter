@@ -1,16 +1,18 @@
 # chain-subconverter 文档
 
-## 新 Spec 入口（待你重新阐述）
+## Spec 入口
 
 **[docs/spec/](spec/)** — 当前 spec-driven 重构的权威目录。
 
 | 文档 | 说明 |
 |------|------|
-| [spec/00-governance](spec/00-governance.md) | 治理与总则：当前阶段、核心规则、权威顺序 |
+| [spec/00-governance](spec/00-governance.md) | 治理与总则：核心规则、权威顺序、编写原则 |
 | [spec/01-overview](spec/01-overview.md) | 项目概览：目标、数据流、术语与约束 |
 | [spec/02-frontend-spec](spec/02-frontend-spec.md) | 前端 UI 规格 |
 | [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
 | [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
+| [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
+
 
 ## 旧 Spec（Legacy Spec）
 
