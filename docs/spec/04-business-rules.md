@@ -14,6 +14,7 @@
 
 - 后端统一调用同部署内常驻的 `subconverter` HTTP 服务
 - 后端对 `subconverter` 的每次调用都必须设置超时；超时值必须可配置，默认 `15s`
+- 默认部署下，`subconverter` 必须开启订阅/配置/规则集缓存，或提供等价的重复拉取收敛机制；不得以关闭缓存作为正常运行默认值
 - 后端对 `subconverter` 的同时在途请求数必须受控且可配置，默认 `10`
 - 达到并发上限时，后端必须立即失败；不得继续转发、不得排队等待
 - 业务层默认不对失败的 `subconverter` 调用自动重试
@@ -23,6 +24,17 @@
 - 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的 URL 数量上限都必须可配置，默认每个字段最多 `20` 条
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
 - `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
+
+### 0.2 `subconverter` 调用契约
+
+- 本项目当前只定义一种内部转换入口：`GET /sub`
+- 三个 pass 的 `target` 必须固定为 `clash`
+- `landing-discovery pass`：`url` 只传落地节点信息，携带 `list=true`
+- `transit-discovery pass`：`url` 只传中转节点信息，携带 `list=true`
+- `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不携带 `list=true`
+- 除 `url` 与 `list` 外，三个 pass 都必须复用同一套转换模板与其他 `subconverter` 配置参数
+- 三个 pass 必须属于同一条转换管线；`full-base pass` 必须与同一管线中的两个 discovery pass 保持输入快照一致
+- 实现必须核对 discovery pass 返回的每个 `proxy.name`，都能在同一管线的 `full-base pass` 完整代理集合中按同名定位；若不能定位，视为 pass 失败
 
 ---
 
@@ -45,24 +57,23 @@
 
 ### 1.1.1 统一转换管线（权威口径）
 
-一次“转换”必须复用同一条 3-pass 转换管线：
+一次“转换”必须复用同一条 3-pass 转换管线。
+
+`0.2` 是该管线的唯一调用契约定义位置；`1.1.1` 只定义每个 pass 的输入职责与产物，不重复定义 HTTP 路径、查询参数或公共 `subconverter` 参数复用规则。
 
 1. `landing-discovery pass`
-   - 仅使用落地节点输入
+   - 只使用落地节点输入
    - 产出落地身份集合
    - 输出形态以节点列表为主
 2. `transit-discovery pass`
-   - 仅使用中转节点输入
+   - 只使用中转节点输入
    - 产出中转身份集合与阶段 2 所需的链式候选基础数据
    - 输出形态以中转候选发现所需的最小结果为主
 3. `full-base pass`
-   - 使用落地节点输入、中转节点输入、转换模板与其他 `subconverter` 参数
+   - 同时使用落地节点输入与中转节点输入
    - 产出后续校验与订阅渲染所需的基底配置
 
-执行依赖：
-
-- `landing-discovery pass` 与 `transit-discovery pass` 彼此无数据依赖，允许并行执行
-- 本规格不要求这两个 pass 的物理执行先后顺序；只要求其输出语义满足本节定义
+具体 HTTP 路径、查询参数约束与 discovery/full-base 的一致性要求，统一以 `0.2` 为准。
 
 复用范围：
 
@@ -119,6 +130,7 @@
 ### 2.1 收集落地节点
 
 - 必须从 `landing-discovery pass` 的结果中收集所有落地节点
+- 收集口径固定为：读取 `list=true` 返回的 Clash YAML `proxies[]`，按每个 `proxy.name` 提取落地身份
 - 这些节点按稳定名称写入 `stage2Init.landingNodes[]`
 - 同时按“每个落地节点一行”生成 `stage2Init.rows[]`
 - 阶段 2 第一列只展示这些落地节点，不允许在阶段 2 重新选择或新增
@@ -150,20 +162,21 @@
 
 ### 2.3 收集链式候选
 
-链式候选统一来自 `transit-discovery pass` 的结果，写入 `stage2Init.chainTargets[]`。
+链式候选统一来自同一条 3-pass 管线的中转相关结果，写入 `stage2Init.chainTargets[]`。
 
 收集范围：
 
-- 中转输入单独转换后可用的默认模板 6 个区域策略组
+- `full-base pass` 生成并完成 `1.3` 后处理后的默认模板 6 个区域策略组
 - `transit-discovery pass` 识别出的单个中转 `proxy`
 
 处理规则：
 
-1. 对区域策略组，读取“仅中转输入”语义下可用的区域策略组结果
-2. 若某区域策略组成员数为 `0`，则该区域策略组不进入 `chainTargets[]`
-3. 对单个 `proxy` 候选，收集 `transit-discovery pass` 明确识别出的中转节点
-4. `chainTargets[]` 中保留区域策略组和单个 `proxy` 两类候选
-5. 链式候选范围由区域策略组与中转 `proxy` 构成
+1. 对区域策略组，读取 `baseCompleteConfig` 中这 6 个区域策略组的当前结果
+2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 不计入成员数
+3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 后成员数为 `0`，则该区域策略组不进入 `chainTargets[]`
+4. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
+5. `chainTargets[]` 中保留区域策略组和单个 `proxy` 两类候选
+6. 链式候选范围由区域策略组与中转 `proxy` 构成
 
 ### 2.4 收集端口转发候选
 
