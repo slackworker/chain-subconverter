@@ -4,6 +4,12 @@
 
 ---
 
+## 通用访问约束
+
+- 当前 spec 定义的所有对外 HTTP 端点都不需要鉴权
+- 服务端不得要求登录态、`Authorization` 头、API Key、签名或其他认证凭据作为调用前提
+- `POST /api/*`、`GET /subscription/<id>.yaml` 与 `GET /subscription?data=...` 都按匿名请求处理
+
 ## 通用数据模型
 
 ### 1. 阶段 1 输入快照
