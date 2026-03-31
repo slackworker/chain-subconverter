@@ -24,7 +24,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "",
       "include": "",
       "exclude": "",
       "enablePortForward": false
@@ -38,6 +38,7 @@
 - `forwardRelayRawText` 在未开启端口转发时可为空字符串
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
 - `config`、`include`、`exclude` 都是字符串；可为空字符串
+- `config = ""` 表示本次转换不显式传 `config` 参数，并回落使用集成 `subconverter` 的默认本地配置
 - `emoji`、`udp`、`skipCertVerify` 记录的是前端勾选状态；实际 `GET /sub` 传参规则见 [04-business-rules](04-business-rules.md)
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2 MiB`
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
@@ -176,7 +177,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "",
       "include": "",
       "exclude": "",
       "enablePortForward": true
@@ -263,7 +264,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "",
       "include": "",
       "exclude": "",
       "enablePortForward": true
@@ -412,7 +413,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "",
       "include": "",
       "exclude": "",
       "enablePortForward": true
@@ -502,7 +503,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "",
       "include": "",
       "exclude": "",
       "enablePortForward": true

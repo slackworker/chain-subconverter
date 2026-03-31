@@ -52,7 +52,7 @@
 | `udp` | 展示 | 勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
 | `scv` | 展示 | 不勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
-| `config` | 展示 | 见下方补充 | 非空才传；前端默认非空，允许自定义 |
+| `config` | 展示 | 见下方补充 | 非空才传；留空时回落默认本地配置；允许自定义 |
 | `include` | 展示 | 空 | 非空才传 |
 | `exclude` | 展示 | 空 | 非空才传 |
 | `expand` | 隐藏 | `false` | 必传，固定传 `false` |
@@ -61,7 +61,8 @@
 补充规则：
 
 - 前端展示的 `scv` 对应上游参数 `skip_cert_verify`
-- `config` 的前端默认值为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
+- `config` 的默认行为为：留空时不传 `config` 参数，并由集成的 `subconverter` 回落使用其目录下的 `base/config/Aethersailor_Custom_Clash.ini`
+- 若用户显式填写 `config`，则三个 pass 都按该值透传，允许使用其他本地或远程配置文件
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`skip_cert_verify`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
@@ -272,9 +273,11 @@
 
 说明：`TW` 对应 `🇼🇸 台湾节点` 是默认转换模板的既有命名约定，按该字面值参与自动识别与默认填充；此处不是笔误。
 
-**区域归属**（`landingNodeName` 属于哪一区域）的**唯一模式来源**为默认模板 [`templates/default/Custom_Clash.ini`](../../templates/default/Custom_Clash.ini) 中与上表六条「默认模板策略组名」对应的六行 `custom_proxy_group=…` `url-test` 所声明的完整正则 pattern。
+默认情况下，**区域归属**（`landingNodeName` 属于哪一区域）的**唯一模式来源**为集成项目 `subconverter` 目录下 `base/config/Aethersailor_Custom_Clash.ini` 中与上表六条「默认模板策略组名」对应的六行 `custom_proxy_group=…` `url-test` 所声明的完整正则 pattern。
 
-实现必须直接使用这六条完整正则在完整 `landingNodeName` 上匹配，不得自行改写、拆分或降级为关键词规则；匹配语义须与 `subconverter` 消费该模板时一致。
+若用户显式填写了其他 `config`，则区域识别改以本次实际生效配置文件中同名区域策略组的规则为准；实现必须直接使用这六条完整正则在完整 `landingNodeName` 上匹配，不得自行改写、拆分或降级为关键词规则；匹配语义须与 `subconverter` 消费该配置时一致。
+
+中转节点列自动填充区域策略组高度依赖本地或远程 `Aethersailor_Custom_Clash` 配置文件中的这组区域分组规则；若用户改用不包含等价区域策略组或等价正则规则的其他配置文件，自动识别可能失败。该情形不视为系统错误，只按 `2.5` 的“未唯一命中”处理，保留候选供用户手动选择中转目标。
 
 命中 **0** 条或 **多于 1** 条时，链式自动识别失败（见 2.5）；**恰好 1** 条时，默认 `targetName` 为上表中该行的策略组名字面量，且须在当次 `chainTargets[]` 中存在同名区域策略组条目。
 

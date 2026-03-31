@@ -82,7 +82,7 @@
 | Emoji | checkbox | 勾选 | 控制是否传 `emoji=true` |
 | 启用 UDP | checkbox | 勾选 | 控制是否传 `udp=true` |
 | 跳过证书验证 | checkbox | 不勾选 | 控制是否传 `skip_cert_verify=true` |
-| `config` | text | `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini` | 默认非空，允许自定义 |
+| `config` | text | 空 | 留空时使用集成 `subconverter` 的默认本地配置；允许自定义 |
 | `include` | text | 空 | 非空时参与转换 |
 | `exclude` | text | 空 | 非空时参与转换 |
 | 启用端口转发（实验性） | switch | 关闭 | 开启后显示端口转发服务输入区 |
