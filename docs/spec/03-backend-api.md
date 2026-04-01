@@ -50,7 +50,6 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "rowId": "row-1",
         "landingNodeName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
@@ -75,9 +74,7 @@
 ```json
 {
   "stage2Init": {
-    "landingNodes": [
-      { "name": "HK 01", "type": "ss" }
-    ],
+    "availableModes": ["none", "chain", "port_forward"],
     "chainTargets": [
       { "name": "🇭🇰 香港节点", "kind": "region_group", "regionId": "HK" },
       { "name": "Transit A", "kind": "proxy" }
@@ -87,11 +84,20 @@
     ],
     "rows": [
       {
-        "rowId": "row-1",
         "landingNodeName": "HK 01",
-        "allowedModes": ["none", "chain", "port_forward"],
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
+      },
+      {
+        "landingNodeName": "Reality 01",
+        "restrictedModes": {
+          "chain": {
+            "reasonCode": "UNSUPPORTED_BY_LANDING_PROTOCOL",
+            "reasonText": "该落地节点当前不支持链式代理"
+          }
+        },
+        "mode": "port_forward",
+        "targetName": "relay.example.com:1080"
       }
     ]
   }
@@ -100,13 +106,15 @@
 
 字段说明：
 
-- `landingNodes[]`：阶段 2 第一列的原始来源
-- `landingNodes[].type`：落地节点协议类型
+- `availableModes[]`：阶段 2 第二列的模式列表；出现条件与顺序见 [04-business-rules](04-business-rules.md)
 - `chainTargets[]`：阶段 2 第三列在 `mode = chain` 时的候选列表
 - `chainTargets[].kind`：链式候选类别；当前只允许 `region_group` 或 `proxy`
 - `forwardRelays[]`：阶段 2 第三列在 `mode = port_forward` 时的候选列表
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
+- `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
+- `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
+- `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案
 
 ### 4. 消息与错误模型
 
@@ -137,7 +145,7 @@
     "code": "MISSING_TARGET",
     "message": "存在未完成配置的行",
     "scope": "stage2_row",
-    "context": { "rowId": "row-2", "field": "targetName" }
+    "context": { "landingNodeName": "HK 02", "field": "targetName" }
   }
 ]
 ```
@@ -150,7 +158,7 @@
 - `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
 - `scope` 只能是 `global`、`stage1_field` 或 `stage2_row`
 - `scope = stage1_field` 时，`context.field` 必填
-- `scope = stage2_row` 时，`context.rowId` 必填；若错误落在具体列上，`context.field` 必填
+- `scope = stage2_row` 时，`context.landingNodeName` 必填；若错误落在具体列上，`context.field` 必填
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
@@ -195,33 +203,9 @@
 
 成功响应：
 
-```json
-{
-  "stage2Init": {
-    "landingNodes": [
-      { "name": "HK 01", "type": "ss" }
-    ],
-    "chainTargets": [
-      { "name": "🇭🇰 香港节点", "kind": "region_group", "regionId": "HK" },
-      { "name": "Transit A", "kind": "proxy" }
-    ],
-    "forwardRelays": [
-      { "name": "relay.example.com:1080" }
-    ],
-    "rows": [
-      {
-        "rowId": "row-1",
-        "landingNodeName": "HK 01",
-        "allowedModes": ["none", "chain", "port_forward"],
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ]
-  },
-  "messages": [],
-  "blockingErrors": []
-}
-```
+- 返回 `stage2Init`、`messages` 与 `blockingErrors`
+- `stage2Init` 的完整结构见“3. 阶段 2 初始化数据”
+- 成功时 `blockingErrors[]` 必须为空
 
 失败响应：
 
@@ -280,7 +264,6 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "rowId": "row-1",
         "landingNodeName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
@@ -316,7 +299,7 @@
       "code": "MISSING_TARGET",
       "message": "存在未完成配置的行",
       "scope": "stage2_row",
-      "context": { "rowId": "row-2", "field": "targetName" }
+      "context": { "landingNodeName": "HK 02", "field": "targetName" }
     }
   ]
 }
@@ -335,10 +318,10 @@
 - `422`：`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
-- `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.rowId`
-- `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = targetName`
-- `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = mode`
-- `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = targetName`
+- `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.landingNodeName`
+- `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
+- `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = mode`
+- `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `LONG_URL_TOO_LONG`：必须返回 `scope = global`
 - `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
@@ -430,7 +413,6 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "rowId": "row-1",
         "landingNodeName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
@@ -520,7 +502,6 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "rowId": "row-1",
         "landingNodeName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"

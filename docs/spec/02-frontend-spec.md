@@ -107,22 +107,22 @@
 
 阶段 2 以“每个落地节点一行”的固定模型渲染，数据完全来自后端返回的 `stage2Init`。
 
-### 2.1 行模型
+### 2.1 数据模型
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `rowId` | string | 前端稳定标识 |
-| `landingNodeName` | string | 本行对应的落地节点名称 |
-| `allowedModes` | `mode[]` | 本行第二列允许展示的模式列表 |
-| `mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
-| `targetName` | `string \| null` | 第三列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
+| `availableModes` | `mode[]` | 阶段 2 第二列的全局模式基线 |
+| `rows[].landingNodeName` | string | 本行对应的落地节点名称 |
+| `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
+| `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
+| `rows[].targetName` | `string \| null` | 第三列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 
 ### 2.2 整体布局
 
 | 列 | 内容 | 交互 |
 |----|------|------|
 | 第一列：落地节点 | `landingNodeName` | 只读 |
-| 第二列：配置方式 | `mode` | 仅展示 `allowedModes` 中的选项 |
+| 第二列：配置方式 | `mode` | 按后端返回的模式结果渲染；禁用项展示对应原因 |
 | 第三列：目标 | `targetName` | 由 `mode` 决定数据源与控件状态 |
 
 ### 2.3 第一列：落地节点
@@ -135,7 +135,8 @@
 - `none`：不修改该落地节点
 - `chain`：第三列从 `stage2Init.chainTargets[]` 中选择
 - `port_forward`：第三列从 `stage2Init.forwardRelays[]` 中选择
-- 若某模式不在 `allowedModes` 中，则前端不得展示该选项
+- 模式可用性、行级限制与禁用原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes` 与 `reasonText`
+- 前端按后端返回结果渲染可选项与禁用态，不自行补算额外规则
 
 ### 2.5 第三列：目标
 

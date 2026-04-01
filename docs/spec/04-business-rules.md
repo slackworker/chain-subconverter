@@ -161,8 +161,7 @@
 
 - 必须从 `landing-discovery pass` 的结果中收集所有落地节点
 - 收集口径固定为：读取 `list=true` 返回的 Clash YAML `proxies[]`，按每个 `proxy.name` 提取落地身份
-- 这些节点按稳定名称写入 `stage2Init.landingNodes[]`
-- 同时按“每个落地节点一行”生成 `stage2Init.rows[]`
+- 按“每个落地节点一行”生成 `stage2Init.rows[]`
 - 阶段 2 第一列只展示这些落地节点，不允许在阶段 2 重新选择或新增
 
 ### 2.1.1 落地节点命名与身份边界
@@ -173,22 +172,31 @@
 - 前端只消费 `stage2Init` 中返回的 `landingNodeName`，不得自行重命名、去重或补算映射
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
 
-### 2.2 判断每行可选模式
+### 2.2 判断全局可用模式与行级限制
 
-阶段 2 第二列的候选模式由功能开关与输入可用性共同决定。
+阶段 2 第二列的候选模式分为两层：
+
+- `stage2Init.availableModes`：本次阶段 2 的全局模式基线
+- `rows[].restrictedModes`：某一行额外禁用的模式与原因；仅在该行存在额外限制时返回
 
 #### 全局规则
 
-- `none` 始终可选
-- 当存在链式代理候选时，`chain` 可作为可选模式
-- 当满足以下两个条件时，`port_forward` 可作为可选模式：
+- `stage2Init.availableModes` 必须始终包含 `none`
+- 当存在链式代理候选时，`stage2Init.availableModes` 必须包含 `chain`
+- 当满足以下两个条件时，`stage2Init.availableModes` 必须包含 `port_forward`
   - 阶段 1 已开启端口转发功能
   - 阶段 1 已录入至少一个合法端口转发服务
+- 当某模式不满足上述全局条件时，`stage2Init.availableModes` 不得包含该模式
+- `stage2Init.availableModes` 的顺序固定为 `none`、`chain`、`port_forward`；未启用的模式直接省略，不重排其余模式相对顺序
 
 #### 行级规则
 
-- 若某落地节点协议不支持链式代理，则该行不得提供 `chain`
-- 当前明确规则为：`vless-reality` 落地节点不支持链式代理
+- 某行的最终可选模式 = `stage2Init.availableModes` 扣除当前行 `restrictedModes` 中出现的模式键
+- `rows[].restrictedModes` 为可选字段；缺失表示该行无额外模式限制
+- `rows[].restrictedModes` 中的模式键必须属于 `stage2Init.availableModes`
+- `rows[].restrictedModes.<mode>.reasonCode` 与 `reasonText` 都必须返回；`reasonText` 面向用户展示
+- 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点协议不支持链式代理，则该行必须返回 `restrictedModes.chain`
+- 当前明确规则为：`vless-reality` 落地节点不支持链式代理；当 `chain` 已出现在 `stage2Init.availableModes` 中时，该行的 `restrictedModes.chain.reasonCode` 必须为 `UNSUPPORTED_BY_LANDING_PROTOCOL`
 
 ### 2.3 收集链式候选
 
@@ -221,10 +229,12 @@
 
 #### 初始化决策顺序
 
-1. 先按 `2.2` 为该行确定 `allowedModes`
-2. 若 `chain` 在 `allowedModes` 中，则优先按“当链式代理可用”规则尝试自动识别
-3. 若 `chain` 不在 `allowedModes` 中、但 `port_forward` 在 `allowedModes` 中，则该行默认 `mode = port_forward`，并按“当 `mode = port_forward`”规则填写 `targetName`
-4. 若 `allowedModes` 只有 `none`，则该行默认 `mode = none`，且 `targetName = null`
+1. 先按 `2.2` 确定 `stage2Init.availableModes`
+2. 再为该行计算 `restrictedModes`
+3. 用 `stage2Init.availableModes` 扣除该行 `restrictedModes`，得到该行最终可选模式
+4. 若 `chain` 在该行最终可选模式中，则优先按“当链式代理可用”规则尝试自动识别
+5. 若 `chain` 不在该行最终可选模式中、但 `port_forward` 在该行最终可选模式中，则该行默认 `mode = port_forward`，并按“当 `mode = port_forward`”规则填写 `targetName`
+6. 若该行最终可选模式只有 `none`，则该行默认 `mode = none`，且 `targetName = null`
 
 #### 当链式代理可用
 
@@ -251,7 +261,7 @@
 
 #### 初始化决策表
 
-| `allowedModes` | 链式自动识别结果 | `forwardRelays[]` 数量 | 初始化 `mode` | 初始化 `targetName` |
+| 行最终可选模式 | 链式自动识别结果 | `forwardRelays[]` 数量 | 初始化 `mode` | 初始化 `targetName` |
 |----------------|------------------|------------------------|---------------|---------------------|
 | `["none"]` | 不适用 | 不适用 | `none` | `null` |
 | `["none", "chain"]` | 唯一命中 | 不适用 | `chain` | 对应区域策略组名称 |
