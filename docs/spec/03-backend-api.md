@@ -62,6 +62,8 @@
 
 约束：
 
+- `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
+- `rows` 在通过后端业务校验时，必须与当前转换得到的落地节点集合一一对应：每个落地节点恰好出现一次，不允许缺行、重复行或额外行
 - `landingNodeName` 在同一份快照中必须唯一
 - `mode` 只能是 `none`、`chain`、`port_forward`
 - `mode = none` 时，`targetName` 必须为空或 `null`
