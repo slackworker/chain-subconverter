@@ -297,6 +297,7 @@
 
 - 生成时必须先根据 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
 - 若任一必需 pass 失败，必须直接阻断生成
+- `stage2Snapshot.rows` 必须与当前落地节点集合一一对应：每个落地节点恰好出现一次，不允许缺行、重复行或额外行；不满足时必须以 `STAGE2_ROWSET_MISMATCH` 阻断生成
 - 任一行若无法在本次 `baseCompleteConfig` 中按 `landingNodeName` 定位到对应落地节点，必须阻断生成
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
 - 若某行选择 `chain` 但该落地节点协议不支持链式代理，必须阻断生成

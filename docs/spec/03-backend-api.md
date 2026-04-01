@@ -325,8 +325,9 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
+- `422`：`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
+- `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
 - `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.rowId`
 - `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = targetName`
 - `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.rowId` 与 `context.field = mode`
