@@ -187,7 +187,7 @@
 ### 3.3 消息区
 
 - 展示后端返回的 `messages[]` 与 `blockingErrors[]`
-- 前端统一按 `level` 渲染普通消息
+- 前端统一按 `level` 将 `messages[]` 渲染为当前阶段顶部的普通消息，不得依据 `messages[].context` 做字段级或行级定位展示
 - `blockingErrors[]` 的展示位置由 `scope` 决定：`global` 渲染到当前阶段顶部错误区，`stage1_field` 渲染到阶段 1 对应输入区，`stage2_row` 渲染到阶段 2 对应行
 - 前端优先按 `retryable` 渲染重试导向；未提供时可按 HTTP 状态码兜底，`503` 视为可重试，其余阻断错误视为需修改输入或配置
 - 阻断错误应显著展示，并阻止进入成功态；toast 不能作为阻断错误的唯一承载方式

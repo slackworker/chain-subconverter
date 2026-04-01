@@ -126,14 +126,12 @@
   {
     "level": "info",
     "code": "AUTO_CHAIN_TARGET_SELECTED",
-    "message": "已自动填入香港区域策略组",
-    "context": { "landingNodeName": "HK 01" }
+    "message": "已自动填入香港区域策略组"
   },
   {
     "level": "warning",
     "code": "AUTO_CHAIN_TARGET_NOT_UNIQUE",
-    "message": "未能唯一识别链式前置节点，请手动选择",
-    "context": { "landingNodeName": "HK 02" }
+    "message": "未能唯一识别链式前置节点，请手动选择"
   }
 ]
 ```
@@ -154,6 +152,8 @@
 约束：
 
 - `messages[]` 只承载 `info` 与 `warning`
+- `messages[]` 只用于非阻断的全局普通提示，不承诺字段级或行级定位语义
+- `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `blockingErrors[]` 只承载阻断当前请求的错误
 - `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`
 - `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
