@@ -213,8 +213,11 @@
 2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 不计入成员数
 3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 后成员数为 `0`，则该区域策略组不进入 `chainTargets[]`
 4. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
-5. `chainTargets[]` 中保留区域策略组和单个 `proxy` 两类候选
-6. 链式候选范围由区域策略组与中转 `proxy` 构成
+5. `chainTargets[]` 中只保留 `name` 与 `kind`；不得暴露 `regionId` 或其他当前前端不消费的元数据
+6. 默认模板 6 个区域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
+7. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
+8. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
+9. 若任一中转 `proxy.name` 与默认模板 6 个区域策略组中的任意一个重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
 
 ### 2.4 收集端口转发候选
 
@@ -333,8 +336,8 @@
 补充说明：
 
 - 上游订阅内容变化本身不是失败条件；只有变化导致恢复快照中的引用失效，才构成不可重放
-- 若 `targetName` 引用的是区域策略组，只要该区域策略组在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
-- 若 `targetName` 引用的是单个 proxy，则该 proxy 名称必须仍存在于当前候选集合中，否则视为引用失效
+- 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
+- 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `landingNodeName` 在当前转换结果中已不存在、被重命名或无法唯一对应，则视为引用失效
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
@@ -350,7 +353,7 @@
 
 - 按 `landingNodeName` 定位落地节点
 - 当 `mode = chain` 时，为该落地节点添加 `dialer-proxy: <targetName>`
-- `targetName` 可以是区域策略组，也可以是单个 proxy；生成时按字符串原样写入
+- `targetName` 可以是 `proxy-groups` 候选，也可以是 `proxies` 候选；生成时按字符串原样写入
 
 ### 3.4 端口转发改写
 

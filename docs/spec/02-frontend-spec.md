@@ -112,6 +112,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `availableModes` | `mode[]` | 阶段 2 第二列的全局模式基线 |
+| `chainTargets[]` | object[] | 链式候选列表；每项包含 `name` 与 `kind` |
 | `rows[].landingNodeName` | string | 本行对应的落地节点名称 |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
@@ -142,6 +143,8 @@
 
 - 当 `mode = none` 时，第三列清空并禁用
 - 当 `mode = chain` 时，第三列展示链式候选列表
+- 链式候选按 `chainTargets[].kind` 分组展示：`proxy-groups` 默认展开，`proxies` 默认折叠
+- 前端直接消费后端返回的 `chainTargets[].name` 作为选项值；不得自行改写、国际化或另造展示别名
 - 当 `mode = port_forward` 时，第三列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`
 - 前端不自行推导候选列表，不自行重做自动识别；只消费后端产物
 

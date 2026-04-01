@@ -76,8 +76,8 @@
   "stage2Init": {
     "availableModes": ["none", "chain", "port_forward"],
     "chainTargets": [
-      { "name": "🇭🇰 香港节点", "kind": "region_group", "regionId": "HK" },
-      { "name": "Transit A", "kind": "proxy" }
+      { "name": "🇭🇰 香港节点", "kind": "proxy-groups" },
+      { "name": "Transit A", "kind": "proxies" }
     ],
     "forwardRelays": [
       { "name": "relay.example.com:1080" }
@@ -108,7 +108,8 @@
 
 - `availableModes[]`：阶段 2 第二列的模式列表；出现条件与顺序见 [04-business-rules](04-business-rules.md)
 - `chainTargets[]`：阶段 2 第三列在 `mode = chain` 时的候选列表
-- `chainTargets[].kind`：链式候选类别；当前只允许 `region_group` 或 `proxy`
+- `chainTargets[].name`：链式候选名称；同时作为 `stage2Snapshot.rows[].targetName` 的可选值
+- `chainTargets[].kind`：链式候选类别；当前只允许 `proxy-groups` 或 `proxies`
 - `forwardRelays[]`：阶段 2 第三列在 `mode = port_forward` 时的候选列表
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
@@ -233,8 +234,9 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`
+- `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`、`CHAIN_TARGET_NAME_CONFLICT`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`
 - `INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`：都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayRawText`
+- `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
@@ -315,8 +317,9 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
+- `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
 - `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.landingNodeName`
 - `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
