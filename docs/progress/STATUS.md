@@ -7,7 +7,7 @@
 | Phase | 目标 | 状态 |
 |-------|------|------|
 | Phase 0 — 骨架 | 目录、Go module、旧代码归档 | ✅ 完成 |
-| Phase 1 — subconverter 集成 | 真实 3-pass HTTP 管线 | ⚠️ 部分完成 |
+| Phase 1 — subconverter 集成 | 真实 3-pass HTTP 管线 | ✅ 完成 |
 | Phase 2 — 业务服务层 | stage2Init、校验、改写 | ⚠️ 部分完成 |
 | Phase 3 — API + 存储 + 配置 | Gin handlers、SQLite、Config | ⛔ 未开始 |
 | Phase 4 — 前端 | React + TS UI | ⛔ 未开始 |
@@ -32,13 +32,16 @@
 - 已能对固定 `stage2Snapshot` 生成规范长链接
 - 已能基于固定 `full-base` 结果渲染默认链式代理订阅
 
+### Phase 1 集成落地
+
+- `internal/config` 已补最小运行时配置：`baseURL`、`timeout`、`maxInFlight`（支持环境变量覆盖）
+- `internal/subconverter` 已实现真实 3-pass HTTP `Client`，包含 URL 构造、参数透传与统一调用入口
+- 已落实超时与并发上限（达到上限立即失败，不排队）
+- 超时/连接失败/非成功 HTTP/不可用结果统一映射为 `SUBCONVERTER_UNAVAILABLE`
+- `internal/service` 已新增 source 适配层，可从真实 3-pass 结果装配 `ConversionFixtures`
+- `cmd/server/main.go` 已完成最小配置加载与 client 装配占位（不再是纯输出占位）
+
 ## 已知缺口
-
-### Phase 1
-
-- `internal/subconverter` 只有包说明，无真实 HTTP 客户端
-- 超时、并发上限、运行时错误映射未实现
-- 3-pass 仍依赖静态测试夹具，不是运行时真实管线
 
 ### Phase 2
 
@@ -50,9 +53,10 @@
 ### Phase 3
 
 - 未实现 HTTP handler、短链接索引、配置化限制
-- `cmd/server/main.go` 仍是占位输出
+- `cmd/server/main.go` 尚未落地完整 HTTP 启动与依赖注入
 
 ## 验证
 
+- `go test ./internal/subconverter/...` ✅
 - `go test ./internal/service/...` ✅
 - `go test ./...` ✅

@@ -11,14 +11,20 @@ flowchart LR
 
 ## Phase 1：subconverter 集成层收口
 
-**目标**：`internal/subconverter/` 从占位变为可用
+**目标**：`internal/subconverter/` 从占位变为可用（已完成）
 
 | 任务 | 说明 |
 |------|------|
 | 实现 `Client` | 封装 3-pass HTTP 调用，URL 拼接与参数传递 |
 | 超时 & 并发控制 | `spec 0.1`：15s 超时、10 并发信号量、达上限立即失败 |
-| 错误映射 | 超时/连接失败/非成功 HTTP → `SUBCONVERTER_UNAVAILABLE` |
+| 错误映射 | 超时/连接失败/非成功 HTTP/不可解析结果 → `SUBCONVERTER_UNAVAILABLE` |
 | Golden test | 对接 `testdata/` 已有夹具做 mock 验证 |
+
+完成说明：
+
+- 已补最小运行时配置（`baseURL`、`timeout`、`maxInFlight`）并支持开发态覆盖
+- 已实现 3-pass client 与服务层适配入口（`ThreePassResult -> ConversionFixtures`）
+- 已补 mock/golden/smoke（opt-in）测试覆盖
 
 ## Phase 2：业务服务层收口
 
@@ -58,6 +64,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 补 `internal/subconverter` 真实 3-pass 集成与错误映射
-2. 收口 `internal/service` 的 spec 差距：端口转发校验、区域识别来源、`restrictedModes`
-3. 落地 `internal/api`，把 happy-path 原型接成真实 API
+1. 收口 `internal/service` 的 spec 差距：端口转发校验、区域识别来源、`restrictedModes`
+2. 落地 `internal/api`，把 happy-path 原型接成真实 API
+3. 推进 `internal/store` + `resolve-url/short-url`，形成可运行闭环

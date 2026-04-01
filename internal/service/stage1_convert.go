@@ -19,10 +19,10 @@ type AdvancedOptions struct {
 }
 
 type Stage1Input struct {
-	LandingRawText     string          `json:"landingRawText"`
-	TransitRawText     string          `json:"transitRawText"`
-	ForwardRelayRawText string         `json:"forwardRelayRawText"`
-	AdvancedOptions    AdvancedOptions `json:"advancedOptions"`
+	LandingRawText      string          `json:"landingRawText"`
+	TransitRawText      string          `json:"transitRawText"`
+	ForwardRelayRawText string          `json:"forwardRelayRawText"`
+	AdvancedOptions     AdvancedOptions `json:"advancedOptions"`
 }
 
 type Stage1ConvertRequest struct {
@@ -91,27 +91,27 @@ type regionMatcher struct {
 var defaultRegionMatchers = []regionMatcher{
 	{
 		TargetName: "🇭🇰 香港节点",
-		Pattern: regexp.MustCompile(`(?i)🇭🇰|香港|Hong Kong|HongKong|\bHK(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|HKG|九龙|Kowloon|新界|沙田|荃湾|葵涌`),
+		Pattern:    regexp.MustCompile(`(?i)🇭🇰|香港|Hong Kong|HongKong|\bHK(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|HKG|九龙|Kowloon|新界|沙田|荃湾|葵涌`),
 	},
 	{
 		TargetName: "🇺🇸 美国节点",
-		Pattern: regexp.MustCompile(`(?i)🇺🇸|美国|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|纽约|纽纽|亚特兰大|迈阿密|华盛顿|\bUS(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|United States|UnitedStates|USA|America|JFK|EWR|IAD|ATL|ORD|MIA|NYC|LAX|SFO|SEA|DFW|SJC`),
+		Pattern:    regexp.MustCompile(`(?i)🇺🇸|美国|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|纽约|纽纽|亚特兰大|迈阿密|华盛顿|\bUS(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|United States|UnitedStates|USA|America|JFK|EWR|IAD|ATL|ORD|MIA|NYC|LAX|SFO|SEA|DFW|SJC`),
 	},
 	{
 		TargetName: "🇯🇵 日本节点",
-		Pattern: regexp.MustCompile(`(?i)🇯🇵|日本|川日|东京|大阪|泉日|埼玉|沪日|深日|\bJP(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Japan|JPN|NRT|HND|KIX|TYO|OSA|关西|Kansai`),
+		Pattern:    regexp.MustCompile(`(?i)🇯🇵|日本|川日|东京|大阪|泉日|埼玉|沪日|深日|\bJP(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Japan|JPN|NRT|HND|KIX|TYO|OSA|关西|Kansai`),
 	},
 	{
 		TargetName: "🇸🇬 新加坡节点",
-		Pattern: regexp.MustCompile(`(?i)🇸🇬|新加坡|狮城|\bSG(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Singapore|SIN|坡`),
+		Pattern:    regexp.MustCompile(`(?i)🇸🇬|新加坡|狮城|\bSG(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Singapore|SIN|坡`),
 	},
 	{
 		TargetName: "🇼🇸 台湾节点",
-		Pattern: regexp.MustCompile(`(?i)🇹🇼|🇼🇸|台湾|新北|彰化|\bTW(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Taiwan|TWN|TPE|ROC|台`),
+		Pattern:    regexp.MustCompile(`(?i)🇹🇼|🇼🇸|台湾|新北|彰化|\bTW(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Taiwan|TWN|TPE|ROC|台`),
 	},
 	{
 		TargetName: "🇰🇷 韩国节点",
-		Pattern: regexp.MustCompile(`(?i)🇰🇷|韩国|首尔|春川|\bKR(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Korea|KOR|Chuncheon|ICN|韩|韓`),
+		Pattern:    regexp.MustCompile(`(?i)🇰🇷|韩国|首尔|春川|\bKR(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Korea|KOR|Chuncheon|ICN|韩|韓`),
 	},
 }
 
@@ -300,14 +300,20 @@ func parseInlineProxyList(raw string) ([]inlineProxy, error) {
 	scanner := bufio.NewScanner(strings.NewReader(raw))
 	proxies := make([]inlineProxy, 0)
 	inProxies := false
+	foundSection := false
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
 
 		switch {
-		case trimmed == "proxies:":
+		case !strings.HasPrefix(line, " ") && trimmed == "proxies:":
+			foundSection = true
 			inProxies = true
+		case !inProxies:
+			continue
+		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
+			continue
 		case inProxies && strings.HasPrefix(trimmed, "- {"):
 			name, err := extractInlineField(trimmed, "name")
 			if err != nil {
@@ -322,13 +328,18 @@ func parseInlineProxyList(raw string) ([]inlineProxy, error) {
 				Type: proxyType,
 				Raw:  trimmed,
 			})
-		case inProxies && strings.HasSuffix(trimmed, ":") && trimmed != "proxies:" && !strings.HasPrefix(trimmed, "-"):
+		case inProxies && !strings.HasPrefix(line, " ") && strings.HasSuffix(trimmed, ":") && trimmed != "proxies:" && !strings.HasPrefix(trimmed, "-"):
 			inProxies = false
+		case inProxies:
+			return nil, fmt.Errorf("unexpected proxies entry %q", line)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, err
+	}
+	if !foundSection {
+		return nil, fmt.Errorf("missing proxies section")
 	}
 
 	return proxies, nil
@@ -340,6 +351,7 @@ func parseProxyGroups(raw string) (map[string]proxyGroup, error) {
 	var current *proxyGroup
 	inGroups := false
 	inMembers := false
+	foundSection := false
 
 	flush := func() {
 		if current == nil {
@@ -351,12 +363,16 @@ func parseProxyGroups(raw string) (map[string]proxyGroup, error) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
 
 		switch {
-		case strings.TrimSpace(line) == "proxy-groups:":
+		case !strings.HasPrefix(line, " ") && trimmed == "proxy-groups:":
+			foundSection = true
 			inGroups = true
 			inMembers = false
 		case !inGroups:
+			continue
+		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
 			continue
 		case strings.HasPrefix(line, "  - name: "):
 			flush()
@@ -364,17 +380,32 @@ func parseProxyGroups(raw string) (map[string]proxyGroup, error) {
 			inMembers = false
 		case current != nil && strings.HasPrefix(line, "    type: "):
 			current.Type = strings.TrimSpace(strings.TrimPrefix(line, "    type: "))
-		case current != nil && strings.TrimSpace(line) == "proxies:":
+		case current != nil && trimmed == "proxies:":
 			inMembers = true
 		case current != nil && inMembers && strings.HasPrefix(line, "      - "):
 			current.Proxies = append(current.Proxies, strings.TrimSpace(strings.TrimPrefix(line, "      - ")))
 		case current != nil && inMembers && strings.HasPrefix(line, "    ") && !strings.HasPrefix(line, "      - "):
 			inMembers = false
+		case current != nil && strings.HasPrefix(line, "    "):
+			continue
+		case !strings.HasPrefix(line, " "):
+			flush()
+			inGroups = false
+			inMembers = false
+			if strings.HasSuffix(trimmed, ":") {
+				continue
+			}
+			return nil, fmt.Errorf("unexpected proxy-groups content %q", line)
+		default:
+			return nil, fmt.Errorf("unexpected proxy-group entry %q", line)
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, err
+	}
+	if !foundSection {
+		return nil, fmt.Errorf("missing proxy-groups section")
 	}
 
 	flush()
