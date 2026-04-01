@@ -40,7 +40,7 @@
 - `config`、`include`、`exclude` 都是字符串；可为空字符串
 - `config = ""` 表示本次转换不显式传 `config` 参数，并回落使用集成 `subconverter` 的默认本地配置
 - `emoji`、`udp`、`skipCertVerify` 记录的是前端勾选状态；实际 `GET /sub` 传参规则见 [04-business-rules](04-business-rules.md)
-- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2 MiB`
+- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
 
 ### 2. 阶段 2 配置快照
@@ -561,7 +561,10 @@ gzip 规则：
 
 - 单条规范化 `longUrl` 的总长度必须受限
 - 早期原型默认上限为 `2048` bytes
+- 阶段 1 输入总大小上限与 `longUrl` 总长度上限都必须可配置；两者可以分别调节
+- 当前 `v = 1` 编码下，早期原型默认将阶段 1 的 `landingRawText` 与 `transitRawText` 规范化后总大小上限设为 `2048` bytes
 - `POST /api/generate` 若生成结果超过上限，必须返回阻断错误，不得静默截断、不得自动改为短链接
+- 满足阶段 1 输入边界的合法请求，仍可能因最终 `longUrl` 超长而在生成阶段失败；该情形必须以 `LONG_URL_TOO_LONG` 返回
 - 超限时错误码必须为 `LONG_URL_TOO_LONG`
 
 ---

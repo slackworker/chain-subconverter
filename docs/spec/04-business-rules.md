@@ -20,7 +20,7 @@
 - 业务层默认不对失败的 `subconverter` 调用自动重试
 - 若显式启用重试，最多只允许 `1` 次串行重试，且不得并行放大请求
 - 后端必须在转发给 `subconverter` 前先校验参与本次转换的输入边界；超限时必须直接拒绝，不得转发给 `subconverter`
-- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小上限必须可配置，默认 `2 MiB`
+- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小上限必须可配置，默认 `2048` bytes
 - 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的 URL 数量上限都必须可配置，默认每个字段最多 `20` 条
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
 - `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
