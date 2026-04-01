@@ -1,175 +1,89 @@
-# Chain-Subconverter Vibe Coding 推进计划
+# Chain-Subconverter 推进状态与路线图
 
-## 现状评估
+## 当前结论
 
-### Spec 成熟度
+项目已从“纯骨架阶段”推进到“测试资产 + 服务层 happy path 原型”阶段。
 
-| Spec | 状态 | 备注 |
-|------|------|------|
-| `00-governance` | ✅ 稳定 | 治理规则已固化 |
-| `01-overview` | ✅ 稳定 | 三阶段流程、术语、全局约束已清晰 |
-| `02-frontend-spec` | ⚠️ 可用 | UI 规格完整，后续可能微调 |
-| `03-backend-api` | ✅ 稳定 | API 契约、error model、编码规范详细 |
-| `04-business-rules` | ✅ 稳定 | 3-pass 管线、校验、改写规则完备 |
-| `05-tech-stack` | ✅ 稳定 | Go+Gin+React+TS+Vite 选型已确认 |
+当前工作区最有价值的新增内容不是 API 或前端，而是两块基础资产：
 
-**结论**：spec 已具备足够的可实现度，**不必以"spec 完善"为前提阻塞开发**。后续如发现遗漏，可在开发过程中局部修正。
+- `3pass-ss2022-test-subscription` 已从单纯的 `subconverter` 3-pass 基线，扩展为可回放的最小完整流程样例
+- `internal/service` 已有可运行的原型测试，能覆盖默认链式代理 happy path 的 `stage2Init` 推导、长链接编码/解码和订阅渲染
 
-### 已有产出
+这说明项目已经开始验证 spec，而不再只是停留在目录与文档层。
 
-- **Staged test case**：`3pass-ss2022-test-subscription`（含 `case.json`、3 pass URL/YAML fixtures、测试文档）
-- **Legacy code**：`chain-subconverter.py`、`script.js`、`frontend.html`、`Dockerfile`、`requirements.txt` — Python 旧实现，按 governance 仅供参考
+## 阶段状态
 
----
+| Phase | 目标 | 当前状态 | 说明 |
+|------|------|------|------|
+| Phase 0 | 项目骨架、旧代码归档、Go 工程初始化 | ✅ 已完成 | 目录结构、`go.mod`、骨架包和旧实现归档已落地 |
+| Phase 1 | `subconverter` 集成层与 3-pass 管线 | ⚠️ 部分完成 | 3-pass 测试夹具与 golden 已固定，但 `internal/subconverter` 仍只有包说明，尚未实现真实运行时集成 |
+| Phase 2 | 业务服务层 | ⚠️ 部分完成 | 已有默认 happy path 原型与测试，但仍未完整覆盖 spec 中的限制、错误模型与候选规则 |
+| Phase 3 | API 层、配置层、长短链接存储、启动装配 | ⛔ 未开始 | `internal/api`、`internal/store`、`internal/config` 与 `cmd/server` 仍是骨架或占位 |
+| Phase 4 | 前端 | ⛔ 未开始 | 仅保留目录与规划，尚无可运行 UI |
 
-## 推荐策略：**测试用例先行，驱动局部实现**
+## 当前已完成范围
 
-> [!IMPORTANT]
-> 不建议"继续 review spec"或"纯写测试不实现"。推荐 **边写测试用例边同步开发局部实现**。理由：
-> - Spec 已足够成熟，继续打磨是低 ROI 的投入
-> - 纯写测试但不做实现，测试无法运行验证，容易偏离实际
-> - 测试 + 局部实现同步推进，可以最快暴露 spec 的隐含假设
+### 测试资产
 
-### 分阶段路线图
+- 已固定 `landing-discovery`、`transit-discovery`、`full-base` 三个 pass 的 URL/YAML golden
+- 已补齐 `stage1-convert.request/response`、`stage2-snapshot.default`、`generate.request/response`、`long-url.payload`、`complete-config.chain.yaml`
+- 已增加 `minimal-flow.manifest.json`，把这条最小 happy path 的产物边界显式化
 
-```mermaid
-flowchart LR
-    P0["Phase 0\n项目骨架\n& 旧代码归档"]
-    P1["Phase 1\nsubconverter 集成层\n+ 3-pass 管线"]
-    P2["Phase 2\n业务服务层\nstage2Init + 校验"]
-    P3["Phase 3\nAPI 层\n+ 长短链接"]
-    P4["Phase 4\n前端"]
+### 服务层原型
 
-    P0 --> P1 --> P2 --> P3 --> P4
-```
+- 已实现 `BuildStage2Init()`，可从固定夹具推导 `availableModes`、`chainTargets`、`forwardRelays` 与默认 `rows`
+- 已实现 `BuildStage1ConvertResponse()`、`BuildGenerateResponse()`、`EncodeLongURL()`、`DecodeLongURLPayload()`、`RenderCompleteConfig()`
+- 已通过 `go test ./internal/service/...` 与 `go test ./...`
 
-#### Phase 0：项目骨架 & 旧代码归档（本次执行）
+## 主要缺口
 
-- 把所有旧实现文件移入 `_legacy/` 归档目录
-- 初始化 Go module、创建 `05-tech-stack.md` 定义的目录结构
-- 初始化前端工程骨架（`web/`）
-- 更新 `.gitignore`、`README.md`、`AGENTS.md`
+以下内容仍不应被表述为“已完成”，提交时也建议在说明里主动声明：
 
-#### Phase 1：subconverter 集成层 + 3-pass 管线
+### Phase 1 缺口
 
-- 实现 `internal/subconverter/` — 唯一的 subconverter 调用入口
-- 以已有 `testdata/subconverter/3pass-ss2022-test-subscription/`（对应 test-subscription 脱敏样例）作为 golden test 基线
-- 测试重点：URL 拼接正确性、pass 参数约束、超时/并发控制
+- 尚未实现真实的 `subconverter` HTTP 客户端
+- 尚未实现超时、并发上限、运行时错误映射等 `04-business-rules` 中的集成边界
+- 当前 3-pass 仍依赖静态测试夹具，不是运行时真实转换管线
 
-#### Phase 2：业务服务层
+### Phase 2 缺口
 
-- 实现 `internal/service/` — stage2Init 构建、区域识别、生成前校验、YAML 改写
-- 测试重点：决策表覆盖（2.5 初始化决策表的每个场景）、链式/端口转发改写正确性
+- 区域自动识别目前使用代码内置正则，尚未按 spec 改为“基于实际生效配置文件中的 6 条规则”
+- 端口转发输入目前只做最小切分与重复判断，尚未完成 `server:port` 规范化、大小写归一和严格校验
+- `restrictedModes`、`messages[]`、`blockingErrors[]` 仅具 happy path 骨架，尚未形成完整错误语义
+- 当前测试主要覆盖 happy path，尚未覆盖 `vless-reality` 限制、冲突检测、恢复冲突、rowset mismatch 等关键失败场景
 
-#### Phase 3：API 层 + 长短链接
+### Phase 3 缺口
 
-- 实现 `internal/api/` — Gin handlers
-- 实现 `internal/store/` — SQLite 短链接索引
-- 实现 `internal/config/` — 可配置参数
-- 实现 `cmd/server/` — 启动装配
-- 测试重点：API 端到端、长链接编码/解码确定性、短链接幂等性
+- 未实现 HTTP handler
+- 未实现短链接 SQLite 索引
+- 未实现配置化的长度限制、超时和服务基址
+- `cmd/server/main.go` 仍是占位输出
 
-#### Phase 4：前端
+## 推荐提交口径
 
-- React + TypeScript + Vite + Tailwind CSS 三阶段 UI
-- 测试重点：浏览器 E2E
+本轮更适合按以下口径准备提交，而不是宣称“服务层完成”：
 
----
+- `docs/testing`: 固化 `3-pass` 到最小完整业务流程的测试资产
+- `internal/service`: 增加默认链式代理 happy path 原型与 golden test
+- `docs`: 补齐当前推进状态、风险和提交边界说明
 
-## Proposed Changes
+建议避免使用下列表述：
 
-### 本次执行范围：Phase 0 — 项目骨架 & 旧代码归档
+- “完成 backend API”
+- “完成 Phase 2”
+- “已按 spec 实现 stage1/generate”
 
----
+## 下一提交建议
 
-### 归档旧代码
+若按最小增量继续推进，建议优先做以下顺序：
 
-将以下文件/目录移入 `_legacy/`：
+1. 补 `internal/subconverter` 真实 3-pass 集成与错误映射
+2. 收口 `internal/service` 的 spec 差距，先补端口转发校验、区域识别来源、`restrictedModes`
+3. 再落 `internal/api`，把当前 happy path 原型接成真实 `POST /api/stage1/convert` 与 `POST /api/generate`
 
-| 来源 | 去向 |
-|------|------|
-| `chain-subconverter.py` | `_legacy/chain-subconverter.py` |
-| `script.js` | `_legacy/script.js` |
-| `frontend.html` | `_legacy/frontend.html` |
-| `Dockerfile` | `_legacy/Dockerfile` |
-| `requirements.txt` | `_legacy/requirements.txt` |
-| `favicon.ico` | `_legacy/favicon.ico` |
-| `RELEASES.md` | `_legacy/RELEASES.md` |
-| `templates/` | `_legacy/templates/` |
-| `venv/` | 删除（不跟踪） |
-| `__pycache__/` | 删除（不跟踪） |
-| `logs/` | 删除（已 gitignore） |
+## 当前验证
 
-> [!NOTE]
-> `_legacy/` 加前缀 `_` 以在目录列表中自然排列在最前面，同时明确表达"不再活跃"。
+当前工作区已确认：
 
----
-
-### 新建目录结构
-
-按 `05-tech-stack.md` §8 推荐结构创建骨架文件：
-
-```text
-chain-subconverter/
-├── _legacy/                   # 归档旧实现
-├── cmd/
-│   └── server/
-│       └── main.go            # [NEW] 空启动入口
-├── internal/
-│   ├── api/                   # HTTP handlers
-│   ├── service/               # 业务逻辑
-│   ├── store/                 # SQLite 存储
-│   ├── subconverter/          # subconverter 集成
-│   └── config/                # 配置管理
-├── web/                       # 前端工程（后续 Phase 4 初始化 Vite）
-├── deploy/
-│   └── docker-compose.yml     # [NEW] 占位
-├── docs/
-│   ├── spec/                  # 权威 spec（不动）
-│   ├── testing/               # 测试用例文档（不动）
-│   ├── legacy/                # 旧 spec（不动）
-│   └── archive/               # 最老文档（不动）
-├── testdata/
-│   └── subconverter/          # subconverter 测试夹具（不动）
-├── AGENTS.md
-├── README.md
-├── LICENSE
-├── go.mod                     # [NEW]
-├── go.sum                     # [NEW]
-├── .gitignore                 # [MODIFY] 追加 Go/Node 相关规则
-└── .gitattributes
-```
-
----
-
-### 更新 `.gitignore`
-
-追加：
-- Go: `bin/`, `*.exe`
-- Node: `node_modules/`, `web/dist/`
-- 移除 Python 专用条目（保留通用条目即可，旧文件已归档）
-
----
-
-### 更新 `README.md`
-
-更新项目说明，反映重构阶段和新目录结构。
-
----
-
-## Verification Plan
-
-### Phase 0 验证
-
-Phase 0 是纯文件结构调整，无运行时代码：
-
-1. `git status` 确认文件移动正确
-2. `go mod tidy` 验证 Go module 初始化成功
-3. 目录结构 `tree -L 3 -I 'venv|node_modules|.git|__pycache__|_legacy'` 确认符合 `05-tech-stack.md` §8
-
-### 后续 Phase 验证（不在本次执行范围）
-
-- Phase 1：`go test ./internal/subconverter/...` + golden test 对比 `testdata/`
-- Phase 2：`go test ./internal/service/...` + 决策表场景覆盖
-- Phase 3：`go test ./internal/api/...` + httptest 端到端
-- Phase 4：浏览器 E2E
+- `go test ./internal/service/...`
+- `go test ./...`

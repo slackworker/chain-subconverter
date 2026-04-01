@@ -13,6 +13,16 @@
 | [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
 | [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
 
+## 推进与测试
+
+当前实现推进状态、阶段性结论与测试样例说明：
+
+| 文档 | 说明 |
+|------|------|
+| [vibe-coding-plan](vibe-coding-plan.md) | 当前推进状态、阶段划分、已完成范围与主要缺口 |
+| [progress/2026-04-01-status](progress/2026-04-01-status.md) | 本轮 review 结论、提交边界、风险与建议 |
+| [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
+
 
 ## 旧 Spec（Legacy Spec）
 
