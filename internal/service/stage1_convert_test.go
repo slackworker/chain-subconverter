@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -172,6 +173,169 @@ func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T
 	}
 }
 
+func TestParseForwardRelays_NormalizesAndRejectsDuplicates(t *testing.T) {
+	_, err := parseForwardRelays(Stage1Input{
+		AdvancedOptions: AdvancedOptions{
+			EnablePortForward: true,
+		},
+		ForwardRelayRawText: "Relay.EXAMPLE.com:00080\nrelay.example.com:80",
+	})
+	if err == nil {
+		t.Fatal("parseForwardRelays() error = nil, want duplicate error")
+	}
+	if !strings.Contains(err.Error(), `duplicate forward relay "relay.example.com:80"`) {
+		t.Fatalf("parseForwardRelays() error = %v, want duplicate normalized relay", err)
+	}
+}
+
+func TestParseForwardRelays_RejectsInvalidLines(t *testing.T) {
+	testCases := []string{
+		" relay.example.com:80",
+		"localhost:80",
+		"010.0.0.1:80",
+		"relay.example.com:not-a-port",
+		"2001:db8::1:443",
+	}
+
+	for _, rawLine := range testCases {
+		t.Run(rawLine, func(t *testing.T) {
+			_, err := parseForwardRelays(Stage1Input{
+				AdvancedOptions: AdvancedOptions{
+					EnablePortForward: true,
+				},
+				ForwardRelayRawText: rawLine,
+			})
+			if err == nil {
+				t.Fatal("parseForwardRelays() error = nil, want invalid line error")
+			}
+			if !strings.Contains(err.Error(), "invalid forward relay line") {
+				t.Fatalf("parseForwardRelays() error = %v, want invalid line error", err)
+			}
+		})
+	}
+}
+
+func TestBuildStage2Init_IgnoresCustomConfigForRegionAutoDetect(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{
+			AdvancedOptions: AdvancedOptions{
+				Config: "/tmp/custom.ini",
+			},
+		},
+		singleLandingFixture("Unknown Landing", "ss", "🇺🇸 美国节点"),
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	if len(stage2Init.Rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
+	}
+
+	row := stage2Init.Rows[0]
+	if row.Mode != "none" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "none")
+	}
+	if row.TargetName != nil {
+		t.Fatalf("row targetName mismatch: got %v want nil", row.TargetName)
+	}
+}
+
+func TestBuildStage2Init_PropagatesDefaultRegionMatcherLoadError(t *testing.T) {
+	_, err := buildStage2Init(
+		Stage1Input{},
+		singleLandingFixture("US Landing", "ss", "🇺🇸 美国节点"),
+		func() ([]regionMatcher, error) {
+			return parseRegionMatchers("custom_proxy_group=🇺🇸 美国节点`url-test`(")
+		},
+	)
+	if err == nil {
+		t.Fatal("buildStage2Init() error = nil, want default region matcher load error")
+	}
+	if !strings.Contains(err.Error(), "load default region matchers") {
+		t.Fatalf("buildStage2Init() error = %v, want loader context", err)
+	}
+	if !strings.Contains(err.Error(), `compile region matcher "🇺🇸 美国节点"`) {
+		t.Fatalf("buildStage2Init() error = %v, want compile error", err)
+	}
+}
+
+func TestBuildStage2Init_SkipsAutoFillWhenMultipleRegionsMatch(t *testing.T) {
+	stage2Init, err := buildStage2Init(
+		Stage1Input{},
+		singleLandingFixture("HK US Landing", "ss", "🇺🇸 美国节点"),
+		func() ([]regionMatcher, error) {
+			return parseRegionMatchers(strings.Join([]string{
+				"custom_proxy_group=🇭🇰 香港节点`url-test`HK",
+				"custom_proxy_group=🇺🇸 美国节点`url-test`US",
+			}, "\n"))
+		},
+	)
+	if err != nil {
+		t.Fatalf("buildStage2Init() error = %v", err)
+	}
+
+	if len(stage2Init.Rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
+	}
+
+	row := stage2Init.Rows[0]
+	if row.Mode != "none" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "none")
+	}
+	if row.TargetName != nil {
+		t.Fatalf("row targetName mismatch: got %v want nil", row.TargetName)
+	}
+}
+
+func TestBuildStage2Init_RestrictsVLESSRealityChainAndFallsBackToRelay(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{
+			AdvancedOptions: AdvancedOptions{
+				EnablePortForward: true,
+			},
+			ForwardRelayRawText: "Relay.EXAMPLE.com:00080",
+		},
+		singleLandingFixture("HK Reality", "vless-reality", "🇭🇰 香港节点"),
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	if got, want := stage2Init.AvailableModes, []string{"none", "chain", "port_forward"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
+	}
+
+	row := stage2Init.Rows[0]
+	if row.Mode != "port_forward" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "port_forward")
+	}
+	if row.TargetName == nil || *row.TargetName != "relay.example.com:80" {
+		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "relay.example.com:80")
+	}
+	restriction, ok := row.RestrictedModes["chain"]
+	if !ok {
+		t.Fatalf("expected restrictedModes.chain, got %v", row.RestrictedModes)
+	}
+	if restriction.ReasonCode != "UNSUPPORTED_BY_LANDING_PROTOCOL" {
+		t.Fatalf("ReasonCode mismatch: got %q", restriction.ReasonCode)
+	}
+}
+
+func TestParseInlineProxyList_ClassifiesVLESSRealityFromRealityOpts(t *testing.T) {
+	proxies, err := parseInlineProxyList("proxies:\n- {name: HK Reality, type: vless, server: landing.example.com, port: 443, reality-opts: {public-key: test-public-key}}\n")
+	if err != nil {
+		t.Fatalf("parseInlineProxyList() error = %v", err)
+	}
+
+	if len(proxies) != 1 {
+		t.Fatalf("expected 1 proxy, got %d", len(proxies))
+	}
+	if proxies[0].Type != "vless-reality" {
+		t.Fatalf("proxy type mismatch: got %q want %q", proxies[0].Type, "vless-reality")
+	}
+}
+
 func fixtureDirectory(t *testing.T) string {
 	t.Helper()
 
@@ -209,7 +373,7 @@ func readTextFixture(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatalf("read fixture %q: %v", path, err)
 	}
-	return normalizeFixtureNewlines(string(data))
+	return normalizeTestFixtureNewlines(string(data))
 }
 
 func hasChainTarget(targets []ChainTarget, name string, kind string) bool {
@@ -221,6 +385,51 @@ func hasChainTarget(targets []ChainTarget, name string, kind string) bool {
 	return false
 }
 
-func normalizeFixtureNewlines(value string) string {
+func normalizeTestFixtureNewlines(value string) string {
 	return strings.ReplaceAll(value, "\r\n", "\n")
+}
+
+func singleLandingFixture(landingName string, landingType string, transitGroupName string) ConversionFixtures {
+	transitYAML := "proxies:\n"
+	fullBaseProxyLines := []string{
+		"proxies:",
+		inlineLandingFixtureLine(landingName, landingType, true),
+	}
+	if transitGroupName != "" {
+		transitYAML = "proxies:\n- {name: transit-a, type: ss}\n"
+		fullBaseProxyLines = append(fullBaseProxyLines, "- {name: transit-a, type: ss, server: transit.example.com, port: 443}")
+	}
+
+	groupLines := []string{"proxy-groups:"}
+	for _, groupName := range defaultRegionGroupOrder {
+		member := "DIRECT"
+		if groupName == transitGroupName {
+			member = "transit-a"
+		}
+		groupLines = append(groupLines,
+			"  - name: "+groupName,
+			"    type: url-test",
+			"    proxies:",
+			"      - "+member,
+		)
+	}
+
+	return ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n" + inlineLandingFixtureLine(landingName, landingType, false) + "\n",
+		TransitDiscoveryYAML: transitYAML,
+		FullBaseYAML:         strings.Join(append(fullBaseProxyLines, append(groupLines, "")...), "\n"),
+	}
+}
+
+func inlineLandingFixtureLine(landingName string, landingType string, includeEndpoint bool) string {
+	if landingType == "vless-reality" {
+		if includeEndpoint {
+			return fmt.Sprintf("- {name: %s, type: vless, server: landing.example.com, port: 443, reality-opts: {public-key: test-public-key}}", landingName)
+		}
+		return fmt.Sprintf("- {name: %s, type: vless, reality-opts: {public-key: test-public-key}}", landingName)
+	}
+	if includeEndpoint {
+		return fmt.Sprintf("- {name: %s, type: %s, server: landing.example.com, port: 443}", landingName, landingType)
+	}
+	return fmt.Sprintf("- {name: %s, type: %s}", landingName, landingType)
 }

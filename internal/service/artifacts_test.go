@@ -71,6 +71,101 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	}
 }
 
+func TestValidateGenerateSnapshot_RejectsRowsetMismatch(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(Stage1Input{}, Stage2Snapshot{
+		Rows: []Stage2Row{},
+	}, fixtures)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want rowset mismatch")
+	}
+	if !strings.Contains(err.Error(), "stage2 rowset size mismatch") {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsTargetForNoneMode(t *testing.T) {
+	targetName := "relay.example.com:80"
+	fixtures := singleLandingFixture("HK Landing", "ss", "")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					LandingNodeName: "HK Landing",
+					Mode:            "none",
+					TargetName:      &targetName,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want targetName validation")
+	}
+	if !strings.Contains(err.Error(), "targetName must be empty") {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsChainForVLESSReality(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Reality", "vless-reality", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					LandingNodeName: "HK Reality",
+					Mode:            "chain",
+					TargetName:      &targetName,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want chain restriction")
+	}
+	if !strings.Contains(err.Error(), "does not allow chain mode") {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+}
+
+func TestRenderCompleteConfig_PortForwardRewritesServerAndPort(t *testing.T) {
+	targetName := "relay.example.com:80"
+	fixtures := singleLandingFixture("HK Landing", "ss", "")
+
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{
+			AdvancedOptions: AdvancedOptions{
+				EnablePortForward: true,
+			},
+			ForwardRelayRawText: targetName,
+		},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					LandingNodeName: "HK Landing",
+					Mode:            "port_forward",
+					TargetName:      &targetName,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "server: relay.example.com, port: 80") {
+		t.Fatalf("rendered config mismatch:\n%s", rendered)
+	}
+}
+
 func mustMarshalIndented(t *testing.T, value any) string {
 	t.Helper()
 

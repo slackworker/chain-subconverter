@@ -38,9 +38,9 @@ type BlockingError struct {
 }
 
 type Stage1ConvertResponse struct {
-	Stage2Init      Stage2Init       `json:"stage2Init"`
-	Messages        []Message        `json:"messages"`
-	BlockingErrors  []BlockingError  `json:"blockingErrors"`
+	Stage2Init     Stage2Init      `json:"stage2Init"`
+	Messages       []Message       `json:"messages"`
+	BlockingErrors []BlockingError `json:"blockingErrors"`
 }
 
 type GenerateRequest struct {
@@ -67,9 +67,9 @@ func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixt
 	}
 
 	return Stage1ConvertResponse{
-		Stage2Init:      stage2Init,
-		Messages:        []Message{},
-		BlockingErrors:  []BlockingError{},
+		Stage2Init:     stage2Init,
+		Messages:       []Message{},
+		BlockingErrors: []BlockingError{},
 	}, nil
 }
 
@@ -242,6 +242,9 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 
 		switch row.Mode {
 		case "none":
+			if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
+				return nil, fmt.Errorf("targetName must be empty for landing node %q when mode is none", landing.Name)
+			}
 			continue
 		case "chain":
 			targetName, err := requireTargetName(row)
@@ -405,18 +408,11 @@ func requireTargetName(row Stage2Row) (string, error) {
 }
 
 func splitForwardRelayTarget(targetName string) (string, string, error) {
-	separator := strings.LastIndex(targetName, ":")
-	if separator <= 0 || separator == len(targetName)-1 {
+	relay, err := parseForwardRelayLine(targetName)
+	if err != nil {
 		return "", "", fmt.Errorf("invalid forward relay target %q", targetName)
 	}
-
-	server := targetName[:separator]
-	port := targetName[separator+1:]
-	if _, err := strconv.Atoi(port); err != nil {
-		return "", "", fmt.Errorf("invalid forward relay target %q", targetName)
-	}
-
-	return server, port, nil
+	return relay.Server, relay.Port, nil
 }
 
 func isDefaultRegionGroup(groupName string) bool {

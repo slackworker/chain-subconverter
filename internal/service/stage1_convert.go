@@ -3,9 +3,11 @@ package service
 import (
 	"bufio"
 	"fmt"
-	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+
+	"github.com/dlclark/regexp2"
 )
 
 type AdvancedOptions struct {
@@ -85,34 +87,7 @@ type proxyGroup struct {
 
 type regionMatcher struct {
 	TargetName string
-	Pattern    *regexp.Regexp
-}
-
-var defaultRegionMatchers = []regionMatcher{
-	{
-		TargetName: "🇭🇰 香港节点",
-		Pattern:    regexp.MustCompile(`(?i)🇭🇰|香港|Hong Kong|HongKong|\bHK(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|HKG|九龙|Kowloon|新界|沙田|荃湾|葵涌`),
-	},
-	{
-		TargetName: "🇺🇸 美国节点",
-		Pattern:    regexp.MustCompile(`(?i)🇺🇸|美国|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|纽约|纽纽|亚特兰大|迈阿密|华盛顿|\bUS(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|United States|UnitedStates|USA|America|JFK|EWR|IAD|ATL|ORD|MIA|NYC|LAX|SFO|SEA|DFW|SJC`),
-	},
-	{
-		TargetName: "🇯🇵 日本节点",
-		Pattern:    regexp.MustCompile(`(?i)🇯🇵|日本|川日|东京|大阪|泉日|埼玉|沪日|深日|\bJP(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Japan|JPN|NRT|HND|KIX|TYO|OSA|关西|Kansai`),
-	},
-	{
-		TargetName: "🇸🇬 新加坡节点",
-		Pattern:    regexp.MustCompile(`(?i)🇸🇬|新加坡|狮城|\bSG(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Singapore|SIN|坡`),
-	},
-	{
-		TargetName: "🇼🇸 台湾节点",
-		Pattern:    regexp.MustCompile(`(?i)🇹🇼|🇼🇸|台湾|新北|彰化|\bTW(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Taiwan|TWN|TPE|ROC|台`),
-	},
-	{
-		TargetName: "🇰🇷 韩国节点",
-		Pattern:    regexp.MustCompile(`(?i)🇰🇷|韩国|首尔|春川|\bKR(?:[-_ ]?\d+(?:[-_ ]?[A-Za-z]{2,})?)?\b|Korea|KOR|Chuncheon|ICN|韩|韓`),
-	},
+	Pattern    *regexp2.Regexp
 }
 
 var defaultRegionGroupOrder = []string{
@@ -125,6 +100,10 @@ var defaultRegionGroupOrder = []string{
 }
 
 func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
+	return buildStage2Init(stage1Input, fixtures, loadRegionMatchers)
+}
+
+func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func() ([]regionMatcher, error)) (Stage2Init, error) {
 	if !stage1Input.AdvancedOptions.EnablePortForward && strings.TrimSpace(stage1Input.ForwardRelayRawText) != "" {
 		return Stage2Init{}, fmt.Errorf("forwardRelayRawText must be empty when enablePortForward is false")
 	}
@@ -174,6 +153,10 @@ func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stag
 	for _, target := range chainTargets {
 		chainTargetNames[target.Name] = struct{}{}
 	}
+	regionMatchers, err := regionMatcherLoader()
+	if err != nil {
+		return Stage2Init{}, fmt.Errorf("load default region matchers: %w", err)
+	}
 
 	rows := make([]Stage2Row, 0, len(landingProxies))
 	for _, landing := range landingProxies {
@@ -182,15 +165,22 @@ func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stag
 			Mode:            "none",
 			TargetName:      nil,
 		}
+		restrictedModes := buildRestrictedModes(landing, availableModes)
+		if len(restrictedModes) > 0 {
+			row.RestrictedModes = restrictedModes
+		}
 
-		if hasChainMode {
-			if targetName, ok := detectDefaultChainTarget(landing.Name, chainTargetNames); ok {
+		finalAvailableModes := filterRestrictedModes(availableModes, restrictedModes)
+		if containsString(finalAvailableModes, "chain") {
+			targetName, ok, err := detectDefaultChainTarget(landing.Name, regionMatchers, chainTargetNames)
+			if err != nil {
+				return Stage2Init{}, fmt.Errorf("detect default chain target for %q: %w", landing.Name, err)
+			}
+			if ok {
 				row.Mode = "chain"
 				row.TargetName = stringPtr(targetName)
 			}
-		}
-
-		if row.Mode == "none" && !hasChainMode && hasPortForwardMode {
+		} else if containsString(finalAvailableModes, "port_forward") {
 			row.Mode = "port_forward"
 			if len(forwardRelays) == 1 {
 				row.TargetName = stringPtr(forwardRelays[0].Name)
@@ -254,23 +244,29 @@ func buildChainTargets(landingNames map[string]struct{}, transitProxies []inline
 	return chainTargets, nil
 }
 
-func detectDefaultChainTarget(landingNodeName string, chainTargetNames map[string]struct{}) (string, bool) {
+func detectDefaultChainTarget(landingNodeName string, matchers []regionMatcher, chainTargetNames map[string]struct{}) (string, bool, error) {
 	matches := make([]string, 0, 1)
-	for _, matcher := range defaultRegionMatchers {
-		if !matcher.Pattern.MatchString(landingNodeName) {
-			continue
+	for _, matcher := range matchers {
+		matched, err := matcher.Pattern.MatchString(landingNodeName)
+		if err != nil {
+			return "", false, fmt.Errorf("match region %q: %w", matcher.TargetName, err)
 		}
-		if _, exists := chainTargetNames[matcher.TargetName]; !exists {
+		if !matched {
 			continue
 		}
 		matches = append(matches, matcher.TargetName)
 	}
 
 	if len(matches) != 1 {
-		return "", false
+		return "", false, nil
 	}
 
-	return matches[0], true
+	targetName := matches[0]
+	if _, exists := chainTargetNames[targetName]; !exists {
+		return "", false, nil
+	}
+
+	return targetName, true, nil
 }
 
 func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
@@ -278,22 +274,237 @@ func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
 		return []ForwardRelay{}, nil
 	}
 
-	lines := strings.Split(stage1Input.ForwardRelayRawText, "\n")
+	lines := strings.Split(normalizeInputNewlines(stage1Input.ForwardRelayRawText), "\n")
 	seen := make(map[string]struct{})
 	relays := make([]ForwardRelay, 0, len(lines))
 	for _, line := range lines {
-		name := strings.TrimSpace(line)
-		if name == "" {
+		if line == "" {
 			continue
 		}
-		if _, exists := seen[name]; exists {
-			return nil, fmt.Errorf("duplicate forward relay %q", name)
+		relay, err := parseForwardRelayLine(line)
+		if err != nil {
+			return nil, err
 		}
-		seen[name] = struct{}{}
-		relays = append(relays, ForwardRelay{Name: name})
+		if _, exists := seen[relay.Name]; exists {
+			return nil, fmt.Errorf("duplicate forward relay %q", relay.Name)
+		}
+		seen[relay.Name] = struct{}{}
+		relays = append(relays, ForwardRelay{Name: relay.Name})
 	}
 
 	return relays, nil
+}
+
+func buildRestrictedModes(landing inlineProxy, availableModes []string) map[string]ModeRestriction {
+	if !containsString(availableModes, "chain") {
+		return nil
+	}
+	if landing.Type != "vless-reality" {
+		return nil
+	}
+	return map[string]ModeRestriction{
+		"chain": {
+			ReasonCode: "UNSUPPORTED_BY_LANDING_PROTOCOL",
+			ReasonText: "该落地节点当前不支持链式代理",
+		},
+	}
+}
+
+func filterRestrictedModes(availableModes []string, restrictedModes map[string]ModeRestriction) []string {
+	if len(restrictedModes) == 0 {
+		return availableModes
+	}
+	filtered := make([]string, 0, len(availableModes))
+	for _, mode := range availableModes {
+		if _, blocked := restrictedModes[mode]; blocked {
+			continue
+		}
+		filtered = append(filtered, mode)
+	}
+	return filtered
+}
+
+type parsedForwardRelay struct {
+	Name   string
+	Server string
+	Port   string
+}
+
+func parseForwardRelayLine(line string) (parsedForwardRelay, error) {
+	if line != strings.TrimSpace(line) {
+		return parsedForwardRelay{}, fmt.Errorf("invalid forward relay line %q", line)
+	}
+	if strings.Count(line, ":") != 1 {
+		return parsedForwardRelay{}, fmt.Errorf("invalid forward relay line %q", line)
+	}
+
+	server, portText, found := strings.Cut(line, ":")
+	if !found || server == "" || portText == "" {
+		return parsedForwardRelay{}, fmt.Errorf("invalid forward relay line %q", line)
+	}
+
+	normalizedServer, err := normalizeForwardRelayServer(server)
+	if err != nil {
+		return parsedForwardRelay{}, fmt.Errorf("invalid forward relay line %q", line)
+	}
+	normalizedPort, err := normalizeForwardRelayPort(portText)
+	if err != nil {
+		return parsedForwardRelay{}, fmt.Errorf("invalid forward relay line %q", line)
+	}
+
+	return parsedForwardRelay{
+		Name:   normalizedServer + ":" + normalizedPort,
+		Server: normalizedServer,
+		Port:   normalizedPort,
+	}, nil
+}
+
+func normalizeForwardRelayServer(server string) (string, error) {
+	if isStrictIPv4Literal(server) {
+		return server, nil
+	}
+	if isDigitsAndDots(server) {
+		return "", fmt.Errorf("invalid ipv4")
+	}
+	if !isValidASCIIHostname(server) {
+		return "", fmt.Errorf("invalid hostname")
+	}
+	return strings.ToLower(server), nil
+}
+
+func normalizeForwardRelayPort(portText string) (string, error) {
+	if portText == "" {
+		return "", fmt.Errorf("empty port")
+	}
+	for _, r := range portText {
+		if r < '0' || r > '9' {
+			return "", fmt.Errorf("invalid port")
+		}
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil || port < 1 || port > 65535 {
+		return "", fmt.Errorf("invalid port")
+	}
+	return strconv.Itoa(port), nil
+}
+
+func isStrictIPv4Literal(server string) bool {
+	if server == "" {
+		return false
+	}
+	for _, r := range server {
+		if (r < '0' || r > '9') && r != '.' {
+			return false
+		}
+	}
+	parts := strings.Split(server, ".")
+	if len(parts) != 4 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" {
+			return false
+		}
+		if len(part) > 1 && part[0] == '0' {
+			return false
+		}
+		value, err := strconv.Atoi(part)
+		if err != nil || value < 0 || value > 255 {
+			return false
+		}
+	}
+	return true
+}
+
+func isDigitsAndDots(server string) bool {
+	if server == "" {
+		return false
+	}
+	for _, r := range server {
+		if (r < '0' || r > '9') && r != '.' {
+			return false
+		}
+	}
+	return true
+}
+
+func isValidASCIIHostname(server string) bool {
+	if len(server) == 0 || len(server) > 253 || !strings.Contains(server, ".") {
+		return false
+	}
+	for i := 0; i < len(server); i++ {
+		if server[i] > 127 {
+			return false
+		}
+	}
+	labels := strings.Split(server, ".")
+	for _, label := range labels {
+		if len(label) == 0 || len(label) > 63 {
+			return false
+		}
+		if label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' {
+				continue
+			}
+			return false
+		}
+	}
+	return true
+}
+
+func loadRegionMatchers() ([]regionMatcher, error) {
+	return parseRegionMatchers(defaultRegionConfig)
+}
+
+func parseRegionMatchers(rawConfig string) ([]regionMatcher, error) {
+	scanner := bufio.NewScanner(strings.NewReader(normalizeInputNewlines(rawConfig)))
+	matchersByTarget := make(map[string]regionMatcher, len(defaultRegionGroupOrder))
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, ";") || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if !strings.HasPrefix(line, "custom_proxy_group=") {
+			continue
+		}
+
+		payload := strings.TrimPrefix(line, "custom_proxy_group=")
+		parts := strings.Split(payload, "`")
+		if len(parts) < 3 {
+			continue
+		}
+
+		targetName := parts[0]
+		if !isDefaultRegionGroup(targetName) || parts[1] != "url-test" {
+			continue
+		}
+
+		pattern, err := regexp2.Compile(parts[2], 0)
+		if err != nil {
+			return nil, fmt.Errorf("compile region matcher %q: %w", targetName, err)
+		}
+		matchersByTarget[targetName] = regionMatcher{
+			TargetName: targetName,
+			Pattern:    pattern,
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	matchers := make([]regionMatcher, 0, len(matchersByTarget))
+	for _, targetName := range defaultRegionGroupOrder {
+		matcher, ok := matchersByTarget[targetName]
+		if !ok {
+			continue
+		}
+		matchers = append(matchers, matcher)
+	}
+	return matchers, nil
 }
 
 func parseInlineProxyList(raw string) ([]inlineProxy, error) {
@@ -325,7 +536,7 @@ func parseInlineProxyList(raw string) ([]inlineProxy, error) {
 			}
 			proxies = append(proxies, inlineProxy{
 				Name: name,
-				Type: proxyType,
+				Type: classifyInlineProxyType(proxyType, trimmed),
 				Raw:  trimmed,
 			})
 		case inProxies && !strings.HasPrefix(line, " ") && strings.HasSuffix(trimmed, ":") && trimmed != "proxies:" && !strings.HasPrefix(trimmed, "-"):
@@ -343,6 +554,13 @@ func parseInlineProxyList(raw string) ([]inlineProxy, error) {
 	}
 
 	return proxies, nil
+}
+
+func classifyInlineProxyType(proxyType string, rawLine string) string {
+	if proxyType == "vless" && strings.Contains(rawLine, "reality-opts:") {
+		return "vless-reality"
+	}
+	return proxyType
 }
 
 func parseProxyGroups(raw string) (map[string]proxyGroup, error) {
@@ -455,4 +673,8 @@ func SortedChainTargetNames(targets []ChainTarget) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func normalizeInputNewlines(value string) string {
+	return strings.ReplaceAll(value, "\r\n", "\n")
 }
