@@ -35,7 +35,7 @@
 
 约束：
 
-- `forwardRelayRawText` 在未开启端口转发时可为空字符串
+- `forwardRelayRawText` 始终是字符串；`advancedOptions.enablePortForward = false` 时必须为 `""`，非空视为无效请求
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
 - `config`、`include`、`exclude` 都是字符串；可为空字符串
 - `config = ""` 表示本次转换不显式传 `config` 参数，并回落使用集成 `subconverter` 的默认本地配置
@@ -62,6 +62,7 @@
 约束：
 
 - `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
+- `rows` 以 `landingNodeName` 作为唯一定位键；数组顺序不承载语义
 - `rows` 在通过后端业务校验时，必须与当前转换得到的落地节点集合一一对应：每个落地节点恰好出现一次，不允许缺行、重复行或额外行
 - `landingNodeName` 在同一份快照中必须唯一
 - `mode` 只能是 `none`、`chain`、`port_forward`
@@ -233,7 +234,7 @@
 
 最小失败语义：
 
-- `400`：`INVALID_REQUEST`，`scope = global`
+- `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
 - `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`、`CHAIN_TARGET_NAME_CONFLICT`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`
 - `INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`：都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
@@ -316,7 +317,7 @@
 
 最小失败语义：
 
-- `400`：`INVALID_REQUEST`，`scope = global`
+- `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
 - `422`：`CHAIN_TARGET_NAME_CONFLICT`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`

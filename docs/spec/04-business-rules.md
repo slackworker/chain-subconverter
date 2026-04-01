@@ -83,6 +83,7 @@
 
 - `subconverter` 使用落地节点信息、中转节点信息、`config` 与其他 `subconverter` 配置参数
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
+- `advancedOptions.enablePortForward = false` 时，端口转发服务信息必须为空字符串，且不得参与解析、校验或候选生成
 
 ### 1.1.1 统一转换管线（权威口径）
 
@@ -216,8 +217,9 @@
 5. `chainTargets[]` 中只保留 `name` 与 `kind`；不得暴露 `regionId` 或其他当前前端不消费的元数据
 6. 默认模板 6 个区域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
 7. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
-8. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
-9. 若任一中转 `proxy.name` 与默认模板 6 个区域策略组中的任意一个重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+8. `kind` 只是前端分组展示辅助字段，不参与候选匹配、快照序列化或恢复定位
+9. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
+10. 若任一中转 `proxy.name` 与默认模板 6 个区域策略组中的任意一个重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
 
 ### 2.4 收集端口转发候选
 
@@ -308,6 +310,7 @@
 - `mode = none`：保持原样
 - `mode = chain`：第三列表示要写入的 `dialer-proxy`
 - `mode = port_forward`：第三列表示要应用的端口转发服务
+- `stage2Snapshot.rows` 的数组顺序不参与生成语义；生成校验、恢复判定与最终改写都只按 `landingNodeName` 匹配对应落地节点
 
 ### 3.2 生成前校验
 
