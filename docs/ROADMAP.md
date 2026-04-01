@@ -4,9 +4,10 @@
 
 ```mermaid
 flowchart LR
-    P1["Phase 1\nsubconverter 集成"] --> P2["Phase 2\n业务服务层收口"]
-    P2 --> P3["Phase 3\nAPI + Store + Config"]
-    P3 --> P4["Phase 4\n前端"]
+    P1["Phase 1\nsubconverter 集成"] --> P2["Phase 2\n最小业务闭环"]
+    P2 --> P25["Phase 2.5\n阶段性整理"]
+    P25 --> P3["Phase 3\n扩展业务与 API 收口"]
+    P3 --> P4["Phase 4\n前端与部署"]
 ```
 
 ## Phase 1：subconverter 集成层收口
@@ -26,44 +27,88 @@ flowchart LR
 - 已实现 3-pass client 与服务层适配入口（`ThreePassResult -> ConversionFixtures`）
 - 已补 mock/golden/smoke（opt-in）测试覆盖
 
-## Phase 2：业务服务层收口
+## Phase 2：最小业务闭环
 
-**目标**：消除 happy-path 原型与 spec 差距
-
-| 任务 | 优先级 |
-|------|--------|
-| 端口转发 `server:port` 严格校验 (`spec 1.1.2`) | P1 |
-| 区域识别改用配置文件正则 (`spec 2.6`) | P1 |
-| `vless-reality` 行级限制 (`spec 2.2`) | P1 |
-| `restrictedModes` + 错误模型收口 | P2 |
-| 输入边界校验（大小、URL 数量） | P2 |
-
-## Phase 3：API + 存储 + 配置
-
-**目标**：真实可运行后端
+**目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终 YAML”的最小业务流程（进行中）
 
 | 任务 | 说明 |
 |------|------|
-| `internal/api/` | Gin handlers: 5 个端点 |
+| 固定 `3-pass` happy path | 复用同一条转换管线，校验落地 / 中转 / full-base 三个 pass |
+| 默认 `stage2Init` | 对固定测试输入产出默认 `rows`、`availableModes`、`chainTargets[]` |
+| 规范 `longUrl` | 基于固定 `stage1Input + stage2Snapshot` 生成确定性长链接 |
+| 最终 YAML 渲染 | 通过 `GET /subscription?data=...` 或等价入口回放最终 YAML |
+| Golden 验收 | 对齐测试样例中的 request / response / payload / YAML 固定产物 |
+
+完成情况：
+
+- 已固定 `testdata/subconverter/3pass-ss2022-test-subscription/` 的最小完整流程样例
+- 已实现 `BuildStage2Init`
+- 已实现基于仓库内置 `default_region_config.ini` 的区域正则识别
+- 已实现生成前快照校验、规范长链接编码与最终 YAML 渲染
+- 已具备以 golden 回放最小 happy path 的能力
+
+验收口径：
+
+- 输入与默认参数以 `docs/testing/3pass-ss2022-test-subscription.md` 为准
+- `POST /api/stage1/convert` 的固定请求应得到与 `stage1-convert.response.json` 一致的结果
+- `POST /api/generate` 的固定请求应得到与 `generate.response.json` 一致的 `longUrl`
+- `longUrl` 解码前逻辑载荷应与 `long-url.payload.json` 一致
+- 最终订阅渲染结果应与 `complete-config.chain.yaml` 一致
+
+明确不纳入本阶段：
+
+- 短链接与 SQLite 存储
+- `resolve-url` 恢复判定与 `restoreStatus` 语义
+- 完整 `messages[]` / `blockingErrors[]` / HTTP 失败语义收口
+- 端口转发完整业务面与更多可选配置组合
+- 前端 UI、页面恢复交互与部署编排
+
+## Phase 2.5：阶段性整理
+
+**目标**：在最小业务闭环完成后，先做一次收口整理，再继续扩展其他业务与前端
+
+| 任务 | 说明 |
+|------|------|
+| 文档收口 | 把阶段目标、验收基线、非目标与后续边界写清楚 |
+| 结构整理 | 清理最小闭环阶段产生的临时命名、重复逻辑与职责漂移 |
+| 边界确认 | 重新确认服务层、API 层与测试夹具之间的职责边界 |
+| 下一阶段盘点 | 为扩展业务、前端与部署准备更稳定的起点 |
+
+## Phase 3：扩展业务与 API 收口
+
+**目标**：在最小闭环稳定后，补齐完整后端业务面与对外契约（未开始）
+
+| 任务 | 说明 |
+|------|------|
+| `internal/api/` | `stage1/convert`、`generate`、`resolve-url`、`short-links`、`subscription` 端点 |
+| 失败语义收口 | `messages[]`、`blockingErrors[]`、HTTP 状态码与字段级错误映射 |
+| `resolve-url` | 恢复可重放判定与 `restoreStatus` 冲突语义 |
 | `internal/store/` | SQLite 短链接索引（幂等 + LRU 淘汰） |
-| `internal/config/` | 可配置限制项 |
-| `cmd/server/` | 依赖装配与启动 |
-| `deploy/` | Docker Compose（app + subconverter） |
+| `internal/config/` | 应用层限制项：输入大小、URL 数量、长链接长度、短链容量 |
 
-## Phase 4：前端
+当前状态：
 
-**目标**：前端落地
+- `cmd/server/main.go` 已有最小配置加载与 `subconverter client` 装配
+- `internal/api/`、`internal/store/` 仍只有包占位
+- 当前尚未进入完整 API 契约与短链能力实现阶段
+
+## Phase 4：前端与部署
+
+**目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（尚未开始）
 
 | 任务 | 说明 |
 |------|------|
 | 初始化 Vite + React + TS | `web/` 目录 |
 | 三阶段 UI | 输入区、配置区、输出区 |
-| 对接 API | 消费后端 `stage2Init` |
+| 对接 API | 消费后端完整对外契约 |
+| `cmd/server/` | HTTP 启动、路由注册与运行形态收口 |
+| `deploy/` | Docker Compose（app + subconverter） |
 
 ## 推荐下一步
 
 按最小增量推进：
 
-1. 收口 `internal/service` 的 spec 差距：端口转发校验、区域识别来源、`restrictedModes`
-2. 落地 `internal/api`，把 happy-path 原型接成真实 API
-3. 推进 `internal/store` + `resolve-url/short-url`，形成可运行闭环
+1. 先完成 `Phase 2` 的最小业务闭环，并以固定测试样例作为唯一主验收基线
+2. 紧接着执行 `Phase 2.5` 的阶段性整理，收口文档、结构与职责边界
+3. 之后再进入 `Phase 3`，补齐恢复、短链、失败语义与完整 API 契约
+4. 最后推进前端与部署，形成可运行的端到端路径
