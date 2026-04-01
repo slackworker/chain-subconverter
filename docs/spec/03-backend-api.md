@@ -67,6 +67,8 @@
 - `landingNodeName` 在同一份快照中必须唯一
 - `mode` 只能是 `none`、`chain`、`port_forward`
 - `mode = none` 时，`targetName` 必须为空或 `null`
+- `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
+- `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`
 
 ### 3. 阶段 2 初始化数据
 
@@ -81,7 +83,7 @@
       { "name": "Transit A", "kind": "proxy" }
     ],
     "forwardRelays": [
-      { "name": "relay-1", "server": "relay.example.com", "port": 1080 }
+      { "name": "relay.example.com:1080" }
     ],
     "rows": [
       {
@@ -99,8 +101,11 @@
 字段说明：
 
 - `landingNodes[]`：阶段 2 第一列的原始来源
+- `landingNodes[].type`：落地节点协议类型
 - `chainTargets[]`：阶段 2 第三列在 `mode = chain` 时的候选列表
+- `chainTargets[].kind`：链式候选类别；当前只允许 `region_group` 或 `proxy`
 - `forwardRelays[]`：阶段 2 第三列在 `mode = port_forward` 时的候选列表
+- `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
 
 ### 4. 消息与错误模型
@@ -201,7 +206,7 @@
       { "name": "Transit A", "kind": "proxy" }
     ],
     "forwardRelays": [
-      { "name": "relay-1", "server": "relay.example.com", "port": 1080 }
+      { "name": "relay.example.com:1080" }
     ],
     "rows": [
       {

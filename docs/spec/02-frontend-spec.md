@@ -115,7 +115,7 @@
 | `landingNodeName` | string | 本行对应的落地节点名称 |
 | `allowedModes` | `mode[]` | 本行第二列允许展示的模式列表 |
 | `mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
-| `targetName` | `string \| null` | 第三列当前值 |
+| `targetName` | `string \| null` | 第三列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 
 ### 2.2 整体布局
 
@@ -141,7 +141,7 @@
 
 - 当 `mode = none` 时，第三列清空并禁用
 - 当 `mode = chain` 时，第三列展示链式候选列表
-- 当 `mode = port_forward` 时，第三列展示端口转发服务列表
+- 当 `mode = port_forward` 时，第三列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`
 - 前端不自行推导候选列表，不自行重做自动识别；只消费后端产物
 
 ### 2.6 生成链接按钮

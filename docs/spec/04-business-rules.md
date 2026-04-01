@@ -125,6 +125,7 @@
 - 不做自动纠错；非空行若包含首尾空白、缺失 `:`、端口非数字或越界，都视为非法行
 - 本规则只做语法校验；不做 DNS 解析、可达性校验；私网、环回与其他保留 IPv4 地址不因地址类型额外判错
 - 非法行报错；重复行报错。重复判定时，hostname 必须按 ASCII 小写归一化后与 `port` 一起比较；IPv4 按原值与 `port` 一起比较
+- 每条合法服务都必须生成唯一的规范化字面量 `server:port`：hostname 一律转为 ASCII 小写，IPv4 保持原值，`port` 一律转为无前导 `0` 的十进制字符串
 - 只要存在任一报错，阶段 1 视为失败，不产出 `stage2Init.forwardRelays[]`
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 
@@ -210,6 +211,7 @@
 ### 2.4 收集端口转发候选
 
 - 从阶段 1 录入并校验通过的端口转发服务信息中收集 `forwardRelays[]`
+- `forwardRelays[].name` 必须等于该服务的规范化 `server:port` 字面量
 - 保留用户输入顺序
 - 当端口转发功能未开启时，`forwardRelays[]` 为空
 
@@ -243,7 +245,8 @@
 #### 当 `mode = port_forward`
 
 - 本规则同时适用于“初始化直接落到 `port_forward`”和“用户后续手动切换到 `port_forward`”
-- 若 `forwardRelays[]` 中仅有 1 个服务，则 `targetName` 自动填写该服务
+- `targetName` 必须保存所选 `forwardRelays[].name`，不得另造别名
+- 若 `forwardRelays[]` 中仅有 1 个服务，则 `targetName` 自动填写该服务的 `name`
 - 若 `forwardRelays[]` 中有多个服务，则 `targetName = null`，并保留完整 `forwardRelays[]` 供用户手动选择
 
 #### 初始化决策表
@@ -322,6 +325,7 @@
 - 上游订阅内容变化本身不是失败条件；只有变化导致恢复快照中的引用失效，才构成不可重放
 - 若 `targetName` 引用的是区域策略组，只要该区域策略组在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
 - 若 `targetName` 引用的是单个 proxy，则该 proxy 名称必须仍存在于当前候选集合中，否则视为引用失效
+- 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `landingNodeName` 在当前转换结果中已不存在、被重命名或无法唯一对应，则视为引用失效
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
 
@@ -342,7 +346,7 @@
 
 - 改写基础必须是订阅渲染阶段本次重新生成的 `baseCompleteConfig`
 - 按 `landingNodeName` 定位落地节点
-- 当 `mode = port_forward` 时，用选中的端口转发服务替换该落地节点的 `server` 与 `port`
+- 当 `mode = port_forward` 时，将 `targetName` 按规范化 `server:port` 重新解析为 `server` 与 `port`，再用其替换该落地节点的 `server` 与 `port`
 - 仅替换 `server` 与 `port`，不联动修改其他字段
 
 ### 3.5 协议限制
