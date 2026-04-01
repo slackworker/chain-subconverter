@@ -63,9 +63,6 @@
 - `landing-discovery.yaml`
 - `transit-discovery.yaml`
 - `full-base.yaml`
-- `landing-discovery.no-config.yaml`
-- `transit-discovery.no-config.yaml`
-- `full-base.no-config.yaml`
 
 ## 使用建议
 
