@@ -48,7 +48,7 @@
 - `target=clash`
 - `emoji=true`
 - `udp=true`
-- 不传 `skip_cert_verify`
+- 不传 `scv`
 - 不传 `include`
 - 不传 `exclude`
 - 不传 `config`；默认回落到集成 `subconverter` 的 `base/config/Aethersailor_Custom_Clash.ini`

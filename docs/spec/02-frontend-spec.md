@@ -82,7 +82,7 @@
 |------|------|--------|------|
 | Emoji | checkbox | 勾选 | 控制是否传 `emoji=true` |
 | 启用 UDP | checkbox | 勾选 | 控制是否传 `udp=true` |
-| 跳过证书验证 | checkbox | 不勾选 | 控制是否传 `skip_cert_verify=true` |
+| 跳过证书验证 | checkbox | 不勾选 | 控制是否传 `scv=true` |
 | `config` | text | 空 | 留空时使用集成 `subconverter` 的默认本地配置；允许自定义 |
 | `include` | text | 空 | 非空时参与转换 |
 | `exclude` | text | 空 | 非空时参与转换 |

@@ -136,7 +136,7 @@ func (client *Client) buildRawQuery(request Request, rawInput string, list bool)
 		params = append(params, "udp=true")
 	}
 	if request.Options.SkipCertVerify {
-		params = append(params, "skip_cert_verify=true")
+		params = append(params, "scv=true")
 	}
 	params = append(params, "expand=false")
 	params = append(params, "classic=true")

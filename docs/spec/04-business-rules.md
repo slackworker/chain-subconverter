@@ -60,10 +60,10 @@
 
 补充规则：
 
-- 前端展示的 `scv` 对应上游参数 `skip_cert_verify`
+- “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
 - `config` 的默认行为为：留空时不传 `config` 参数，并由集成的 `subconverter` 回落使用其目录下的 `base/config/Aethersailor_Custom_Clash.ini`
 - 若用户显式填写 `config`，则三个 pass 都按该值透传，允许使用其他本地或远程配置文件
-- 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`skip_cert_verify`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
+- 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
 ---

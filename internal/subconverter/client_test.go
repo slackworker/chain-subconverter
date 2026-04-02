@@ -124,8 +124,8 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	}
 
 	firstQuery := got[0].Query()
-	if firstQuery.Get("skip_cert_verify") != "true" {
-		t.Fatalf("skip_cert_verify mismatch: got %q", firstQuery.Get("skip_cert_verify"))
+	if firstQuery.Get("scv") != "true" {
+		t.Fatalf("scv mismatch: got %q", firstQuery.Get("scv"))
 	}
 	if firstQuery.Get("config") != "http://config.example/acl.ini" {
 		t.Fatalf("config mismatch: got %q", firstQuery.Get("config"))
