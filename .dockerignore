@@ -1,0 +1,10 @@
+.git
+.github
+.tmp
+.cursor
+agent-transcripts
+bin
+logs
+node_modules
+web/dist
+_legacy

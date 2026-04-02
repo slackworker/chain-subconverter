@@ -65,6 +65,7 @@
 - `app` 必须声明对 `subconverter` 的启动依赖与健康检查依赖
 - SQLite 文件必须通过卷挂载持久化，避免容器重建导致短链接索引丢失
 - 默认部署不要求额外引入 `nginx`、Redis、消息队列或外部数据库
+- 在完整 `Phase 4` 交付前，可提前提供仅包含 `app + subconverter` 的 API-only Compose 作为本地验证路径；该路径不代表前端、SQLite 与正式单入口部署已完成
 
 ## 7. `subconverter` 集成与更新策略
 

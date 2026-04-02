@@ -8,9 +8,9 @@
 
 - `Phase 1` 已完成：`subconverter` 真实 `3-pass` 集成已落地
 - `Phase 2` 已完成（最小范围）：固定测试数据与默认值下，服务层能产出 `stage2Init`、编码 `longUrl`、渲染最终 YAML，且已通过最小 HTTP 层对外暴露上述闭环（见下文「已完成」）
-- `Phase 2.5` 尚未开始：文档、职责边界与非目标范围的阶段性整理仍待进行
+- `Phase 2.5` 已开始：已补 API-only Compose 最小部署里程碑，并开始收口部署边界与相关文档；结构整理仍待继续
 - `Phase 3` 尚未开始：完整 API 契约、恢复、短链、失败语义与配置化限制均已后移
-- `Phase 4` 尚未开始：前端与部署继续后置
+- `Phase 4` 尚未开始：前端、SQLite 持久化与完整单入口部署继续后置
 
 ## Phase 进度
 
@@ -19,7 +19,7 @@
 | Phase 0 — 骨架 | 目录、Go module、旧代码归档 | ✅ 完成 |
 | Phase 1 — subconverter 集成 | 真实 `3-pass` HTTP 管线 | ✅ 完成 |
 | Phase 2 — 最小业务闭环 | 固定测试数据下的 `stage2Init`、`longUrl`、最终 YAML + 最小 HTTP | ✅ 完成 |
-| Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | ⛔ 未开始 |
+| Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | 🚧 进行中 |
 | Phase 3 — 扩展业务与 API 收口 | 恢复、短链、失败语义、完整 API 契约 | ⛔ 未开始 |
 | Phase 4 — 前端与部署 | React + TS UI、运行形态、Compose | ⛔ 未开始 |
 
@@ -52,9 +52,19 @@
 ### Phase 2：最小 HTTP 对外层（与 ROADMAP「Phase 2 明确不纳入」之外的最小增量）
 
 - `internal/api` 已实现最小路由：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription?data=...`，薄封装 `internal/service` 中基于 `ConversionSource` 的 `*FromSource` 入口
+- `internal/api` 已新增 `GET /healthz`，供 Compose 与本地 smoke 验证使用
 - `internal/config/server.go` 提供服务器侧配置：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`、`CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH`（及默认值）
 - `cmd/server/main.go` 加载 subconverter 与 server 配置、创建 `subconverter.Client`、装配 `api.Handler` 并 `ListenAndServe` 启动 HTTP 服务
 - `internal/api/server_test.go` 基于 `testdata/subconverter/3pass-ss2022-test-subscription` 的 golden 测试，覆盖上述三端点的 happy path 与订阅响应头
+
+### Phase 2.5：API-only Compose 最小部署里程碑
+
+- 已新增仓库根 `Dockerfile`，用于构建当前 Go 服务镜像
+- 已新增 `deploy/docker-compose.yml`，编排 `app + subconverter` 最小运行栈
+- Compose 当前只暴露 `app:11200`；`subconverter` 保持内部可达
+- `deploy/smoke/3pass-ss2022-test-subscription/` 提供本地 smoke 验证用的中转订阅样例、原文文件与同步脚本
+- 已在本地通过真实容器链路验证：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription?data=...`
+- 真实 smoke 验证当前仍可显式依赖本地托管的 `_legacy/templates/default/Custom_Clash.ini`，但该路径已被明确标记为兼容性 workaround，而非默认基线
 
 ### 测试基线
 
@@ -74,7 +84,7 @@
 
 ### Phase 2.5 / Phase 3
 
-- `Phase 2.5` 的整理工作尚未开始，包括文档收口、职责边界复核与临时结构清理
+- `Phase 2.5` 已进入进行中：已先落地 API-only Compose 最小部署与相关文档收口；职责边界复核与临时结构清理仍待继续
 - `internal/api` 仅有上述最小端点；`POST /api/resolve-url`、`POST /api/short-links`、短链语义、`GET /subscription/<id>.yaml` 等仍属 Phase 3
 - `internal/store` 仍只有包占位，未实现 SQLite 短链接索引与 LRU 淘汰
 - 应用层配置尚未覆盖阶段 1 输入总大小、每字段 URL 数量、短链容量等（长链接长度上限已通过 `CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH` 部分可配置）
@@ -82,9 +92,12 @@
 ### Phase 4 与部署
 
 - `web/` 仍未初始化前端工程
-- `deploy/` 目录当前只有说明文档，尚未提交实际 `docker-compose.yml`
+- 已具备 **API-only** 的最小 Compose 路径，但这不等同于完整 `Phase 4`
+- 仍未实现：前端静态资源接入、SQLite 持久化、正式单入口 Web UI、完整部署运维收口
 
 ## 验证
 
 - `go test ./...`：2026-04-02 全量通过
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
+- `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
+- 真实容器 smoke：已跑通 `app + subconverter`，并通过本地静态文件服务托管中转订阅样例与模板完成 3 个现有 API 验证

@@ -1,0 +1,33 @@
+services:
+  subconverter:
+    image: ${CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE:-ghcr.io/slackworker/subconverter:integration-chain-subconverter}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:25500/version || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      subconverter:
+        condition: service_healthy
+    environment:
+      CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
+      CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: http://localhost:11200
+      CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
+    ports:
+      - "11200:11200"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:11200/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

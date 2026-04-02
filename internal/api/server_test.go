@@ -136,6 +136,24 @@ func TestSubscriptionHandler_DownloadDisposition(t *testing.T) {
 	}
 }
 
+func TestHealthzHandler(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{})
+
+	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Fatalf("content-type mismatch: got %q want %q", got, "text/plain; charset=utf-8")
+	}
+	if got := recorder.Body.String(); got != "ok\n" {
+		t.Fatalf("body mismatch: got %q want %q", got, "ok\n")
+	}
+}
+
 func mustNewTestHandler(t *testing.T, source service.ConversionSource) *Handler {
 	t.Helper()
 

@@ -42,6 +42,7 @@ func NewHandler(source service.ConversionSource, publicBaseURL string, maxLongUR
 	mux.HandleFunc("POST /api/stage1/convert", handler.handleStage1Convert)
 	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
 	mux.HandleFunc("GET /subscription", handler.handleSubscription)
+	mux.HandleFunc("GET /healthz", handler.handleHealthz)
 	handler.mux = mux
 
 	return handler, nil
@@ -126,6 +127,12 @@ func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *
 	writer.Header().Set("Content-Disposition", dispositionType+`; filename="subscription.yaml"`)
 	writer.WriteHeader(http.StatusOK)
 	_, _ = writer.Write([]byte(renderedConfig))
+}
+
+func (handler *Handler) handleHealthz(writer http.ResponseWriter, _ *http.Request) {
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	writer.WriteHeader(http.StatusOK)
+	_, _ = writer.Write([]byte("ok\n"))
 }
 
 func decodeJSONBody(request *http.Request, target any) error {

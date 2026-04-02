@@ -9,6 +9,7 @@
 - 当前 spec 定义的所有对外 HTTP 端点都不需要鉴权
 - 服务端不得要求登录态、`Authorization` 头、API Key、签名或其他认证凭据作为调用前提
 - `POST /api/*`、`GET /subscription/<id>.yaml` 与 `GET /subscription?data=...` 都按匿名请求处理
+- 可额外暴露 `GET /healthz` 作为部署侧健康检查端点；该端点只用于存活/就绪探测，不承载业务契约，也不改变本文对 `/api/*` 与 `/subscription*` 的定义范围
 
 ## 通用数据模型
 

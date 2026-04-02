@@ -57,6 +57,24 @@
 - `forwardRelayRawText=""`
 - `enablePortForward=false`
 
+## 与 `deploy/`、`testdata/` 的关系
+
+本用例的三类材料职责如下：
+
+- `docs/testing/3pass-ss2022-test-subscription.md`
+  - 当前默认基线的权威说明
+- `testdata/subconverter/3pass-ss2022-test-subscription/`
+  - 机器可读的 request / response / payload / YAML golden
+- `deploy/README.md`
+  - 手工部署与 smoke 验证入口
+- `deploy/smoke/3pass-ss2022-test-subscription/`
+  - 仅承载手工 smoke 所需的中转订阅样例与同步脚本
+
+补充说明：
+
+- 本文档描述的默认基线仍然是：`config=""`，即不显式向 `subconverter` 传 `config`
+- 若 `deploy/README.md` 中某条真实容器 smoke 命令显式传入 `_legacy/templates/default/Custom_Clash.ini`，那是为了对齐当前镜像产物的兼容性 workaround，不属于本用例默认参数
+
 ## 当前默认业务推导
 
 基于当前 3-pass 基线与默认模板规则，这条最小 happy path 当前固定为：
@@ -199,3 +217,4 @@
 - 该用例通常不受外部上游变化影响；若内容发生变化，应视为本地测试数据或测试部署被有意调整。
 - 若后续需要更新此用例，应保留同一组输入与默认参数不变，并同步更新 3 份 pass 结果、业务快照与相关说明。
 - 若未来 spec 调整了 `subconverter` 默认参数或 `url` 拼接规则，应先更新 spec，再更新本用例。
+- 手工 smoke 若需调整中转订阅内容，应编辑 `deploy/smoke/3pass-ss2022-test-subscription/transit.subscription.raw.txt`，再同步生成 `transit.subscription.b64.txt`；不要直接手改自动化测试目录中的 golden 文件来模拟部署输入。
