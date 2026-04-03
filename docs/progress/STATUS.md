@@ -10,7 +10,7 @@
 
 - `Phase 1` 已完成：`subconverter` 真实 `3-pass` 集成已落地
 - `Phase 2` 已完成（最小范围）：固定测试数据与默认值下，服务层能产出 `stage2Init`、编码 `longUrl`、渲染最终 YAML，且已通过最小 HTTP 层对外暴露上述闭环（见下文「已完成」）
-- `Phase 2.5` 已完成本轮收口：文档与根 README 已与实现对齐；分层职责已写在包注释与本文；`ROADMAP` / `STATUS` / `spec/05-tech-stack` 已标明「最小闭环 vs 目标栈」；Phase 3 入口范围见下文「Phase 3 入口范围与非目标」
+- `Phase 2.5` 仍在进行中：文档与根 README 已跟进实现对齐；分层职责已写在包注释与本文；`ROADMAP` / `STATUS` / `spec/05-tech-stack` 已标明「最小闭环 vs 目标栈」；后续工作继续推进
 - `Phase 3` 尚未开始：完整 API 契约、恢复、短链、失败语义与配置化限制均已后移
 - `Phase 4` 尚未开始：前端、SQLite 持久化与完整单入口部署继续后置
 
@@ -21,7 +21,7 @@
 | Phase 0 — 骨架 | 目录、Go module、旧代码归档 | ✅ 完成 |
 | Phase 1 — subconverter 集成 | 真实 `3-pass` HTTP 管线 | ✅ 完成 |
 | Phase 2 — 最小业务闭环 | 固定测试数据下的 `stage2Init`、`longUrl`、最终 YAML + 最小 HTTP | ✅ 完成 |
-| Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | ✅ 完成（本轮） |
+| Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | 🔄 进行中 |
 | Phase 3 — 扩展业务与 API 收口 | 恢复、短链、失败语义、完整 API 契约 | ⛔ 未开始 |
 | Phase 4 — 前端与部署 | React + TS UI、运行形态、Compose | ⛔ 未开始 |
 
@@ -104,7 +104,7 @@
 - 已在本地通过真实容器链路验证：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription?data=...`
 - 真实 smoke 验证当前仍可显式依赖本地托管的 `_legacy/templates/default/Custom_Clash.ini`，但该路径已被明确标记为兼容性 workaround，而非默认基线
 
-### Phase 2.5：文档与结构收口（本轮）
+### Phase 2.5：文档与结构收口（持续推进）
 
 - 根 `README.md` 与 `docs/ROADMAP.md` 已与「标准库 HTTP、store/web 占位、Phase 划分」对齐
 - `docs/spec/05-tech-stack.md` 已增加「实现现状与 spec 目标」小节

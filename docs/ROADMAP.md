@@ -125,6 +125,6 @@ Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md
 按最小增量推进：
 
 1. `Phase 2` 已完成；固定测试样例见 `docs/testing/3pass-ss2022-test-subscription.md` 与 `testdata/subconverter/3pass-ss2022-test-subscription/`
-2. 在 `Phase 2.5` 完成文档、结构与职责边界收口；API-only Compose 已作为最小部署验证提前落地
+2. `Phase 2.5` 仍在进行中，继续推进文档、结构与职责边界收口；API-only Compose 已作为最小部署验证提前落地
 3. 之后进入 `Phase 3`，补齐恢复、短链、失败语义与完整 API 契约
 4. 最后推进前端与完整部署，形成正式的端到端路径
