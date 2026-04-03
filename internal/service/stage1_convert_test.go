@@ -173,6 +173,56 @@ func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T
 	}
 }
 
+func TestBuildStage2Init_DoesNotCountLandingNodeAsRegionMember(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		ConversionFixtures{
+			LandingDiscoveryYAML: "proxies:\n- {name: Unknown Landing, type: ss}\n",
+			TransitDiscoveryYAML: "proxies:\n",
+			FullBaseYAML: strings.Join([]string{
+				"proxies:",
+				"- {name: Unknown Landing, type: ss, server: landing.example.com, port: 443}",
+				"proxy-groups:",
+				"  - name: 🇭🇰 香港节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - DIRECT",
+				"  - name: 🇺🇸 美国节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - Unknown Landing",
+				"  - name: 🇯🇵 日本节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - DIRECT",
+				"  - name: 🇸🇬 新加坡节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - DIRECT",
+				"  - name: 🇼🇸 台湾节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - DIRECT",
+				"  - name: 🇰🇷 韩国节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - DIRECT",
+				"",
+			}, "\n"),
+		},
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	if got, want := stage2Init.AvailableModes, []string{"none"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
+	}
+	if len(stage2Init.ChainTargets) != 0 {
+		t.Fatalf("ChainTargets should be empty when region group only contains landing node, got %v", stage2Init.ChainTargets)
+	}
+}
+
 func TestParseForwardRelays_NormalizesAndRejectsDuplicates(t *testing.T) {
 	_, err := parseForwardRelays(Stage1Input{
 		AdvancedOptions: AdvancedOptions{
