@@ -1,0 +1,134 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Manual Smoke: Minimal 3pass Flow",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Manual Smoke: Start Static Server",
+        "Manual Smoke: Compose Up",
+        "Manual Smoke: Stage1",
+        "Manual Smoke: Generate",
+        "Manual Smoke: Subscription"
+      ]
+    },
+    {
+      "label": "Manual Smoke: Sync Transit Subscription",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "deploy/smoke/3pass-ss2022-test-subscription/sync-subscription.sh"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Manual Smoke: Start Static Server",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "deploy/smoke/3pass-ss2022-test-subscription/manual-smoke.sh",
+        "static-server"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": ".+"
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "endsPattern": "Serving HTTP on"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "runOptions": {
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Manual Smoke: Compose Up",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "deploy/smoke/3pass-ss2022-test-subscription/manual-smoke.sh",
+        "compose-up"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Manual Smoke: Stage1",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "deploy/smoke/3pass-ss2022-test-subscription/manual-smoke.sh",
+        "stage1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Manual Smoke: Generate",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "deploy/smoke/3pass-ss2022-test-subscription/manual-smoke.sh",
+        "generate"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Manual Smoke: Subscription",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "deploy/smoke/3pass-ss2022-test-subscription/manual-smoke.sh",
+        "subscription"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    }
+  ]
+}

@@ -35,7 +35,8 @@ venv/
 # IDE & OS
 # =====================
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 *.DS_Store
 *.suo
 *.ntvs*

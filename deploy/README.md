@@ -81,6 +81,50 @@ docker compose -f deploy/docker-compose.yml up --build -d
   - 保留给 `subconverter` 仓库 `master` 分支
   - 不作为当前集成默认值
 
+## VS Code 手动测试
+
+手测主入口改为仓库内的 VS Code task：`.vscode/tasks.json`。
+
+推荐运行顺序：
+
+1. 直接执行 `Manual Smoke: Minimal 3pass Flow`
+2. 如需只看单步结果，分别执行 `Manual Smoke: Stage1`、`Manual Smoke: Generate`、`Manual Smoke: Subscription`
+3. 如修改了中转样例原文，先执行 `Manual Smoke: Sync Transit Subscription`
+
+任务行为：
+
+- `Manual Smoke: Start Static Server`
+  - 在仓库根目录启动或复用 `python3 -m http.server 3001 --directory .`
+- `Manual Smoke: Compose Up`
+  - 复用 `deploy/docker-compose.yml` 启动或更新 API-only 环境，并等待 `GET /healthz` 就绪
+- `Manual Smoke: Stage1`
+  - 调用 `POST /api/stage1/convert`
+  - 输出 `.tmp/manual-smoke/stage1-response.json`
+- `Manual Smoke: Generate`
+  - 调用 `POST /api/generate`
+  - 输出 `.tmp/manual-smoke/generate-response.json`
+- `Manual Smoke: Subscription`
+  - 从 `generate-response.json` 读取 `longUrl` 后调用 `GET /subscription`
+  - 输出 `.tmp/manual-smoke/subscription.yaml`
+
+输出约定：
+
+- 所有中间文件与结果文件只写入 `.tmp/manual-smoke/`
+- 成功后终端会提示人工比对目标：`testdata/subconverter/3pass-ss2022-test-subscription/complete-config.chain.yaml`
+- 这些任务不会改写 `testdata/` 下任何自动化测试 golden
+
+可编辑输入边界：
+
+- 默认中转输入来自 `deploy/smoke/3pass-ss2022-test-subscription/transit.subscription.b64.txt`
+- 如需修改中转内容，只编辑 `deploy/smoke/3pass-ss2022-test-subscription/transit.subscription.raw.txt`
+- 修改后执行 `Manual Smoke: Sync Transit Subscription`，再重新运行手测 task
+
+说明：
+
+- 任务脚本位于 `deploy/smoke/3pass-ss2022-test-subscription/manual-smoke.sh`
+- 任务只编排现有正式 API：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription`、`GET /healthz`
+- 不新增任何手测专用后端接口
+
 ## 手工 Smoke 前置
 
 先在仓库根目录启动一个只读静态文件服务：
