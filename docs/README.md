@@ -28,23 +28,12 @@
 |------|------|
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 
-## 历史参考
+## 历史文档（非权威）
 
-### 旧 Spec（Legacy Spec）
+> 仅供历史追溯，**不可作为当前开发与评审依据**。
+>
+> 当前权威口径见 [docs/spec/](spec/)。
 
-**[docs/legacy/](legacy/)** — 之前的 spec-driven 重构构想（历史参考）。
-
-| 文档 | 说明 |
-|------|------|
-| [legacy/01-overview](legacy/01-overview.md) | 项目目标、范围 |
-| [legacy/02-generate-complete-config](legacy/02-generate-complete-config.md) | 生成完整配置 |
-| [legacy/03-modify-config](legacy/03-modify-config.md) | 修改完整配置 |
-| [legacy/04-output-and-api](legacy/04-output-and-api.md) | 输出与 API 契约 |
-| [legacy/05-review](legacy/05-review.md) | Review 结论 |
-
-### 最老相关文档（Archive）
-
-| 文档 | 说明 |
-|------|------|
-| [archive/Design-Review-Legacy](archive/Design-Review-Legacy.md) | 旧版架构与设计评审 |
-| [archive/SSRF-Protection-Legacy](archive/SSRF-Protection-Legacy.md) | 旧版 SSRF 防护说明 |
+- Legacy 索引：[legacy/README](legacy/README.md)
+- Archive 索引：[archive/README](archive/README.md)
+- 迁移映射：[REFERENCES](REFERENCES.md)

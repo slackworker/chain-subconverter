@@ -41,20 +41,11 @@
 
 ## Phase 3 入口范围与非目标
 
-**计划纳入 Phase 3（与 [ROADMAP](../ROADMAP.md) 一致）**
+Phase 3 的计划范围与非目标以 [ROADMAP](../ROADMAP.md) 为准；本节仅保留“当前尚未落地”的实现快照：
 
-- `POST /api/resolve-url`、恢复可重放与 `restoreStatus` 冲突语义
-- `POST /api/short-links`、`GET /subscription/<id>.yaml`（或等价短链订阅形态，以 spec 为准）
-- `internal/store`：SQLite 短链索引（幂等 + LRU）
-- 失败语义与 HTTP 收口：`messages[]`、`blockingErrors[]`、字段级错误与状态码对齐 [03-backend-api](../spec/03-backend-api.md)
-- `internal/config` 扩展：阶段 1 输入总大小、每字段 URL 数量、短链容量等限制项
-- HTTP 层按 [spec/05-tech-stack](../spec/05-tech-stack.md) 收敛到 Gin（与上述契约同一阶段推进，避免重复迁移）
-
-**明确非 Phase 3 目标（避免越阶段扩张）**
-
-- 前端 UI、三阶段页面状态与静态资源由后端同端口提供（**Phase 4**）
-- 完整 Compose 单入口、前端构建物接入、运维形态（**Phase 4**）
-- 将 Phase 2 golden 用例扩展为覆盖所有错误码与边界组合（可在 Phase 3 新增并列用例，而非强行并入单条 golden）
+- `POST /api/resolve-url`、`POST /api/short-links`、`GET /subscription/<id>.yaml` 仍未实现
+- `internal/store` 仍为占位，SQLite 短链索引与 LRU 未落地
+- HTTP 层仍为标准库 `net/http`，尚未按目标栈收敛到 Gin
 
 ## 结构盘点（Phase 2.5）
 
@@ -63,60 +54,15 @@
 
 ## 已完成
 
-### 基础工程
+当前已完成的里程碑维持不变（Phase 0-2 完成，Phase 2.5 进行中），此处仅保留摘要：
 
-- Go module 与目录骨架已建立
-- `internal/api`、`internal/config`、`internal/store`、`internal/subconverter`、`internal/service` 包路径已固定
-- 旧实现已归档至 `_legacy/`
+- 3-pass 集成、最小业务闭环、最小 HTTP 对外层已落地
+- API-only Compose 与 smoke 验证路径已落地
+- 文档边界收口已启动并持续推进中
 
-### Phase 1：subconverter 集成
+详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
-- `internal/config` 已提供最小运行时配置：`baseURL`、`timeout`、`maxInFlight`，并支持环境变量覆盖
-- `internal/subconverter` 已实现真实 `3-pass` HTTP `Client`，包含 URL 构造、参数透传与统一调用入口
-- 已落实超时与并发上限控制，达到上限立即失败，不排队
-- 超时、连接失败、非成功 HTTP、不可解析结果等已统一映射到不可用类错误
-- `internal/service/conversion_source.go` 已能把真实 `3-pass` 结果适配为服务层消费的 `ConversionFixtures`
-
-### Phase 2：最小业务闭环
-
-- 已能从固定 `3-pass` 结果推导 `stage2Init`
-- 已实现链式候选与端口转发候选收集
-- 已实现 `vless-reality` 的 `restrictedModes.chain`
-- 已实现生成前快照校验、规范长链接编码/解码、最终 YAML 渲染
-- 已实现“落地节点出默认 6 个区域策略组”的后处理
-- 区域识别已改为读取仓库内置 `internal/service/default_region_config.ini` 中的完整正则，而不是代码内置关键词规则
-- 当前最小业务闭环的默认输入与默认输出，已由测试样例固定
-
-### Phase 2：最小 HTTP 对外层（与 ROADMAP「Phase 2 明确不纳入」之外的最小增量）
-
-- `internal/api` 已实现最小路由：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription?data=...`，薄封装 `internal/service` 中基于 `ConversionSource` 的 `*FromSource` 入口
-- `internal/api` 已新增 `GET /healthz`，供 Compose 与本地 smoke 验证使用
-- `internal/config/server.go` 提供服务器侧配置：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`、`CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH`（及默认值）
-- `cmd/server/main.go` 加载 subconverter 与 server 配置、创建 `subconverter.Client`、装配 `api.Handler` 并 `ListenAndServe` 启动 HTTP 服务
-- `internal/api/server_test.go` 基于 `testdata/subconverter/3pass-ss2022-test-subscription` 的 golden 测试，覆盖上述三端点的 happy path 与订阅响应头
-
-### Phase 2.5：API-only Compose 最小部署里程碑
-
-- 已新增仓库根 `Dockerfile`，用于构建当前 Go 服务镜像
-- 已新增 `deploy/docker-compose.yml`，编排 `app + subconverter` 最小运行栈
-- Compose 当前只暴露 `app:11200`；`subconverter` 保持内部可达
-- `deploy/smoke/3pass-ss2022-test-subscription/` 提供本地 smoke 验证用的中转订阅样例、原文文件与同步脚本
-- 已在本地通过真实容器链路验证：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription?data=...`
-- 真实 smoke 验证当前仍可显式依赖本地托管的 `_legacy/templates/default/Custom_Clash.ini`，但该路径已被明确标记为兼容性 workaround，而非默认基线
-
-### Phase 2.5：文档与结构收口（持续推进）
-
-- 根 `README.md` 与 `docs/ROADMAP.md` 已与「标准库 HTTP、store/web 占位、Phase 划分」对齐
-- `docs/spec/05-tech-stack.md` 已增加「实现现状与 spec 目标」小节
-- `internal/api`、`internal/service`、`internal/store` 包注释已写明职责边界
-
-### 测试基线
-
-- `testdata/subconverter/3pass-ss2022-test-subscription/` 已扩展为最小完整流程样例
-- 已固定 `stage1-convert` / `generate` 请求与成功响应 golden
-- 已固定规范长链接编码前载荷与最终订阅 YAML golden
-- `internal/subconverter`、`internal/service` 与 `internal/api` 的相关测试包含在 `go test ./...` 中
-- `docs/testing/3pass-ss2022-test-subscription.md` 现作为 `Phase 2` 的主要验收基线说明
+最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `testdata/subconverter/3pass-ss2022-test-subscription/`。
 
 ## 已知缺口
 
@@ -131,6 +77,11 @@
 - `internal/api` 仅有上述最小端点；`POST /api/resolve-url`、`POST /api/short-links`、短链语义、`GET /subscription/<id>.yaml` 等仍属 Phase 3
 - `internal/store` 仍只有包占位，未实现 SQLite 短链接索引与 LRU 淘汰
 - 应用层配置尚未覆盖阶段 1 输入总大小、每字段 URL 数量、短链容量等（长链接长度上限已通过 `CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH` 部分可配置）
+
+### 待定治理项（跟踪中）
+
+- 安全口径归位（含 SSRF 相关历史策略）当前仅在 `ROADMAP/STATUS` 跟踪
+- 进入对应实现阶段前，先完成“是否并入 `docs/spec/` 及归属章节”的治理决策
 
 ### Phase 4 与部署
 

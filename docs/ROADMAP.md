@@ -21,12 +21,6 @@ flowchart LR
 | 错误映射 | 超时/连接失败/非成功 HTTP/不可解析结果 → `SUBCONVERTER_UNAVAILABLE` |
 | Golden test | 对接 `testdata/` 已有夹具做 mock 验证 |
 
-完成说明：
-
-- 已补最小运行时配置（`baseURL`、`timeout`、`maxInFlight`）并支持开发态覆盖
-- 已实现 3-pass client 与服务层适配入口（`ThreePassResult -> ConversionFixtures`）
-- 已补 mock/golden/smoke（opt-in）测试覆盖
-
 ## Phase 2：最小业务闭环
 
 **目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终 YAML”的最小业务流程（已完成）
@@ -38,22 +32,6 @@ flowchart LR
 | 规范 `longUrl` | 基于固定 `stage1Input + stage2Snapshot` 生成确定性长链接 |
 | 最终 YAML 渲染 | 通过 `GET /subscription?data=...` 或等价入口回放最终 YAML |
 | Golden 验收 | 对齐测试样例中的 request / response / payload / YAML 固定产物 |
-
-完成情况：
-
-- 已固定 `testdata/subconverter/3pass-ss2022-test-subscription/` 的最小完整流程样例
-- 已实现 `BuildStage2Init`
-- 已实现基于仓库内置 `default_region_config.ini` 的区域正则识别
-- 已实现生成前快照校验、规范长链接编码与最终 YAML 渲染
-- 已具备以 golden 回放最小 happy path 的能力
-
-验收口径：
-
-- 输入与默认参数以 `docs/testing/3pass-ss2022-test-subscription.md` 为准
-- `POST /api/stage1/convert` 的固定请求应得到与 `stage1-convert.response.json` 一致的结果
-- `POST /api/generate` 的固定请求应得到与 `generate.response.json` 一致的 `longUrl`
-- `longUrl` 解码前逻辑载荷应与 `long-url.payload.json` 一致
-- 最终订阅渲染结果应与 `complete-config.chain.yaml` 一致
 
 明确不纳入本阶段：
 
@@ -82,6 +60,10 @@ flowchart LR
   - 本地已验证 `app + subconverter` 的真实容器链路
 - 该里程碑只用于验证现有 3 个 API 的可运行路径，不代表完整 `Phase 4`
 
+待定事项（本阶段仅跟踪，不入 spec 正文）：
+
+- 安全口径归位（含 SSRF 相关历史策略）当前仅在 `ROADMAP/STATUS` 跟踪；进入对应实现阶段后再决定是否并入权威 spec
+
 Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md)（分层说明、Phase 3 入口与非目标、结构盘点）。
 
 ## Phase 3：扩展业务与 API 收口
@@ -95,13 +77,6 @@ Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md
 | `resolve-url` | 恢复可重放判定与 `restoreStatus` 冲突语义 |
 | `internal/store/` | SQLite 短链接索引（幂等 + LRU 淘汰） |
 | `internal/config/` | 应用层限制项：输入大小、URL 数量、长链接长度、短链容量 |
-
-当前状态：
-
-- `cmd/server/main.go` 已有配置加载与 `subconverter client` 装配
-- `internal/api/` 已实现 Phase 2 所需最小端点（见 Phase 2 验收口径）；完整契约与额外端点留待 Phase 3
-- `internal/store/` 仍为占位，短链与 SQLite 留待 Phase 3
-- 当前尚未进入完整 API 契约与短链能力实现阶段
 
 ## Phase 4：前端与部署
 
@@ -119,6 +94,8 @@ Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md
 
 - 上述 `deploy/` 仍指向**完整部署形态**，包含前端接入、正式单入口与后续持久化收口
 - 当前已落地的 API-only Compose 仅是前置验证里程碑，用于提前暴露运行时配置与网络问题
+
+> 具体完成状态、已知缺口与阶段性结论统一见 [progress/STATUS.md](progress/STATUS.md)。
 
 ## 推荐下一步
 

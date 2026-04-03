@@ -76,17 +76,10 @@
 - 位置：位于中转信息区下方；若端口转发输入区显示，则位于其下方
 - 形态：默认折叠
 - 阶段 1 中可配置的 `subconverter` 参数统一收纳在此区域
-- 隐藏固定参数不展示控件；其传递规则统一见 [04-business-rules](04-business-rules.md)
-
-| 选项 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| Emoji | checkbox | 勾选 | 控制是否传 `emoji=true` |
-| 启用 UDP | checkbox | 勾选 | 控制是否传 `udp=true` |
-| 跳过证书验证 | checkbox | 不勾选 | 控制是否传 `scv=true` |
-| `config` | text | 空 | 留空时使用集成 `subconverter` 的默认本地配置；允许自定义 |
-| `include` | text | 空 | 非空时参与转换 |
-| `exclude` | text | 空 | 非空时参与转换 |
-| 启用端口转发（实验性） | switch | 关闭 | 开启后显示端口转发服务输入区 |
+- 前端控件集合（阶段 1 快照字段名）：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
+- 隐藏固定参数不展示控件
+- 参数默认值与 `GET /sub` 传递规则的唯一权威定义位于 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表`
+- 前端只负责渲染与提交高级选项快照，不在本章重复定义参数传递语义
 
 ### 1.5 转换按钮
 
