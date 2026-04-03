@@ -127,7 +127,8 @@ func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLengt
 		maxLength = defaultLongURLMaxLength
 	}
 	if len(longURL) > maxLength {
-		return "", fmt.Errorf("long URL exceeds %d bytes", maxLength)
+		cause := fmt.Errorf("long URL exceeds %d bytes", maxLength)
+		return "", newGlobalValidationError("LONG_URL_TOO_LONG", "long URL exceeds maximum length", cause)
 	}
 
 	return longURL, nil
@@ -250,13 +251,15 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	rowsByLanding := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
 	for _, row := range stage2Snapshot.Rows {
 		if _, exists := rowsByLanding[row.LandingNodeName]; exists {
-			return nil, fmt.Errorf("duplicate stage2 row for landing node %q", row.LandingNodeName)
+			cause := fmt.Errorf("duplicate stage2 row for landing node %q", row.LandingNodeName)
+			return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
 		}
 		rowsByLanding[row.LandingNodeName] = row
 	}
 
 	if len(rowsByLanding) != len(landingProxies) {
-		return nil, fmt.Errorf("stage2 rowset size mismatch: got %d rows want %d", len(rowsByLanding), len(landingProxies))
+		cause := fmt.Errorf("stage2 rowset size mismatch: got %d rows want %d", len(rowsByLanding), len(landingProxies))
+		return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
 	}
 
 	chainTargetNames := make(map[string]struct{}, len(stage2Init.ChainTargets))
@@ -272,13 +275,15 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	for _, landing := range landingProxies {
 		row, exists := rowsByLanding[landing.Name]
 		if !exists {
-			return nil, fmt.Errorf("missing stage2 row for landing node %q", landing.Name)
+			cause := fmt.Errorf("missing stage2 row for landing node %q", landing.Name)
+			return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
 		}
 
 		switch row.Mode {
 		case "none":
 			if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
-				return nil, fmt.Errorf("targetName must be empty for landing node %q when mode is none", landing.Name)
+				cause := fmt.Errorf("targetName must be empty for landing node %q when mode is none", landing.Name)
+				return nil, newStage2RowInvalidRequestError("targetName must be empty when mode is none", landing.Name, "targetName", cause)
 			}
 			continue
 		case "chain":
@@ -287,10 +292,12 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 				return nil, err
 			}
 			if landing.Type == "vless-reality" {
-				return nil, fmt.Errorf("landing node %q does not allow chain mode", landing.Name)
+				cause := fmt.Errorf("landing node %q does not allow chain mode", landing.Name)
+				return nil, newStage2RowValidationError("CHAIN_MODE_NOT_ALLOWED", "chain mode is not allowed for this landing node", landing.Name, "mode", cause)
 			}
 			if _, exists := chainTargetNames[targetName]; !exists {
-				return nil, fmt.Errorf("unknown chain target %q for landing node %q", targetName, landing.Name)
+				cause := fmt.Errorf("unknown chain target %q for landing node %q", targetName, landing.Name)
+				return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", landing.Name, "targetName", cause)
 			}
 		case "port_forward":
 			targetName, err := requireTargetName(row)
@@ -298,16 +305,19 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 				return nil, err
 			}
 			if _, exists := forwardRelayNames[targetName]; !exists {
-				return nil, fmt.Errorf("unknown forward relay %q for landing node %q", targetName, landing.Name)
+				cause := fmt.Errorf("unknown forward relay %q for landing node %q", targetName, landing.Name)
+				return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", landing.Name, "targetName", cause)
 			}
 		default:
-			return nil, fmt.Errorf("unsupported mode %q for landing node %q", row.Mode, landing.Name)
+			cause := fmt.Errorf("unsupported mode %q for landing node %q", row.Mode, landing.Name)
+			return nil, newStage2RowInvalidRequestError("unsupported mode", landing.Name, "mode", cause)
 		}
 	}
 
 	for rowName := range rowsByLanding {
 		if _, exists := landingByName[rowName]; !exists {
-			return nil, fmt.Errorf("unknown landing node %q in stage2 snapshot", rowName)
+			cause := fmt.Errorf("unknown landing node %q in stage2 snapshot", rowName)
+			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowName, "", cause)
 		}
 	}
 
@@ -629,7 +639,8 @@ func renderInlineProxyLine(prefix string, fields []inlineProxyField) string {
 
 func requireTargetName(row Stage2Row) (string, error) {
 	if row.TargetName == nil || strings.TrimSpace(*row.TargetName) == "" {
-		return "", fmt.Errorf("missing targetName for landing node %q", row.LandingNodeName)
+		cause := fmt.Errorf("missing targetName for landing node %q", row.LandingNodeName)
+		return "", newStage2RowValidationError("MISSING_TARGET", "missing targetName", row.LandingNodeName, "targetName", cause)
 	}
 	return *row.TargetName, nil
 }

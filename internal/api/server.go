@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -55,13 +56,13 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request *http.Request) {
 	var payload service.Stage1ConvertRequest
 	if err := decodeJSONBody(request, &payload); err != nil {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil)
+		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
 
 	response, err := service.BuildStage1ConvertResponseFromSource(request.Context(), handler.source, payload.Stage1Input)
 	if err != nil {
-		writeServiceError(writer, err, "REQUEST_VALIDATION_FAILED")
+		writeOperationError(writer, err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
@@ -70,7 +71,7 @@ func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request 
 func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http.Request) {
 	var payload service.GenerateRequest
 	if err := decodeJSONBody(request, &payload); err != nil {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil)
+		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 		handler.maxLongURLLength,
 	)
 	if err != nil {
-		writeServiceError(writer, err, "REQUEST_VALIDATION_FAILED")
+		writeOperationError(writer, err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
@@ -91,13 +92,13 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *http.Request) {
 	data := strings.TrimSpace(request.URL.Query().Get("data"))
 	if data == "" {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "missing data query parameter", "global", nil)
+		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "missing data query parameter", "global", nil, nil)
 		return
 	}
 
 	payload, err := service.DecodeLongURLPayload(request.URL.String())
 	if err != nil {
-		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil)
+		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
 	}
 
@@ -110,10 +111,10 @@ func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *
 	if err != nil {
 		if subconverter.IsUnavailable(err) {
 			retryable := true
-			writeBlockingError(writer, http.StatusServiceUnavailable, "SUBCONVERTER_UNAVAILABLE", err.Error(), "global", &retryable)
+			writeBlockingError(writer, http.StatusServiceUnavailable, "SUBCONVERTER_UNAVAILABLE", err.Error(), "global", nil, &retryable)
 			return
 		}
-		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil)
+		writeBlockingError(writer, http.StatusInternalServerError, "RENDER_FAILED", err.Error(), "global", nil, nil)
 		return
 	}
 
@@ -154,16 +155,37 @@ func writeJSON(writer http.ResponseWriter, statusCode int, value any) {
 	_ = json.NewEncoder(writer).Encode(value)
 }
 
-func writeServiceError(writer http.ResponseWriter, err error, defaultCode string) {
+func writeOperationError(writer http.ResponseWriter, err error) {
 	if subconverter.IsUnavailable(err) {
 		retryable := true
-		writeBlockingError(writer, http.StatusServiceUnavailable, "SUBCONVERTER_UNAVAILABLE", err.Error(), "global", &retryable)
+		writeBlockingError(writer, http.StatusServiceUnavailable, "SUBCONVERTER_UNAVAILABLE", err.Error(), "global", nil, &retryable)
 		return
 	}
-	writeBlockingError(writer, http.StatusUnprocessableEntity, defaultCode, err.Error(), "global", nil)
+
+	if responseErr, ok := service.AsResponseError(err); ok {
+		blockingError := responseErr.BlockingError()
+		writeBlockingError(
+			writer,
+			responseErr.StatusCode(),
+			blockingError.Code,
+			blockingError.Message,
+			blockingError.Scope,
+			blockingError.Context,
+			blockingError.Retryable,
+		)
+		return
+	}
+
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &syntaxErr) {
+		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		return
+	}
+
+	writeBlockingError(writer, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), "global", nil, nil)
 }
 
-func writeBlockingError(writer http.ResponseWriter, statusCode int, code string, message string, scope string, retryable *bool) {
+func writeBlockingError(writer http.ResponseWriter, statusCode int, code string, message string, scope string, context map[string]any, retryable *bool) {
 	writeJSON(writer, statusCode, struct {
 		Messages       []service.Message       `json:"messages"`
 		BlockingErrors []service.BlockingError `json:"blockingErrors"`
@@ -174,6 +196,7 @@ func writeBlockingError(writer http.ResponseWriter, statusCode int, code string,
 				Code:      code,
 				Message:   message,
 				Scope:     scope,
+				Context:   context,
 				Retryable: retryable,
 			},
 		},

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/dlclark/regexp2"
+	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
 type AdvancedOptions struct {
@@ -105,7 +106,8 @@ func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stag
 
 func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func() ([]regionMatcher, error)) (Stage2Init, error) {
 	if !stage1Input.AdvancedOptions.EnablePortForward && strings.TrimSpace(stage1Input.ForwardRelayRawText) != "" {
-		return Stage2Init{}, fmt.Errorf("forwardRelayRawText must be empty when enablePortForward is false")
+		cause := fmt.Errorf("forwardRelayRawText must be empty when enablePortForward is false")
+		return Stage2Init{}, newStage1FieldInvalidRequestError("forwardRelayRawText must be empty when enablePortForward is false", "forwardRelayRawText", cause)
 	}
 
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
@@ -155,7 +157,7 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	}
 	regionMatchers, err := regionMatcherLoader()
 	if err != nil {
-		return Stage2Init{}, fmt.Errorf("load default region matchers: %w", err)
+		return Stage2Init{}, newInternalResponseError("failed to load default region matchers", fmt.Errorf("load default region matchers: %w", err))
 	}
 
 	rows := make([]Stage2Row, 0, len(landingProxies))
@@ -174,7 +176,10 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		if containsString(finalAvailableModes, "chain") {
 			targetName, ok, err := detectDefaultChainTarget(landing.Name, regionMatchers, chainTargetNames)
 			if err != nil {
-				return Stage2Init{}, fmt.Errorf("detect default chain target for %q: %w", landing.Name, err)
+				return Stage2Init{}, newInternalResponseError(
+					"failed to detect default chain target",
+					fmt.Errorf("detect default chain target for %q: %w", landing.Name, err),
+				)
 			}
 			if ok {
 				row.Mode = "chain"
@@ -205,7 +210,10 @@ func buildChainTargets(landingNames map[string]struct{}, transitProxies []inline
 	for _, groupName := range defaultRegionGroupOrder {
 		group, ok := fullBaseGroups[groupName]
 		if !ok {
-			return nil, fmt.Errorf("missing default region proxy-group %q in full-base fixture", groupName)
+			return nil, subconverter.NewUnavailableError(
+				"validate full-base proxy-groups",
+				fmt.Errorf("missing default region proxy-group %q in full-base fixture", groupName),
+			)
 		}
 
 		memberCount := 0
@@ -232,7 +240,8 @@ func buildChainTargets(landingNames map[string]struct{}, transitProxies []inline
 
 	for _, proxy := range transitProxies {
 		if _, exists := seen[proxy.Name]; exists {
-			return nil, fmt.Errorf("chain target name conflict: %q", proxy.Name)
+			cause := fmt.Errorf("chain target name conflict: %q", proxy.Name)
+			return nil, newGlobalValidationError("CHAIN_TARGET_NAME_CONFLICT", "chain target name conflict", cause)
 		}
 		chainTargets = append(chainTargets, ChainTarget{
 			Name: proxy.Name,
@@ -283,10 +292,11 @@ func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
 		}
 		relay, err := parseForwardRelayLine(line)
 		if err != nil {
-			return nil, err
+			return nil, newStage1FieldValidationError("INVALID_FORWARD_RELAY_LINE", "invalid forward relay line", "forwardRelayRawText", err)
 		}
 		if _, exists := seen[relay.Name]; exists {
-			return nil, fmt.Errorf("duplicate forward relay %q", relay.Name)
+			cause := fmt.Errorf("duplicate forward relay %q", relay.Name)
+			return nil, newStage1FieldValidationError("DUPLICATE_FORWARD_RELAY", "duplicate forward relay", "forwardRelayRawText", cause)
 		}
 		seen[relay.Name] = struct{}{}
 		relays = append(relays, ForwardRelay{Name: relay.Name})
