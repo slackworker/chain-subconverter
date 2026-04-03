@@ -4,7 +4,7 @@
 
 ## 状态
 
-本项目处于 **spec-driven 彻底重构阶段**。既有 Python 实现已归档至 `_legacy/`，新后端为 **Go**；前端与完整部署按 [docs/ROADMAP.md](docs/ROADMAP.md) 分阶段推进。
+本项目处于 **spec 与开发并行推进阶段**：以已确认 spec 为准推进实现，并保持 spec 与实现同步。既有 Python 实现已归档至 `_legacy/`，新后端为 **Go**；前端与完整部署按 [docs/ROADMAP.md](docs/ROADMAP.md) 分阶段推进。治理规则见 [docs/spec/00-governance.md](docs/spec/00-governance.md)。
 
 **当前实现（截至 Phase 2.5 收口）**：最小业务闭环与 golden 基线已落地；HTTP 层为标准库 `net/http`；`internal/store` 与短链仍为占位；`web/` 尚未初始化前端工程（计划 Phase 4）。权威规格与进度见 [docs/README.md](docs/README.md)、[docs/progress/STATUS.md](docs/progress/STATUS.md)。
 

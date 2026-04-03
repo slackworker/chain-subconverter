@@ -2,7 +2,7 @@
 
 ## Spec 入口
 
-**[docs/spec/](spec/)** — 当前 spec-driven 重构的权威目录。
+**[docs/spec/](spec/)** — 当前 spec 与开发并行推进阶段的权威目录。
 
 | 文档 | 说明 |
 |------|------|
@@ -12,6 +12,8 @@
 | [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
 | [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
 | [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
+
+> 当前推进口径见 [spec/00-governance](spec/00-governance.md)：以已确认 spec 驱动实现，并与实现同步。
 
 ## 推进
 
