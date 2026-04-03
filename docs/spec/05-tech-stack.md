@@ -4,6 +4,17 @@
 
 ---
 
+## 0. 实现现状与 spec 目标
+
+以下条目说明 **当前仓库** 与本章「目标栈」的关系，避免将 Phase 2 最小闭环误当作完整交付。
+
+- **HTTP 框架**：Phase 2 / 2.5 的最小对外 API 已用 **Go 标准库 `net/http`（`http.ServeMux`）** 实现；计划在 **Phase 3** 与完整 API 契约、失败语义收口时，将 HTTP 层收敛到本章选型的 **Gin**（若治理流程中对 spec 有修订，以修订后的 spec 为准）。
+- **存储**：`internal/store` 仍为占位包；SQLite 短链索引在 **Phase 3** 按本章实现。
+- **前端**：`web/` 尚未初始化前端工程；**Phase 4** 按本章接入 React + TypeScript + Vite。
+- **部署**：已提供 **API-only** Compose（`app + subconverter`），用于验证现有端点；含前端静态资源与 SQLite 卷的单入口形态仍属 **Phase 4**，见 [ROADMAP](../ROADMAP.md)。
+
+本章其余条目描述 **目标架构与约束**，不因 Phase 2 使用标准库 HTTP 而作废。
+
 ## 1. 选型结论
 
 - 项目统一采用 `Go + Gin + React + TypeScript + Vite + Tailwind CSS + SQLite + Docker Compose`

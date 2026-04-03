@@ -8,7 +8,7 @@
 
 - `Phase 1` 已完成：`subconverter` 真实 `3-pass` 集成已落地
 - `Phase 2` 已完成（最小范围）：固定测试数据与默认值下，服务层能产出 `stage2Init`、编码 `longUrl`、渲染最终 YAML，且已通过最小 HTTP 层对外暴露上述闭环（见下文「已完成」）
-- `Phase 2.5` 已开始：已补 API-only Compose 最小部署里程碑，并开始收口部署边界与相关文档；结构整理仍待继续
+- `Phase 2.5` 已完成本轮收口：文档与根 README 已与实现对齐；分层职责已写在包注释与本文；`ROADMAP` / `STATUS` / `spec/05-tech-stack` 已标明「最小闭环 vs 目标栈」；Phase 3 入口范围见下文「Phase 3 入口范围与非目标」
 - `Phase 3` 尚未开始：完整 API 契约、恢复、短链、失败语义与配置化限制均已后移
 - `Phase 4` 尚未开始：前端、SQLite 持久化与完整单入口部署继续后置
 
@@ -19,9 +19,45 @@
 | Phase 0 — 骨架 | 目录、Go module、旧代码归档 | ✅ 完成 |
 | Phase 1 — subconverter 集成 | 真实 `3-pass` HTTP 管线 | ✅ 完成 |
 | Phase 2 — 最小业务闭环 | 固定测试数据下的 `stage2Init`、`longUrl`、最终 YAML + 最小 HTTP | ✅ 完成 |
-| Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | 🚧 进行中 |
+| Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | ✅ 完成（本轮） |
 | Phase 3 — 扩展业务与 API 收口 | 恢复、短链、失败语义、完整 API 契约 | ⛔ 未开始 |
 | Phase 4 — 前端与部署 | React + TS UI、运行形态、Compose | ⛔ 未开始 |
+
+## 分层职责边界
+
+以下说明 **internal/service**、**internal/api** 与 **testdata**（及验收文档）的分工，便于区分 Phase 2 基线与后续 Phase 3 契约收口。
+
+| 层 | 职责 | 不包含 |
+|----|------|--------|
+| **internal/service** | 业务规则：`stage2Init`、长链接逻辑载荷编解码、完整配置 YAML 渲染、3-pass 结果解析为 `ConversionFixtures`、与 spec 对齐的校验与错误类型（对调用方以错误值表达） | HTTP 状态码、路由、JSON 响应形状；不直接暴露 subconverter URL 拼接细节以外的集成策略（集成集中在 `internal/subconverter`） |
+| **internal/api** | `net/http` 路由；请求体/query 解析；调用 `service` 的 `*FromSource`；将错误映射为 HTTP 状态与 `blockingErrors`；订阅 YAML 的 `Content-Type` / `Content-Disposition` | 业务推导与 YAML 生成逻辑 |
+| **internal/subconverter** | 3-pass HTTP `Client`、超时与并发、不可用类错误映射 | 业务层链式/区域规则 |
+| **testdata/…/3pass-ss2022-test-subscription/** | 机器可读的请求/响应/载荷/YAML golden，作为自动化测试真相源 | 手工 smoke 流程（见 `deploy/smoke/`） |
+| **docs/testing/3pass-ss2022-test-subscription.md** | Phase 2 主验收基线的人类可读说明与默认参数 | 非 Phase 2 的短链、恢复冲突、完整错误模型（应另起用例或文档） |
+
+**说明**：当前 `internal/api` 测试覆盖的是 **最小 happy path** 与 golden 对齐，**不代表** [03-backend-api](../spec/03-backend-api.md) 已全部实现；失败语义与额外端点属于 Phase 3。
+
+## Phase 3 入口范围与非目标
+
+**计划纳入 Phase 3（与 [ROADMAP](../ROADMAP.md) 一致）**
+
+- `POST /api/resolve-url`、恢复可重放与 `restoreStatus` 冲突语义
+- `POST /api/short-links`、`GET /subscription/<id>.yaml`（或等价短链订阅形态，以 spec 为准）
+- `internal/store`：SQLite 短链索引（幂等 + LRU）
+- 失败语义与 HTTP 收口：`messages[]`、`blockingErrors[]`、字段级错误与状态码对齐 [03-backend-api](../spec/03-backend-api.md)
+- `internal/config` 扩展：阶段 1 输入总大小、每字段 URL 数量、短链容量等限制项
+- HTTP 层按 [spec/05-tech-stack](../spec/05-tech-stack.md) 收敛到 Gin（与上述契约同一阶段推进，避免重复迁移）
+
+**明确非 Phase 3 目标（避免越阶段扩张）**
+
+- 前端 UI、三阶段页面状态与静态资源由后端同端口提供（**Phase 4**）
+- 完整 Compose 单入口、前端构建物接入、运维形态（**Phase 4**）
+- 将 Phase 2 golden 用例扩展为覆盖所有错误码与边界组合（可在 Phase 3 新增并列用例，而非强行并入单条 golden）
+
+## 结构盘点（Phase 2.5）
+
+- `internal/service/conversion_source.go` 中多个 `Build*FromSource` 各自调用 `LoadConversionFixtures`：为薄封装、意图清晰，**不**合并为单一泛型入口，避免增加 indirection。
+- 未发现需在本轮删除的临时包名或死代码路径；HTTP 自标准库迁移至 Gin 时，以 `internal/api` 为主改造面，业务逻辑保持留在 `internal/service`。
 
 ## 已完成
 
@@ -66,6 +102,12 @@
 - 已在本地通过真实容器链路验证：`POST /api/stage1/convert`、`POST /api/generate`、`GET /subscription?data=...`
 - 真实 smoke 验证当前仍可显式依赖本地托管的 `_legacy/templates/default/Custom_Clash.ini`，但该路径已被明确标记为兼容性 workaround，而非默认基线
 
+### Phase 2.5：文档与结构收口（本轮）
+
+- 根 `README.md` 与 `docs/ROADMAP.md` 已与「标准库 HTTP、store/web 占位、Phase 划分」对齐
+- `docs/spec/05-tech-stack.md` 已增加「实现现状与 spec 目标」小节
+- `internal/api`、`internal/service`、`internal/store` 包注释已写明职责边界
+
 ### 测试基线
 
 - `testdata/subconverter/3pass-ss2022-test-subscription/` 已扩展为最小完整流程样例
@@ -82,9 +124,8 @@
 - 未实现：`POST /api/resolve-url`、`POST /api/short-links`、`GET /subscription/<id>.yaml` 等，留待 Phase 3
 - 仍需保持「最小闭环」与「完整契约」的边界清晰，避免在文档或实现上把后续阶段能力提前混入 Phase 2 验收口径
 
-### Phase 2.5 / Phase 3
+### Phase 3
 
-- `Phase 2.5` 已进入进行中：已先落地 API-only Compose 最小部署与相关文档收口；职责边界复核与临时结构清理仍待继续
 - `internal/api` 仅有上述最小端点；`POST /api/resolve-url`、`POST /api/short-links`、短链语义、`GET /subscription/<id>.yaml` 等仍属 Phase 3
 - `internal/store` 仍只有包占位，未实现 SQLite 短链接索引与 LRU 淘汰
 - 应用层配置尚未覆盖阶段 1 输入总大小、每字段 URL 数量、短链容量等（长链接长度上限已通过 `CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH` 部分可配置）

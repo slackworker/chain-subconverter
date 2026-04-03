@@ -29,7 +29,7 @@ flowchart LR
 
 ## Phase 2：最小业务闭环
 
-**目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终 YAML”的最小业务流程（进行中）
+**目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终 YAML”的最小业务流程（已完成）
 
 | 任务 | 说明 |
 |------|------|
@@ -82,6 +82,8 @@ flowchart LR
   - 本地已验证 `app + subconverter` 的真实容器链路
 - 该里程碑只用于验证现有 3 个 API 的可运行路径，不代表完整 `Phase 4`
 
+Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md)（分层说明、Phase 3 入口与非目标、结构盘点）。
+
 ## Phase 3：扩展业务与 API 收口
 
 **目标**：在最小闭环稳定后，补齐完整后端业务面与对外契约（未开始）
@@ -96,8 +98,9 @@ flowchart LR
 
 当前状态：
 
-- `cmd/server/main.go` 已有最小配置加载与 `subconverter client` 装配
-- `internal/api/`、`internal/store/` 仍只有包占位
+- `cmd/server/main.go` 已有配置加载与 `subconverter client` 装配
+- `internal/api/` 已实现 Phase 2 所需最小端点（见 Phase 2 验收口径）；完整契约与额外端点留待 Phase 3
+- `internal/store/` 仍为占位，短链与 SQLite 留待 Phase 3
 - 当前尚未进入完整 API 契约与短链能力实现阶段
 
 ## Phase 4：前端与部署
@@ -121,7 +124,7 @@ flowchart LR
 
 按最小增量推进：
 
-1. 先完成 `Phase 2` 的最小业务闭环，并以固定测试样例作为唯一主验收基线
-2. 在 `Phase 2.5` 中继续完成文档、结构与职责边界收口；API-only Compose 已作为最小部署验证提前落地
+1. `Phase 2` 已完成；固定测试样例见 `docs/testing/3pass-ss2022-test-subscription.md` 与 `testdata/subconverter/3pass-ss2022-test-subscription/`
+2. 在 `Phase 2.5` 完成文档、结构与职责边界收口；API-only Compose 已作为最小部署验证提前落地
 3. 之后进入 `Phase 3`，补齐恢复、短链、失败语义与完整 API 契约
 4. 最后推进前端与完整部署，形成正式的端到端路径

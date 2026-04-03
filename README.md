@@ -4,7 +4,9 @@
 
 ## 状态
 
-本项目处于 **spec-driven 彻底重构阶段**。既有 Python 实现已归档至 `_legacy/`，新实现基于 Go + React。
+本项目处于 **spec-driven 彻底重构阶段**。既有 Python 实现已归档至 `_legacy/`，新后端为 **Go**；前端与完整部署按 [docs/ROADMAP.md](docs/ROADMAP.md) 分阶段推进。
+
+**当前实现（截至 Phase 2.5 收口）**：最小业务闭环与 golden 基线已落地；HTTP 层为标准库 `net/http`；`internal/store` 与短链仍为占位；`web/` 尚未初始化前端工程（计划 Phase 4）。权威规格与进度见 [docs/README.md](docs/README.md)、[docs/progress/STATUS.md](docs/progress/STATUS.md)。
 
 ## 文档
 
@@ -23,23 +25,25 @@
 
 ```text
 chain-subconverter/
-├── cmd/server/          # 启动入口
+├── cmd/server/          # 启动入口：配置加载、依赖装配、HTTP 监听
 ├── internal/
-│   ├── api/             # HTTP handlers (Gin)
-│   ├── service/         # 业务逻辑
-│   ├── store/           # SQLite 短链接索引
-│   ├── subconverter/    # subconverter 唯一集成入口
+│   ├── api/             # HTTP 层：路由、JSON/YAML 编解码、错误映射到响应（当前：标准库 ServeMux）
+│   ├── service/         # 业务逻辑：stage2Init、长链接载荷、YAML 渲染、与 subconverter 结果适配
+│   ├── store/           # 短链接索引（SQLite）— Phase 3 实现，当前仅占位包
+│   ├── subconverter/    # subconverter 唯一集成入口（3-pass HTTP）
 │   └── config/          # 配置管理
-├── web/                 # 前端工程 (React + TS + Vite)
-├── deploy/              # Docker Compose 部署配置
+├── web/                 # 前端工程占位；Phase 4 初始化（见 web/README.md）
+├── deploy/              # API-only Compose 与 smoke（完整形态见 ROADMAP Phase 4）
 ├── docs/spec/           # 权威 spec
-├── testdata/            # 测试夹具
+├── testdata/            # 机器可读 golden 与测试夹具
 └── _legacy/             # 旧 Python 实现（归档）
 ```
 
 ## 技术栈
 
-Go + Gin · React + TypeScript + Vite + Tailwind CSS · SQLite · Docker Compose · subconverter (内部容器)
+**目标栈（spec）**：Go + Gin · React + TypeScript + Vite + Tailwind CSS · SQLite · Docker Compose · subconverter（集成容器）。详见 [docs/spec/05-tech-stack.md](docs/spec/05-tech-stack.md)。
+
+**当前仓库已落地**：Go 标准库 HTTP · subconverter 客户端 · Docker Compose（API-only）· 固定 `testdata` golden；Gin、SQLite 短链、前端工程为后续阶段实现。
 
 ## License
 
