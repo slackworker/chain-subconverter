@@ -458,7 +458,7 @@
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
-- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」，不得返回 YAML；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
+- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」，不得返回 YAML；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
 
 ### 6. `GET /subscription?data=...`
 
@@ -471,7 +471,11 @@
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
-- HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`。增量失败：`400` `INVALID_REQUEST`（例如缺少 `data`）；`422` `INVALID_LONG_URL`（与「长链接编码规范」及 `POST /api/resolve-url` 对齐）
+- HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`
+- 增量失败语义（下表以「解码管线」指 `base64url → gunzip → JSON parse → version check → schema 结构校验 → 输入上限校验`）：
+  - `400` `INVALID_REQUEST`：`data` 参数缺失
+  - `422` `INVALID_LONG_URL`：解码管线任一步骤失败；`scope = global`
+  - `500` `RENDER_FAILED`：解码成功、依赖可用，但 YAML 渲染管线因内部原因失败；`scope = global`
 
 ---
 
@@ -548,7 +552,8 @@ gzip 规则：
 ### 4. 解码与错误处理
 
 - 后端解码长链接时，必须执行 `base64url -> gunzip -> JSON parse -> version check`
-- 任一步骤失败，或解码后的载荷不满足当前版本接口契约与输入上限时，都必须返回 `INVALID_LONG_URL`
+- 解码管线包含以下步骤：`base64url` 解码、`gunzip` 解压、JSON parse、version check、schema 结构校验、输入上限校验；任一步骤失败都必须返回 `INVALID_LONG_URL`
+- `INVALID_LONG_URL` 的覆盖范围严格限定于解码管线失败；解码成功后的业务处理（包括 subconverter 调用、YAML 渲染）不属于 `INVALID_LONG_URL` 语义范畴
 - `POST /api/resolve-url` 与 `POST /api/short-links` 对无效长链接的错误语义必须保持一致
 
 ### 5. 长度约束
