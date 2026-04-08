@@ -55,7 +55,9 @@
 说明：
 
 - `transit.txt` 始终是唯一的中转输入文本；支持订阅 URL、节点 URI、`data:text/plain,<base64文本>`；具体权威口径见 `docs/spec/04-business-rules.md`
-- `advanced-options.yaml` 只需要填写偏离默认值的项；省略 `skipCertVerify` 或显式写 `skipCertVerify: null` 等价，表示默认未勾选：后端不向 `subconverter` 传 `scv`（绝不传 `scv=false`），以便与订阅内节点级 `skip-cert-verify` / `allowInsecure` 及 `subconverter` 全局 `skip_cert_verify_flag` 的 tribool 合并逻辑一致
+- `advanced-options.yaml` 推荐保留完整骨架：复选框写显式 `true` 或 `false`，留空值表示不向上游传该参数；文本框写非空字符串表示透传，留空值表示不传
+- 建议骨架形态为：`emoji: true`、`udp: true`、`skipCertVerify:`、`config:`、`include:`、`exclude:`、`enablePortForward: false`
+- 若文本框当前为空，允许写成 `config: ""`、`include: ""`、`exclude: ""`；系统会在入站归一化为 `null`，后续不向 `subconverter` 传对应 query 参数
 - 运行 `Frontend Review: Stage1 Convert` 只会刷新 `stage1/output/` 和 `stage2/input/stage2-snapshot.json`，不会清理 `stage2/output/`；`stage2/output/` 始终只代表最近一次 Stage2 运行结果
 
 ## 边界

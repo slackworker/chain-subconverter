@@ -1,12 +1,12 @@
 package subconverter
 
 type AdvancedOptions struct {
-	Emoji          bool
-	UDP            bool
-	SkipCertVerify bool
-	Config         string
-	Include        string
-	Exclude        string
+	Emoji          *bool
+	UDP            *bool
+	SkipCertVerify *bool
+	Config         *string
+	Include        *string
+	Exclude        *string
 }
 
 type Request struct {

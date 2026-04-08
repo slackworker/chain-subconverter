@@ -7,10 +7,10 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
-      "config": "",
-      "include": "",
-      "exclude": "",
+      "skipCertVerify": null,
+      "config": null,
+      "include": null,
+      "exclude": null,
       "enablePortForward": false
     }
   },

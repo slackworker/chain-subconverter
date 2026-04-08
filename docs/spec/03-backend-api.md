@@ -24,10 +24,10 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
-      "config": "",
-      "include": "",
-      "exclude": "",
+      "skipCertVerify": null,
+      "config": null,
+      "include": null,
+      "exclude": null,
       "enablePortForward": false
     }
   }
@@ -38,10 +38,11 @@
 
 - `forwardRelayRawText` 始终是字符串；`advancedOptions.enablePortForward = false` 时必须为 `""`，非空视为无效请求
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
-- `config`、`include`、`exclude` 都是字符串；可为空字符串
-- `config = ""` 表示本次转换不显式传 `config` 参数，并回落使用集成 `subconverter` 的默认本地配置
-- `emoji`、`udp`、`skipCertVerify` 记录的是前端勾选状态；实际 `GET /sub` 传参规则见 [04-business-rules](04-business-rules.md)（`emoji`/`udp` 与查询参数同名；`skipCertVerify` 对应查询参数 `scv`）
-- `skipCertVerify = false` 只表示前端未勾选；后端不得把它翻译成 `scv=false`，而必须按 [04-business-rules](04-business-rules.md) 的规则省略 `scv` 以保持上游默认
+- `advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config`、`include`、`exclude` 使用 `非空字符串 | null`
+- 复选框字段中：`true` 表示显式传 `true`，`false` 表示显式传 `false`，`null` 表示不向上游传该参数
+- 文本字段中：非空字符串按原样透传；`null` 表示不向上游传该参数
+- 为兼容文本框空输入，服务端可接受 `config = ""`、`include = ""`、`exclude = ""`，但必须在入站归一化为 `null`，后续快照、long URL payload 与 query 构造都按“不传参数”处理
+- `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
 
@@ -195,10 +196,10 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
-      "config": "",
-      "include": "",
-      "exclude": "",
+      "skipCertVerify": null,
+      "config": null,
+      "include": null,
+      "exclude": null,
       "enablePortForward": true
     }
   }
@@ -259,10 +260,10 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
-      "config": "",
-      "include": "",
-      "exclude": "",
+      "skipCertVerify": null,
+      "config": null,
+      "include": null,
+      "exclude": null,
       "enablePortForward": true
     }
   },
@@ -409,10 +410,10 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
-      "config": "",
-      "include": "",
-      "exclude": "",
+      "skipCertVerify": null,
+      "config": null,
+      "include": null,
+      "exclude": null,
       "enablePortForward": true
     }
   },
@@ -502,10 +503,10 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
-      "config": "",
-      "include": "",
-      "exclude": "",
+      "skipCertVerify": null,
+      "config": null,
+      "include": null,
+      "exclude": null,
       "enablePortForward": true
     }
   },

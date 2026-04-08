@@ -22,12 +22,12 @@ type fixtureStage1Request struct {
 		LandingRawText  string `json:"landingRawText"`
 		TransitRawText  string `json:"transitRawText"`
 		AdvancedOptions struct {
-			Emoji          bool   `json:"emoji"`
-			UDP            bool   `json:"udp"`
-			SkipCertVerify bool   `json:"skipCertVerify"`
-			Config         string `json:"config"`
-			Include        string `json:"include"`
-			Exclude        string `json:"exclude"`
+			Emoji          *bool   `json:"emoji"`
+			UDP            *bool   `json:"udp"`
+			SkipCertVerify *bool   `json:"skipCertVerify"`
+			Config         *string `json:"config"`
+			Include        *string `json:"include"`
+			Exclude        *string `json:"exclude"`
 		} `json:"advancedOptions"`
 	} `json:"stage1Input"`
 }
@@ -108,12 +108,12 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 		LandingRawText: "landing",
 		TransitRawText: "transit",
 		Options: AdvancedOptions{
-			Emoji:          true,
-			UDP:            true,
-			SkipCertVerify: true,
-			Config:         "http://config.example/acl.ini",
-			Include:        "hk|us",
-			Exclude:        "test",
+			Emoji:          boolPtr(true),
+			UDP:            boolPtr(true),
+			SkipCertVerify: boolPtr(true),
+			Config:         stringPtr("http://config.example/acl.ini"),
+			Include:        stringPtr("hk|us"),
+			Exclude:        stringPtr("test"),
 		},
 	})
 	if err != nil {
@@ -144,7 +144,7 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	}
 }
 
-func TestConvert_OmitsSkipCertVerifyQueryWhenUnchecked(t *testing.T) {
+func TestConvert_PropagatesExplicitFalseBooleanQueryParameters(t *testing.T) {
 	var got []*url.URL
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got = append(got, r.URL)
@@ -158,9 +158,9 @@ func TestConvert_OmitsSkipCertVerifyQueryWhenUnchecked(t *testing.T) {
 		LandingRawText: "landing",
 		TransitRawText: "transit",
 		Options: AdvancedOptions{
-			Emoji:          true,
-			UDP:            true,
-			SkipCertVerify: false,
+			Emoji:          boolPtr(false),
+			UDP:            boolPtr(false),
+			SkipCertVerify: boolPtr(false),
 		},
 	})
 	if err != nil {
@@ -171,8 +171,87 @@ func TestConvert_OmitsSkipCertVerifyQueryWhenUnchecked(t *testing.T) {
 	}
 
 	for i, requestURL := range got {
-		if requestURL.Query().Has("scv") {
-			t.Fatalf("request %d should omit scv when skipCertVerify is false, got %q", i, requestURL.Query().Get("scv"))
+		query := requestURL.Query()
+		if query.Get("emoji") != "false" {
+			t.Fatalf("request %d should propagate emoji=false, got %q", i, query.Get("emoji"))
+		}
+		if query.Get("udp") != "false" {
+			t.Fatalf("request %d should propagate udp=false, got %q", i, query.Get("udp"))
+		}
+		if query.Get("scv") != "false" {
+			t.Fatalf("request %d should propagate scv=false, got %q", i, query.Get("scv"))
+		}
+	}
+}
+
+func TestConvert_OmitsUnsetBooleanQueryParameters(t *testing.T) {
+	var got []*url.URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.URL)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("request count mismatch: got %d want 3", len(got))
+	}
+
+	for i, requestURL := range got {
+		query := requestURL.Query()
+		if query.Has("emoji") || query.Has("udp") || query.Has("scv") {
+			t.Fatalf("request %d should omit unset boolean options, got %q", i, requestURL.RawQuery)
+		}
+	}
+}
+
+func TestConvert_OmitsEmptyOptionalQueryParameters(t *testing.T) {
+	var got []*url.URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.URL)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+		Options: AdvancedOptions{
+			Emoji:          boolPtr(true),
+			UDP:            boolPtr(true),
+			SkipCertVerify: boolPtr(false),
+			Config:         stringPtr(""),
+			Include:        stringPtr("   "),
+			Exclude:        stringPtr("\n"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("request count mismatch: got %d want 3", len(got))
+	}
+
+	for i, requestURL := range got {
+		query := requestURL.Query()
+		if query.Has("config") {
+			t.Fatalf("request %d should omit config when placeholder is empty, got %q", i, query.Get("config"))
+		}
+		if query.Has("include") {
+			t.Fatalf("request %d should omit include when placeholder is empty, got %q", i, query.Get("include"))
+		}
+		if query.Has("exclude") {
+			t.Fatalf("request %d should omit exclude when placeholder is empty, got %q", i, query.Get("exclude"))
 		}
 	}
 }
@@ -366,6 +445,14 @@ func toTestRequest(request fixtureStage1Request) Request {
 			Exclude:        request.Stage1Input.AdvancedOptions.Exclude,
 		},
 	}
+}
+
+func boolPtr(value bool) *bool {
+	return &value
+}
+
+func stringPtr(value string) *string {
+	return &value
 }
 
 func mustParseURL(t *testing.T, rawURL string) *url.URL {

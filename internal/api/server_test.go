@@ -17,11 +17,13 @@ import (
 )
 
 type fakeConversionSource struct {
+	gotRequest subconverter.Request
 	result subconverter.ThreePassResult
 	err    error
 }
 
-func (source *fakeConversionSource) Convert(_ context.Context, _ subconverter.Request) (subconverter.ThreePassResult, error) {
+func (source *fakeConversionSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
+	source.gotRequest = request
 	return source.result, source.err
 }
 
@@ -51,6 +53,34 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	}
 	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
 		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	}
+}
+
+func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionStrings(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	source := &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}
+	handler := mustNewTestHandler(t, source)
+
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"/api/stage1/convert",
+		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayRawText":"","advancedOptions":{"emoji":null,"udp":null,"skipCertVerify":null,"config":"","include":"","exclude":"","enablePortForward":false}}}`),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if source.gotRequest.Options.Config != nil || source.gotRequest.Options.Include != nil || source.gotRequest.Options.Exclude != nil {
+		t.Fatalf(
+			"expected empty advanced option strings to normalize to nil: got config=%v include=%v exclude=%v",
+			source.gotRequest.Options.Config,
+			source.gotRequest.Options.Include,
+			source.gotRequest.Options.Exclude,
+		)
 	}
 }
 

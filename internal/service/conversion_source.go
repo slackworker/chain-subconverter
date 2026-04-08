@@ -12,6 +12,7 @@ type ConversionSource interface {
 }
 
 func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (Stage1ConvertResponse, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input)
 	if err != nil {
 		return Stage1ConvertResponse{}, err
@@ -20,6 +21,7 @@ func BuildStage1ConvertResponseFromSource(ctx context.Context, source Conversion
 }
 
 func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int) (GenerateResponse, error) {
+	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
 	fixtures, err := LoadConversionFixtures(ctx, source, request.Stage1Input)
 	if err != nil {
 		return GenerateResponse{}, err
@@ -28,6 +30,7 @@ func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, 
 }
 
 func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot) (string, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input)
 	if err != nil {
 		return "", err
@@ -36,6 +39,7 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (ConversionFixtures, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	result, err := source.Convert(ctx, toSubconverterRequest(stage1Input))
 	if err != nil {
 		return ConversionFixtures{}, err

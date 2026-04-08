@@ -56,6 +56,7 @@ type LongURLPayload struct {
 }
 
 func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage1ConvertResponse, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
 	if err != nil {
 		return Stage1ConvertResponse{}, err
@@ -69,6 +70,7 @@ func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixt
 }
 
 func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtures ConversionFixtures, maxLongURLLength int) (GenerateResponse, error) {
+	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
 	if _, err := validateGenerateSnapshot(request.Stage1Input, request.Stage2Snapshot, fixtures); err != nil {
 		return GenerateResponse{}, err
 	}
@@ -86,6 +88,7 @@ func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtur
 }
 
 func BuildLongURLPayload(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot) LongURLPayload {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	return LongURLPayload{
 		V:              1,
 		Stage1Input:    stage1Input,
@@ -165,6 +168,7 @@ func DecodeLongURLPayload(longURL string) (LongURLPayload, error) {
 	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
 		return LongURLPayload{}, fmt.Errorf("unmarshal long URL payload: %w", err)
 	}
+	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
 	if payload.V != 1 {
 		return LongURLPayload{}, fmt.Errorf("unsupported long URL payload version %d", payload.V)
 	}
@@ -173,6 +177,7 @@ func DecodeLongURLPayload(longURL string) (LongURLPayload, error) {
 }
 
 func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
 	if err != nil {
 		return "", err
@@ -485,7 +490,6 @@ type inlineProxyField struct {
 	Value string
 }
 
-
 func splitConfigLines(value string) ([]string, bool) {
 	preserveTrailingNewline := strings.HasSuffix(value, "\n")
 	if preserveTrailingNewline {
@@ -496,7 +500,6 @@ func splitConfigLines(value string) ([]string, bool) {
 	}
 	return strings.Split(value, "\n"), preserveTrailingNewline
 }
-
 
 func parseInlineProxyLine(line string) (string, []inlineProxyField, error) {
 	start := strings.Index(line, "{")
@@ -527,7 +530,6 @@ func parseInlineProxyLine(line string) (string, []inlineProxyField, error) {
 
 	return prefix, fields, nil
 }
-
 
 func splitTopLevelKeyValue(field string) (string, string, error) {
 	segments, err := splitTopLevelDelimited(field, ':')
@@ -712,25 +714,25 @@ func marshalStage1Input(buffer *bytes.Buffer, input Stage1Input) {
 func marshalAdvancedOptions(buffer *bytes.Buffer, options AdvancedOptions) {
 	buffer.WriteByte('{')
 	buffer.WriteString(`"config":`)
-	writeJSONString(buffer, options.Config)
+	writeJSONOptionalString(buffer, options.Config)
 	buffer.WriteByte(',')
 	buffer.WriteString(`"emoji":`)
-	writeJSONBool(buffer, options.Emoji)
+	writeJSONOptionalBool(buffer, options.Emoji)
 	buffer.WriteByte(',')
 	buffer.WriteString(`"enablePortForward":`)
 	writeJSONBool(buffer, options.EnablePortForward)
 	buffer.WriteByte(',')
 	buffer.WriteString(`"exclude":`)
-	writeJSONString(buffer, options.Exclude)
+	writeJSONOptionalString(buffer, options.Exclude)
 	buffer.WriteByte(',')
 	buffer.WriteString(`"include":`)
-	writeJSONString(buffer, options.Include)
+	writeJSONOptionalString(buffer, options.Include)
 	buffer.WriteByte(',')
 	buffer.WriteString(`"skipCertVerify":`)
-	writeJSONBool(buffer, options.SkipCertVerify)
+	writeJSONOptionalBool(buffer, options.SkipCertVerify)
 	buffer.WriteByte(',')
 	buffer.WriteString(`"udp":`)
-	writeJSONBool(buffer, options.UDP)
+	writeJSONOptionalBool(buffer, options.UDP)
 	buffer.WriteByte('}')
 }
 
@@ -769,10 +771,26 @@ func writeJSONString(buffer *bytes.Buffer, value string) {
 	buffer.Write(encoded)
 }
 
+func writeJSONOptionalString(buffer *bytes.Buffer, value *string) {
+	if value == nil {
+		buffer.WriteString("null")
+		return
+	}
+	writeJSONString(buffer, *value)
+}
+
 func writeJSONBool(buffer *bytes.Buffer, value bool) {
 	if value {
 		buffer.WriteString("true")
 		return
 	}
 	buffer.WriteString("false")
+}
+
+func writeJSONOptionalBool(buffer *bytes.Buffer, value *bool) {
+	if value == nil {
+		buffer.WriteString("null")
+		return
+	}
+	writeJSONBool(buffer, *value)
 }

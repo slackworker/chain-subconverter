@@ -127,12 +127,6 @@ func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
 	}
 
 	options := service.AdvancedOptions{
-		Emoji:             true,
-		UDP:               true,
-		SkipCertVerify:    false,
-		Config:            "",
-		Include:           "",
-		Exclude:           "",
 		EnablePortForward: false,
 	}
 
@@ -142,22 +136,31 @@ func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
 	}
 
 	if fileOptions.Emoji != nil {
-		options.Emoji = *fileOptions.Emoji
+		value := *fileOptions.Emoji
+		options.Emoji = &value
 	}
 	if fileOptions.UDP != nil {
-		options.UDP = *fileOptions.UDP
+		value := *fileOptions.UDP
+		options.UDP = &value
 	}
 	if fileOptions.SkipCertVerify != nil {
-		options.SkipCertVerify = *fileOptions.SkipCertVerify
+		value := *fileOptions.SkipCertVerify
+		options.SkipCertVerify = &value
 	}
 	if fileOptions.Config != nil {
-		options.Config = strings.TrimSpace(normalizeEditableText(*fileOptions.Config))
+		if trimmed := strings.TrimSpace(normalizeEditableText(*fileOptions.Config)); trimmed != "" {
+			options.Config = &trimmed
+		}
 	}
 	if fileOptions.Include != nil {
-		options.Include = strings.TrimSpace(normalizeEditableText(*fileOptions.Include))
+		if trimmed := strings.TrimSpace(normalizeEditableText(*fileOptions.Include)); trimmed != "" {
+			options.Include = &trimmed
+		}
 	}
 	if fileOptions.Exclude != nil {
-		options.Exclude = strings.TrimSpace(normalizeEditableText(*fileOptions.Exclude))
+		if trimmed := strings.TrimSpace(normalizeEditableText(*fileOptions.Exclude)); trimmed != "" {
+			options.Exclude = &trimmed
+		}
 	}
 	if fileOptions.EnablePortForward != nil {
 		options.EnablePortForward = *fileOptions.EnablePortForward

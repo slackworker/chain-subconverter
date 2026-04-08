@@ -269,7 +269,7 @@ func TestBuildStage2Init_IgnoresCustomConfigForRegionAutoDetect(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
 			AdvancedOptions: AdvancedOptions{
-				Config: "/tmp/custom.ini",
+				Config: stringPtr("/tmp/custom.ini"),
 			},
 		},
 		singleLandingFixture("Unknown Landing", "ss", "🇺🇸 美国节点"),

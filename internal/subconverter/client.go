@@ -129,31 +129,44 @@ func (client *Client) buildPassURL(request Request, rawInput string, list bool) 
 func (client *Client) buildRawQuery(request Request, rawInput string, list bool) string {
 	params := make([]string, 0, 9)
 	params = append(params, "target=clash")
-	if request.Options.Emoji {
-		params = append(params, "emoji=true")
-	}
-	if request.Options.UDP {
-		params = append(params, "udp=true")
-	}
-	if request.Options.SkipCertVerify {
-		params = append(params, "scv=true")
-	}
+	params = appendOptionalBoolQuery(params, "emoji", request.Options.Emoji)
+	params = appendOptionalBoolQuery(params, "udp", request.Options.UDP)
+	params = appendOptionalBoolQuery(params, "scv", request.Options.SkipCertVerify)
 	params = append(params, "expand=false")
 	params = append(params, "classic=true")
 	params = append(params, "url="+url.QueryEscape(normalizeSubconverterURLInput(rawInput)))
 	if list {
 		params = append(params, "list=true")
 	}
-	if trimmed := strings.TrimSpace(request.Options.Config); trimmed != "" {
-		params = append(params, "config="+url.QueryEscape(trimmed))
-	}
-	if trimmed := strings.TrimSpace(request.Options.Include); trimmed != "" {
-		params = append(params, "include="+url.QueryEscape(trimmed))
-	}
-	if trimmed := strings.TrimSpace(request.Options.Exclude); trimmed != "" {
-		params = append(params, "exclude="+url.QueryEscape(trimmed))
-	}
+	params = appendOptionalStringQuery(params, "config", request.Options.Config)
+	params = appendOptionalStringQuery(params, "include", request.Options.Include)
+	params = appendOptionalStringQuery(params, "exclude", request.Options.Exclude)
 	return strings.Join(params, "&")
+}
+
+func appendOptionalBoolQuery(params []string, name string, value *bool) []string {
+	if value == nil {
+		return params
+	}
+
+	if *value {
+		return append(params, name+"=true")
+	}
+
+	return append(params, name+"=false")
+}
+
+func appendOptionalStringQuery(params []string, name string, value *string) []string {
+	if value == nil {
+		return params
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return params
+	}
+
+	return append(params, name+"="+url.QueryEscape(trimmed))
 }
 
 func normalizeSubconverterURLInput(rawInput string) string {

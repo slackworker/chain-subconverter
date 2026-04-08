@@ -50,13 +50,13 @@
 |------|----------|--------|----------|
 | `target` | 隐藏 | `clash` | 必传，固定传 `clash` |
 | `url` | 隐藏 | 无 | 必传；按 `0.2.1` 的 pass 规则传 |
-| `emoji` | 展示 | 勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
-| `udp` | 展示 | 勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
-| `scv` | 展示 | 不勾选 | 勾选时传 `true`；不勾选时不传，保持上游默认 |
+| `emoji` | 展示 | 勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
+| `udp` | 展示 | 勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
+| `scv` | 展示 | 不勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
-| `config` | 展示 | 见下方补充 | 非空才传；留空时回落默认本地配置；允许自定义 |
-| `include` | 展示 | 空 | 非空才传 |
-| `exclude` | 展示 | 空 | 非空才传 |
+| `config` | 展示 | 见下方补充 | 非空字符串才传；`null`/留空时不传并回落默认本地配置 |
+| `include` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
+| `exclude` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
 | `expand` | 隐藏 | `false` | 必传，固定传 `false` |
 | `classic` | 隐藏 | `true` | 必传，固定传 `true` |
 
@@ -65,6 +65,8 @@
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
 - `config` 的默认行为为：留空时不传 `config` 参数，并由集成的 `subconverter` 回落使用其目录下的 `base/config/Aethersailor_Custom_Clash.ini`
 - 若用户显式填写 `config`，则三个 pass 都按该值透传，允许使用其他本地或远程配置文件
+- `chain-subconverter` 当前阶段 1/API 快照统一采用三态：复选框 `true/false/null`、文本框 `非空字符串/null`；query 构造必须逐项保持该语义，不得把 `null` 翻译成 `false` 或空 query
+- 文本框留空若以 `""` 进入服务端，必须先归一化为 `null`；query 构造阶段不得拼出 `config=`、`include=`、`exclude=`
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 

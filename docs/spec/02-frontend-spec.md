@@ -80,6 +80,7 @@
 - 前端控件集合（阶段 1 快照字段名）：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
 - 隐藏固定参数不展示控件
 - 参数默认值与 `GET /sub` 传递规则的唯一权威定义位于 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表`
+- 前端提交阶段 1 快照时不得依赖“省略键 = 默认值”的隐式约定：复选框提交显式 `true` 或 `false`，文本框留空时提交 `null`
 - 前端只负责渲染与提交高级选项快照，不在本章重复定义参数传递语义
 
 ### 1.5 转换按钮

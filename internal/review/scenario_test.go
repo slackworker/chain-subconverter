@@ -25,14 +25,23 @@ func TestLoadScenario_DefaultExample(t *testing.T) {
 	if scenario.Stage1Input.ForwardRelayRawText != "" {
 		t.Fatalf("ForwardRelayRawText = %q, want empty", scenario.Stage1Input.ForwardRelayRawText)
 	}
-	if !scenario.Stage1Input.AdvancedOptions.Emoji {
+	if !hasBoolValue(scenario.Stage1Input.AdvancedOptions.Emoji, true) {
 		t.Fatal("Emoji default should be true")
 	}
-	if !scenario.Stage1Input.AdvancedOptions.UDP {
+	if !hasBoolValue(scenario.Stage1Input.AdvancedOptions.UDP, true) {
 		t.Fatal("UDP default should be true")
 	}
-	if scenario.Stage1Input.AdvancedOptions.SkipCertVerify {
-		t.Fatal("SkipCertVerify should be false when omitted or null in advanced-options.yaml")
+	if scenario.Stage1Input.AdvancedOptions.SkipCertVerify != nil {
+		t.Fatal("SkipCertVerify placeholder should stay omitted")
+	}
+	if scenario.Stage1Input.AdvancedOptions.Config != nil {
+		t.Fatalf("Config = %v, want omitted placeholder", scenario.Stage1Input.AdvancedOptions.Config)
+	}
+	if scenario.Stage1Input.AdvancedOptions.Include != nil {
+		t.Fatalf("Include = %v, want omitted placeholder", scenario.Stage1Input.AdvancedOptions.Include)
+	}
+	if scenario.Stage1Input.AdvancedOptions.Exclude != nil {
+		t.Fatalf("Exclude = %v, want omitted placeholder", scenario.Stage1Input.AdvancedOptions.Exclude)
 	}
 	if scenario.Stage1Input.AdvancedOptions.EnablePortForward {
 		t.Fatal("EnablePortForward default should be false")
@@ -113,14 +122,60 @@ exclude: "^${BLOCKED}$"
 	if testCase.Stage1Input.TransitRawText != "https://example.com/sub?token=$TOKEN" {
 		t.Fatalf("TransitRawText = %q, want literal placeholder", testCase.Stage1Input.TransitRawText)
 	}
-	if testCase.Stage1Input.AdvancedOptions.Config != "${CONFIG_PATH}" {
-		t.Fatalf("AdvancedOptions.Config = %q, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Config)
+	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Config, "${CONFIG_PATH}") {
+		t.Fatalf("AdvancedOptions.Config = %v, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Config)
 	}
-	if testCase.Stage1Input.AdvancedOptions.Include != "(?i)$HK" {
-		t.Fatalf("AdvancedOptions.Include = %q, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Include)
+	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Include, "(?i)$HK") {
+		t.Fatalf("AdvancedOptions.Include = %v, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Include)
 	}
-	if testCase.Stage1Input.AdvancedOptions.Exclude != "^${BLOCKED}$" {
-		t.Fatalf("AdvancedOptions.Exclude = %q, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Exclude)
+	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Exclude, "^${BLOCKED}$") {
+		t.Fatalf("AdvancedOptions.Exclude = %v, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Exclude)
+	}
+}
+
+func TestLoadStage1Case_TreatsBlankAdvancedOptionPlaceholdersAsOmittedValues(t *testing.T) {
+	caseDir := t.TempDir()
+	stage1InputDir := filepath.Join(caseDir, "stage1", "input")
+	if err := os.MkdirAll(stage1InputDir, 0o755); err != nil {
+		t.Fatalf("os.MkdirAll(stage1 input) error = %v", err)
+	}
+
+	files := map[string]string{
+		LandingFileName:       "landing-node",
+		TransitFileName:       "transit-node",
+		ForwardRelaysFileName: "",
+		AdvancedOptionsFileName: strings.TrimSpace(`
+emoji: true
+udp: true
+skipCertVerify:
+config: ""
+include: ""
+exclude: ""
+enablePortForward: false
+`) + "\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(stage1InputDir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("os.WriteFile(%q) error = %v", name, err)
+		}
+	}
+
+	testCase, err := LoadStage1Case(caseDir)
+	if err != nil {
+		t.Fatalf("LoadStage1Case() error = %v", err)
+	}
+
+	if testCase.Stage1Input.AdvancedOptions.SkipCertVerify != nil {
+		t.Fatal("SkipCertVerify placeholder should stay omitted")
+	}
+	if testCase.Stage1Input.AdvancedOptions.Config != nil {
+		t.Fatalf("Config = %v, want omitted string", testCase.Stage1Input.AdvancedOptions.Config)
+	}
+	if testCase.Stage1Input.AdvancedOptions.Include != nil {
+		t.Fatalf("Include = %v, want omitted string", testCase.Stage1Input.AdvancedOptions.Include)
+	}
+	if testCase.Stage1Input.AdvancedOptions.Exclude != nil {
+		t.Fatalf("Exclude = %v, want omitted string", testCase.Stage1Input.AdvancedOptions.Exclude)
 	}
 }
 
@@ -169,4 +224,12 @@ func TestLoadCase_PrefersWrappedStage2SnapshotEvenWhenRowsEmpty(t *testing.T) {
 	if len(testCase.Stage2Input.Rows) != 0 {
 		t.Fatalf("Stage2Input.Rows length = %d, want 0", len(testCase.Stage2Input.Rows))
 	}
+}
+
+func hasBoolValue(value *bool, want bool) bool {
+	return value != nil && *value == want
+}
+
+func hasStringValue(value *string, want string) bool {
+	return value != nil && *value == want
 }

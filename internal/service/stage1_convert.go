@@ -12,13 +12,13 @@ import (
 )
 
 type AdvancedOptions struct {
-	Emoji             bool   `json:"emoji"`
-	UDP               bool   `json:"udp"`
-	SkipCertVerify    bool   `json:"skipCertVerify"`
-	Config            string `json:"config"`
-	Include           string `json:"include"`
-	Exclude           string `json:"exclude"`
-	EnablePortForward bool   `json:"enablePortForward"`
+	Emoji             *bool   `json:"emoji"`
+	UDP               *bool   `json:"udp"`
+	SkipCertVerify    *bool   `json:"skipCertVerify"`
+	Config            *string `json:"config"`
+	Include           *string `json:"include"`
+	Exclude           *string `json:"exclude"`
+	EnablePortForward bool    `json:"enablePortForward"`
 }
 
 type Stage1Input struct {
@@ -30,6 +30,31 @@ type Stage1Input struct {
 
 type Stage1ConvertRequest struct {
 	Stage1Input Stage1Input `json:"stage1Input"`
+}
+
+func NormalizeStage1Input(input Stage1Input) Stage1Input {
+	input.AdvancedOptions = normalizeAdvancedOptions(input.AdvancedOptions)
+	return input
+}
+
+func normalizeAdvancedOptions(options AdvancedOptions) AdvancedOptions {
+	options.Config = normalizeOptionalString(options.Config)
+	options.Include = normalizeOptionalString(options.Include)
+	options.Exclude = normalizeOptionalString(options.Exclude)
+	return options
+}
+
+func normalizeOptionalString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
 }
 
 type Stage2SnapshotFixture struct {
@@ -101,6 +126,7 @@ var defaultRegionGroupOrder = []string{
 }
 
 func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
 	return buildStage2Init(stage1Input, fixtures, loadRegionMatchers)
 }
 
