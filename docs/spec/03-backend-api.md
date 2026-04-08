@@ -41,6 +41,7 @@
 - `config`、`include`、`exclude` 都是字符串；可为空字符串
 - `config = ""` 表示本次转换不显式传 `config` 参数，并回落使用集成 `subconverter` 的默认本地配置
 - `emoji`、`udp`、`skipCertVerify` 记录的是前端勾选状态；实际 `GET /sub` 传参规则见 [04-business-rules](04-business-rules.md)（`emoji`/`udp` 与查询参数同名；`skipCertVerify` 对应查询参数 `scv`）
+- `skipCertVerify = false` 只表示前端未勾选；后端不得把它翻译成 `scv=false`，而必须按 [04-business-rules](04-business-rules.md) 的规则省略 `scv` 以保持上游默认
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
 

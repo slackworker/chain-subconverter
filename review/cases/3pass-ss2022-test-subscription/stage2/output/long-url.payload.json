@@ -1,0 +1,31 @@
+{
+  "v": 1,
+  "stage1Input": {
+    "landingRawText": "ss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=@198.51.100.10:8888#SS2022-Test-256-US\nss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=@198.51.100.10:8888#SS2022-Test-256",
+    "transitRawText": "data:text/plain,c3M6Ly9NakF5TWkxaWJHRnJaVE10WVdWekxUSTFOaTFuWTIwNk1ERXlNelExTmpjNE9XRmlZMlJsWmpBeE1qTTBOVFkzT0RsaFltTmtaV1k9QDE5OC41MS4xMDAuMjE6OTEwMSNISy1UZXN0LVJlbGF5CnNzOi8vTWpBeU1pMWliR0ZyWlRNdFlXVnpMVEkxTmkxblkyMDZNREV5TXpRMU5qYzRPV0ZpWTJSbFpqQXhNak0wTlRZM09EbGhZbU5rWldZPUAxOTguNTEuMTAwLjIyOjkxMDIjVVMtVGVzdC1SZWxheQpzczovL01qQXlNaTFpYkdGclpUTXRZV1Z6TFRJMU5pMW5ZMjA2TURFeU16UTFOamM0T1dGaVkyUmxaakF4TWpNME5UWTNPRGxoWW1Oa1pXWT1AMTk4LjUxLjEwMC4yMzo5MTAzI0pQLVRlc3QtUmVsYXkKc3M6Ly9NakF5TWkxaWJHRnJaVE10WVdWekxUSTFOaTFuWTIwNk1ERXlNelExTmpjNE9XRmlZMlJsWmpBeE1qTTBOVFkzT0RsaFltTmtaV1k9QDE5OC41MS4xMDAuMjQ6OTEwNCNTRy1UZXN0LVJlbGF5CnNzOi8vTWpBeU1pMWliR0ZyWlRNdFlXVnpMVEkxTmkxblkyMDZNREV5TXpRMU5qYzRPV0ZpWTJSbFpqQXhNak0wTlRZM09EbGhZbU5rWldZPUAxOTguNTEuMTAwLjI1OjkxMDUjVFctVGVzdC1SZWxheQpzczovL01qQXlNaTFpYkdGclpUTXRZV1Z6TFRJMU5pMW5ZMjA2TURFeU16UTFOamM0T1dGaVkyUmxaakF4TWpNME5UWTNPRGxoWW1Oa1pXWT1AMTk4LjUxLjEwMC4yNjo5MTA2I0tSLVRlc3QtUmVsYXkK",
+    "forwardRelayRawText": "",
+    "advancedOptions": {
+      "emoji": true,
+      "udp": true,
+      "skipCertVerify": false,
+      "config": "",
+      "include": "",
+      "exclude": "",
+      "enablePortForward": false
+    }
+  },
+  "stage2Snapshot": {
+    "rows": [
+      {
+        "landingNodeName": "🇺🇸 SS2022-Test-256-US",
+        "mode": "chain",
+        "targetName": "🇺🇸 美国节点"
+      },
+      {
+        "landingNodeName": "SS2022-Test-256",
+        "mode": "none",
+        "targetName": null
+      }
+    ]
+  }
+}

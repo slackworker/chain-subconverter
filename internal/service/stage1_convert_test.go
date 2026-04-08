@@ -15,15 +15,15 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var request Stage1ConvertRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "stage1-convert.request.json"), &request)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"), &request)
 
-	var expectedSnapshot Stage2SnapshotFixture
-	readJSONFixture(t, filepath.Join(fixtureDir, "stage2-snapshot.default.json"), &expectedSnapshot)
+	var expectedResponse Stage1ConvertResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"), &expectedResponse)
 
 	stage2Init, err := BuildStage2Init(request.Stage1Input, ConversionFixtures{
-		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "landing-discovery.yaml")),
-		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "transit-discovery.yaml")),
-		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "full-base.yaml")),
+		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
+		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
+		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
 	})
 	if err != nil {
 		t.Fatalf("BuildStage2Init() error = %v", err)
@@ -37,8 +37,8 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 		t.Fatalf("ForwardRelays should be empty, got %v", stage2Init.ForwardRelays)
 	}
 
-	if !reflect.DeepEqual(stage2Init.Rows, expectedSnapshot.Stage2Snapshot.Rows) {
-		t.Fatalf("Rows mismatch: got %#v want %#v", stage2Init.Rows, expectedSnapshot.Stage2Snapshot.Rows)
+	if !reflect.DeepEqual(stage2Init.Rows, expectedResponse.Stage2Init.Rows) {
+		t.Fatalf("Rows mismatch: got %#v want %#v", stage2Init.Rows, expectedResponse.Stage2Init.Rows)
 	}
 
 	if !hasChainTarget(stage2Init.ChainTargets, "🇺🇸 美国节点", "proxy-groups") {
@@ -398,8 +398,9 @@ func fixtureDirectory(t *testing.T) string {
 		filepath.Dir(currentFile),
 		"..",
 		"..",
+		"internal",
+		"review",
 		"testdata",
-		"subconverter",
 		"3pass-ss2022-test-subscription",
 	)
 }

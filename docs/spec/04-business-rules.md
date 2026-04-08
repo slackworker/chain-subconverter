@@ -38,7 +38,9 @@
 - `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true`
 - `transit-discovery pass`：`url` 只传中转节点信息，传 `list=true`
 - `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不传 `list`
-- `url` 的拼接与编码沿用既有逻辑；本 spec 不再展开
+- 当同一字段存在多条订阅 URL、节点 URI 或 `data:text/plain,<base64文本>` 时，传给 `subconverter` 的单个 `url` 查询参数前必须先用 `|` 拼接，再整体 URL 编码
+- 输入区中的换行只承担编辑态分条语义；不得把换行字面量直接传给上游 `url` 参数
+- URL 输入归一化时按行去除首尾空白并忽略空行；传给上游的 `url` 参数不得包含由空白行产生的空项
 
 ### 0.2.2 `subconverter` 参数表
 
@@ -84,6 +86,8 @@
 - `subconverter` 使用落地节点信息、中转节点信息、`config` 与其他 `subconverter` 配置参数
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
 - `advancedOptions.enablePortForward = false` 时，端口转发服务信息必须为空字符串，且不得参与解析、校验或候选生成
+- `transitRawText` 支持三种输入项：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
+- `data:text/plain,<base64文本>` 在业务语义上视为订阅 URL，不单独引入“内联原始订阅文本”输入类型
 
 ### 1.1.1 统一转换管线（权威口径）
 

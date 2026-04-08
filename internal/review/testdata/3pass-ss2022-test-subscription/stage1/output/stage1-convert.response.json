@@ -1,0 +1,284 @@
+{
+  "stage2Init": {
+    "availableModes": [
+      "none",
+      "chain"
+    ],
+    "chainTargets": [
+      {
+        "name": "🇭🇰 香港节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇺🇸 美国节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇯🇵 日本节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇸🇬 新加坡节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇼🇸 台湾节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇰🇷 韩国节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇸🇬 建议每日更新订阅",
+        "kind": "proxies"
+      },
+      {
+        "name": "️有超时请重启网络",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美·洛杉矶|三网-DS1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美·洛杉矶|三网-DS2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|SAK-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|SAK-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|SAK-3",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|SAK-4",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|SAK-5",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|SAK-6",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港·三网|GTT-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港·三网|GTT-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT动态|商宽1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT动态|商宽2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT三网|商宽1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT三网|商宽2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT三网|商宽3",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT三网|商宽4",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT三网|商宽5",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港HKT三网|商宽6",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 台湾动态三网|家宽1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 台湾动态三网|家宽2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 台湾动态三网|家宽3",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 台湾动态三网|家宽4",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 台湾静态三网|家宽1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 台湾静态三网|家宽2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 韩国LG·三网|商宽1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 韩国LG·三网|商宽2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 韩国·首尔|原生-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 韩国·首尔|原生-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 新加坡 | GCP-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 +新加坡+|+GCP-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|软银1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|软银2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|软银3",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·三网|软银4",
+        "kind": "proxies"
+      },
+      {
+        "name": "樱花✿·三网|原生1",
+        "kind": "proxies"
+      },
+      {
+        "name": "樱花✿·三网|原生2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·京都|原生",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 日本·大阪|原生",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·洛杉矶|DC2-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·洛杉矶|DC2-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·0.1x| -1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·0.1x|+-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·洛杉矶|原生-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·洛杉矶|原生-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·洛杉矶|原生-3",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 美国·洛杉矶|原生-4",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇹🇭 泰国·曼谷|原生-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇹🇭 泰国·曼谷|原生-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇬🇧 英国·商宽|原生-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇬🇧 英国·商宽|原生-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇷🇺 俄罗斯|莫斯科-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇻🇳 越南·河内|原生-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇩🇪 德国|法兰克福-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇫🇷 法国|巴黎世家-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港|竞技场-1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 香港|竞技场-2",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇲🇴 澳门|特别行政区1",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇲🇴 澳门|特别行政区2",
+        "kind": "proxies"
+      }
+    ],
+    "forwardRelays": [],
+    "rows": [
+      {
+        "landingNodeName": "🇺🇸 SS2022-Test-256-US",
+        "mode": "chain",
+        "targetName": "🇺🇸 美国节点"
+      }
+    ]
+  },
+  "messages": [],
+  "blockingErrors": []
+}

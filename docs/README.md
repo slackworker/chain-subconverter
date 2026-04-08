@@ -27,6 +27,7 @@
 | 文档 | 说明 |
 |------|------|
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
+| [testing/frontend-review-workflow](testing/frontend-review-workflow.md) | 文件驱动的前端业务 review 工作流 |
 
 ## 历史文档（非权威）
 

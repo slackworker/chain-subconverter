@@ -27,8 +27,8 @@ func (source *fakeConversionSource) Convert(_ context.Context, _ subconverter.Re
 
 func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
-	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1-convert.request.json"))
-	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1-convert.response.json"))
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -56,8 +56,8 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 
 func TestGenerateHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
-	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "generate.request.json"))
-	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "generate.response.json"))
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
+	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"))
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -85,10 +85,10 @@ func TestGenerateHandler_HappyPath(t *testing.T) {
 
 func TestSubscriptionHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
-	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "complete-config.chain.yaml"))
+	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
 
 	var generateResponse service.GenerateResponse
-	readJSONFixture(t, filepath.Join(fixtureDir, "generate.response.json"), &generateResponse)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -119,7 +119,7 @@ func TestSubscriptionHandler_DownloadDisposition(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var generateResponse service.GenerateResponse
-	readJSONFixture(t, filepath.Join(fixtureDir, "generate.response.json"), &generateResponse)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -191,7 +191,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 
 func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
-	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "generate.request.json"))
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
 
 	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, "http://localhost:11200", 32)
 	if err != nil {
@@ -345,8 +345,9 @@ func fixtureDirectory(t *testing.T) string {
 		filepath.Dir(currentFile),
 		"..",
 		"..",
+		"internal",
+		"review",
 		"testdata",
-		"subconverter",
 		"3pass-ss2022-test-subscription",
 	)
 }
@@ -388,16 +389,16 @@ func loadThreePassResult(t *testing.T, fixtureDir string) subconverter.ThreePass
 
 	return subconverter.ThreePassResult{
 		LandingDiscovery: subconverter.PassResult{
-			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "landing-discovery.url.txt")),
-			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "landing-discovery.yaml")),
+			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.url.txt")),
+			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
 		},
 		TransitDiscovery: subconverter.PassResult{
-			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "transit-discovery.url.txt")),
-			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "transit-discovery.yaml")),
+			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.url.txt")),
+			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
 		},
 		FullBase: subconverter.PassResult{
-			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "full-base.url.txt")),
-			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "full-base.yaml")),
+			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.url.txt")),
+			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
 		},
 	}
 }

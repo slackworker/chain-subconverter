@@ -1,0 +1,15 @@
+[proxies]
+🇭🇰 HK-Test-Relay
+🇺🇸 US-Test-Relay
+🇯🇵 JP-Test-Relay
+🇸🇬 SG-Test-Relay
+🇨🇳 TW-Test-Relay
+🇰🇷 KR-Test-Relay
+
+[proxy-groups]
+🇭🇰 香港节点
+🇺🇸 美国节点
+🇯🇵 日本节点
+🇸🇬 新加坡节点
+🇼🇸 台湾节点
+🇰🇷 韩国节点

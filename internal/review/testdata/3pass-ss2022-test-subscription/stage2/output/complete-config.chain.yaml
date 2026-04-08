@@ -1,0 +1,2008 @@
+port: 7890
+socks-port: 7891
+allow-lan: true
+mode: rule
+log-level: info
+external-controller: 127.0.0.1:9090
+proxies:
+  - {name: 🇺🇸 SS2022-Test-256-US, server: 198.51.100.10, port: 8888, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef, dialer-proxy: 🇺🇸 美国节点}
+  - {name: 🇸🇬 建议每日更新订阅, server: edge-01.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-01.example.test, skip-cert-verify: true}
+  - {name: ️有超时请重启网络, server: edge-01.example.test, port: 20200, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 🇺🇸 美·洛杉矶|三网-DS1, server: edge-01.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-01.example.test, skip-cert-verify: true}
+  - {name: 🇺🇸 美·洛杉矶|三网-DS2, server: edge-01.example.test, port: 20200, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|SAK-1, server: edge-02.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-02.example.test, skip-cert-verify: true}
+  - {name: 🇯🇵 日本·三网|SAK-2, server: edge-02.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|SAK-3, server: edge-03.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|SAK-4, server: edge-03.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|SAK-5, server: edge-04.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|SAK-6, server: edge-04.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC}, client-fingerprint: random}
+  - {name: 🇭🇰 香港·三网|GTT-1, server: edge-05.example.test, port: 443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}, client-fingerprint: random}
+  - {name: 🇭🇰 香港·三网|GTT-2, server: edge-05.example.test, port: 443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}, client-fingerprint: random}
+  - {name: 🇭🇰 香港HKT动态|商宽1, server: edge-06.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC}, client-fingerprint: random}
+  - {name: 🇭🇰 香港HKT动态|商宽2, server: edge-06.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC}, client-fingerprint: random}
+  - {name: 🇭🇰 香港HKT三网|商宽1, server: edge-07.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-07.example.test, skip-cert-verify: true}
+  - {name: 🇭🇰 香港HKT三网|商宽2, server: edge-07.example.test, port: 21000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}, client-fingerprint: random}
+  - {name: 🇭🇰 香港HKT三网|商宽3, server: edge-08.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-08.example.test, skip-cert-verify: true}
+  - {name: 🇭🇰 香港HKT三网|商宽4, server: edge-08.example.test, port: 21000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}, client-fingerprint: random}
+  - {name: 🇭🇰 香港HKT三网|商宽5, server: edge-09.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-09.example.test, skip-cert-verify: true}
+  - {name: 🇭🇰 香港HKT三网|商宽6, server: edge-09.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD}, client-fingerprint: random}
+  - {name: 🇨🇳 台湾动态三网|家宽1, server: edge-10.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇨🇳 台湾动态三网|家宽2, server: edge-10.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇨🇳 台湾动态三网|家宽3, server: edge-11.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇨🇳 台湾动态三网|家宽4, server: edge-11.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇨🇳 台湾静态三网|家宽1, server: edge-12.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇨🇳 台湾静态三网|家宽2, server: edge-12.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇰🇷 韩国LG·三网|商宽1, server: edge-13.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-13.example.test, skip-cert-verify: true}
+  - {name: 🇰🇷 韩国LG·三网|商宽2, server: edge-13.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE}, client-fingerprint: random}
+  - {name: 🇰🇷 韩国·首尔|原生-1, server: edge-14.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-14.example.test, skip-cert-verify: true}
+  - {name: 🇰🇷 韩国·首尔|原生-2, server: edge-14.example.test, port: 21000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF}, client-fingerprint: random}
+  - {name: 🇸🇬 新加坡 | GCP-1, server: edge-15.example.test, port: 20200, type: hysteria2, ports: 20200, password: 11111111-1111-4111-8111-111111111111, sni: edge-15.example.test, skip-cert-verify: true}
+  - {name: 🇸🇬 +新加坡+|+GCP-2, server: edge-15.example.test, port: 20200, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|软银1, server: edge-16.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-16.example.test, skip-cert-verify: true}
+  - {name: 🇯🇵 日本·三网|软银2, server: edge-16.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 🇯🇵 日本·三网|软银3, server: edge-17.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-17.example.test, skip-cert-verify: true}
+  - {name: 🇯🇵 日本·三网|软银4, server: edge-17.example.test, port: 26000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 樱花✿·三网|原生1, server: edge-18.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-18.example.test, skip-cert-verify: true}
+  - {name: 樱花✿·三网|原生2, server: edge-18.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-18.example.test, skip-cert-verify: true}
+  - {name: 🇯🇵 日本·京都|原生, server: edge-19.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-19.example.test, skip-cert-verify: true}
+  - {name: 🇯🇵 日本·大阪|原生, server: edge-19.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-19.example.test, skip-cert-verify: true}
+  - {name: 🇺🇸 美国·洛杉矶|DC2-1, server: edge-20.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-20.example.test, skip-cert-verify: true}
+  - {name: 🇺🇸 美国·洛杉矶|DC2-2, server: edge-20.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 🇺🇸 美国·0.1x| -1, server: edge-21.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-21.example.test, skip-cert-verify: true}
+  - {name: 🇺🇸 美国·0.1x|+-2, server: edge-21.example.test, port: 18000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG}, client-fingerprint: random}
+  - {name: 🇺🇸 美国·洛杉矶|原生-1, server: edge-22.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-22.example.test, skip-cert-verify: true}
+  - {name: 🇺🇸 美国·洛杉矶|原生-2, server: edge-23.example.test, port: 20200, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH}, client-fingerprint: random}
+  - {name: 🇺🇸 美国·洛杉矶|原生-3, server: edge-24.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 🇺🇸 美国·洛杉矶|原生-4, server: edge-25.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, client-fingerprint: random}
+  - {name: 🇹🇭 泰国·曼谷|原生-1, server: edge-26.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-26.example.test, skip-cert-verify: true}
+  - {name: 🇹🇭 泰国·曼谷|原生-2, server: edge-26.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII}, client-fingerprint: random}
+  - {name: 🇬🇧 英国·商宽|原生-1, server: edge-27.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-27.example.test, skip-cert-verify: true}
+  - {name: 🇬🇧 英国·商宽|原生-2, server: edge-27.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ}, client-fingerprint: random}
+  - {name: 🇷🇺 俄罗斯|莫斯科-1, server: edge-28.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-28.example.test, skip-cert-verify: true}
+  - {name: 🇻🇳 越南·河内|原生-1, server: edge-29.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-29.example.test, skip-cert-verify: true}
+  - {name: 🇩🇪 德国|法兰克福-1, server: edge-30.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-30.example.test, skip-cert-verify: true}
+  - {name: 🇫🇷 法国|巴黎世家-1, server: edge-31.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-31.example.test, skip-cert-verify: true}
+  - {name: 🇭🇰 香港|竞技场-1, server: edge-32.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-32.example.test, skip-cert-verify: true}
+  - {name: 🇭🇰 香港|竞技场-2, server: edge-32.example.test, port: 17000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+  - {name: 🇲🇴 澳门|特别行政区1, server: edge-33.example.test, port: 20201, type: hysteria2, ports: 20201, password: 11111111-1111-4111-8111-111111111111, sni: edge-33.example.test, skip-cert-verify: true}
+  - {name: 🇲🇴 澳门|特别行政区2, server: edge-33.example.test, port: 16000, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: ml.example.test, host: ml.example.test, flow: xtls-rprx-vision, reality-opts: {public-key: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB}, client-fingerprint: random}
+proxy-groups:
+  - name: 🚀 手动选择
+    type: select
+    proxies:
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: ♻️ 自动选择
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 💬 即时通讯
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🎯 全球直连
+  - name: 🌐 社交媒体
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🎯 全球直连
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🚀 GitHub
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🎯 全球直连
+  - name: 🤖 ChatGPT
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🤖 AI服务
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎶 TikTok
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 📹 YouTube
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎥 Netflix
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎥 DisneyPlus
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎥 HBO
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎥 PrimeVideo
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎥 AppleTV+
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇸🇬 新加坡节点
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🎯 全球直连
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎥 Emby
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🎯 全球直连
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎻 Spotify
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🎯 全球直连
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 📺 Bahamut
+    type: select
+    proxies:
+      - 🇼🇸 台湾节点
+      - 🚀 手动选择
+      - 🎯 全球直连
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🌎 国外媒体
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🛒 国外电商
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🎯 全球直连
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 📢 谷歌FCM
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+  - name: 🇬 谷歌服务
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🍎 苹果服务
+    type: select
+    proxies:
+      - 🎯 全球直连
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: Ⓜ️ 微软服务
+    type: select
+    proxies:
+      - 🎯 全球直连
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎮 游戏平台
+    type: select
+    proxies:
+      - 🎯 全球直连
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🎮 Steam
+    type: select
+    proxies:
+      - 🎯 全球直连
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🚀 测速工具
+    type: select
+    proxies:
+      - 🎯 全球直连
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🐟 漏网之鱼
+    type: select
+    proxies:
+      - 🚀 手动选择
+      - ♻️ 自动选择
+      - 🎯 全球直连
+      - 🇭🇰 香港节点
+      - 🇺🇸 美国节点
+      - 🇯🇵 日本节点
+      - 🇸🇬 新加坡节点
+      - 🇼🇸 台湾节点
+      - 🇰🇷 韩国节点
+      - 🇺🇸 SS2022-Test-256-US
+      - 🇸🇬 建议每日更新订阅
+      - ️有超时请重启网络
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 樱花✿·三网|原生1
+      - 樱花✿·三网|原生2
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+      - 🇹🇭 泰国·曼谷|原生-1
+      - 🇹🇭 泰国·曼谷|原生-2
+      - 🇬🇧 英国·商宽|原生-1
+      - 🇬🇧 英国·商宽|原生-2
+      - 🇷🇺 俄罗斯|莫斯科-1
+      - 🇻🇳 越南·河内|原生-1
+      - 🇩🇪 德国|法兰克福-1
+      - 🇫🇷 法国|巴黎世家-1
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+      - 🇲🇴 澳门|特别行政区1
+      - 🇲🇴 澳门|特别行政区2
+  - name: 🔀 非标端口
+    type: select
+    proxies:
+      - 🐟 漏网之鱼
+      - 🎯 全球直连
+  - name: 🇭🇰 香港节点
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇭🇰 香港·三网|GTT-1
+      - 🇭🇰 香港·三网|GTT-2
+      - 🇭🇰 香港HKT动态|商宽1
+      - 🇭🇰 香港HKT动态|商宽2
+      - 🇭🇰 香港HKT三网|商宽1
+      - 🇭🇰 香港HKT三网|商宽2
+      - 🇭🇰 香港HKT三网|商宽3
+      - 🇭🇰 香港HKT三网|商宽4
+      - 🇭🇰 香港HKT三网|商宽5
+      - 🇭🇰 香港HKT三网|商宽6
+      - 🇭🇰 香港|竞技场-1
+      - 🇭🇰 香港|竞技场-2
+  - name: 🇺🇸 美国节点
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇺🇸 美·洛杉矶|三网-DS1
+      - 🇺🇸 美·洛杉矶|三网-DS2
+      - 🇺🇸 美国·洛杉矶|DC2-1
+      - 🇺🇸 美国·洛杉矶|DC2-2
+      - 🇺🇸 美国·0.1x| -1
+      - 🇺🇸 美国·0.1x|+-2
+      - 🇺🇸 美国·洛杉矶|原生-1
+      - 🇺🇸 美国·洛杉矶|原生-2
+      - 🇺🇸 美国·洛杉矶|原生-3
+      - 🇺🇸 美国·洛杉矶|原生-4
+  - name: 🇯🇵 日本节点
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇸🇬 建议每日更新订阅
+      - 🇯🇵 日本·三网|SAK-1
+      - 🇯🇵 日本·三网|SAK-2
+      - 🇯🇵 日本·三网|SAK-3
+      - 🇯🇵 日本·三网|SAK-4
+      - 🇯🇵 日本·三网|SAK-5
+      - 🇯🇵 日本·三网|SAK-6
+      - 🇯🇵 日本·三网|软银1
+      - 🇯🇵 日本·三网|软银2
+      - 🇯🇵 日本·三网|软银3
+      - 🇯🇵 日本·三网|软银4
+      - 🇯🇵 日本·京都|原生
+      - 🇯🇵 日本·大阪|原生
+  - name: 🇸🇬 新加坡节点
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇸🇬 建议每日更新订阅
+      - 🇸🇬 新加坡 | GCP-1
+      - 🇸🇬 +新加坡+|+GCP-2
+  - name: 🇼🇸 台湾节点
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇨🇳 台湾动态三网|家宽1
+      - 🇨🇳 台湾动态三网|家宽2
+      - 🇨🇳 台湾动态三网|家宽3
+      - 🇨🇳 台湾动态三网|家宽4
+      - 🇨🇳 台湾静态三网|家宽1
+      - 🇨🇳 台湾静态三网|家宽2
+  - name: 🇰🇷 韩国节点
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies:
+      - 🇰🇷 韩国LG·三网|商宽1
+      - 🇰🇷 韩国LG·三网|商宽2
+      - 🇰🇷 韩国·首尔|原生-1
+      - 🇰🇷 韩国·首尔|原生-2
+  - name: 🎯 全球直连
+    type: select
+    proxies:
+      - DIRECT
+rules:
+  - GEOSITE,private,🎯 全球直连
+  - GEOIP,private,🎯 全球直连,no-resolve
+  - RULE-SET,Custom_Direct_Domain,🎯 全球直连
+  - RULE-SET,Custom_Direct_Classical_IP,🎯 全球直连
+  - RULE-SET,Custom_Proxy_Domain,🚀 手动选择
+  - RULE-SET,Custom_Proxy_Classical_IP,🚀 手动选择
+  - GEOSITE,google-cn,🎯 全球直连
+  - GEOSITE,category-games@cn,🎯 全球直连
+  - RULE-SET,Steam_CDN_Classical,🎯 全球直连
+  - GEOSITE,category-game-platforms-download,🎯 全球直连
+  - GEOSITE,category-public-tracker,🎯 全球直连
+  - GEOSITE,category-communication,💬 即时通讯
+  - GEOSITE,category-social-media-!cn,🌐 社交媒体
+  - GEOSITE,openai,🤖 ChatGPT
+  - GEOSITE,category-ai-!cn,🤖 AI服务
+  - GEOSITE,github,🚀 GitHub
+  - GEOSITE,category-speedtest,🚀 测速工具
+  - GEOSITE,steam,🎮 Steam
+  - GEOSITE,youtube,📹 YouTube
+  - GEOSITE,apple-tvplus,🎥 AppleTV+
+  - GEOSITE,apple,🍎 苹果服务
+  - GEOSITE,microsoft,Ⓜ️ 微软服务
+  - GEOSITE,googlefcm,📢 谷歌FCM
+  - GEOSITE,google,🇬 谷歌服务
+  - GEOSITE,tiktok,🎶 TikTok
+  - GEOSITE,netflix,🎥 Netflix
+  - GEOSITE,disney,🎥 DisneyPlus
+  - GEOSITE,hbo,🎥 HBO
+  - GEOSITE,primevideo,🎥 PrimeVideo
+  - GEOSITE,category-emby,🎥 Emby
+  - GEOSITE,spotify,🎻 Spotify
+  - GEOSITE,bahamut,📺 Bahamut
+  - GEOSITE,category-games,🎮 游戏平台
+  - GEOSITE,category-entertainment,🌎 国外媒体
+  - GEOSITE,category-ecommerce,🛒 国外电商
+  - GEOSITE,gfw,🚀 手动选择
+  - GEOIP,telegram,💬 即时通讯,no-resolve
+  - GEOIP,twitter,🌐 社交媒体,no-resolve
+  - GEOIP,facebook,🌐 社交媒体,no-resolve
+  - GEOIP,google,🇬 谷歌服务,no-resolve
+  - GEOIP,netflix,🎥 Netflix,no-resolve
+  - GEOSITE,cn,🎯 全球直连
+  - GEOIP,cn,🎯 全球直连,no-resolve
+  - RULE-SET,Custom_Port_Direct,🔀 非标端口
+  - MATCH,🐟 漏网之鱼
+rule-providers:
+  Custom_Direct_Domain:
+    type: http
+    behavior: domain
+    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Direct_Domain.yaml
+    path: ./providers/2305457515016618925_domain.yaml
+    interval: 28800
+  Custom_Direct_Classical_IP:
+    type: http
+    behavior: classical
+    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Direct_Classical_IP.yaml
+    path: ./providers/15204165614954008964.yaml
+    interval: 28800
+  Custom_Proxy_Domain:
+    type: http
+    behavior: domain
+    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Proxy_Domain.yaml
+    path: ./providers/10543794580940256312_domain.yaml
+    interval: 28800
+  Custom_Proxy_Classical_IP:
+    type: http
+    behavior: classical
+    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Proxy_Classical_IP.yaml
+    path: ./providers/3673053372641237649.yaml
+    interval: 28800
+  Steam_CDN_Classical:
+    type: http
+    behavior: classical
+    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Steam_CDN_Classical.yaml
+    path: ./providers/13268481674871578153.yaml
+    interval: 28800
+  Custom_Port_Direct:
+    type: http
+    behavior: classical
+    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Port_Direct.yaml
+    path: ./providers/2451647452112462632.yaml
+    interval: 28800

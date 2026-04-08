@@ -1,0 +1,1 @@
+http://localhost:25500/sub?target=clash&emoji=true&udp=true&expand=false&classic=true&url=ss%3A%2F%2FMjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY%3D%40198.51.100.10%3A8888%23SS2022-Test-256-US&list=true

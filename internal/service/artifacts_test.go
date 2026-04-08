@@ -12,22 +12,22 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var stage1Request Stage1ConvertRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "stage1-convert.request.json"), &stage1Request)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"), &stage1Request)
 
 	var generateRequest GenerateRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "generate.request.json"), &generateRequest)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &generateRequest)
 
 	var expectedPayload LongURLPayload
-	readJSONFixture(t, filepath.Join(fixtureDir, "long-url.payload.json"), &expectedPayload)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "long-url.payload.json"), &expectedPayload)
 
-	expectedStage1Response := readTextFixture(t, filepath.Join(fixtureDir, "stage1-convert.response.json"))
-	expectedGenerateResponse := readTextFixture(t, filepath.Join(fixtureDir, "generate.response.json"))
-	expectedCompleteConfig := readTextFixture(t, filepath.Join(fixtureDir, "complete-config.chain.yaml"))
+	expectedStage1Response := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	expectedGenerateResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"))
+	expectedCompleteConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
 
 	fixtures := ConversionFixtures{
-		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "landing-discovery.yaml")),
-		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "transit-discovery.yaml")),
-		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "full-base.yaml")),
+		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
+		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
+		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
 	}
 
 	stage1Response, err := BuildStage1ConvertResponse(stage1Request.Stage1Input, fixtures)

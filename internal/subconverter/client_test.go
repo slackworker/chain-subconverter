@@ -36,14 +36,14 @@ func TestConvert_HappyPathUsesGoldenRequestShape(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	stage1Request := readStage1RequestFixture(t)
 
-	expectedLandingURL := mustParseURL(t, readFixture(t, filepath.Join(fixtureDir, "landing-discovery.url.txt")))
-	expectedTransitURL := mustParseURL(t, readFixture(t, filepath.Join(fixtureDir, "transit-discovery.url.txt")))
-	expectedFullBaseURL := mustParseURL(t, readFixture(t, filepath.Join(fixtureDir, "full-base.url.txt")))
+	expectedLandingURL := mustParseURL(t, readFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.url.txt")))
+	expectedTransitURL := mustParseURL(t, readFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.url.txt")))
+	expectedFullBaseURL := mustParseURL(t, readFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.url.txt")))
 
 	responses := []string{
-		readFixture(t, filepath.Join(fixtureDir, "landing-discovery.yaml")),
-		readFixture(t, filepath.Join(fixtureDir, "transit-discovery.yaml")),
-		readFixture(t, filepath.Join(fixtureDir, "full-base.yaml")),
+		readFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
+		readFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
+		readFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
 	}
 
 	var (
@@ -141,6 +141,99 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	}
 	if got[2].Query().Get("list") != "" {
 		t.Fatalf("full-base list should be absent, got %q", got[2].Query().Get("list"))
+	}
+}
+
+func TestConvert_OmitsSkipCertVerifyQueryWhenUnchecked(t *testing.T) {
+	var got []*url.URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.URL)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+		Options: AdvancedOptions{
+			Emoji:          true,
+			UDP:            true,
+			SkipCertVerify: false,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("request count mismatch: got %d want 3", len(got))
+	}
+
+	for i, requestURL := range got {
+		if requestURL.Query().Has("scv") {
+			t.Fatalf("request %d should omit scv when skipCertVerify is false, got %q", i, requestURL.Query().Get("scv"))
+		}
+	}
+}
+
+func TestConvert_NormalizesMultilineInputsIntoPipeSeparatedURLParam(t *testing.T) {
+	var got []*url.URL
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.URL)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{
+		LandingRawText: " ss://landing-a \n\nss://landing-b\n",
+		TransitRawText: "\r\nhttp://transit-a\r\n\r\n http://transit-b \r\n",
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("request count mismatch: got %d want 3", len(got))
+	}
+
+	wantURLs := []string{
+		"ss://landing-a|ss://landing-b",
+		"http://transit-a|http://transit-b",
+		"ss://landing-a|ss://landing-b|http://transit-a|http://transit-b",
+	}
+	for i, want := range wantURLs {
+		if got[i].Query().Get("url") != want {
+			t.Fatalf("request %d url mismatch: got %q want %q", i, got[i].Query().Get("url"), want)
+		}
+	}
+}
+
+func TestNormalizeSubconverterURLInput_IgnoresBlankLinesAndTrailingNewlines(t *testing.T) {
+	testCases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "trailing newline does not produce empty item",
+			input: "ss://a\nss://b\n",
+			want:  "ss://a|ss://b",
+		},
+		{
+			name:  "blank lines are ignored",
+			input: "ss://a\n\nss://b",
+			want:  "ss://a|ss://b",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeSubconverterURLInput(tc.input); got != tc.want {
+				t.Fatalf("normalizeSubconverterURLInput() = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -253,7 +346,7 @@ func readStage1RequestFixture(t *testing.T) fixtureStage1Request {
 	t.Helper()
 
 	var request fixtureStage1Request
-	data := readFixture(t, filepath.Join(fixtureDirectory(t), "stage1-convert.request.json"))
+	data := readFixture(t, filepath.Join(fixtureDirectory(t), "stage1", "output", "stage1-convert.request.json"))
 	if err := json.Unmarshal([]byte(data), &request); err != nil {
 		t.Fatalf("json.Unmarshal() error = %v", err)
 	}
@@ -297,8 +390,9 @@ func fixtureDirectory(t *testing.T) string {
 		filepath.Dir(currentFile),
 		"..",
 		"..",
+		"internal",
+		"review",
 		"testdata",
-		"subconverter",
 		"3pass-ss2022-test-subscription",
 	)
 }

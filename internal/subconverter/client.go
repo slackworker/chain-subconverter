@@ -140,7 +140,7 @@ func (client *Client) buildRawQuery(request Request, rawInput string, list bool)
 	}
 	params = append(params, "expand=false")
 	params = append(params, "classic=true")
-	params = append(params, "url="+url.QueryEscape(rawInput))
+	params = append(params, "url="+url.QueryEscape(normalizeSubconverterURLInput(rawInput)))
 	if list {
 		params = append(params, "list=true")
 	}
@@ -154,6 +154,21 @@ func (client *Client) buildRawQuery(request Request, rawInput string, list bool)
 		params = append(params, "exclude="+url.QueryEscape(trimmed))
 	}
 	return strings.Join(params, "&")
+}
+
+func normalizeSubconverterURLInput(rawInput string) string {
+	normalized := strings.ReplaceAll(rawInput, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	lines := strings.Split(normalized, "\n")
+	parts := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		parts = append(parts, trimmed)
+	}
+	return strings.Join(parts, "|")
 }
 
 func (client *Client) acquire() error {
@@ -173,12 +188,15 @@ func (client *Client) release() {
 }
 
 func joinURLs(landingRawText string, transitRawText string) string {
+	landing := normalizeSubconverterURLInput(landingRawText)
+	transit := normalizeSubconverterURLInput(transitRawText)
+
 	switch {
-	case strings.TrimSpace(landingRawText) == "":
-		return transitRawText
-	case strings.TrimSpace(transitRawText) == "":
-		return landingRawText
+	case landing == "":
+		return transit
+	case transit == "":
+		return landing
 	default:
-		return landingRawText + "|" + transitRawText
+		return landing + "|" + transit
 	}
 }

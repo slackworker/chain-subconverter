@@ -34,6 +34,7 @@ chain-subconverter/
 │   └── config/          # 配置管理
 ├── web/                 # 前端工程占位；Phase 4 初始化（见 web/README.md）
 ├── deploy/              # API-only Compose 与 smoke（完整形态见 ROADMAP Phase 4）
+├── review/              # 文件驱动的前端业务 review 场景、任务脚本与辅助 Compose
 ├── docs/spec/           # 权威 spec
 ├── testdata/            # 机器可读 golden 与测试夹具
 └── _legacy/             # 旧 Python 实现（归档）

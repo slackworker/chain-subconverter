@@ -100,7 +100,7 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var request Stage1ConvertRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "stage1-convert.request.json"), &request)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"), &request)
 
 	source := &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -111,7 +111,7 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
 	}
 
-	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1-convert.response.json"))
+	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
 	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
 		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
 	}
@@ -125,7 +125,7 @@ func TestBuildGenerateResponseFromSource_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var request GenerateRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "generate.request.json"), &request)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &request)
 
 	source := &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -136,7 +136,7 @@ func TestBuildGenerateResponseFromSource_HappyPath(t *testing.T) {
 		t.Fatalf("BuildGenerateResponseFromSource() error = %v", err)
 	}
 
-	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "generate.response.json"))
+	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"))
 	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
 		t.Fatalf("generate response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
 	}
@@ -146,7 +146,7 @@ func TestRenderCompleteConfigFromSource_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var request GenerateRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "generate.request.json"), &request)
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &request)
 
 	source := &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -157,7 +157,7 @@ func TestRenderCompleteConfigFromSource_HappyPath(t *testing.T) {
 		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
 	}
 
-	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "complete-config.chain.yaml"))
+	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
 	if strings.TrimSpace(renderedConfig) != strings.TrimSpace(expectedConfig) {
 		t.Fatalf("complete config mismatch:\n--- got ---\n%s\n--- want ---\n%s", renderedConfig, expectedConfig)
 	}
@@ -168,16 +168,16 @@ func loadThreePassResult(t *testing.T, fixtureDir string) subconverter.ThreePass
 
 	return subconverter.ThreePassResult{
 		LandingDiscovery: subconverter.PassResult{
-			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "landing-discovery.url.txt")),
-			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "landing-discovery.yaml")),
+			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.url.txt")),
+			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
 		},
 		TransitDiscovery: subconverter.PassResult{
-			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "transit-discovery.url.txt")),
-			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "transit-discovery.yaml")),
+			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.url.txt")),
+			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
 		},
 		FullBase: subconverter.PassResult{
-			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "full-base.url.txt")),
-			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "full-base.yaml")),
+			RequestURL: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.url.txt")),
+			YAML:       readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
 		},
 	}
 }

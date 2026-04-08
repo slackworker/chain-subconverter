@@ -1,0 +1,21 @@
+{
+  "stage2Snapshot": {
+    "rows": [
+      {
+        "landingNodeName": "🇺🇸 SS2022-Test-256-US",
+        "mode": "chain",
+        "targetName": "🇺🇸 美国节点"
+      },
+      {
+        "landingNodeName": "SS2022-Test-256",
+        "mode": "none",
+        "targetName": null
+      },
+      {
+        "landingNodeName": "Example3",
+        "mode": "none",
+        "targetName": null
+      }
+    ]
+  }
+}
