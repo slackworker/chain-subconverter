@@ -12,12 +12,11 @@ import (
 )
 
 const (
-	LandingFileName              = "landing.txt"
-	TransitFileName              = "transit.txt"
-	ForwardRelaysFileName        = "forward-relays.txt"
-	AdvancedOptionsFileName      = "advanced-options.yaml"
-	Stage2SnapshotFileName       = "stage2-snapshot.json"
-	legacyStage2SnapshotFileName = "stage2-snapshot.default.json"
+	LandingFileName         = "landing.txt"
+	TransitFileName         = "transit.txt"
+	ForwardRelaysFileName   = "forward-relays.txt"
+	AdvancedOptionsFileName = "advanced-options.yaml"
+	Stage2SnapshotFileName  = "stage2-snapshot.json"
 )
 
 type Case struct {
@@ -170,38 +169,28 @@ func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
 }
 
 func readStage2Input(directory string) (service.Stage2Snapshot, error) {
-	fileNames := []string{Stage2SnapshotFileName, legacyStage2SnapshotFileName}
-	var lastErr error
-	for _, fileName := range fileNames {
-		filePath := filepath.Join(directory, "stage2", "input", fileName)
-		content, err := os.ReadFile(filePath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				lastErr = err
-				continue
-			}
-			return service.Stage2Snapshot{}, fmt.Errorf("read %s: %w", filePath, err)
-		}
+	filePath := filepath.Join(directory, "stage2", "input", Stage2SnapshotFileName)
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return service.Stage2Snapshot{}, fmt.Errorf("read %s: %w", filePath, err)
+	}
 
-		var wrappedProbe struct {
-			Stage2Snapshot json.RawMessage `json:"stage2Snapshot"`
-		}
-		if err := json.Unmarshal(content, &wrappedProbe); err == nil && wrappedProbe.Stage2Snapshot != nil {
-			var snapshot service.Stage2Snapshot
-			if err := json.Unmarshal(wrappedProbe.Stage2Snapshot, &snapshot); err != nil {
-				return service.Stage2Snapshot{}, fmt.Errorf("parse %s stage2Snapshot: %w", filePath, err)
-			}
-			return snapshot, nil
-		}
-
+	var wrappedProbe struct {
+		Stage2Snapshot json.RawMessage `json:"stage2Snapshot"`
+	}
+	if err := json.Unmarshal(content, &wrappedProbe); err == nil && wrappedProbe.Stage2Snapshot != nil {
 		var snapshot service.Stage2Snapshot
-		if err := json.Unmarshal(content, &snapshot); err != nil {
-			return service.Stage2Snapshot{}, fmt.Errorf("parse %s: %w", filePath, err)
+		if err := json.Unmarshal(wrappedProbe.Stage2Snapshot, &snapshot); err != nil {
+			return service.Stage2Snapshot{}, fmt.Errorf("parse %s stage2Snapshot: %w", filePath, err)
 		}
 		return snapshot, nil
 	}
 
-	return service.Stage2Snapshot{}, fmt.Errorf("read %s: %w", filepath.Join(directory, "stage2", "input", Stage2SnapshotFileName), lastErr)
+	var snapshot service.Stage2Snapshot
+	if err := json.Unmarshal(content, &snapshot); err != nil {
+		return service.Stage2Snapshot{}, fmt.Errorf("parse %s: %w", filePath, err)
+	}
+	return snapshot, nil
 }
 
 func normalizeEditableText(text string) string {

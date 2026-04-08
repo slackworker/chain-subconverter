@@ -1,5 +1,5 @@
 # web
 
-前端工程目录（React + TypeScript + Vite + Tailwind CSS）。
+前端工程预留目录。
 
-Phase 4 时初始化。
+当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。

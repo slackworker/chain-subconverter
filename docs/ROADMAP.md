@@ -52,19 +52,11 @@ flowchart LR
 | 边界确认 | 重新确认服务层、API 层与测试夹具之间的职责边界 |
 | 下一阶段盘点 | 为扩展业务、前端与部署准备更稳定的起点 |
 
-当前补充进展：
-
-- 已提前插入一个 **API-only Compose** 最小部署里程碑：
-  - 新增仓库根 `Dockerfile`
-  - 新增 `deploy/docker-compose.yml`
-  - 本地已验证 `app + subconverter` 的真实容器链路
-- 该里程碑只用于验证现有 3 个 API 的可运行路径，不代表完整 `Phase 4`
-
 待定事项（本阶段仅跟踪，不入 spec 正文）：
 
 - 安全口径归位（含 SSRF 相关历史策略）当前仅在 `ROADMAP/STATUS` 跟踪；进入对应实现阶段后再决定是否并入权威 spec
 
-Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md)（分层说明、Phase 3 入口与非目标、结构盘点）。
+当前完成状态与阶段性结论统一见 [progress/STATUS.md](progress/STATUS.md)。
 
 ## Phase 3：扩展业务与 API 收口
 
@@ -90,18 +82,12 @@ Phase 2.5 文档与职责边界收口见 [progress/STATUS.md](progress/STATUS.md
 | `cmd/server/` | HTTP 启动、路由注册与运行形态收口 |
 | `deploy/` | Docker Compose（app + subconverter） |
 
-说明：
-
-- 上述 `deploy/` 仍指向**完整部署形态**，包含前端接入、正式单入口与后续持久化收口
-- 当前已落地的 API-only Compose 仅是前置验证里程碑，用于提前暴露运行时配置与网络问题
-
 > 具体完成状态、已知缺口与阶段性结论统一见 [progress/STATUS.md](progress/STATUS.md)。
 
 ## 推荐下一步
 
 按最小增量推进：
 
-1. `Phase 2` 已完成；固定测试样例见 `docs/testing/3pass-ss2022-test-subscription.md` 与 `review/cases/3pass-ss2022-test-subscription/`
-2. `Phase 2.5` 仍在进行中，继续推进文档、结构与职责边界收口；API-only Compose 已作为最小部署验证提前落地
-3. 之后进入 `Phase 3`，补齐恢复、短链、失败语义与完整 API 契约
-4. 最后推进前端与完整部署，形成正式的端到端路径
+1. 完成 `Phase 2.5` 的文档、结构与职责边界收口。
+2. 进入 `Phase 3`，补齐恢复、短链、失败语义与完整 API 契约。
+3. 最后推进前端与完整部署，形成正式的端到端路径。

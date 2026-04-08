@@ -195,7 +195,7 @@ func TestLoadCase_PrefersWrappedStage2SnapshotEvenWhenRowsEmpty(t *testing.T) {
 		filepath.Join(stage1InputDir, TransitFileName):         "transit-node",
 		filepath.Join(stage1InputDir, ForwardRelaysFileName):   "",
 		filepath.Join(stage1InputDir, AdvancedOptionsFileName): "emoji: true\nudp: true\nenablePortForward: false\n",
-		filepath.Join(stage2InputDir, legacyStage2SnapshotFileName): strings.TrimSpace(`
+		filepath.Join(stage2InputDir, Stage2SnapshotFileName): strings.TrimSpace(`
 {
   "stage2Snapshot": {
     "rows": []

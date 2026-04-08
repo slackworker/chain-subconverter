@@ -4,18 +4,18 @@
 
 ---
 
-## 0. 实现现状与 spec 目标
+## 0. 当前硬约束与后续方向
 
-以下条目说明 **当前仓库** 与本章「目标栈」的关系，避免将 Phase 2 最小闭环误当作完整交付。
+以下条目只定义当前已经确认的技术边界，避免把后续阶段的实现偏好误写成 Phase 2 / 2.5 的现行要求。
 
-- **HTTP 框架**：Phase 2 / 2.5 的最小对外 API 已用 **Go 标准库 `net/http`（`http.ServeMux`）** 实现；计划在 **Phase 3** 与完整 API 契约、失败语义收口时，将 HTTP 层收敛到本章选型的 **Gin**（若治理流程中对 spec 有修订，以修订后的 spec 为准）。
-- **存储**：`internal/store` 仍为占位包；SQLite 短链索引在 **Phase 3** 按本章实现。
-- **前端**：`web/` 尚未初始化前端工程；**Phase 4** 按本章接入 React + TypeScript + Vite。
-- **部署**：已提供 **API-only** Compose（`app + subconverter`），用于验证现有端点；含前端静态资源与 SQLite 卷的单入口形态仍属 **Phase 4**，见 [ROADMAP](../ROADMAP.md)。
+- 后端当前唯一已确认的正式实现语言是 `Go`；既有 Python 实现仅保留在 `_legacy/` 供追溯参考。
+- `subconverter` 必须继续以同部署内的内部 HTTP 服务形式集成；业务层不得散落其请求细节。
+- 当前允许保留仅含 `app + subconverter` 的 API-only Compose 作为本地验证路径。
+- 当前实现快照、阶段结论与已知缺口统一见 [../progress/STATUS.md](../progress/STATUS.md)。
 
-本章其余条目描述 **目标架构与约束**，不因 Phase 2 使用标准库 HTTP 而作废。
+## 1. 后续阶段的默认实现方向
 
-## 1. 选型结论
+当对应阶段进入实现时，默认按以下方向推进；若届时治理结论调整，以更新后的 spec 为准。
 
 - 项目统一采用 `Go + Gin + React + TypeScript + Vite + Tailwind CSS + SQLite + Docker Compose`
 - `subconverter` 以**同一 Compose 部署内的内部容器**形式集成
@@ -32,31 +32,31 @@
 - 部署产物必须优先兼容常见自部署环境，至少覆盖 `linux/amd64` 与 `linux/arm64`
 - 避免过轻导致后期补洞，也避免过重导致部署、调试和维护成本失控
 
-## 3. 分层选型
+## 3. 分层方向
 
 | 层 | 选型 | 约束 |
 |----|------|------|
-| 后端 API | `Go + Gin` | 负责 HTTP API、长短链接、快照编码解码、YAML 改写、`subconverter` 调用与静态资源分发 |
-| 前端 | `React + TypeScript + Vite` | 单页应用；负责三阶段表单、状态展示与交互，不做 SSR |
+| 后端 API | `Go + Gin` | 对应阶段默认由主后端承接 HTTP API、长短链接、快照编码解码、YAML 改写、`subconverter` 调用与静态资源分发 |
+| 前端 | `React + TypeScript + Vite` | 对应阶段默认采用单页应用；负责三阶段表单、状态展示与交互，不做 SSR |
 | 前端样式 | `Tailwind CSS` | 仅作为样式与布局层；不引入重量级前端框架 |
-| 数据存储 | `SQLite` | 仅承载短链接索引与必要元数据；不引入独立数据库服务 |
-| 部署 | `Docker Compose` | 统一编排主应用与 `subconverter`；面向 NAS、软路由与小型服务器 |
+| 数据存储 | `SQLite` | 默认承载短链接索引与必要元数据；不引入独立数据库服务 |
+| 部署 | `Docker Compose` | 默认统一编排主应用与 `subconverter`；面向 NAS、软路由与小型服务器 |
 | 转换组件 | `subconverter` 官方镜像 | 作为内部 HTTP 服务运行；不直接暴露到宿主机公网端口 |
 
 ## 4. 后端实现约束
 
 - Go 是后端唯一实现语言；不再保留 Python 作为正式实现路径
-- Web 框架统一选用 `Gin`；不额外叠加更重的后端框架
+- 若引入 Web 框架，默认选用 `Gin`；不额外叠加更重的后端框架
 - 数据访问统一使用 Go 原生 SQL 生态；当前不引入 ORM
 - 后端代码按清晰边界组织为：HTTP 层、业务服务层、存储层、外部集成层
 - `subconverter` 调用必须封装在独立集成模块内；业务层不得散落拼接其请求细节
 - `internal/subconverter` 必须作为唯一的 `subconverter` 访问入口，负责承接 [04-business-rules](04-business-rules.md) 定义的转换契约，并集中管理请求构造、超时/并发/缓存等集成配置
-- 前端构建产物必须由后端统一提供；部署时对用户表现为一个主服务入口
+- 完整前端落地后，前端构建产物必须由后端统一提供；部署时对用户表现为一个主服务入口
 
 ## 5. 前端实现约束
 
-- 前端统一使用 `React + TypeScript`
-- 构建工具统一使用 `Vite`
+- 前端阶段默认使用 `React + TypeScript`
+- 构建工具默认使用 `Vite`
 - 当前定位为单页应用；不引入 `Next.js`、SSR、服务端组件或全栈 React 框架
 - 状态管理以页面局部状态和轻量请求状态为主；不预设 Redux 一类全局状态方案
 - 前端只消费后端返回的 `stage2Init`、`messages[]`、`blockingErrors[]` 等权威数据，不复制后端规则
@@ -65,7 +65,7 @@
 
 ### 6.1 Compose 服务划分
 
-- `app`：主应用容器，对外暴露 Web UI 与 API
+- `app`：主应用容器；完整前端接入后对外暴露 Web UI 与 API
 - `subconverter`：内部转换服务容器，只在 Compose 内部网络可达
 
 ### 6.2 部署规则
@@ -74,9 +74,9 @@
 - `subconverter` 不对宿主机直接暴露端口
 - `app` 与 `subconverter` 必须加入同一私有 Compose 网络
 - `app` 必须声明对 `subconverter` 的启动依赖与健康检查依赖
-- SQLite 文件必须通过卷挂载持久化，避免容器重建导致短链接索引丢失
+- 若引入 SQLite，数据库文件必须通过卷挂载持久化，避免容器重建导致短链接索引丢失
 - 默认部署不要求额外引入 `nginx`、Redis、消息队列或外部数据库
-- 在完整 `Phase 4` 交付前，可提前提供仅包含 `app + subconverter` 的 API-only Compose 作为本地验证路径；该路径不代表前端、SQLite 与正式单入口部署已完成
+- 在完整前端与持久化交付前，可保留仅包含 `app + subconverter` 的 API-only Compose 作为本地验证路径；该路径不代表正式单入口部署已完成
 
 ## 7. `subconverter` 集成与更新策略
 
@@ -112,8 +112,8 @@ chain-subconverter/
 
 - `cmd/server` 只负责启动与装配
 - `internal/subconverter` 是唯一的 `subconverter` 访问入口
-- `internal/store` 负责 SQLite 短链接索引
-- `web` 目录只承载前端工程与构建产物
+- `internal/store` 预留给短链接存储实现
+- `web` 目录预留给前端工程与构建产物
 - `deploy` 目录只承载部署清单与相关示例配置
 
 

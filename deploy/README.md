@@ -7,8 +7,8 @@
 ## 当前范围
 
 - 已提供 `docker-compose.yml`，用于编排 `app + subconverter`
-- 当前部署形态仍是 **API-only** 最小链路
-- 当前不包含前端、SQLite、短链、反向代理与正式单入口 UI
+- 当前只覆盖本地验证所需的最小运行路径
+- 完整阶段状态与缺口统一见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)
 
 ## 启动
 
@@ -42,6 +42,4 @@ curl http://localhost:11200/healthz
 
 - `review/cases/` 提供 frontend-review 的手动输入样例与运行产物
 - 稳定自动化 fixture 位于 `internal/review/testdata/`
-- 当前部署 README 聚焦 Compose 启动与 API-only 运行路径
-
-当前 Compose 的目标是验证“现有 API + 真实 `subconverter`”的可运行路径；正式的前端接入、SQLite 持久化与完整部署形态仍以后续 `Phase 4` 为准。
+- 本 README 只说明 Compose 启动与环境变量；不重复维护阶段状态说明

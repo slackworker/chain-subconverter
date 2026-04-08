@@ -4,9 +4,9 @@
 
 ## 状态
 
-本项目处于 **spec 与开发并行推进阶段**：以已确认 spec 为准推进实现，并保持 spec 与实现同步。既有 Python 实现已归档至 `_legacy/`，新后端为 **Go**；前端与完整部署按 [docs/ROADMAP.md](docs/ROADMAP.md) 分阶段推进。治理规则见 [docs/spec/00-governance.md](docs/spec/00-governance.md)。
+本项目处于 **spec 与开发并行推进阶段**：以已确认 spec 为准推进实现，并保持 spec 与实现同步。治理规则见 [docs/spec/00-governance.md](docs/spec/00-governance.md)。
 
-**当前实现（Phase 2.5 进行中）**：最小业务闭环与 golden 基线已落地；HTTP 层为标准库 `net/http`；`internal/store` 与短链仍为占位；`web/` 尚未初始化前端工程（计划 Phase 4）。权威规格与进度见 [docs/README.md](docs/README.md)、[docs/progress/STATUS.md](docs/progress/STATUS.md)。
+当前实现状态、阶段结论与已知缺口统一见 [docs/progress/STATUS.md](docs/progress/STATUS.md)。spec 入口见 [docs/README.md](docs/README.md)，后续阶段规划见 [docs/ROADMAP.md](docs/ROADMAP.md)。既有 Python 实现已归档至 `_legacy/`。
 
 ## 文档
 
@@ -27,24 +27,22 @@
 chain-subconverter/
 ├── cmd/server/          # 启动入口：配置加载、依赖装配、HTTP 监听
 ├── internal/
-│   ├── api/             # HTTP 层：路由、JSON/YAML 编解码、错误映射到响应（当前：标准库 ServeMux）
-│   ├── service/         # 业务逻辑：stage2Init、长链接载荷、YAML 渲染、与 subconverter 结果适配
-│   ├── store/           # 短链接索引（SQLite）— Phase 3 实现，当前仅占位包
+│   ├── api/             # HTTP 层
+│   ├── service/         # 业务逻辑与规则实现
+│   ├── store/           # 短链接存储预留目录
 │   ├── subconverter/    # subconverter 唯一集成入口（3-pass HTTP）
 │   └── config/          # 配置管理
-├── web/                 # 前端工程占位；Phase 4 初始化（见 web/README.md）
-├── deploy/              # API-only Compose 与 smoke（完整形态见 ROADMAP Phase 4）
+├── web/                 # 前端目录预留
+├── deploy/              # 部署清单与本地验证入口
 ├── review/              # 文件驱动的前端业务 review 场景、任务脚本与辅助 Compose
 ├── docs/spec/           # 权威 spec
-├── testdata/            # 机器可读 golden 与测试夹具
+├── internal/review/testdata/
 └── _legacy/             # 旧 Python 实现（归档）
 ```
 
 ## 技术栈
 
-**目标栈（spec）**：Go + Gin · React + TypeScript + Vite + Tailwind CSS · SQLite · Docker Compose · subconverter（集成容器）。详见 [docs/spec/05-tech-stack.md](docs/spec/05-tech-stack.md)。
-
-**当前仓库已落地**：Go 标准库 HTTP · subconverter 客户端 · Docker Compose（API-only）· 固定 `testdata` golden；Gin、SQLite 短链、前端工程为后续阶段实现。
+当前硬约束与后续实现方向统一见 [docs/spec/05-tech-stack.md](docs/spec/05-tech-stack.md)。当前实现快照仍以 [docs/progress/STATUS.md](docs/progress/STATUS.md) 为准。
 
 ## License
 
