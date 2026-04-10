@@ -1,6 +1,14 @@
 # chain-subconverter 文档
 
-## Spec 入口
+## 阅读入口
+
+本文档是项目文档的唯一导航入口。
+
+1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
+2. 按主题进入前端、API、业务规则、技术约束。
+3. 需要看阶段顺序时读 [ROADMAP](ROADMAP.md)；需要看当前进度时读 [progress/STATUS](progress/STATUS.md)。
+
+## 权威文档
 
 **[docs/spec/](spec/)** — 当前 spec 与开发并行推进阶段的权威目录。
 
@@ -13,19 +21,12 @@
 | [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
 | [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
 
-> 当前推进口径见 [spec/00-governance](spec/00-governance.md)：以已确认 spec 驱动实现，并与实现同步。
-
-## 推进
+## 推进与验证
 
 | 文档 | 说明 |
 |------|------|
 | [ROADMAP](ROADMAP.md) | 推进路线图：Phase 划分、依赖关系与推荐下一步 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已完成范围、已知缺口 |
-
-## 测试
-
-| 文档 | 说明 |
-|------|------|
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 | [testing/frontend-review-workflow](testing/frontend-review-workflow.md) | 文件驱动的前端业务 review 工作流 |
 

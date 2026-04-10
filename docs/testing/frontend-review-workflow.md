@@ -1,6 +1,6 @@
 # 文件驱动的前端业务 Review 工作流
 
-术语边界统一见 [../spec/01-overview.md](../spec/01-overview.md)；本文只说明 review 工作流与产物目录，不重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
+本文只说明 review 工作流与产物目录。
 
 ## 目标
 

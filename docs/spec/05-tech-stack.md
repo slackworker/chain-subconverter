@@ -1,19 +1,18 @@
 # 05 - 技术选型与项目结构
 
-> 本章定义重构版本的技术选型、部署形态与项目结构。接口契约见 [03-backend-api](03-backend-api.md)，`subconverter` 集成边界见 [04-business-rules](04-business-rules.md)。
+> 本章只定义技术、分层与部署约束。接口契约见 [03-backend-api](03-backend-api.md)，业务规则见 [04-business-rules](04-business-rules.md)。
 
 ---
 
-## 0. 当前硬约束与后续方向
-
-以下条目只定义当前已经确认的技术边界，避免把后续阶段的实现偏好误写成 Phase 2 / 2.5 的现行要求。
+## 0. 当前硬约束
 
 - 后端当前唯一已确认的正式实现语言是 `Go`；既有 Python 实现仅保留在 `_legacy/` 供追溯参考。
 - `subconverter` 必须继续以同部署内的内部 HTTP 服务形式集成；业务层不得散落其请求细节。
 - 当前允许保留仅含 `app + subconverter` 的 API-only Compose 作为本地验证路径。
-- 当前实现快照、阶段结论与已知缺口统一见 [../progress/STATUS.md](../progress/STATUS.md)。
 
-## 1. 后续阶段的默认实现方向
+当前状态见 [../progress/STATUS.md](../progress/STATUS.md)。
+
+## 1. 默认实现方向
 
 当对应阶段进入实现时，默认按以下方向推进；若届时治理结论调整，以更新后的 spec 为准。
 

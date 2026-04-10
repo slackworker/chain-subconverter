@@ -1,6 +1,6 @@
 # 推进路线图
 
-术语边界统一见 [spec/01-overview.md](spec/01-overview.md)；本文只描述阶段目标、非目标与推进顺序，不重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
+本文只记录阶段目标、非目标、依赖与推荐顺序。
 
 ## Phase 依赖
 
@@ -58,7 +58,7 @@ flowchart LR
 
 - 安全口径归位（含 SSRF 相关历史策略）当前仅在 `ROADMAP/STATUS` 跟踪；进入对应实现阶段后再决定是否并入权威 spec
 
-当前完成状态与阶段性结论统一见 [progress/STATUS.md](progress/STATUS.md)。
+当前状态见 [progress/STATUS.md](progress/STATUS.md)。
 
 ## Phase 3：扩展业务与 API 收口
 
@@ -84,7 +84,7 @@ flowchart LR
 | `cmd/server/` | HTTP 启动、路由注册与运行形态收口 |
 | `deploy/` | Docker Compose（app + subconverter） |
 
-> 具体完成状态、已知缺口与阶段性结论统一见 [progress/STATUS.md](progress/STATUS.md)。
+> 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 
 ## 推荐下一步
 

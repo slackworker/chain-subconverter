@@ -1,6 +1,6 @@
 # 02 - 前端 UI 规格
 
-> 本章只定义界面结构、展示语义与交互边界。自动识别、生成前校验与改写规则见 [04-business-rules](04-business-rules.md)，接口字段见 [03-backend-api](03-backend-api.md)。
+> 本章只定义界面结构与交互边界。业务规则见 [04-business-rules](04-business-rules.md)，接口字段见 [03-backend-api](03-backend-api.md)。
 
 ---
 

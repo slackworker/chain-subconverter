@@ -1,6 +1,6 @@
 # 3-pass 与最小完整流程基线：`3pass-ss2022-test-subscription`
 
-术语边界统一见 [../spec/01-overview.md](../spec/01-overview.md)；本文只说明测试基线与目录职责，不重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
+本文只说明测试基线与目录职责。
 
 ## 用途
 

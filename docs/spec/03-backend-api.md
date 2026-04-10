@@ -1,6 +1,6 @@
 # 03 - 后端 API 契约
 
-> 本章只定义接口字段与响应结构。`subconverter` 集成口径、转换管线、阶段 2 初始化、生成前校验与订阅渲染语义统一见 [04-business-rules](04-business-rules.md)。
+> 本章只定义 HTTP 契约。业务规则与转换语义见 [04-business-rules](04-business-rules.md)。
 
 ---
 
