@@ -5,6 +5,7 @@
 ## 状态
 
 本项目处于 **spec 与开发并行推进阶段**：以已确认 spec 为准推进实现，并保持 spec 与实现同步。治理规则见 [docs/spec/00-governance.md](docs/spec/00-governance.md)。
+术语边界统一见 [docs/spec/01-overview.md](docs/spec/01-overview.md)；非权威文档不再重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
 
 当前实现状态、阶段结论与已知缺口统一见 [docs/progress/STATUS.md](docs/progress/STATUS.md)。spec 入口见 [docs/README.md](docs/README.md)，后续阶段规划见 [docs/ROADMAP.md](docs/ROADMAP.md)。既有 Python 实现已归档至 `_legacy/`。
 

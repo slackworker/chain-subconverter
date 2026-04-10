@@ -3,6 +3,8 @@
 > 本页只做迁移映射，不定义业务规则。
 >
 > 当前权威规格入口：[`docs/spec/`](spec/)。
+>
+> 历史文档保留原始历史用词；当前术语边界统一以 `spec/01-overview.md` 为准。
 
 ## Legacy -> Current Spec
 

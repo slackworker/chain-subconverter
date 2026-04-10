@@ -1,5 +1,7 @@
 # 推进路线图
 
+术语边界统一见 [spec/01-overview.md](spec/01-overview.md)；本文只描述阶段目标、非目标与推进顺序，不重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
+
 ## Phase 依赖
 
 ```mermaid
@@ -23,14 +25,14 @@ flowchart LR
 
 ## Phase 2：最小业务闭环
 
-**目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终 YAML”的最小业务流程（已完成）
+**目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终订阅 YAML”的最小业务流程（已完成）
 
 | 任务 | 说明 |
 |------|------|
 | 固定 `3-pass` happy path | 复用同一条转换管线，校验落地 / 中转 / full-base 三个 pass |
 | 默认 `stage2Init` | 对固定测试输入产出默认 `rows`、`availableModes`、`chainTargets[]` |
 | 规范 `longUrl` | 基于固定 `stage1Input + stage2Snapshot` 生成确定性长链接 |
-| 最终 YAML 渲染 | 通过 `GET /subscription?data=...` 或等价入口回放最终 YAML |
+| 最终订阅 YAML 渲染 | 通过 `GET /subscription?data=...` 或等价入口回放最终订阅 YAML |
 | Golden 验收 | 对齐测试样例中的 request / response / payload / YAML 固定产物 |
 
 明确不纳入本阶段：
@@ -47,7 +49,7 @@ flowchart LR
 
 | 任务 | 说明 |
 |------|------|
-| 文档收口 | 把阶段目标、验收基线、非目标与后续边界写清楚 |
+| 文档收口 | 把阶段目标、验收基线、非目标与术语引用边界写清楚 |
 | 结构整理 | 清理最小闭环阶段产生的临时命名、重复逻辑与职责漂移 |
 | 边界确认 | 重新确认服务层、API 层与测试夹具之间的职责边界 |
 | 下一阶段盘点 | 为扩展业务、前端与部署准备更稳定的起点 |

@@ -1,5 +1,7 @@
 # 3-pass 与最小完整流程基线：`3pass-ss2022-test-subscription`
 
+术语边界统一见 [../spec/01-overview.md](../spec/01-overview.md)；本文只说明测试基线与目录职责，不重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
+
 ## 用途
 
 本用例固定一组最小但完整的 `subconverter` 3-pass 基线，并覆盖默认链式代理 happy path 的最小业务闭环：
@@ -34,7 +36,7 @@
 - `stage2/input/stage2-snapshot.json`
   - Stage1 刷新的默认 snapshot，供手动编辑
 - `stage2/output/`
-  - 运行 Stage2 后生成的请求响应、payload 与最终 YAML
+  - 运行 Stage2 后生成的请求响应、payload 与最终订阅 YAML
 - 手动执行顺序与 `transit.txt` 输入规则统一见 [frontend-review-workflow](frontend-review-workflow.md)
 
 执行 Stage1 时只刷新 `stage1/output/` 与 `stage2/input/stage2-snapshot.json`，不会清理 `stage2/output/`；后者仅代表最近一次 Stage2 运行结果。
@@ -54,7 +56,7 @@
 - `stage2/output/generate.request.json`
 - `stage2/output/generate.response.json`
 - `stage2/output/long-url.payload.json`
-- `stage2/output/complete-config.chain.yaml`
+- `stage2/output/complete-config.chain.yaml`（最终订阅 YAML）
 
 ## 当前默认业务推导
 

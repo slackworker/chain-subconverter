@@ -46,6 +46,11 @@
 
 本表是 `GET /sub` 查询参数的唯一权威定义位置。前端展示只见 [02-frontend-spec](02-frontend-spec.md)，接口快照字段只见 [03-backend-api](03-backend-api.md)。
 
+术语约束：
+
+- `config` 在本表中只表示与 `subconverter` 对接时沿用的上游查询参数名；其业务语义固定为“外部配置（模板）URL”
+- 本项目的人类可见描述中，`config` 不得再泛指最终 Mihomo YAML；最终产物统一称 `completeConfig`、完整配置或最终订阅 YAML
+
 | 参数 | 前端状态 | 默认值 | 传递规则 |
 |------|----------|--------|----------|
 | `target` | 隐藏 | `clash` | 必传，固定传 `clash` |
@@ -54,7 +59,7 @@
 | `udp` | 展示 | 勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
 | `scv` | 展示 | 不勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
-| `config` | 展示 | 见下方补充 | 前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
+| `config` | 展示 | 见下方补充 | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
 | `exclude` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
 | `expand` | 隐藏 | `false` | 必传，固定传 `false` |
@@ -64,7 +69,7 @@
 
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
 - `config` 的默认行为为：留空时，由 `chain-subconverter` 先拉取 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini` 作为本次有效模板
-- 若用户显式填写 `config`，该值必须是远程 HTTP(S) URL；`chain-subconverter` 必须先拉取该模板，再把后端托管的内部模板 URL 传给 `subconverter`
+- 若用户显式填写 `config`，该值必须是远程 HTTP(S) 模板 URL；`chain-subconverter` 必须先拉取该模板，再把后端托管的内部模板 URL 传给 `subconverter`
 - `chain-subconverter` 不得把用户提供的远程模板 URL 直接透传给 `subconverter`
 - 模板拉取返回非成功 HTTP 状态、请求失败或空内容时，当前请求必须在调用 `subconverter` 前失败
 - 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
@@ -84,12 +89,12 @@
 
 - 落地节点信息
 - 中转节点信息
-- `config` 与其他 `subconverter` 配置参数
+- `config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
 - 端口转发服务信息
 
 其中：
 
-- `subconverter` 使用落地节点信息、中转节点信息、`config` 与其他 `subconverter` 配置参数
+- `subconverter` 使用落地节点信息、中转节点信息、`config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
 - `config` 的用户输入只用于确定本次有效模板来源；模板内容由 `chain-subconverter` 拉取、校验并托管后，再供 `subconverter` 使用
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
 - `advancedOptions.enablePortForward = false` 时，端口转发服务信息必须为空字符串，且不得参与解析、校验或候选生成
@@ -146,13 +151,13 @@
 统一转换管线存在两类结果语义：
 
 - `stage2Init`：阶段 1 对前端暴露的初始化数据
-- `baseCompleteConfig`：`full-base pass` 生成并经后端后处理后的基底完整配置，供后端校验与订阅渲染使用
+- `baseCompleteConfig`：`full-base pass` 生成并经后端后处理后的基底完整配置，供后端校验与订阅渲染使用；不得与模板内容混称为“配置文件”
 
 补充规则：
 
 - 阶段 1 对外返回 `stage2Init`
 - `POST /api/generate` 返回校验通过后的链接
-- 面向用户消费的最终 `completeConfig` 在订阅链接被打开或下载时即时生成并返回
+- 面向用户消费的最终 `completeConfig` 在订阅链接被打开或下载时即时生成并返回；面向用户时可称“最终订阅 YAML”
 
 ### 1.3 落地节点出组后处理
 
@@ -327,7 +332,7 @@
 
 ### 3.2.1 恢复链接时的可重放性判定
 
-本节是 `POST /api/resolve-url` 判断 `restoreStatus` 的权威口径。其关注点是“恢复快照中的配置引用是否仍然有效”，而不是“上游输入是否发生过任何变化”。`resolve-url` 的校验必须复用本章定义的生成前校验口径。
+本节是 `POST /api/resolve-url` 判断 `restoreStatus` 的权威口径。其关注点是“恢复快照中的目标引用是否仍然有效”，而不是“上游输入是否发生过任何变化”。`resolve-url` 的校验必须复用本章定义的生成前校验口径。
 
 判定规则：
 

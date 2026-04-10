@@ -1,5 +1,7 @@
 # 文件驱动的前端业务 Review 工作流
 
+术语边界统一见 [../spec/01-overview.md](../spec/01-overview.md)；本文只说明 review 工作流与产物目录，不重复定义“模板 URL / 模板内容 / `baseCompleteConfig` / `completeConfig`”。
+
 ## 目标
 
 本工作流用于在 **无前端工程、无 app API 依赖** 的情况下，按手动 review 的真实顺序回放前端业务。
@@ -34,7 +36,7 @@
 - `stage2/input/`
   - Stage1 刷新的 `stage2-snapshot.json`，供手动修改后再跑 Stage2
 - `stage2/output/`
-  - Stage2 生成的 `generate.*`、`long-url.payload.json`、`complete-config.chain.yaml`
+  - Stage2 生成的 `generate.*`、`long-url.payload.json`、`complete-config.chain.yaml`（最终订阅 YAML）
 
 ## 运行时产物位置
 
@@ -55,6 +57,7 @@
 说明：
 
 - `transit.txt` 始终是唯一的中转输入文本；支持订阅 URL、节点 URI、`data:text/plain,<base64文本>`；具体权威口径见 `docs/spec/04-business-rules.md`
+- `advanced-options.yaml` 中的 `config` 字段业务语义始终是模板 URL；留空表示使用默认模板 URL
 - `advanced-options.yaml` 推荐保留完整骨架：复选框写显式 `true` 或 `false`，留空值表示不向上游传该参数；文本框写非空字符串表示透传，留空值表示不传
 - 建议骨架形态为：`emoji: true`、`udp: true`、`skipCertVerify:`、`config:`、`include:`、`exclude:`、`enablePortForward: false`
 - 若文本框当前为空，允许写成 `config: ""`、`include: ""`、`exclude: ""`；系统会在入站归一化为 `null`，后续不向 `subconverter` 传对应 query 参数

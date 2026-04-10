@@ -79,9 +79,10 @@
 - 阶段 1 中可配置的 `subconverter` 参数统一收纳在此区域
 - 前端控件集合（阶段 1 快照字段名）：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
 - 隐藏固定参数不展示控件
-- `config` 输入框默认视觉上留空
-- `config` 输入框 placeholder：`不填写将使用默认 Aethersailor 模板`
-- `config` 输入框右侧必须提供感叹号提示 icon，说明当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，且上游更新可能导致规则变化
+- `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
+- “模板 URL”输入框默认视觉上留空
+- “模板 URL”输入框 placeholder：`不填写将使用默认 Aethersailor 模板`
+- “模板 URL”输入框右侧必须提供感叹号提示 icon，说明当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，且上游更新可能导致规则变化
 - 参数默认值与 `GET /sub` 传递规则的唯一权威定义位于 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表`
 - 前端提交阶段 1 快照时不得依赖“省略键 = 默认值”的隐式约定：复选框提交显式 `true` 或 `false`，文本框留空时提交 `null`
 - 前端只负责渲染与提交高级选项快照，不在本章重复定义参数传递语义
@@ -98,7 +99,7 @@
 
 - 布局顺序固定为：落地信息 -> 中转信息 -> 条件显示的端口转发服务信息 -> 高级菜单 -> 转换按钮
 - 修改阶段 1 任一输入后，阶段 2 标记过期：禁用“生成链接”，并提示重新执行“转换并自动填充”，直到下一次转换成功
-- 阶段 1 不负责直接生成最终 YAML
+- 阶段 1 不负责直接生成最终订阅 YAML
 
 ---
 
@@ -182,14 +183,14 @@
 | 复制 | 复制当前选中的长链接或短链接 |
 | 下载 | 基于当前选中的订阅链接触发 `.yaml` 下载 |
 - 前端不主动 fetch YAML；按钮行为直接消费当前选中的订阅链接
-- 最终 YAML 由后端在链接实际被打开或下载时即时生成并交付
+- 最终订阅 YAML 由后端在链接实际被打开或下载时即时生成并交付
 
 ### 3.3 消息区
 
 - 展示后端返回的 `messages[]` 与 `blockingErrors[]`
 - 前端统一按 `level` 将 `messages[]` 渲染为当前阶段顶部的普通消息，不得依据 `messages[].context` 做字段级或行级定位展示
 - `blockingErrors[]` 的展示位置由 `scope` 决定：`global` 渲染到当前阶段顶部错误区，`stage1_field` 渲染到阶段 1 对应输入区，`stage2_row` 渲染到阶段 2 对应行
-- 前端优先按 `retryable` 渲染重试导向；未提供时可按 HTTP 状态码兜底，`503` 视为可重试，其余阻断错误视为需修改输入或配置
+- 前端优先按 `retryable` 渲染重试导向；未提供时可按 HTTP 状态码兜底，`503` 视为可重试，其余阻断错误视为需修改输入或阶段 2 选择
 - 阻断错误应显著展示，并阻止进入成功态；toast 不能作为阻断错误的唯一承载方式
 
 ---
@@ -202,7 +203,7 @@
 - 前端通过 `resolve-url` 恢复页面时，成功响应只消费后端返回的 `stage1Input`、`stage2Snapshot`、`restoreStatus` 与 `messages[]`；失败响应按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - `restoreStatus = replayable` 时，前端按正常可编辑态恢复阶段 1 与阶段 2，用户可直接继续编辑和生成
 - `restoreStatus = conflicted` 时，前端仍恢复阶段 1 输入与阶段 2 快照用于展示，但阶段 2 必须进入只读冲突态
-- 只读冲突态下，前端必须禁用阶段 2 编辑控件与“生成链接”按钮，并显著提示“当前恢复快照引用的配置已失效，恢复结果仅供查看；请重新执行转换并自动填充后再继续”
+- 只读冲突态下，前端必须禁用阶段 2 编辑控件与“生成链接”按钮，并显著提示“当前恢复快照引用的目标已失效，恢复结果仅供查看；请重新执行转换并自动填充后再继续”
 - 只读冲突态下，用户唯一允许的继续路径是回到阶段 1 重新执行“转换并自动填充”，再进入后续配置和生成流程
 
 ---

@@ -12,7 +12,7 @@
 - **统一转换管线**：阶段 1、生成校验、恢复判定与订阅渲染都复用同一条 3-pass 转换管线
 - **最终配置延迟交付**：阶段 1 与 `generate` 只产出初始化结果或链接；最终 `completeConfig` 只在订阅链接实际被打开或下载时即时生成
 - **输入职责清晰**：所有原始输入都在阶段 1 完成；阶段 2 只基于转换结果做选择
-- **有效模板驱动**：当前自动识别逻辑以本次请求解析得到的有效模板内容为前提；`config` 留空时使用默认 Aethersailor 模板 URL
+- **有效模板驱动**：当前自动识别逻辑以本次请求解析得到的有效模板内容为前提；阶段 1 的 `advancedOptions.config` 留空时使用默认 Aethersailor 模板 URL
 - **快照可复现**：阶段 3 长链接必须能够完整恢复阶段 1 和阶段 2 的状态；恢复后的后续操作权限以后端恢复校验结果为准
 
 ## 数据流概览
@@ -62,8 +62,10 @@ flowchart LR
 | 落地节点（Landing Node） | 最终出口节点。阶段 2 第一列的数据来源 |
 | 中转节点（Transit Node） | 作为前置代理使用的节点或策略组来源 |
 | 端口转发服务（Port Forward Relay） | `server:port` 格式的服务地址；仅用于端口转发，不进入 `subconverter` |
+| 模板 URL（Template URL） | 阶段 1 `advancedOptions.config` 的业务语义；用于指定本次转换采用的远程模板来源。字段名保留 `config` 只是为了兼容 `subconverter` 的既有 `config` 查询参数约定 |
+| 模板内容（TemplateConfig） | 后端根据模板 URL 拉取、校验并托管后的模板文本；用于驱动地域策略组识别与 `subconverter` 转换，不等同于最终 Mihomo YAML |
 | 基底完整配置（BaseCompleteConfig） | `full-base pass` 生成并经后端后处理后的内部基底配置；仅供校验与订阅渲染使用，不直接暴露给前端 |
-| 完整配置（CompleteConfig） | 订阅链接被打开或下载时，后端基于当前 `baseCompleteConfig` 应用阶段 2 快照改写后即时返回的最终 Mihomo YAML |
+| 完整配置（CompleteConfig） | 订阅链接被打开或下载时，后端基于当前 `baseCompleteConfig` 应用阶段 2 快照改写后即时返回的最终 Mihomo YAML；面向用户时也可称“最终订阅 YAML” |
 | 区域策略组 | 从本次有效模板中识别出的、名称形如“国旗 emoji + 地区名 + 节点”的 `custom_proxy_group` 策略组 |
 | 阶段 2 初始化数据（Stage2Init） | 阶段 1 返回的、供前端直接渲染配置区的数据，包括落地节点、模式可选项、链式候选、中转候选和默认行 |
 

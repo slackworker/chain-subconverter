@@ -57,7 +57,7 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		return PreparedConversion{}, err
 	}
 	if _, err := parseRegionMatchers(templateConfig); err != nil {
-		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "invalid template config", "config", err)
+		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
 	}
 
 	id, err := storeManagedTemplate(templateConfig)
@@ -90,13 +90,13 @@ func resolveEffectiveTemplateURL(stage1Input Stage1Input) (string, error) {
 	rawURL := strings.TrimSpace(*stage1Input.AdvancedOptions.Config)
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) URL", "config", err)
+		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
 	}
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) URL", "config", fmt.Errorf("unsupported scheme %q", parsedURL.Scheme))
+		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("unsupported scheme %q", parsedURL.Scheme))
 	}
 	if parsedURL.Host == "" {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) URL", "config", fmt.Errorf("missing host"))
+		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("missing host"))
 	}
 	return parsedURL.String(), nil
 }
@@ -104,28 +104,28 @@ func resolveEffectiveTemplateURL(stage1Input Stage1Input) (string, error) {
 func (source *ManagedConversionSource) fetchTemplateConfig(ctx context.Context, templateURL string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, templateURL, nil)
 	if err != nil {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) URL", "config", err)
+		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
 	}
 
 	resp, err := source.httpClient.Do(req)
 	if err != nil {
 		retryable := true
-		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template config is unavailable", "global", nil, &retryable, err)
+		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template content is unavailable", "global", nil, &retryable, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		retryable := true
-		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template config is unavailable", "global", nil, &retryable, fmt.Errorf("unexpected HTTP status %d", resp.StatusCode))
+		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template content is unavailable", "global", nil, &retryable, fmt.Errorf("unexpected HTTP status %d", resp.StatusCode))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template config is unavailable", "global", nil, nil, err)
+		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template content is unavailable", "global", nil, nil, err)
 	}
 	trimmed := strings.TrimSpace(string(body))
 	if trimmed == "" {
-		return "", newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template config is empty", "config", fmt.Errorf("empty response body"))
+		return "", newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is empty", "config", fmt.Errorf("empty response body"))
 	}
 	return trimmed, nil
 }
