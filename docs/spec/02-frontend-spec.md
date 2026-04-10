@@ -79,6 +79,9 @@
 - 阶段 1 中可配置的 `subconverter` 参数统一收纳在此区域
 - 前端控件集合（阶段 1 快照字段名）：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
 - 隐藏固定参数不展示控件
+- `config` 输入框默认视觉上留空
+- `config` 输入框 placeholder：`不填写将使用默认 Aethersailor 模板`
+- `config` 输入框右侧必须提供感叹号提示 icon，说明当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，且上游更新可能导致规则变化
 - 参数默认值与 `GET /sub` 传递规则的唯一权威定义位于 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表`
 - 前端提交阶段 1 快照时不得依赖“省略键 = 默认值”的隐式约定：复选框提交显式 `true` 或 `false`，文本框留空时提交 `null`
 - 前端只负责渲染与提交高级选项快照，不在本章重复定义参数传递语义
@@ -108,7 +111,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `availableModes` | `mode[]` | 阶段 2 第二列的全局模式基线 |
-| `chainTargets[]` | object[] | 链式候选列表；每项包含 `name` 与 `kind` |
+| `chainTargets[]` | object[] | 链式候选列表；每项包含 `name`、`kind`，空策略组额外返回 `isEmpty = true` |
 | `rows[].landingNodeName` | string | 本行对应的落地节点名称 |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
@@ -140,9 +143,10 @@
 - 当 `mode = none` 时，第三列清空并禁用
 - 当 `mode = chain` 时，第三列展示链式候选列表
 - 链式候选按 `chainTargets[].kind` 分组展示：`proxy-groups` 默认展开，`proxies` 默认折叠
-- 前端直接消费后端返回的 `chainTargets[].name` 作为选项值；不得自行改写、国际化或另造展示别名
+- 前端使用后端返回的 `chainTargets[].name` 作为选项值
+- `chainTargets[].isEmpty = true` 的 `proxy-groups` 候选保留展示、禁止选择，并提示“策略组为空，不允许作为中转策略组”
 - 当 `mode = port_forward` 时，第三列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`
-- 前端不自行推导候选列表，不自行重做自动识别；只消费后端产物
+- 前端直接使用后端返回的候选列表与默认值
 
 ### 2.6 生成链接按钮
 

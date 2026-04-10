@@ -192,7 +192,7 @@
 #### 全局规则
 
 - `stage2Init.availableModes` 必须始终包含 `none`
-- 当存在链式代理候选时，`stage2Init.availableModes` 必须包含 `chain`
+- 当存在至少一个可选择的链式代理候选时，`stage2Init.availableModes` 必须包含 `chain`
 - 当满足以下两个条件时，`stage2Init.availableModes` 必须包含 `port_forward`
   - 阶段 1 已开启端口转发功能
   - 阶段 1 已录入至少一个合法端口转发服务
@@ -221,14 +221,15 @@
 
 1. 对区域策略组，读取 `baseCompleteConfig` 中这 6 个区域策略组的当前结果
 2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 与所有落地节点都不计入成员数
-3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 后成员数为 `0`，则该区域策略组不进入 `chainTargets[]`
-4. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
-5. `chainTargets[]` 中只保留 `name` 与 `kind`；不得暴露 `regionId` 或其他当前前端不消费的元数据
-6. 默认模板 6 个区域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
-7. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
-8. `kind` 只是前端分组展示辅助字段，不参与候选匹配、快照序列化或恢复定位
-9. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
-10. 若任一中转 `proxy.name` 与默认模板 6 个区域策略组中的任意一个重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 与所有落地节点后成员数为 `0`，该区域策略组仍必须进入 `chainTargets[]`，但必须标记 `isEmpty = true`
+4. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
+5. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
+6. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
+7. 默认模板 6 个区域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
+8. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
+9. `kind` 仅用于前端分组展示
+10. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
+11. 若任一中转 `proxy.name` 与默认模板 6 个区域策略组中的任意一个重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
 
 ### 2.4 收集端口转发候选
 
@@ -258,13 +259,8 @@
 
 1. 从落地节点名称中识别其所属区域
 2. 在 6 个区域策略组中查找对应区域的候选组
-3. 若唯一命中，则：
-   - 该行默认 `mode = chain`
-   - `targetName` 自动填写为对应区域策略组名称
-4. 若无法唯一命中，则：
-   - 该行默认 `mode = none`
-   - `targetName = null`
-   - 保留完整 `chainTargets[]` 供用户手动选择
+3. 若唯一命中且命中的区域策略组在本次 `chainTargets[]` 中存在，且 `isEmpty` 留空，则该行默认 `mode = chain`，`targetName` 自动填写为对应区域策略组名称
+4. 其他情况一律按“未唯一命中”处理：`mode = none`，`targetName = null`
 
 #### 当 `mode = port_forward`
 
@@ -302,9 +298,9 @@
 
 **区域归属**（`landingNodeName` 属于哪一区域）的**唯一规则来源**为仓库内置文件 `internal/service/default_region_config.ini` 中与上表六条「默认模板策略组名」对应的六行 `custom_proxy_group=…` `url-test` 所声明的完整正则 pattern。
 
-阶段 2 初始化时，无论用户是否显式填写 `config`，实现都必须直接使用这六条完整正则在完整 `landingNodeName` 上匹配；不得自行改写、拆分或降级为关键词规则，也不得为了自动识别再额外读取用户提供的本地或远程 `config` 内容。
+阶段 2 初始化时，直接使用这六条完整正则在完整 `landingNodeName` 上匹配。
 
-用户填写的 `config` 仍只影响同一次 3-pass 转换的实际产物，因此“对应区域策略组是否可用于自动填充”必须以当次 `stage2Init.chainTargets[]` 为准：只有当唯一命中的区域策略组名字面量同时存在于 `chainTargets[]` 中时，才允许自动填写；否则按 `2.5` 的“未唯一命中”处理，保留候选供用户手动选择中转目标。
+“对应区域策略组是否可用于自动填充”以当次 `stage2Init.chainTargets[]` 为准。
 
 命中 **0** 条或 **多于 1** 条时，链式自动识别失败（见 2.5）；**恰好 1** 条时，默认 `targetName` 为上表中该行的策略组名字面量，且须在当次 `chainTargets[]` 中存在同名区域策略组条目。
 
@@ -330,6 +326,7 @@
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
 - 若某行选择 `chain` 但该落地节点协议不支持链式代理，必须阻断生成
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
+- 若某行选择的 `chain` 目标在当前 `chainTargets[]` 中 `isEmpty = true`，必须以 `EMPTY_CHAIN_TARGET` 阻断生成
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 - `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 

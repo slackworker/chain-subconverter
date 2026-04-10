@@ -135,6 +135,39 @@ func TestValidateGenerateSnapshot_RejectsChainForVLESSReality(t *testing.T) {
 	}
 }
 
+func TestValidateGenerateSnapshot_RejectsEmptyChainTarget(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("Unknown Landing", "ss", "")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					LandingNodeName: "Unknown Landing",
+					Mode:            "chain",
+					TargetName:      &targetName,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want empty chain target rejection")
+	}
+	if !strings.Contains(err.Error(), `chain target "🇭🇰 香港节点"`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "EMPTY_CHAIN_TARGET" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "EMPTY_CHAIN_TARGET")
+	}
+}
+
 func TestRenderCompleteConfig_PortForwardRewritesServerAndPort(t *testing.T) {
 	targetName := "relay.example.com:80"
 	fixtures := singleLandingFixture("HK Landing", "ss", "")

@@ -44,6 +44,9 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 	if !hasChainTarget(stage2Init.ChainTargets, "🇺🇸 美国节点", "proxy-groups") {
 		t.Fatalf("expected chain target %q with kind %q, got %v", "🇺🇸 美国节点", "proxy-groups", stage2Init.ChainTargets)
 	}
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇺🇸 美国节点", "proxy-groups"); !ok || target.IsEmpty {
+		t.Fatalf("expected non-empty chain target %q, got %v", "🇺🇸 美国节点", stage2Init.ChainTargets)
+	}
 }
 
 func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t *testing.T) {
@@ -160,6 +163,9 @@ func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T
 	if got, want := stage2Init.AvailableModes, []string{"none", "port_forward"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
 	}
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇺🇸 美国节点", "proxy-groups"); !ok || !target.IsEmpty {
+		t.Fatalf("expected empty chain target %q to remain visible, got %v", "🇺🇸 美国节点", stage2Init.ChainTargets)
+	}
 	if len(stage2Init.Rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
 	}
@@ -218,8 +224,8 @@ func TestBuildStage2Init_DoesNotCountLandingNodeAsRegionMember(t *testing.T) {
 	if got, want := stage2Init.AvailableModes, []string{"none"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
 	}
-	if len(stage2Init.ChainTargets) != 0 {
-		t.Fatalf("ChainTargets should be empty when region group only contains landing node, got %v", stage2Init.ChainTargets)
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇺🇸 美国节点", "proxy-groups"); !ok || !target.IsEmpty {
+		t.Fatalf("expected empty chain target %q when region group only contains landing node, got %v", "🇺🇸 美国节点", stage2Init.ChainTargets)
 	}
 }
 
@@ -428,12 +434,17 @@ func readTextFixture(t *testing.T, path string) string {
 }
 
 func hasChainTarget(targets []ChainTarget, name string, kind string) bool {
+	_, ok := findChainTarget(targets, name, kind)
+	return ok
+}
+
+func findChainTarget(targets []ChainTarget, name string, kind string) (ChainTarget, bool) {
 	for _, target := range targets {
 		if target.Name == name && target.Kind == kind {
-			return true
+			return target, true
 		}
 	}
-	return false
+	return ChainTarget{}, false
 }
 
 func normalizeTestFixtureNewlines(value string) string {

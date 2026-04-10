@@ -267,9 +267,9 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
 	}
 
-	chainTargetNames := make(map[string]struct{}, len(stage2Init.ChainTargets))
+	chainTargetsByName := make(map[string]ChainTarget, len(stage2Init.ChainTargets))
 	for _, target := range stage2Init.ChainTargets {
-		chainTargetNames[target.Name] = struct{}{}
+		chainTargetsByName[target.Name] = target
 	}
 
 	forwardRelayNames := make(map[string]struct{}, len(stage2Init.ForwardRelays))
@@ -300,9 +300,14 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 				cause := fmt.Errorf("landing node %q does not allow chain mode", landing.Name)
 				return nil, newStage2RowValidationError("CHAIN_MODE_NOT_ALLOWED", "chain mode is not allowed for this landing node", landing.Name, "mode", cause)
 			}
-			if _, exists := chainTargetNames[targetName]; !exists {
+			target, exists := chainTargetsByName[targetName]
+			if !exists {
 				cause := fmt.Errorf("unknown chain target %q for landing node %q", targetName, landing.Name)
 				return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", landing.Name, "targetName", cause)
+			}
+			if target.Kind == "proxy-groups" && target.IsEmpty {
+				cause := fmt.Errorf("chain target %q for landing node %q is empty", targetName, landing.Name)
+				return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", landing.Name, "targetName", cause)
 			}
 		case "port_forward":
 			targetName, err := requireTargetName(row)

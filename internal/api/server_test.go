@@ -18,8 +18,8 @@ import (
 
 type fakeConversionSource struct {
 	gotRequest subconverter.Request
-	result subconverter.ThreePassResult
-	err    error
+	result     subconverter.ThreePassResult
+	err        error
 }
 
 func (source *fakeConversionSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
@@ -236,6 +236,23 @@ func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 		Code:    "LONG_URL_TOO_LONG",
 		Message: "long URL exceeds maximum length",
 		Scope:   "global",
+	})
+}
+
+func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: singleLandingResult("Unknown Landing", "ss", false),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayRawText":"","advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":"","exclude":"","enablePortForward":false}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "EMPTY_CHAIN_TARGET",
+		Message: "chain target is empty",
+		Scope:   "stage2_row",
+		Context: map[string]any{"landingNodeName": "Unknown Landing", "field": "targetName"},
 	})
 }
 

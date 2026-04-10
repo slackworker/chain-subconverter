@@ -85,8 +85,9 @@ type ModeRestriction struct {
 }
 
 type ChainTarget struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
+	Name    string `json:"name"`
+	Kind    string `json:"kind"`
+	IsEmpty bool   `json:"isEmpty,omitempty"`
 }
 
 type ForwardRelay struct {
@@ -166,7 +167,7 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		return Stage2Init{}, err
 	}
 
-	hasChainMode := len(chainTargets) > 0
+	hasChainMode := hasSelectableChainTargets(chainTargets)
 	hasPortForwardMode := len(forwardRelays) > 0
 
 	availableModes := []string{"none"}
@@ -179,6 +180,9 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 
 	chainTargetNames := make(map[string]struct{}, len(chainTargets))
 	for _, target := range chainTargets {
+		if target.IsEmpty {
+			continue
+		}
 		chainTargetNames[target.Name] = struct{}{}
 	}
 	regionMatchers, err := regionMatcherLoader()
@@ -254,6 +258,12 @@ func buildChainTargets(landingNames map[string]struct{}, transitProxies []inline
 		}
 
 		if memberCount == 0 {
+			chainTargets = append(chainTargets, ChainTarget{
+				Name:    groupName,
+				Kind:    "proxy-groups",
+				IsEmpty: true,
+			})
+			seen[groupName] = struct{}{}
 			continue
 		}
 
@@ -277,6 +287,16 @@ func buildChainTargets(landingNames map[string]struct{}, transitProxies []inline
 	}
 
 	return chainTargets, nil
+}
+
+func hasSelectableChainTargets(chainTargets []ChainTarget) bool {
+	for _, target := range chainTargets {
+		if target.IsEmpty {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func detectDefaultChainTarget(landingNodeName string, matchers []regionMatcher, chainTargetNames map[string]struct{}) (string, bool, error) {

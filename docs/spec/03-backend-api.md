@@ -80,7 +80,7 @@
   "stage2Init": {
     "availableModes": ["none", "chain", "port_forward"],
     "chainTargets": [
-      { "name": "🇭🇰 香港节点", "kind": "proxy-groups" },
+      { "name": "🇭🇰 香港节点", "kind": "proxy-groups", "isEmpty": true },
       { "name": "Transit A", "kind": "proxies" }
     ],
     "forwardRelays": [
@@ -114,6 +114,7 @@
 - `chainTargets[]`：阶段 2 第三列在 `mode = chain` 时的候选列表
 - `chainTargets[].name`：链式候选名称；同时作为 `stage2Snapshot.rows[].targetName` 的可选值
 - `chainTargets[].kind`：链式候选类别；当前只允许 `proxy-groups` 或 `proxies`
+- `chainTargets[].isEmpty`：可选布尔值；仅 `kind = proxy-groups` 时有语义。空策略组写 `true`；非空策略组留空
 - `forwardRelays[]`：阶段 2 第三列在 `mode = port_forward` 时的候选列表
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
@@ -321,7 +322,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
-- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`LONG_URL_TOO_LONG`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`EMPTY_CHAIN_TARGET`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
@@ -329,6 +330,7 @@
 - `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = mode`
 - `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
+- `EMPTY_CHAIN_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `LONG_URL_TOO_LONG`：必须返回 `scope = global`
 - `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
