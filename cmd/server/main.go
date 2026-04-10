@@ -9,6 +9,7 @@ import (
 
 	"github.com/slackworker/chain-subconverter/internal/api"
 	"github.com/slackworker/chain-subconverter/internal/config"
+	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
@@ -31,7 +32,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := api.NewHandler(client, serverCfg.PublicBaseURL, serverCfg.MaxLongURLLength)
+	managedSource, err := service.NewManagedConversionSource(client, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "init managed conversion source: %v\n", err)
+		os.Exit(1)
+	}
+
+	handler, err := api.NewHandler(managedSource, serverCfg.PublicBaseURL, serverCfg.MaxLongURLLength)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)
 		os.Exit(1)

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dlclark/regexp2"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
@@ -98,6 +99,7 @@ type ConversionFixtures struct {
 	LandingDiscoveryYAML string
 	TransitDiscoveryYAML string
 	FullBaseYAML         string
+	TemplateConfig       string
 }
 
 type inlineProxy struct {
@@ -117,21 +119,12 @@ type regionMatcher struct {
 	Pattern    *regexp2.Regexp
 }
 
-var defaultRegionGroupOrder = []string{
-	"🇭🇰 香港节点",
-	"🇺🇸 美国节点",
-	"🇯🇵 日本节点",
-	"🇸🇬 新加坡节点",
-	"🇼🇸 台湾节点",
-	"🇰🇷 韩国节点",
-}
-
 func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
 	return buildStage2Init(stage1Input, fixtures, loadRegionMatchers)
 }
 
-func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func() ([]regionMatcher, error)) (Stage2Init, error) {
+func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func(string) ([]regionMatcher, error)) (Stage2Init, error) {
 	if !stage1Input.AdvancedOptions.EnablePortForward && strings.TrimSpace(stage1Input.ForwardRelayRawText) != "" {
 		cause := fmt.Errorf("forwardRelayRawText must be empty when enablePortForward is false")
 		return Stage2Init{}, newStage1FieldInvalidRequestError("forwardRelayRawText must be empty when enablePortForward is false", "forwardRelayRawText", cause)
@@ -157,7 +150,12 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		landingNames[proxy.Name] = struct{}{}
 	}
 
-	chainTargets, err := buildChainTargets(landingNames, transitProxies, fullBaseGroups)
+	regionMatchers, err := regionMatcherLoader(fixtures.TemplateConfig)
+	if err != nil {
+		return Stage2Init{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
+	}
+
+	chainTargets, err := buildChainTargets(regionMatchers, landingNames, transitProxies, fullBaseGroups)
 	if err != nil {
 		return Stage2Init{}, err
 	}
@@ -185,11 +183,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		}
 		chainTargetNames[target.Name] = struct{}{}
 	}
-	regionMatchers, err := regionMatcherLoader()
-	if err != nil {
-		return Stage2Init{}, newInternalResponseError("failed to load default region matchers", fmt.Errorf("load default region matchers: %w", err))
-	}
-
 	rows := make([]Stage2Row, 0, len(landingProxies))
 	for _, landing := range landingProxies {
 		row := Stage2Row{
@@ -233,16 +226,17 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	}, nil
 }
 
-func buildChainTargets(landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {
+func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {
 	seen := make(map[string]struct{})
-	chainTargets := make([]ChainTarget, 0, len(defaultRegionGroupOrder)+len(transitProxies))
+	chainTargets := make([]ChainTarget, 0, len(regionMatchers)+len(transitProxies))
 
-	for _, groupName := range defaultRegionGroupOrder {
+	for _, matcher := range regionMatchers {
+		groupName := matcher.TargetName
 		group, ok := fullBaseGroups[groupName]
 		if !ok {
 			return nil, subconverter.NewUnavailableError(
 				"validate full-base proxy-groups",
-				fmt.Errorf("missing default region proxy-group %q in full-base fixture", groupName),
+				fmt.Errorf("missing recognized region proxy-group %q in full-base fixture", groupName),
 			)
 		}
 
@@ -511,13 +505,18 @@ func isValidASCIIHostname(server string) bool {
 	return true
 }
 
-func loadRegionMatchers() ([]regionMatcher, error) {
-	return parseRegionMatchers(defaultRegionConfig)
+func loadRegionMatchers(rawConfig string) ([]regionMatcher, error) {
+	trimmed := strings.TrimSpace(rawConfig)
+	if trimmed == "" {
+		trimmed = defaultRegionConfig
+	}
+	return parseRegionMatchers(trimmed)
 }
 
 func parseRegionMatchers(rawConfig string) ([]regionMatcher, error) {
 	scanner := bufio.NewScanner(strings.NewReader(normalizeInputNewlines(rawConfig)))
-	matchersByTarget := make(map[string]regionMatcher, len(defaultRegionGroupOrder))
+	matchers := make([]regionMatcher, 0)
+	seenTargets := make(map[string]struct{})
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -530,12 +529,18 @@ func parseRegionMatchers(rawConfig string) ([]regionMatcher, error) {
 
 		payload := strings.TrimPrefix(line, "custom_proxy_group=")
 		parts := strings.Split(payload, "`")
-		if len(parts) < 3 {
+		if len(parts) == 0 {
 			continue
 		}
 
 		targetName := parts[0]
-		if !isDefaultRegionGroup(targetName) || parts[1] != "url-test" {
+		if !looksLikeRegionGroupName(targetName) {
+			continue
+		}
+		if len(parts) < 3 {
+			return nil, fmt.Errorf("recognized region group %q is missing required matcher fields", targetName)
+		}
+		if _, exists := seenTargets[targetName]; exists {
 			continue
 		}
 
@@ -543,24 +548,35 @@ func parseRegionMatchers(rawConfig string) ([]regionMatcher, error) {
 		if err != nil {
 			return nil, fmt.Errorf("compile region matcher %q: %w", targetName, err)
 		}
-		matchersByTarget[targetName] = regionMatcher{
+		matchers = append(matchers, regionMatcher{
 			TargetName: targetName,
 			Pattern:    pattern,
-		}
+		})
+		seenTargets[targetName] = struct{}{}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-
-	matchers := make([]regionMatcher, 0, len(matchersByTarget))
-	for _, targetName := range defaultRegionGroupOrder {
-		matcher, ok := matchersByTarget[targetName]
-		if !ok {
-			continue
-		}
-		matchers = append(matchers, matcher)
-	}
 	return matchers, nil
+}
+
+func looksLikeRegionGroupName(name string) bool {
+	if !strings.HasSuffix(name, "节点") {
+		return false
+	}
+	first, firstSize := utf8.DecodeRuneInString(name)
+	if !isRegionalIndicator(first) {
+		return false
+	}
+	second, _ := utf8.DecodeRuneInString(name[firstSize:])
+	if !isRegionalIndicator(second) {
+		return false
+	}
+	return strings.TrimSpace(name[firstSize:]) != ""
+}
+
+func isRegionalIndicator(value rune) bool {
+	return value >= 0x1F1E6 && value <= 0x1F1FF
 }
 
 func parseInlineProxyList(raw string) ([]inlineProxy, error) {

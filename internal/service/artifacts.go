@@ -182,13 +182,21 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	if err != nil {
 		return "", err
 	}
+	regionMatchers, err := loadRegionMatchers(fixtures.TemplateConfig)
+	if err != nil {
+		return "", newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
+	}
 
 	landingNames := make(map[string]struct{}, len(landingProxies))
 	for _, landing := range landingProxies {
 		landingNames[landing.Name] = struct{}{}
 	}
+	regionGroupNames := make(map[string]struct{}, len(regionMatchers))
+	for _, matcher := range regionMatchers {
+		regionGroupNames[matcher.TargetName] = struct{}{}
+	}
 
-	rendered, err := renderCompleteConfigYAML(fixtures.FullBaseYAML, stage2Snapshot.Rows, landingNames)
+	rendered, err := renderCompleteConfigYAML(fixtures.FullBaseYAML, stage2Snapshot.Rows, landingNames, regionGroupNames)
 	if err != nil {
 		return "", err
 	}
@@ -196,7 +204,7 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	return rendered, nil
 }
 
-func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}) (string, error) {
+func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
 	var document yaml.Node
 	if err := yaml.Unmarshal([]byte(fullBaseYAML), &document); err != nil {
 		return "", fmt.Errorf("parse full-base YAML: %w", err)
@@ -211,7 +219,7 @@ func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingName
 	deletedLines := make(map[int]struct{})
 	replacedLines := make(map[int]string)
 
-	if err := stripLandingNodesFromDefaultRegionGroups(root, landingNames, deletedLines); err != nil {
+	if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
 		return "", err
 	}
 	if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
@@ -334,7 +342,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	return landingProxies, nil
 }
 
-func stripLandingNodesFromDefaultRegionGroups(root *yaml.Node, landingNames map[string]struct{}, deletedLines map[int]struct{}) error {
+func stripLandingNodesFromRegionGroups(root *yaml.Node, landingNames map[string]struct{}, regionGroupNames map[string]struct{}, deletedLines map[int]struct{}) error {
 	proxyGroupsNode := yamlMappingValue(root, "proxy-groups")
 	if proxyGroupsNode == nil {
 		return fmt.Errorf("full-base YAML is missing proxy-groups")
@@ -352,13 +360,13 @@ func stripLandingNodesFromDefaultRegionGroups(root *yaml.Node, landingNames map[
 		if nameNode == nil {
 			return fmt.Errorf("proxy-group entry is missing name")
 		}
-		if !isDefaultRegionGroup(nameNode.Value) {
+		if _, ok := regionGroupNames[nameNode.Value]; !ok {
 			continue
 		}
 
 		membersNode := yamlMappingValue(groupNode, "proxies")
 		if membersNode == nil {
-			return fmt.Errorf("default region proxy-group %q is missing proxies", nameNode.Value)
+			return fmt.Errorf("region proxy-group %q is missing proxies", nameNode.Value)
 		}
 		if membersNode.Kind != yaml.SequenceNode {
 			return fmt.Errorf("proxy-group %q field %q must be a sequence", nameNode.Value, "proxies")
@@ -659,16 +667,6 @@ func splitForwardRelayTarget(targetName string) (string, string, error) {
 	}
 	return relay.Server, relay.Port, nil
 }
-
-func isDefaultRegionGroup(groupName string) bool {
-	for _, candidate := range defaultRegionGroupOrder {
-		if candidate == groupName {
-			return true
-		}
-	}
-	return false
-}
-
 func joinSubscriptionURL(publicBaseURL string, data string) (string, error) {
 	parsedURL, err := url.Parse(publicBaseURL)
 	if err != nil {

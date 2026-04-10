@@ -54,7 +54,7 @@
 | `udp` | 展示 | 勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
 | `scv` | 展示 | 不勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
-| `config` | 展示 | 见下方补充 | 非空字符串才传；`null`/留空时不传并回落默认本地配置 |
+| `config` | 展示 | 见下方补充 | 前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
 | `exclude` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
 | `expand` | 隐藏 | `false` | 必传，固定传 `false` |
@@ -63,10 +63,14 @@
 补充规则：
 
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
-- `config` 的默认行为为：留空时不传 `config` 参数，并由集成的 `subconverter` 回落使用其目录下的 `base/config/Aethersailor_Custom_Clash.ini`
-- 若用户显式填写 `config`，则三个 pass 都按该值透传，允许使用其他本地或远程配置文件
+- `config` 的默认行为为：留空时，由 `chain-subconverter` 先拉取 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini` 作为本次有效模板
+- 若用户显式填写 `config`，该值必须是远程 HTTP(S) URL；`chain-subconverter` 必须先拉取该模板，再把后端托管的内部模板 URL 传给 `subconverter`
+- `chain-subconverter` 不得把用户提供的远程模板 URL 直接透传给 `subconverter`
+- 模板拉取返回非成功 HTTP 状态、请求失败或空内容时，当前请求必须在调用 `subconverter` 前失败
+- 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
+- 模板可正常拉取但未识别出任何地域策略组时，请求仍可继续；此时只是不支持基于地域策略组的自动填充
 - `chain-subconverter` 当前阶段 1/API 快照统一采用三态：复选框 `true/false/null`、文本框 `非空字符串/null`；query 构造必须逐项保持该语义，不得把 `null` 翻译成 `false` 或空 query
-- 文本框留空若以 `""` 进入服务端，必须先归一化为 `null`；query 构造阶段不得拼出 `config=`、`include=`、`exclude=`
+- 文本框留空若以 `""` 进入服务端，必须先归一化为 `null`；query 构造阶段不得拼出 `include=`、`exclude=`；`config` 由后端模板准备流程统一处理
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
@@ -86,6 +90,7 @@
 其中：
 
 - `subconverter` 使用落地节点信息、中转节点信息、`config` 与其他 `subconverter` 配置参数
+- `config` 的用户输入只用于确定本次有效模板来源；模板内容由 `chain-subconverter` 拉取、校验并托管后，再供 `subconverter` 使用
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
 - `advancedOptions.enablePortForward = false` 时，端口转发服务信息必须为空字符串，且不得参与解析、校验或候选生成
 - `transitRawText` 支持三种输入项：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
@@ -157,7 +162,7 @@
 
 处理规则：
 
-1. 识别默认模板生成的 6 个区域策略组
+1. 识别本次有效模板中声明的地域策略组
 2. 从这些区域策略组的成员列表中剔除所有落地节点
 3. 若某落地节点同时出现在多个区域策略组中，必须在每个命中的区域策略组内都剔除
 4. 完成剔除后的结果，才是后续校验与订阅渲染统一使用的 `baseCompleteConfig`
@@ -214,22 +219,22 @@
 
 收集范围：
 
-- `full-base pass` 生成并满足 `1.3` 剔除语义后的默认模板 6 个区域策略组
+- `full-base pass` 生成并满足 `1.3` 剔除语义后的、由本次有效模板识别出的地域策略组
 - `transit-discovery pass` 识别出的单个中转 `proxy`
 
 处理规则：
 
-1. 对区域策略组，读取 `baseCompleteConfig` 中这 6 个区域策略组的当前结果
+1. 对区域策略组，读取 `baseCompleteConfig` 中本次有效模板识别出的全部地域策略组当前结果
 2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 与所有落地节点都不计入成员数
 3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 与所有落地节点后成员数为 `0`，该区域策略组仍必须进入 `chainTargets[]`，但必须标记 `isEmpty = true`
 4. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
 5. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
 6. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
-7. 默认模板 6 个区域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
+7. 有效模板识别出的地域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
 8. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
 9. `kind` 仅用于前端分组展示
 10. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
-11. 若任一中转 `proxy.name` 与默认模板 6 个区域策略组中的任意一个重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+11. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
 
 ### 2.4 收集端口转发候选
 
@@ -257,10 +262,9 @@
 
 处理步骤：
 
-1. 从落地节点名称中识别其所属区域
-2. 在 6 个区域策略组中查找对应区域的候选组
-3. 若唯一命中且命中的区域策略组在本次 `chainTargets[]` 中存在，且 `isEmpty` 留空，则该行默认 `mode = chain`，`targetName` 自动填写为对应区域策略组名称
-4. 其他情况一律按“未唯一命中”处理：`mode = none`，`targetName = null`
+1. 使用本次有效模板识别出的地域策略组正则，在完整 `landingNodeName` 上逐一匹配
+2. 若唯一命中且命中的地域策略组在本次 `chainTargets[]` 中存在，且 `isEmpty` 留空，则该行默认 `mode = chain`，`targetName` 自动填写为对应地域策略组名称
+3. 其他情况一律按“未唯一命中”处理：`mode = none`，`targetName = null`
 
 #### 当 `mode = port_forward`
 
@@ -283,26 +287,17 @@
 
 ### 2.6 区域识别口径
 
-当前区域自动识别仅面向默认模板的 6 个区域策略组：
+当前区域自动识别以本次有效模板中识别出的地域策略组为准。
 
-| 区域 ID | 区域名 | 默认模板策略组名 |
-|---------|--------|------------------|
-| `HK` | 香港 | `🇭🇰 香港节点` |
-| `US` | 美国 | `🇺🇸 美国节点` |
-| `JP` | 日本 | `🇯🇵 日本节点` |
-| `SG` | 新加坡 | `🇸🇬 新加坡节点` |
-| `TW` | 台湾 | `🇼🇸 台湾节点` |
-| `KR` | 韩国 | `🇰🇷 韩国节点` |
+识别规则：
 
-说明：`TW` 对应 `🇼🇸 台湾节点` 是默认转换模板的既有命名约定，按该字面值参与自动识别与默认填充；此处不是笔误。
+- 只处理未被注释的 `custom_proxy_group=` 行
+- 仅当策略组名形如“国旗 emoji + 任意文本 + 节点”时，才将该行视为地域策略组候选
+- 解析时按反引号分段；必须至少包含策略组名、组类型与正则三段
+- 正则以该行第三段内容为准；组类型当前不限制为 `url-test`
+- 候选顺序以模板中出现顺序为准
 
-**区域归属**（`landingNodeName` 属于哪一区域）的**唯一规则来源**为仓库内置文件 `internal/service/default_region_config.ini` 中与上表六条「默认模板策略组名」对应的六行 `custom_proxy_group=…` `url-test` 所声明的完整正则 pattern。
-
-阶段 2 初始化时，直接使用这六条完整正则在完整 `landingNodeName` 上匹配。
-
-“对应区域策略组是否可用于自动填充”以当次 `stage2Init.chainTargets[]` 为准。
-
-命中 **0** 条或 **多于 1** 条时，链式自动识别失败（见 2.5）；**恰好 1** 条时，默认 `targetName` 为上表中该行的策略组名字面量，且须在当次 `chainTargets[]` 中存在同名区域策略组条目。
+命中 **0** 条或 **多于 1** 条时，链式自动识别失败（见 2.5）；**恰好 1** 条时，只有当该策略组在当次 `chainTargets[]` 中存在且 `isEmpty` 留空，才允许自动填写。
 
 ---
 

@@ -91,30 +91,7 @@ func cloneRows(rows []service.Stage2Row) []service.Stage2Row {
 }
 
 func loadConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
-	result, err := source.Convert(ctx, toSubconverterRequest(stage1Input))
-	if err != nil {
-		return subconverter.ThreePassResult{}, service.ConversionFixtures{}, err
-	}
-	fixtures, err := service.ConversionFixturesFromResult(result)
-	if err != nil {
-		return subconverter.ThreePassResult{}, service.ConversionFixtures{}, err
-	}
-	return result, fixtures, nil
-}
-
-func toSubconverterRequest(stage1Input service.Stage1Input) subconverter.Request {
-	return subconverter.Request{
-		LandingRawText: stage1Input.LandingRawText,
-		TransitRawText: stage1Input.TransitRawText,
-		Options: subconverter.AdvancedOptions{
-			Emoji:          stage1Input.AdvancedOptions.Emoji,
-			UDP:            stage1Input.AdvancedOptions.UDP,
-			SkipCertVerify: stage1Input.AdvancedOptions.SkipCertVerify,
-			Config:         stage1Input.AdvancedOptions.Config,
-			Include:        stage1Input.AdvancedOptions.Include,
-			Exclude:        stage1Input.AdvancedOptions.Exclude,
-		},
-	}
+	return service.ExecuteConversion(ctx, source, stage1Input)
 }
 
 func mustMarshalJSON(value any) string {

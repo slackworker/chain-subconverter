@@ -15,23 +15,26 @@ func TestLoadServerFromEnv(t *testing.T) {
 		{
 			name: "defaults when env is blank",
 			env: map[string]string{
-				EnvHTTPAddress:      "   ",
-				EnvPublicBaseURL:    "",
-				EnvMaxLongURLLength: "\t",
+				EnvHTTPAddress:            "   ",
+				EnvPublicBaseURL:          "",
+				EnvManagedTemplateBaseURL: "",
+				EnvMaxLongURLLength:       "\t",
 			},
 			want: DefaultServer(),
 		},
 		{
 			name: "trimmed overrides",
 			env: map[string]string{
-				EnvHTTPAddress:      "  :11300  ",
-				EnvPublicBaseURL:    "  https://example.com/base  ",
-				EnvMaxLongURLLength: " 4096 ",
+				EnvHTTPAddress:            "  :11300  ",
+				EnvPublicBaseURL:          "  https://example.com/base  ",
+				EnvManagedTemplateBaseURL: "  https://internal.example.com/base  ",
+				EnvMaxLongURLLength:       " 4096 ",
 			},
 			want: Server{
-				HTTPAddress:      ":11300",
-				PublicBaseURL:    "https://example.com/base",
-				MaxLongURLLength: 4096,
+				HTTPAddress:            ":11300",
+				PublicBaseURL:          "https://example.com/base",
+				ManagedTemplateBaseURL: "https://internal.example.com/base",
+				MaxLongURLLength:       4096,
 			},
 		},
 		{
@@ -47,6 +50,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvPublicBaseURL: "localhost:11200",
 			},
 			wantErr: "public base URL must include scheme and host",
+		},
+		{
+			name: "invalid managed template base url",
+			env: map[string]string{
+				EnvManagedTemplateBaseURL: "localhost:11200",
+			},
+			wantErr: "managed template base URL must include scheme and host",
 		},
 	}
 
@@ -91,29 +101,42 @@ func TestServerValidate(t *testing.T) {
 		{
 			name: "empty http address",
 			cfg: Server{
-				HTTPAddress:      " ",
-				PublicBaseURL:    DefaultPublicBaseURL,
-				MaxLongURLLength: DefaultMaxLongURLLength,
+				HTTPAddress:            " ",
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
 			},
 			wantErr: "HTTP address must not be empty",
 		},
 		{
 			name: "non-positive max long url length",
 			cfg: Server{
-				HTTPAddress:      DefaultHTTPAddress,
-				PublicBaseURL:    DefaultPublicBaseURL,
-				MaxLongURLLength: 0,
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				MaxLongURLLength:       0,
 			},
 			wantErr: "max long URL length must be greater than zero",
 		},
 		{
 			name: "missing public base scheme",
 			cfg: Server{
-				HTTPAddress:      DefaultHTTPAddress,
-				PublicBaseURL:    "localhost:11200",
-				MaxLongURLLength: DefaultMaxLongURLLength,
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          "localhost:11200",
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
 			},
 			wantErr: "public base URL must include scheme and host",
+		},
+		{
+			name: "missing managed template base scheme",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: "localhost:11200",
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+			},
+			wantErr: "managed template base URL must include scheme and host",
 		},
 	}
 
@@ -142,6 +165,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 
 	t.Setenv(EnvHTTPAddress, "")
 	t.Setenv(EnvPublicBaseURL, "")
+	t.Setenv(EnvManagedTemplateBaseURL, "")
 	t.Setenv(EnvMaxLongURLLength, "")
 
 	for key, value := range values {

@@ -42,6 +42,7 @@ func NewHandler(source service.ConversionSource, publicBaseURL string, maxLongUR
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/stage1/convert", handler.handleStage1Convert)
 	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
+	mux.HandleFunc("GET /internal/templates/", handler.handleManagedTemplate)
 	mux.HandleFunc("GET /subscription", handler.handleSubscription)
 	mux.HandleFunc("GET /healthz", handler.handleHealthz)
 	handler.mux = mux
@@ -87,6 +88,27 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
+}
+
+func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, request *http.Request) {
+	id := strings.TrimPrefix(request.URL.Path, "/internal/templates/")
+	id = strings.TrimSuffix(id, ".ini")
+	id = strings.TrimSpace(id)
+	if id == "" || strings.Contains(id, "/") {
+		http.NotFound(writer, request)
+		return
+	}
+
+	content, ok := service.LoadManagedTemplate(id)
+	if !ok {
+		http.NotFound(writer, request)
+		return
+	}
+
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	writer.Header().Set("Cache-Control", noStoreHeader)
+	writer.WriteHeader(http.StatusOK)
+	_, _ = writer.Write([]byte(content))
 }
 
 func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *http.Request) {

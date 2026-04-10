@@ -2,11 +2,16 @@ package service
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
@@ -160,6 +165,106 @@ func TestRenderCompleteConfigFromSource_HappyPath(t *testing.T) {
 	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
 	if strings.TrimSpace(renderedConfig) != strings.TrimSpace(expectedConfig) {
 		t.Fatalf("complete config mismatch:\n--- got ---\n%s\n--- want ---\n%s", renderedConfig, expectedConfig)
+	}
+}
+
+func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *testing.T) {
+	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
+	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte(templateConfig))
+	}))
+	defer templateServer.Close()
+
+	internalTemplateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		id := strings.TrimPrefix(request.URL.Path, "/internal/templates/")
+		id = strings.TrimSuffix(id, ".ini")
+		content, ok := LoadManagedTemplate(id)
+		if !ok {
+			http.NotFound(writer, request)
+			return
+		}
+		_, _ = writer.Write([]byte(content))
+	}))
+	defer internalTemplateServer.Close()
+
+	seenConfig := make(chan string, 3)
+	subconverterServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		configURL := request.URL.Query().Get("config")
+		resp, err := http.Get(configURL)
+		if err != nil {
+			t.Fatalf("fetch managed config URL: %v", err)
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("read managed config body: %v", err)
+		}
+		seenConfig <- string(body)
+
+		if request.URL.Query().Get("list") == "true" {
+			if strings.Contains(request.URL.Query().Get("url"), "landing") {
+				_, _ = writer.Write([]byte("proxies:\n- {name: DE Landing, type: ss}\n"))
+				return
+			}
+			_, _ = writer.Write([]byte("proxies:\n- {name: transit-de, type: ss}\n"))
+			return
+		}
+
+		_, _ = writer.Write([]byte(strings.Join([]string{
+			"proxies:",
+			"- {name: DE Landing, type: ss, server: landing.example.com, port: 443}",
+			"- {name: transit-de, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇩🇪 德国节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - transit-de",
+			"",
+		}, "\n")))
+	}))
+	defer subconverterServer.Close()
+
+	client, err := subconverter.NewClient(config.Subconverter{
+		BaseURL:     subconverterServer.URL + "/sub?",
+		Timeout:     time.Second,
+		MaxInFlight: 1,
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	source, err := NewManagedConversionSource(client, internalTemplateServer.URL, time.Second)
+	if err != nil {
+		t.Fatalf("NewManagedConversionSource() error = %v", err)
+	}
+
+	response, err := BuildStage1ConvertResponseFromSource(context.Background(), source, Stage1Input{
+		LandingRawText: "https://landing.example/sub",
+		TransitRawText: "https://transit.example/sub",
+		AdvancedOptions: AdvancedOptions{
+			Config: stringPtr(templateServer.URL),
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
+	}
+	row := response.Stage2Init.Rows[0]
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
+	}
+	if row.TargetName == nil || *row.TargetName != "🇩🇪 德国节点" {
+		t.Fatalf("row targetName mismatch: got %v", row.TargetName)
+	}
+
+	for i := 0; i < 3; i++ {
+		select {
+		case got := <-seenConfig:
+			if got != strings.TrimSpace(templateConfig) {
+				t.Fatalf("managed template mismatch: got %q want %q", got, strings.TrimSpace(templateConfig))
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("timed out waiting for managed template fetch %d", i)
+		}
 	}
 }
 

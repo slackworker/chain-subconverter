@@ -11,6 +11,16 @@ type ConversionSource interface {
 	Convert(context.Context, subconverter.Request) (subconverter.ThreePassResult, error)
 }
 
+type PreparedConversion struct {
+	Request        subconverter.Request
+	TemplateConfig string
+	Cleanup        func()
+}
+
+type TemplatePreparingSource interface {
+	PrepareConversion(context.Context, Stage1Input) (PreparedConversion, error)
+}
+
 func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (Stage1ConvertResponse, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
 	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input)
@@ -39,12 +49,30 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (ConversionFixtures, error) {
+	_, fixtures, err := ExecuteConversion(ctx, source, stage1Input)
+	return fixtures, err
+}
+
+func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (subconverter.ThreePassResult, ConversionFixtures, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	result, err := source.Convert(ctx, toSubconverterRequest(stage1Input))
+	prepared, err := prepareConversion(ctx, source, stage1Input)
 	if err != nil {
-		return ConversionFixtures{}, err
+		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
 	}
-	return ConversionFixturesFromResult(result)
+	if prepared.Cleanup != nil {
+		defer prepared.Cleanup()
+	}
+
+	result, err := source.Convert(ctx, prepared.Request)
+	if err != nil {
+		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
+	}
+	fixtures, err := ConversionFixturesFromResult(result)
+	if err != nil {
+		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
+	}
+	fixtures.TemplateConfig = prepared.TemplateConfig
+	return result, fixtures, nil
 }
 
 func ConversionFixturesFromResult(result subconverter.ThreePassResult) (ConversionFixtures, error) {
@@ -100,6 +128,15 @@ func ConversionFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 	}
 
 	return fixtures, nil
+}
+
+func prepareConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (PreparedConversion, error) {
+	if preparer, ok := source.(TemplatePreparingSource); ok {
+		return preparer.PrepareConversion(ctx, stage1Input)
+	}
+	return PreparedConversion{
+		Request: toSubconverterRequest(stage1Input),
+	}, nil
 }
 
 func toSubconverterRequest(stage1Input Stage1Input) subconverter.Request {

@@ -275,7 +275,7 @@ func TestBuildStage2Init_IgnoresCustomConfigForRegionAutoDetect(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
 			AdvancedOptions: AdvancedOptions{
-				Config: stringPtr("/tmp/custom.ini"),
+				Config: stringPtr("https://example.com/custom.ini"),
 			},
 		},
 		singleLandingFixture("Unknown Landing", "ss", "🇺🇸 美国节点"),
@@ -301,14 +301,14 @@ func TestBuildStage2Init_PropagatesDefaultRegionMatcherLoadError(t *testing.T) {
 	_, err := buildStage2Init(
 		Stage1Input{},
 		singleLandingFixture("US Landing", "ss", "🇺🇸 美国节点"),
-		func() ([]regionMatcher, error) {
+		func(_ string) ([]regionMatcher, error) {
 			return parseRegionMatchers("custom_proxy_group=🇺🇸 美国节点`url-test`(")
 		},
 	)
 	if err == nil {
 		t.Fatal("buildStage2Init() error = nil, want default region matcher load error")
 	}
-	if !strings.Contains(err.Error(), "load default region matchers") {
+	if !strings.Contains(err.Error(), "load region matchers") {
 		t.Fatalf("buildStage2Init() error = %v, want loader context", err)
 	}
 	if !strings.Contains(err.Error(), `compile region matcher "🇺🇸 美国节点"`) {
@@ -320,7 +320,7 @@ func TestBuildStage2Init_SkipsAutoFillWhenMultipleRegionsMatch(t *testing.T) {
 	stage2Init, err := buildStage2Init(
 		Stage1Input{},
 		singleLandingFixture("HK US Landing", "ss", "🇺🇸 美国节点"),
-		func() ([]regionMatcher, error) {
+		func(_ string) ([]regionMatcher, error) {
 			return parseRegionMatchers(strings.Join([]string{
 				"custom_proxy_group=🇭🇰 香港节点`url-test`HK",
 				"custom_proxy_group=🇺🇸 美国节点`url-test`US",
@@ -341,6 +341,40 @@ func TestBuildStage2Init_SkipsAutoFillWhenMultipleRegionsMatch(t *testing.T) {
 	}
 	if row.TargetName != nil {
 		t.Fatalf("row targetName mismatch: got %v want nil", row.TargetName)
+	}
+}
+
+func TestBuildStage2Init_UsesTemplateConfigForDynamicRegionAutoDetect(t *testing.T) {
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: DE Landing, type: ss}\n",
+		TransitDiscoveryYAML: "proxies:\n- {name: transit-de, type: ss}\n",
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: DE Landing, type: ss, server: landing.example.com, port: 443}",
+			"- {name: transit-de, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇩🇪 德国节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - transit-de",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n",
+	}
+
+	stage2Init, err := BuildStage2Init(Stage1Input{}, fixtures)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+	if !hasChainTarget(stage2Init.ChainTargets, "🇩🇪 德国节点", "proxy-groups") {
+		t.Fatalf("expected dynamic chain target, got %v", stage2Init.ChainTargets)
+	}
+	row := stage2Init.Rows[0]
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
+	}
+	if row.TargetName == nil || *row.TargetName != "🇩🇪 德国节点" {
+		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇩🇪 德国节点")
 	}
 }
 
@@ -463,7 +497,7 @@ func singleLandingFixture(landingName string, landingType string, transitGroupNa
 	}
 
 	groupLines := []string{"proxy-groups:"}
-	for _, groupName := range defaultRegionGroupOrder {
+	for _, groupName := range []string{"🇭🇰 香港节点", "🇺🇸 美国节点", "🇯🇵 日本节点", "🇸🇬 新加坡节点", "🇼🇸 台湾节点", "🇰🇷 韩国节点"} {
 		member := "DIRECT"
 		if groupName == transitGroupName {
 			member = "transit-a"
@@ -480,6 +514,7 @@ func singleLandingFixture(landingName string, landingType string, transitGroupNa
 		LandingDiscoveryYAML: "proxies:\n" + inlineLandingFixtureLine(landingName, landingType, false) + "\n",
 		TransitDiscoveryYAML: transitYAML,
 		FullBaseYAML:         strings.Join(append(fullBaseProxyLines, append(groupLines, "")...), "\n"),
+		TemplateConfig:       defaultRegionConfig,
 	}
 }
 
