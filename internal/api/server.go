@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 
 	"github.com/slackworker/chain-subconverter/internal/service"
@@ -19,30 +21,36 @@ const (
 )
 
 type Handler struct {
-	source           service.ConversionSource
-	publicBaseURL    string
-	maxLongURLLength int
-	mux              *http.ServeMux
+	source              service.ConversionSource
+	publicBaseURL       string
+	maxLongURLLength    int
+	managedTemplatePath string
+	mux                 *http.ServeMux
 }
 
-func NewHandler(source service.ConversionSource, publicBaseURL string, maxLongURLLength int) (*Handler, error) {
+func NewHandler(source service.ConversionSource, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int) (*Handler, error) {
 	if source == nil {
 		return nil, fmt.Errorf("conversion source must not be nil")
 	}
 	if strings.TrimSpace(publicBaseURL) == "" {
 		return nil, fmt.Errorf("public base URL must not be empty")
 	}
+	managedTemplatePath, err := managedTemplateRoutePath(managedTemplateBaseURL)
+	if err != nil {
+		return nil, err
+	}
 
 	handler := &Handler{
-		source:           source,
-		publicBaseURL:    publicBaseURL,
-		maxLongURLLength: maxLongURLLength,
+		source:              source,
+		publicBaseURL:       publicBaseURL,
+		maxLongURLLength:    maxLongURLLength,
+		managedTemplatePath: managedTemplatePath,
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/stage1/convert", handler.handleStage1Convert)
 	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
-	mux.HandleFunc("GET /internal/templates/", handler.handleManagedTemplate)
+	mux.HandleFunc("GET "+managedTemplatePath, handler.handleManagedTemplate)
 	mux.HandleFunc("GET /subscription", handler.handleSubscription)
 	mux.HandleFunc("GET /healthz", handler.handleHealthz)
 	handler.mux = mux
@@ -91,7 +99,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 }
 
 func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, request *http.Request) {
-	id := strings.TrimPrefix(request.URL.Path, "/internal/templates/")
+	id := strings.TrimPrefix(request.URL.Path, handler.managedTemplatePath)
 	id = strings.TrimSuffix(id, ".ini")
 	id = strings.TrimSpace(id)
 	if id == "" || strings.Contains(id, "/") {
@@ -109,6 +117,21 @@ func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, reques
 	writer.Header().Set("Cache-Control", noStoreHeader)
 	writer.WriteHeader(http.StatusOK)
 	_, _ = writer.Write([]byte(content))
+}
+
+func managedTemplateRoutePath(managedTemplateBaseURL string) (string, error) {
+	parsedURL, err := url.Parse(strings.TrimSpace(managedTemplateBaseURL))
+	if err != nil {
+		return "", fmt.Errorf("parse managed template base URL: %w", err)
+	}
+	if parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return "", fmt.Errorf("managed template base URL must include scheme and host")
+	}
+	basePath := strings.TrimRight(parsedURL.EscapedPath(), "/")
+	if basePath == "" {
+		return "/internal/templates/", nil
+	}
+	return path.Clean(basePath) + "/internal/templates/", nil
 }
 
 func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *http.Request) {

@@ -38,7 +38,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := api.NewHandler(managedSource, serverCfg.PublicBaseURL, serverCfg.MaxLongURLLength)
+	handler, err := api.NewHandler(managedSource, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)
 		os.Exit(1)

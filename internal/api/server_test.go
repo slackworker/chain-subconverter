@@ -11,7 +11,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
@@ -223,7 +225,7 @@ func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
 
-	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, "http://localhost:11200", 32)
+	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, "http://localhost:11200", "http://localhost:11200", 32)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -296,14 +298,70 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 	})
 }
 
+func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
+	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
+	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		_, _ = writer.Write([]byte(templateConfig))
+	}))
+	defer templateServer.Close()
+
+	client, err := subconverter.NewClient(config.Subconverter{
+		BaseURL:     "http://localhost:25511/sub?",
+		Timeout:     time.Second,
+		MaxInFlight: 1,
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	managedSource, err := service.NewManagedConversionSource(client, "http://internal.example.com/base", time.Second)
+	if err != nil {
+		t.Fatalf("NewManagedConversionSource() error = %v", err)
+	}
+
+	prepared, err := managedSource.PrepareConversion(context.Background(), service.Stage1Input{
+		AdvancedOptions: service.AdvancedOptions{
+			Config: stringPtr(templateServer.URL),
+		},
+	})
+	if err != nil {
+		t.Fatalf("PrepareConversion() error = %v", err)
+	}
+	defer prepared.Cleanup()
+
+	if prepared.Request.Options.Config == nil {
+		t.Fatal("managed config URL should not be nil")
+	}
+
+	handler, err := NewHandler(&fakeConversionSource{}, "http://localhost:11200", "http://internal.example.com/base", 2048)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, *prepared.Request.Options.Config, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if strings.TrimSpace(recorder.Body.String()) != strings.TrimSpace(templateConfig) {
+		t.Fatalf("managed template body mismatch: got %q want %q", recorder.Body.String(), templateConfig)
+	}
+}
+
 func mustNewTestHandler(t *testing.T, source service.ConversionSource) *Handler {
 	t.Helper()
 
-	handler, err := NewHandler(source, "http://localhost:11200", 2048)
+	handler, err := NewHandler(source, "http://localhost:11200", "http://localhost:11200", 2048)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
 	return handler
+}
+
+func stringPtr(value string) *string {
+	return &value
 }
 
 func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, wantStatus int, want service.BlockingError) {

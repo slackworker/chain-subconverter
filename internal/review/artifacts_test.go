@@ -2,11 +2,13 @@ package review
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
@@ -16,6 +18,25 @@ type fakeConversionSource struct {
 }
 
 func (source *fakeConversionSource) Convert(_ context.Context, _ subconverter.Request) (subconverter.ThreePassResult, error) {
+	return source.result, source.err
+}
+
+type fakeTemplatePreparingSource struct {
+	request        subconverter.Request
+	templateConfig string
+	result         subconverter.ThreePassResult
+	err            error
+}
+
+func (source *fakeTemplatePreparingSource) PrepareConversion(_ context.Context, _ service.Stage1Input) (service.PreparedConversion, error) {
+	return service.PreparedConversion{
+		Request:        source.request,
+		TemplateConfig: source.templateConfig,
+	}, nil
+}
+
+func (source *fakeTemplatePreparingSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
+	source.request = request
 	return source.result, source.err
 }
 
@@ -65,6 +86,67 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/generate.response.json", "http://localhost:11200/subscription?data=")
 	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "dialer-proxy: 🇺🇸 美国节点")
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml")))
+}
+
+func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemplateURL(t *testing.T) {
+	source := &fakeTemplatePreparingSource{
+		request: subconverter.Request{
+			LandingRawText: "https://landing.example/sub",
+			TransitRawText: "https://transit.example/sub",
+			Options: subconverter.AdvancedOptions{
+				Config: stringPtr("http://127.0.0.1:38123/internal/templates/abc123.ini"),
+			},
+		},
+		templateConfig: "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n",
+		result: subconverter.ThreePassResult{
+			LandingDiscovery: subconverter.PassResult{
+				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
+				YAML:       "proxies:\n- {name: DE Landing, type: ss}\n",
+			},
+			TransitDiscovery: subconverter.PassResult{
+				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
+				YAML:       "proxies:\n- {name: transit-de, type: ss}\n",
+			},
+			FullBase: subconverter.PassResult{
+				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub%7Chttps%3A%2F%2Ftransit.example%2Fsub&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
+				YAML: strings.Join([]string{
+					"proxies:",
+					"- {name: DE Landing, type: ss, server: landing.example.com, port: 443}",
+					"- {name: transit-de, type: ss, server: transit.example.com, port: 443}",
+					"proxy-groups:",
+					"  - name: 🇩🇪 德国节点",
+					"    type: fallback",
+					"    proxies:",
+					"      - transit-de",
+					"",
+				}, "\n"),
+			},
+		},
+	}
+
+	bundle, err := BuildStage1Artifacts(context.Background(), source, Case{
+		Name: "custom-template",
+		Stage1Input: service.Stage1Input{
+			LandingRawText: "https://landing.example/sub",
+			TransitRawText: "https://transit.example/sub",
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildStage1Artifacts() error = %v", err)
+	}
+
+	assertArtifactContains(t, bundle.Files, "stage1/output/review-summary.md", "DE Landing => chain => 🇩🇪 德国节点")
+	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.txt", url.QueryEscape(managedTemplateArtifactURLPlaceholder))
+	if strings.Contains(findArtifact(bundle.Files, "stage1/output/landing-discovery.url.txt").Content, "abc123.ini") {
+		t.Fatalf("landing-discovery url should not expose raw managed template ID: %q", findArtifact(bundle.Files, "stage1/output/landing-discovery.url.txt").Content)
+	}
+	if len(bundle.Rows) != 1 || bundle.Rows[0].TargetName == nil || *bundle.Rows[0].TargetName != "🇩🇪 德国节点" {
+		t.Fatalf("bundle.Rows = %#v, want default chain target 🇩🇪 德国节点", bundle.Rows)
+	}
+}
+
+func stringPtr(value string) *string {
+	return &value
 }
 
 func loadThreePassResult(t *testing.T, fixtureDir string) subconverter.ThreePassResult {

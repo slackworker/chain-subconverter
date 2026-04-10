@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -22,6 +23,8 @@ type ArtifactBundle struct {
 	Rows  []service.Stage2Row
 }
 
+const managedTemplateArtifactURLPlaceholder = "http://managed-template.invalid/internal/templates/managed-template.ini"
+
 func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, testCase Case) (ArtifactBundle, error) {
 	result, fixtures, err := loadConversionResult(ctx, source, testCase.Stage1Input)
 	if err != nil {
@@ -35,11 +38,11 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 	defaultSnapshot := service.Stage2Snapshot{Rows: cloneRows(stage1Response.Stage2Init.Rows)}
 
 	files := []FileArtifact{
-		{RelativePath: "stage1/output/landing-discovery.url.txt", Content: ensureTrailingNewline(result.LandingDiscovery.RequestURL)},
+		{RelativePath: "stage1/output/landing-discovery.url.txt", Content: ensureTrailingNewline(normalizeManagedTemplateRequestURL(result.LandingDiscovery.RequestURL))},
 		{RelativePath: "stage1/output/landing-discovery.yaml", Content: ensureTrailingNewline(result.LandingDiscovery.YAML)},
-		{RelativePath: "stage1/output/transit-discovery.url.txt", Content: ensureTrailingNewline(result.TransitDiscovery.RequestURL)},
+		{RelativePath: "stage1/output/transit-discovery.url.txt", Content: ensureTrailingNewline(normalizeManagedTemplateRequestURL(result.TransitDiscovery.RequestURL))},
 		{RelativePath: "stage1/output/transit-discovery.yaml", Content: ensureTrailingNewline(result.TransitDiscovery.YAML)},
-		{RelativePath: "stage1/output/full-base.url.txt", Content: ensureTrailingNewline(result.FullBase.RequestURL)},
+		{RelativePath: "stage1/output/full-base.url.txt", Content: ensureTrailingNewline(normalizeManagedTemplateRequestURL(result.FullBase.RequestURL))},
 		{RelativePath: "stage1/output/full-base.yaml", Content: ensureTrailingNewline(result.FullBase.YAML)},
 		{RelativePath: "stage1/output/stage1-convert.request.json", Content: mustMarshalJSON(service.Stage1ConvertRequest{Stage1Input: testCase.Stage1Input})},
 		{RelativePath: "stage1/output/stage1-convert.response.json", Content: mustMarshalJSON(stage1Response)},
@@ -198,4 +201,49 @@ func ensureTrailingNewline(content string) string {
 		return content
 	}
 	return content + "\n"
+}
+
+func normalizeManagedTemplateRequestURL(rawURL string) string {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	if parsedURL.RawQuery == "" {
+		return rawURL
+	}
+
+	parts := strings.Split(parsedURL.RawQuery, "&")
+	changed := false
+	for index, part := range parts {
+		name, value, ok := strings.Cut(part, "=")
+		if !ok || name != "config" {
+			continue
+		}
+		decodedValue, err := url.QueryUnescape(value)
+		if err != nil || !isManagedTemplateConfigURL(decodedValue) {
+			continue
+		}
+		parts[index] = name + "=" + url.QueryEscape(managedTemplateArtifactURLPlaceholder)
+		changed = true
+	}
+	if !changed {
+		return rawURL
+	}
+
+	normalizedURL := *parsedURL
+	normalizedURL.RawQuery = strings.Join(parts, "&")
+	return normalizedURL.String()
+}
+
+func isManagedTemplateConfigURL(rawURL string) bool {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	trimmedPath := strings.TrimSpace(parsedURL.EscapedPath())
+	if !strings.Contains(trimmedPath, "/internal/templates/") {
+		return false
+	}
+	lastSegment := trimmedPath[strings.LastIndex(trimmedPath, "/")+1:]
+	return strings.HasSuffix(lastSegment, ".ini") && lastSegment != ".ini"
 }

@@ -5,12 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/review"
+	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
@@ -63,6 +67,11 @@ func run(ctx context.Context, action string, caseDir string, publicBaseURL strin
 	if err != nil {
 		return fmt.Errorf("init subconverter client: %w", err)
 	}
+	source, cleanup, err := newReviewConversionSource(client, subconverterCfg.Timeout)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
 
 	actionOutputDir := actionOutputDir(absCaseDir, action)
 	if err := os.RemoveAll(actionOutputDir); err != nil {
@@ -77,13 +86,13 @@ func run(ctx context.Context, action string, caseDir string, publicBaseURL strin
 		if err != nil {
 			return err
 		}
-		bundle, err = review.BuildStage1Artifacts(ctx, client, testCase)
+		bundle, err = review.BuildStage1Artifacts(ctx, source, testCase)
 	case "stage2":
 		testCase, err = review.LoadCase(absCaseDir)
 		if err != nil {
 			return err
 		}
-		bundle, err = review.BuildStage2Artifacts(ctx, client, testCase, publicBaseURL, maxLongURLLength)
+		bundle, err = review.BuildStage2Artifacts(ctx, source, testCase, publicBaseURL, maxLongURLLength)
 	default:
 		return fmt.Errorf("unsupported action %q", action)
 	}
@@ -116,6 +125,36 @@ func envOrDefault(key string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func newReviewConversionSource(client *subconverter.Client, templateTimeout time.Duration) (service.ConversionSource, func(), error) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		id := strings.TrimPrefix(request.URL.Path, "/internal/templates/")
+		id = strings.TrimSuffix(id, ".ini")
+		id = strings.TrimSpace(id)
+		if id == "" || strings.Contains(id, "/") {
+			http.NotFound(writer, request)
+			return
+		}
+
+		content, ok := service.LoadManagedTemplate(id)
+		if !ok {
+			http.NotFound(writer, request)
+			return
+		}
+
+		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		writer.WriteHeader(http.StatusOK)
+		_, _ = writer.Write([]byte(content))
+	}))
+
+	source, err := service.NewManagedConversionSource(client, server.URL, templateTimeout)
+	if err != nil {
+		server.Close()
+		return nil, nil, fmt.Errorf("init managed conversion source: %w", err)
+	}
+
+	return source, server.Close, nil
 }
 
 func writeArtifacts(outputDir string, artifacts []review.FileArtifact) error {
