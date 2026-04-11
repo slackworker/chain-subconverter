@@ -32,13 +32,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	managedSource, err := service.NewManagedConversionSource(client, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout)
+	templateStore := service.NewInMemoryTemplateContentStore()
+
+	managedSource, err := service.NewManagedConversionSource(client, templateStore, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init managed conversion source: %v\n", err)
 		os.Exit(1)
 	}
 
-	handler, err := api.NewHandler(managedSource, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength)
+	handler, err := api.NewHandler(managedSource, templateStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)
 		os.Exit(1)

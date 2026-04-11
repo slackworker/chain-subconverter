@@ -174,11 +174,12 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		_, _ = writer.Write([]byte(templateConfig))
 	}))
 	defer templateServer.Close()
+	templateStore := NewInMemoryTemplateContentStore()
 
 	internalTemplateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		id := strings.TrimPrefix(request.URL.Path, "/internal/templates/")
 		id = strings.TrimSuffix(id, ".ini")
-		content, ok := LoadManagedTemplate(id)
+		content, ok := templateStore.Load(id)
 		if !ok {
 			http.NotFound(writer, request)
 			return
@@ -233,7 +234,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	source, err := NewManagedConversionSource(client, internalTemplateServer.URL, time.Second)
+	source, err := NewManagedConversionSource(client, templateStore, internalTemplateServer.URL, time.Second)
 	if err != nil {
 		t.Fatalf("NewManagedConversionSource() error = %v", err)
 	}

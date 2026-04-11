@@ -7,36 +7,50 @@ import (
 	"sync"
 )
 
-var managedTemplateStore = struct {
-	mu      sync.RWMutex
-	content map[string]string
-}{
-	content: make(map[string]string),
+type TemplateContentReader interface {
+	Load(id string) (string, bool)
 }
 
-func storeManagedTemplate(content string) (string, error) {
+type TemplateContentStore interface {
+	TemplateContentReader
+	Save(content string) (string, error)
+	Delete(id string)
+}
+
+type InMemoryTemplateContentStore struct {
+	mu      sync.RWMutex
+	content map[string]string
+}
+
+func NewInMemoryTemplateContentStore() *InMemoryTemplateContentStore {
+	return &InMemoryTemplateContentStore{
+		content: make(map[string]string),
+	}
+}
+
+func (store *InMemoryTemplateContentStore) Save(content string) (string, error) {
 	randomBytes := make([]byte, 16)
 	if _, err := rand.Read(randomBytes); err != nil {
 		return "", fmt.Errorf("generate managed template id: %w", err)
 	}
 	id := hex.EncodeToString(randomBytes)
 
-	managedTemplateStore.mu.Lock()
-	managedTemplateStore.content[id] = content
-	managedTemplateStore.mu.Unlock()
+	store.mu.Lock()
+	store.content[id] = content
+	store.mu.Unlock()
 
 	return id, nil
 }
 
-func LoadManagedTemplate(id string) (string, bool) {
-	managedTemplateStore.mu.RLock()
-	content, ok := managedTemplateStore.content[id]
-	managedTemplateStore.mu.RUnlock()
+func (store *InMemoryTemplateContentStore) Load(id string) (string, bool) {
+	store.mu.RLock()
+	content, ok := store.content[id]
+	store.mu.RUnlock()
 	return content, ok
 }
 
-func deleteManagedTemplate(id string) {
-	managedTemplateStore.mu.Lock()
-	delete(managedTemplateStore.content, id)
-	managedTemplateStore.mu.Unlock()
+func (store *InMemoryTemplateContentStore) Delete(id string) {
+	store.mu.Lock()
+	delete(store.content, id)
+	store.mu.Unlock()
 }

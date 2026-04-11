@@ -225,7 +225,8 @@ func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
 
-	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, "http://localhost:11200", "http://localhost:11200", 32)
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, templateStore, "http://localhost:11200", "http://localhost:11200", 32)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -313,8 +314,9 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
 	}
+	templateStore := service.NewInMemoryTemplateContentStore()
 
-	managedSource, err := service.NewManagedConversionSource(client, "http://internal.example.com/base", time.Second)
+	managedSource, err := service.NewManagedConversionSource(client, templateStore, "http://internal.example.com/base", time.Second)
 	if err != nil {
 		t.Fatalf("NewManagedConversionSource() error = %v", err)
 	}
@@ -333,7 +335,7 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 		t.Fatal("managed config URL should not be nil")
 	}
 
-	handler, err := NewHandler(&fakeConversionSource{}, "http://localhost:11200", "http://internal.example.com/base", 2048)
+	handler, err := NewHandler(&fakeConversionSource{}, templateStore, "http://localhost:11200", "http://internal.example.com/base", 2048)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -353,7 +355,8 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 func mustNewTestHandler(t *testing.T, source service.ConversionSource) *Handler {
 	t.Helper()
 
-	handler, err := NewHandler(source, "http://localhost:11200", "http://localhost:11200", 2048)
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(source, templateStore, "http://localhost:11200", "http://localhost:11200", 2048)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

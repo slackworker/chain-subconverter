@@ -16,13 +16,17 @@ const defaultTemplateConfigURL = "https://raw.githubusercontent.com/Aethersailor
 
 type ManagedConversionSource struct {
 	client                 *subconverter.Client
+	templateStore          TemplateContentStore
 	managedTemplateBaseURL *url.URL
 	httpClient             *http.Client
 }
 
-func NewManagedConversionSource(client *subconverter.Client, managedTemplateBaseURL string, templateTimeout time.Duration) (*ManagedConversionSource, error) {
+func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, managedTemplateBaseURL string, templateTimeout time.Duration) (*ManagedConversionSource, error) {
 	if client == nil {
 		return nil, fmt.Errorf("conversion client must not be nil")
+	}
+	if templateStore == nil {
+		return nil, fmt.Errorf("template store must not be nil")
 	}
 	parsedBaseURL, err := url.Parse(strings.TrimSpace(managedTemplateBaseURL))
 	if err != nil {
@@ -37,6 +41,7 @@ func NewManagedConversionSource(client *subconverter.Client, managedTemplateBase
 
 	return &ManagedConversionSource{
 		client:                 client,
+		templateStore:          templateStore,
 		managedTemplateBaseURL: parsedBaseURL,
 		httpClient:             &http.Client{Timeout: templateTimeout},
 	}, nil
@@ -60,13 +65,13 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
 	}
 
-	id, err := storeManagedTemplate(templateConfig)
+	id, err := source.templateStore.Save(templateConfig)
 	if err != nil {
 		return PreparedConversion{}, newInternalResponseError("failed to persist managed template", err)
 	}
 	managedTemplateURL, err := source.buildManagedTemplateURL(id)
 	if err != nil {
-		deleteManagedTemplate(id)
+		source.templateStore.Delete(id)
 		return PreparedConversion{}, newInternalResponseError("failed to build managed template URL", err)
 	}
 
@@ -77,7 +82,7 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		Request:        request,
 		TemplateConfig: templateConfig,
 		Cleanup: func() {
-			deleteManagedTemplate(id)
+			source.templateStore.Delete(id)
 		},
 	}, nil
 }

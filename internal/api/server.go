@@ -22,15 +22,19 @@ const (
 
 type Handler struct {
 	source              service.ConversionSource
+	templateStore       service.TemplateContentReader
 	publicBaseURL       string
 	maxLongURLLength    int
 	managedTemplatePath string
 	mux                 *http.ServeMux
 }
 
-func NewHandler(source service.ConversionSource, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int) (*Handler, error) {
+func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int) (*Handler, error) {
 	if source == nil {
 		return nil, fmt.Errorf("conversion source must not be nil")
+	}
+	if templateStore == nil {
+		return nil, fmt.Errorf("template store must not be nil")
 	}
 	if strings.TrimSpace(publicBaseURL) == "" {
 		return nil, fmt.Errorf("public base URL must not be empty")
@@ -42,6 +46,7 @@ func NewHandler(source service.ConversionSource, publicBaseURL string, managedTe
 
 	handler := &Handler{
 		source:              source,
+		templateStore:       templateStore,
 		publicBaseURL:       publicBaseURL,
 		maxLongURLLength:    maxLongURLLength,
 		managedTemplatePath: managedTemplatePath,
@@ -107,7 +112,7 @@ func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, reques
 		return
 	}
 
-	content, ok := service.LoadManagedTemplate(id)
+	content, ok := handler.templateStore.Load(id)
 	if !ok {
 		http.NotFound(writer, request)
 		return

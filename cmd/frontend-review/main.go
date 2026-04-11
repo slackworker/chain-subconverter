@@ -128,6 +128,8 @@ func envOrDefault(key string, fallback string) string {
 }
 
 func newReviewConversionSource(client *subconverter.Client, templateTimeout time.Duration) (service.ConversionSource, func(), error) {
+	templateStore := service.NewInMemoryTemplateContentStore()
+
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		id := strings.TrimPrefix(request.URL.Path, "/internal/templates/")
 		id = strings.TrimSuffix(id, ".ini")
@@ -137,7 +139,7 @@ func newReviewConversionSource(client *subconverter.Client, templateTimeout time
 			return
 		}
 
-		content, ok := service.LoadManagedTemplate(id)
+		content, ok := templateStore.Load(id)
 		if !ok {
 			http.NotFound(writer, request)
 			return
@@ -148,7 +150,7 @@ func newReviewConversionSource(client *subconverter.Client, templateTimeout time
 		_, _ = writer.Write([]byte(content))
 	}))
 
-	source, err := service.NewManagedConversionSource(client, server.URL, templateTimeout)
+	source, err := service.NewManagedConversionSource(client, templateStore, server.URL, templateTimeout)
 	if err != nil {
 		server.Close()
 		return nil, nil, fmt.Errorf("init managed conversion source: %w", err)
