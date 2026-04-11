@@ -7,7 +7,8 @@
 - `Phase 1` 已完成：`subconverter` 真实 `3-pass` 集成已落地。
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 3` 可以开始。
-- `Phase 3`、`Phase 4` 尚未开始。
+- `Phase 3` 已开始：`3-D` 的 SQLite 短链索引、运行时配置与持久化卷挂载已落地。
+- `Phase 4` 尚未开始。
 
 ## Phase 进度
 
@@ -17,13 +18,14 @@
 | Phase 1 — subconverter 集成 | 真实 `3-pass` HTTP 管线 | ✅ 完成 |
 | Phase 2 — 最小业务闭环 | 固定测试数据下的 `stage2Init`、`longUrl`、最终订阅 YAML + 最小 HTTP | ✅ 完成 |
 | Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | ✅ 完成 |
-| Phase 3 — 扩展业务与 API 收口 | 恢复、短链、失败语义、完整 API 契约 | ⛔ 未开始 |
+| Phase 3 — 扩展业务与 API 收口 | 恢复、短链、失败语义、完整 API 契约 | 🟡 进行中 |
 | Phase 4 — 前端与部署 | React + TS UI、运行形态、Compose | ⛔ 未开始 |
 
 ## 已完成
 
 - 3-pass 集成、最小业务闭环、最小 HTTP 对外层已落地。
 - API-only Compose 与 smoke 验证路径已落地。
+- `internal/store` 的 SQLite 短链索引已落地，并已接入服务运行时配置与 Compose 持久化卷。
 - `docs/README`、`ROADMAP`、`testing` 与包级说明已对齐到当前最小闭环基线。
 - `internal/api`、`internal/service` 与测试夹具职责边界已显式固化。
 - `Phase 3` 前缺口已集中盘点，可直接作为下一阶段入口。
@@ -38,8 +40,8 @@
 
 - `messages[]`、`blockingErrors[]` 与 HTTP 状态码仍只覆盖最小 happy path，尚未按 [03-backend-api](../spec/03-backend-api.md) 全量收口。
 - `POST /api/resolve-url`、`POST /api/short-links`、`GET /subscription/<id>.yaml` 等完整端点仍未实现。
-- `internal/store`：Phase 3 将在此实现 SQLite 短链索引与 LRU 淘汰；当前仅为包级占位。
-- 应用层限制仍未完整配置化：阶段 1 输入总大小、每字段 URL 数量、短链容量等仍待实现。
+- `internal/store` 已具备 SQLite 短链索引、幂等回读与 LRU 淘汰；对外短链创建与订阅端点尚未接入。
+- 应用层限制仍未完整配置化：阶段 1 输入总大小、每字段 URL 数量等仍待实现；短链容量已具备运行时配置入口。
 - `web/` 尚未初始化；当前 API-only Compose 仅用于本地验证，不代表完整部署形态已完成。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 

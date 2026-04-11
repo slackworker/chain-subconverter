@@ -14,6 +14,8 @@ const (
 	DefaultMaxLongURLLength       = 2048
 	DefaultMaxInputSize           = 2048
 	DefaultMaxURLsPerField        = 20
+	DefaultShortLinkDBPath        = "data/short-links.sqlite3"
+	DefaultShortLinkCapacity      = 1000
 
 	EnvHTTPAddress            = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL          = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
@@ -21,6 +23,8 @@ const (
 	EnvMaxLongURLLength       = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
 	EnvMaxInputSize           = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
 	EnvMaxURLsPerField        = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
+	EnvShortLinkDBPath        = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
+	EnvShortLinkCapacity      = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
 )
 
 type Server struct {
@@ -30,6 +34,8 @@ type Server struct {
 	MaxLongURLLength       int
 	MaxInputSize           int
 	MaxURLsPerField        int
+	ShortLinkDBPath        string
+	ShortLinkCapacity      int
 }
 
 func DefaultServer() Server {
@@ -40,6 +46,8 @@ func DefaultServer() Server {
 		MaxLongURLLength:       DefaultMaxLongURLLength,
 		MaxInputSize:           DefaultMaxInputSize,
 		MaxURLsPerField:        DefaultMaxURLsPerField,
+		ShortLinkDBPath:        DefaultShortLinkDBPath,
+		ShortLinkCapacity:      DefaultShortLinkCapacity,
 	}
 }
 
@@ -76,6 +84,16 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.MaxURLsPerField = maxURLsPerField
 	}
+	if value, ok := lookupTrimmedEnv(EnvShortLinkDBPath); ok {
+		cfg.ShortLinkDBPath = value
+	}
+	if value, ok := lookupTrimmedEnv(EnvShortLinkCapacity); ok {
+		shortLinkCapacity, err := strconv.Atoi(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvShortLinkCapacity, err)
+		}
+		cfg.ShortLinkCapacity = shortLinkCapacity
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return Server{}, err
@@ -95,6 +113,12 @@ func (cfg Server) Validate() error {
 	}
 	if cfg.MaxURLsPerField <= 0 {
 		return fmt.Errorf("max URLs per field must be greater than zero")
+	}
+	if strings.TrimSpace(cfg.ShortLinkDBPath) == "" {
+		return fmt.Errorf("short link DB path must not be empty")
+	}
+	if cfg.ShortLinkCapacity <= 0 {
+		return fmt.Errorf("short link capacity must be greater than zero")
 	}
 
 	parsedURL, err := url.Parse(cfg.PublicBaseURL)

@@ -23,8 +23,12 @@ services:
       CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: http://localhost:11200
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://host.docker.internal:11200
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
+      CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
+      CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY: 1000
     ports:
       - "11200:11200"
+    volumes:
+      - short-link-data:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:11200/healthz || exit 1"]
@@ -32,3 +36,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+volumes:
+  short-link-data:

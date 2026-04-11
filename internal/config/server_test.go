@@ -19,6 +19,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvPublicBaseURL:          "",
 				EnvManagedTemplateBaseURL: "",
 				EnvMaxLongURLLength:       "\t",
+				EnvShortLinkDBPath:        "  ",
 			},
 			want: DefaultServer(),
 		},
@@ -29,6 +30,8 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvPublicBaseURL:          "  https://example.com/base  ",
 				EnvManagedTemplateBaseURL: "  https://internal.example.com/base  ",
 				EnvMaxLongURLLength:       " 4096 ",
+				EnvShortLinkDBPath:        "  tmp/short-links.sqlite3  ",
+				EnvShortLinkCapacity:      " 2048 ",
 			},
 			want: Server{
 				HTTPAddress:            ":11300",
@@ -37,6 +40,8 @@ func TestLoadServerFromEnv(t *testing.T) {
 				MaxLongURLLength:       4096,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        "tmp/short-links.sqlite3",
+				ShortLinkCapacity:      2048,
 			},
 		},
 		{
@@ -52,6 +57,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvPublicBaseURL: "localhost:11200",
 			},
 			wantErr: "public base URL must include scheme and host",
+		},
+		{
+			name: "invalid short link capacity",
+			env: map[string]string{
+				EnvShortLinkCapacity: "bad",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY",
 		},
 		{
 			name: "invalid managed template base url",
@@ -109,6 +121,8 @@ func TestServerValidate(t *testing.T) {
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
 			},
 			wantErr: "HTTP address must not be empty",
 		},
@@ -121,8 +135,38 @@ func TestServerValidate(t *testing.T) {
 				MaxLongURLLength:       0,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
 			},
 			wantErr: "max long URL length must be greater than zero",
+		},
+		{
+			name: "empty short link db path",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        " ",
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
+			},
+			wantErr: "short link DB path must not be empty",
+		},
+		{
+			name: "non-positive short link capacity",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      0,
+			},
+			wantErr: "short link capacity must be greater than zero",
 		},
 		{
 			name: "missing public base scheme",
@@ -133,6 +177,8 @@ func TestServerValidate(t *testing.T) {
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
 			},
 			wantErr: "public base URL must include scheme and host",
 		},
@@ -145,6 +191,8 @@ func TestServerValidate(t *testing.T) {
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
 			},
 			wantErr: "managed template base URL must include scheme and host",
 		},
@@ -179,6 +227,8 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvMaxLongURLLength, "")
 	t.Setenv(EnvMaxInputSize, "")
 	t.Setenv(EnvMaxURLsPerField, "")
+	t.Setenv(EnvShortLinkDBPath, "")
+	t.Setenv(EnvShortLinkCapacity, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)

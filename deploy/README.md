@@ -7,6 +7,7 @@
 ## 当前范围
 
 - 已提供 `docker-compose.yml`，用于编排 `app + subconverter`
+- SQLite 短链接索引默认通过 Compose 命名卷持久化
 - 当前只覆盖本地验证所需的最小运行路径
 - 完整阶段状态与缺口统一见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)
 
@@ -32,11 +33,16 @@ curl http://localhost:11200/healthz
 - 传给 `app` 的运行时环境变量
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
   - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=http://localhost:11200`
+  - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://host.docker.internal:11200`
   - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL=http://subconverter:25500/sub?`
+  - `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3`
+  - `CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY=1000`
 - 仅由 Compose 解析 `image:` 时使用的镜像变量
   - `CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE=ghcr.io/slackworker/subconverter:integration-chain-subconverter`
 
 如需切换镜像标签，可在启动前覆盖 `CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE`。
+
+`app` 服务会把 SQLite 文件写入命名卷 `short-link-data`，用于在容器重建后保留短链接索引。
 
 ## 边界
 

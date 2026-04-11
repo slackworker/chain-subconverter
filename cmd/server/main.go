@@ -10,6 +10,7 @@ import (
 	"github.com/slackworker/chain-subconverter/internal/api"
 	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/service"
+	shortlinkstore "github.com/slackworker/chain-subconverter/internal/store"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
@@ -33,7 +34,12 @@ func main() {
 	}
 
 	templateStore := service.NewInMemoryTemplateContentStore()
-	shortLinkStore := service.NewInMemoryShortLinkStore()
+	shortLinkStore, err := shortlinkstore.NewSQLiteShortLinkStore(serverCfg.ShortLinkDBPath, serverCfg.ShortLinkCapacity)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "init short link store: %v\n", err)
+		os.Exit(1)
+	}
+	defer shortLinkStore.Close()
 
 	managedSource, err := service.NewManagedConversionSource(client, templateStore, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout)
 	if err != nil {
