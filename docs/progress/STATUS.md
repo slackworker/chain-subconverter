@@ -7,7 +7,7 @@
 - `Phase 1` 已完成：`subconverter` 真实 `3-pass` 集成已落地。
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 3` 可以开始。
-- `Phase 3` 已开始：`3-D` 的 SQLite 短链索引、运行时配置与持久化卷挂载已落地。
+- `Phase 3` 接近尾声：3-A, 3-B, 3-C, 3-D (含 SQLite 短链索引与应用层限制) 已完成。仅剩 3-E 短链端点。
 - `Phase 4` 尚未开始。
 
 ## Phase 进度
@@ -25,10 +25,10 @@
 
 - 3-pass 集成、最小业务闭环、最小 HTTP 对外层已落地。
 - API-only Compose 与 smoke 验证路径已落地。
-- `internal/store` 的 SQLite 短链索引已落地，并已接入服务运行时配置与 Compose 持久化卷。
-- `docs/README`、`ROADMAP`、`testing` 与包级说明已对齐到当前最小闭环基线。
-- `internal/api`、`internal/service` 与测试夹具职责边界已显式固化。
-- `Phase 3` 前缺口已集中盘点，可直接作为下一阶段入口。
+- `internal/store` 的 SQLite 短链索引已落地 (基于 `go-sqlite3` 实现并加满约束级并发保护)，并已接入服务运行时配置。
+- `docs/README`、`ROADMAP`、`testing` 等文档已对齐。
+- `internal/api`、`internal/service` 职责边界已固化。
+- `Phase 3` 已完成失败语义收口 (3-A)、输入应用层配置化 (3-B)、`POST /api/resolve-url` (3-C) 以及短链索引落地 (3-D)。目前后端仅差 `POST /api/short-links` 和短链订阅读取即可结项 Phase 3。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
@@ -36,13 +36,8 @@
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `review/cases/3pass-ss2022-test-subscription/`。
 
-## Phase 3 前缺口
-
-- `messages[]`、`blockingErrors[]` 与 HTTP 状态码仍只覆盖最小 happy path，尚未按 [03-backend-api](../spec/03-backend-api.md) 全量收口。
-- `POST /api/resolve-url`、`POST /api/short-links`、`GET /subscription/<id>.yaml` 等完整端点仍未实现。
-- `internal/store` 已具备 SQLite 短链索引、幂等回读与 LRU 淘汰；对外短链创建与订阅端点尚未接入。
-- 应用层限制仍未完整配置化：阶段 1 输入总大小、每字段 URL 数量等仍待实现；短链容量已具备运行时配置入口。
-- `web/` 尚未初始化；当前 API-only Compose 仅用于本地验证，不代表完整部署形态已完成。
+- `POST /api/short-links` 和短链版的订阅请求 `GET /subscription/<id>.yaml` (Phase 3-E) 还在计划中。
+- `web/` 尚未初始化；当前 API-only Compose 仅用于本地验证，不代表完整部署形态已完成 (属于 Phase 4 预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 
 ## 验证
