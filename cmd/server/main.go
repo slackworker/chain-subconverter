@@ -33,6 +33,7 @@ func main() {
 	}
 
 	templateStore := service.NewInMemoryTemplateContentStore()
+	shortLinkStore := service.NewInMemoryShortLinkStore()
 
 	managedSource, err := service.NewManagedConversionSource(client, templateStore, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout)
 	if err != nil {
@@ -40,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := api.NewHandler(managedSource, templateStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
+	handler, err := api.NewHandler(managedSource, templateStore, shortLinkStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
 		MaxInputSize:    serverCfg.MaxInputSize,
 		MaxURLsPerField: serverCfg.MaxURLsPerField,
 	})

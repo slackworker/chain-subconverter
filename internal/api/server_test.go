@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -113,6 +114,89 @@ func TestGenerateHandler_HappyPath(t *testing.T) {
 	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
 		t.Fatalf("generate response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
 	}
+}
+
+func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	var requestPayload service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &requestPayload)
+
+	storedLongURL, err := service.EncodeLongURL(
+		"https://legacy.example.com/base",
+		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	shortLinks := service.NewInMemoryShortLinkStore()
+	shortLinks.Save("abc123", storedLongURL)
+
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}, shortLinks)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/subscription/abc123.yaml"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response service.ResolveURLResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+
+	wantLongURL, err := service.EncodeLongURL(
+		"http://localhost:11200",
+		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	if response.LongURL != wantLongURL {
+		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, wantLongURL)
+	}
+	if response.RestoreStatus != "replayable" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
+	}
+	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
+	}
+}
+
+func TestResolveURLHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) {
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
+
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/subscription/missing.yaml"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "SHORT_URL_NOT_FOUND",
+		Message: "short URL not found",
+		Scope:   "global",
+	})
+}
+
+func TestResolveURLHandler_MapsShortLinkStoreUnavailableToSpecModel(t *testing.T) {
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, failingShortLinkResolver{err: errors.New("store unavailable")})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/subscription/abc123.yaml"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:      "SHORT_LINK_STORE_UNAVAILABLE",
+		Message:   "short link store is unavailable",
+		Scope:     "global",
+		Retryable: boolPtr(true),
+	})
 }
 
 func TestSubscriptionHandler_HappyPath(t *testing.T) {
@@ -226,7 +310,7 @@ func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
 
 	templateStore := service.NewInMemoryTemplateContentStore()
-	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, templateStore, "http://localhost:11200", "http://localhost:11200", 32, service.InputLimits{})
+	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, templateStore, service.NewInMemoryShortLinkStore(), "http://localhost:11200", "http://localhost:11200", 32, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -303,6 +387,7 @@ func TestSubscriptionHandler_RejectsDecodedInputLimitFailureAsInvalidLongURL(t *
 	handler, err := NewHandler(
 		&fakeConversionSource{},
 		service.NewInMemoryTemplateContentStore(),
+		service.NewInMemoryShortLinkStore(),
 		"http://localhost:11200",
 		"http://localhost:11200",
 		2048,
@@ -371,7 +456,7 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 		t.Fatal("managed config URL should not be nil")
 	}
 
-	handler, err := NewHandler(&fakeConversionSource{}, templateStore, "http://localhost:11200", "http://internal.example.com/base", 2048, service.InputLimits{})
+	handler, err := NewHandler(&fakeConversionSource{}, templateStore, service.NewInMemoryShortLinkStore(), "http://localhost:11200", "http://internal.example.com/base", 2048, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -391,16 +476,34 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 func mustNewTestHandler(t *testing.T, source service.ConversionSource) *Handler {
 	t.Helper()
 
+	return mustNewTestHandlerWithShortLinks(t, source, service.NewInMemoryShortLinkStore())
+}
+
+func mustNewTestHandlerWithShortLinks(t *testing.T, source service.ConversionSource, shortLinkResolver service.ShortLinkResolver) *Handler {
+	t.Helper()
+
 	templateStore := service.NewInMemoryTemplateContentStore()
-	handler, err := NewHandler(source, templateStore, "http://localhost:11200", "http://localhost:11200", 2048, service.InputLimits{})
+	handler, err := NewHandler(source, templateStore, shortLinkResolver, "http://localhost:11200", "http://localhost:11200", 2048, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
 	return handler
 }
 
+func boolPtr(value bool) *bool {
+	return &value
+}
+
 func stringPtr(value string) *string {
 	return &value
+}
+
+type failingShortLinkResolver struct {
+	err error
+}
+
+func (resolver failingShortLinkResolver) ResolveShortID(_ context.Context, _ string) (string, error) {
+	return "", resolver.err
 }
 
 func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, wantStatus int, want service.BlockingError) {
@@ -427,6 +530,9 @@ func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, want
 	got := response.BlockingErrors[0]
 	if got.Code != want.Code || got.Message != want.Message || got.Scope != want.Scope {
 		t.Fatalf("blocking error mismatch: got %+v want %+v", got, want)
+	}
+	if !reflect.DeepEqual(got.Retryable, want.Retryable) {
+		t.Fatalf("blocking error retryable mismatch: got %v want %v", got.Retryable, want.Retryable)
 	}
 	if !reflect.DeepEqual(got.Context, want.Context) {
 		t.Fatalf("blocking error context mismatch: got %v want %v", got.Context, want.Context)

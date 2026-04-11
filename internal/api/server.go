@@ -23,6 +23,7 @@ const (
 type Handler struct {
 	source              service.ConversionSource
 	templateStore       service.TemplateContentReader
+	shortLinkResolver   service.ShortLinkResolver
 	publicBaseURL       string
 	maxLongURLLength    int
 	inputLimits         service.InputLimits
@@ -30,7 +31,7 @@ type Handler struct {
 	mux                 *http.ServeMux
 }
 
-func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits) (*Handler, error) {
+func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkResolver service.ShortLinkResolver, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits) (*Handler, error) {
 	if source == nil {
 		return nil, fmt.Errorf("conversion source must not be nil")
 	}
@@ -48,6 +49,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	handler := &Handler{
 		source:              source,
 		templateStore:       templateStore,
+		shortLinkResolver:   shortLinkResolver,
 		publicBaseURL:       publicBaseURL,
 		maxLongURLLength:    maxLongURLLength,
 		inputLimits:         inputLimits,
@@ -57,6 +59,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/stage1/convert", handler.handleStage1Convert)
 	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
+	mux.HandleFunc("POST /api/resolve-url", handler.handleResolveURL)
 	mux.HandleFunc("GET "+managedTemplatePath, handler.handleManagedTemplate)
 	mux.HandleFunc("GET /subscription", handler.handleSubscription)
 	mux.HandleFunc("GET /healthz", handler.handleHealthz)
@@ -96,6 +99,29 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 		handler.publicBaseURL,
 		handler.source,
 		payload,
+		handler.maxLongURLLength,
+		handler.inputLimits,
+	)
+	if err != nil {
+		writeOperationError(writer, err)
+		return
+	}
+	writeJSON(writer, http.StatusOK, response)
+}
+
+func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *http.Request) {
+	var payload service.ResolveURLRequest
+	if err := decodeJSONBody(request, &payload); err != nil {
+		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		return
+	}
+
+	response, err := service.ResolveURLFromSource(
+		request.Context(),
+		handler.publicBaseURL,
+		handler.source,
+		handler.shortLinkResolver,
+		payload.URL,
 		handler.maxLongURLLength,
 		handler.inputLimits,
 	)
