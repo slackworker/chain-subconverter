@@ -45,7 +45,7 @@ flowchart LR
 
 ## Phase 2.5：阶段性整理
 
-**目标**：在最小业务闭环完成后，先做一次收口整理，再继续扩展其他业务与前端
+**目标**：在最小业务闭环完成后，先做一次收口整理，再继续扩展其他业务与前端（已完成）
 
 | 任务 | 说明 |
 |------|------|
@@ -53,6 +53,8 @@ flowchart LR
 | 结构整理 | 清理最小闭环阶段产生的临时命名、重复逻辑与职责漂移 |
 | 边界确认 | 重新确认服务层、API 层与测试夹具之间的职责边界 |
 | 下一阶段盘点 | 为扩展业务、前端与部署准备更稳定的起点 |
+
+完成口径：上述收口结果现已固化到 [progress/STATUS.md](progress/STATUS.md)、[testing/3pass-ss2022-test-subscription.md](testing/3pass-ss2022-test-subscription.md) 以及 `internal/api`、`internal/service` 的包级说明中。
 
 待定事项（本阶段仅跟踪，不入 spec 正文）：
 
@@ -90,6 +92,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 完成 `Phase 2.5` 的文档、结构与职责边界收口。
-2. 进入 `Phase 3`，补齐恢复、短链、失败语义与完整 API 契约。
+1. 进入 `Phase 3`，先补齐 `resolve-url`、短链与失败语义收口。
+2. 在 `Phase 3` 内同步落地 `internal/store` 与应用层限制配置化。
 3. 最后推进前端与完整部署，形成正式的端到端路径。
