@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dlclark/regexp2"
+	"github.com/slackworker/chain-subconverter/internal/inpututil"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
@@ -748,5 +749,5 @@ func SortedChainTargetNames(targets []ChainTarget) []string {
 }
 
 func normalizeInputNewlines(value string) string {
-	return strings.ReplaceAll(value, "\r\n", "\n")
+	return inpututil.NormalizeNewlines(value)
 }

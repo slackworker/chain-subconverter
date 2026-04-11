@@ -21,40 +21,45 @@ type TemplatePreparingSource interface {
 	PrepareConversion(context.Context, Stage1Input) (PreparedConversion, error)
 }
 
-func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (Stage1ConvertResponse, error) {
+func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (Stage1ConvertResponse, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input)
+	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input, limits)
 	if err != nil {
 		return Stage1ConvertResponse{}, err
 	}
 	return BuildStage1ConvertResponse(stage1Input, fixtures)
 }
 
-func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int) (GenerateResponse, error) {
+func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int, limits InputLimits) (GenerateResponse, error) {
 	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, request.Stage1Input)
+	fixtures, err := LoadConversionFixtures(ctx, source, request.Stage1Input, limits)
 	if err != nil {
 		return GenerateResponse{}, err
 	}
 	return BuildGenerateResponse(publicBaseURL, request, fixtures, maxLongURLLength)
 }
 
-func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot) (string, error) {
+func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (string, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input)
+	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input, limits)
 	if err != nil {
 		return "", err
 	}
 	return RenderCompleteConfig(stage1Input, stage2Snapshot, fixtures)
 }
 
-func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (ConversionFixtures, error) {
-	_, fixtures, err := ExecuteConversion(ctx, source, stage1Input)
+func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {
+	_, fixtures, err := ExecuteConversion(ctx, source, stage1Input, limits)
 	return fixtures, err
 }
 
-func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input) (subconverter.ThreePassResult, ConversionFixtures, error) {
+func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (subconverter.ThreePassResult, ConversionFixtures, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
+
+	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
+		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
+	}
+
 	prepared, err := prepareConversion(ctx, source, stage1Input)
 	if err != nil {
 		return subconverter.ThreePassResult{}, ConversionFixtures{}, err

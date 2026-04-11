@@ -25,11 +25,12 @@ type Handler struct {
 	templateStore       service.TemplateContentReader
 	publicBaseURL       string
 	maxLongURLLength    int
+	inputLimits         service.InputLimits
 	managedTemplatePath string
 	mux                 *http.ServeMux
 }
 
-func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int) (*Handler, error) {
+func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits) (*Handler, error) {
 	if source == nil {
 		return nil, fmt.Errorf("conversion source must not be nil")
 	}
@@ -49,6 +50,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 		templateStore:       templateStore,
 		publicBaseURL:       publicBaseURL,
 		maxLongURLLength:    maxLongURLLength,
+		inputLimits:         inputLimits,
 		managedTemplatePath: managedTemplatePath,
 	}
 
@@ -74,7 +76,7 @@ func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request 
 		return
 	}
 
-	response, err := service.BuildStage1ConvertResponseFromSource(request.Context(), handler.source, payload.Stage1Input)
+	response, err := service.BuildStage1ConvertResponseFromSource(request.Context(), handler.source, payload.Stage1Input, handler.inputLimits)
 	if err != nil {
 		writeOperationError(writer, err)
 		return
@@ -95,6 +97,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 		handler.source,
 		payload,
 		handler.maxLongURLLength,
+		handler.inputLimits,
 	)
 	if err != nil {
 		writeOperationError(writer, err)
@@ -146,7 +149,7 @@ func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *
 		return
 	}
 
-	payload, err := service.DecodeLongURLPayload(request.URL.String())
+	payload, err := service.DecodeLongURLPayload(request.URL.String(), handler.inputLimits)
 	if err != nil {
 		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
@@ -157,6 +160,7 @@ func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *
 		handler.source,
 		payload.Stage1Input,
 		payload.Stage2Snapshot,
+		handler.inputLimits,
 	)
 	if err != nil {
 		if subconverter.IsUnavailable(err) {

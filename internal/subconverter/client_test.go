@@ -305,6 +305,11 @@ func TestNormalizeSubconverterURLInput_IgnoresBlankLinesAndTrailingNewlines(t *t
 			input: "ss://a\n\nss://b",
 			want:  "ss://a|ss://b",
 		},
+		{
+			name:  "standalone carriage returns are separators",
+			input: "ss://a\rss://b",
+			want:  "ss://a|ss://b",
+		},
 	}
 
 	for _, tc := range testCases {

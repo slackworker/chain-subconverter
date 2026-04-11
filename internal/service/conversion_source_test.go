@@ -111,7 +111,7 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	}
 
-	response, err := BuildStage1ConvertResponseFromSource(context.Background(), source, request.Stage1Input)
+	response, err := BuildStage1ConvertResponseFromSource(context.Background(), source, request.Stage1Input, InputLimits{})
 	if err != nil {
 		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
 	}
@@ -136,7 +136,7 @@ func TestBuildGenerateResponseFromSource_HappyPath(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	}
 
-	response, err := BuildGenerateResponseFromSource(context.Background(), "http://localhost:11200", source, request, 0)
+	response, err := BuildGenerateResponseFromSource(context.Background(), "http://localhost:11200", source, request, 0, InputLimits{})
 	if err != nil {
 		t.Fatalf("BuildGenerateResponseFromSource() error = %v", err)
 	}
@@ -157,7 +157,7 @@ func TestRenderCompleteConfigFromSource_HappyPath(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	}
 
-	renderedConfig, err := RenderCompleteConfigFromSource(context.Background(), source, request.Stage1Input, request.Stage2Snapshot)
+	renderedConfig, err := RenderCompleteConfigFromSource(context.Background(), source, request.Stage1Input, request.Stage2Snapshot, InputLimits{})
 	if err != nil {
 		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
 	}
@@ -245,7 +245,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		AdvancedOptions: AdvancedOptions{
 			Config: stringPtr(templateServer.URL),
 		},
-	})
+	}, InputLimits{})
 	if err != nil {
 		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
 	}

@@ -40,7 +40,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := api.NewHandler(managedSource, templateStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength)
+	handler, err := api.NewHandler(managedSource, templateStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
+		MaxInputSize:    serverCfg.MaxInputSize,
+		MaxURLsPerField: serverCfg.MaxURLsPerField,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)
 		os.Exit(1)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/slackworker/chain-subconverter/internal/config"
+	"github.com/slackworker/chain-subconverter/internal/inpututil"
 )
 
 type Client struct {
@@ -170,18 +171,7 @@ func appendOptionalStringQuery(params []string, name string, value *string) []st
 }
 
 func normalizeSubconverterURLInput(rawInput string) string {
-	normalized := strings.ReplaceAll(rawInput, "\r\n", "\n")
-	normalized = strings.ReplaceAll(normalized, "\r", "\n")
-	lines := strings.Split(normalized, "\n")
-	parts := make([]string, 0, len(lines))
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		parts = append(parts, trimmed)
-	}
-	return strings.Join(parts, "|")
+	return inpututil.NormalizeURLText(rawInput)
 }
 
 func (client *Client) acquire() error {

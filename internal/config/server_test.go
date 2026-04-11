@@ -35,6 +35,8 @@ func TestLoadServerFromEnv(t *testing.T) {
 				PublicBaseURL:          "https://example.com/base",
 				ManagedTemplateBaseURL: "https://internal.example.com/base",
 				MaxLongURLLength:       4096,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
 			},
 		},
 		{
@@ -105,6 +107,8 @@ func TestServerValidate(t *testing.T) {
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
 			},
 			wantErr: "HTTP address must not be empty",
 		},
@@ -115,6 +119,8 @@ func TestServerValidate(t *testing.T) {
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
 				MaxLongURLLength:       0,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
 			},
 			wantErr: "max long URL length must be greater than zero",
 		},
@@ -125,6 +131,8 @@ func TestServerValidate(t *testing.T) {
 				PublicBaseURL:          "localhost:11200",
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
 			},
 			wantErr: "public base URL must include scheme and host",
 		},
@@ -135,6 +143,8 @@ func TestServerValidate(t *testing.T) {
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: "localhost:11200",
 				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
 			},
 			wantErr: "managed template base URL must include scheme and host",
 		},
@@ -167,6 +177,8 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvPublicBaseURL, "")
 	t.Setenv(EnvManagedTemplateBaseURL, "")
 	t.Setenv(EnvMaxLongURLLength, "")
+	t.Setenv(EnvMaxInputSize, "")
+	t.Setenv(EnvMaxURLsPerField, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)

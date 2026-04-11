@@ -12,11 +12,15 @@ const (
 	DefaultPublicBaseURL          = "http://localhost:11200"
 	DefaultManagedTemplateBaseURL = DefaultPublicBaseURL
 	DefaultMaxLongURLLength       = 2048
+	DefaultMaxInputSize           = 2048
+	DefaultMaxURLsPerField        = 20
 
 	EnvHTTPAddress            = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL          = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
 	EnvManagedTemplateBaseURL = "CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL"
 	EnvMaxLongURLLength       = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
+	EnvMaxInputSize           = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
+	EnvMaxURLsPerField        = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
 )
 
 type Server struct {
@@ -24,6 +28,8 @@ type Server struct {
 	PublicBaseURL          string
 	ManagedTemplateBaseURL string
 	MaxLongURLLength       int
+	MaxInputSize           int
+	MaxURLsPerField        int
 }
 
 func DefaultServer() Server {
@@ -32,6 +38,8 @@ func DefaultServer() Server {
 		PublicBaseURL:          DefaultPublicBaseURL,
 		ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
 		MaxLongURLLength:       DefaultMaxLongURLLength,
+		MaxInputSize:           DefaultMaxInputSize,
+		MaxURLsPerField:        DefaultMaxURLsPerField,
 	}
 }
 
@@ -54,6 +62,20 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.MaxLongURLLength = maxLongURLLength
 	}
+	if value, ok := lookupTrimmedEnv(EnvMaxInputSize); ok {
+		maxInputSize, err := strconv.Atoi(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvMaxInputSize, err)
+		}
+		cfg.MaxInputSize = maxInputSize
+	}
+	if value, ok := lookupTrimmedEnv(EnvMaxURLsPerField); ok {
+		maxURLsPerField, err := strconv.Atoi(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvMaxURLsPerField, err)
+		}
+		cfg.MaxURLsPerField = maxURLsPerField
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return Server{}, err
@@ -67,6 +89,12 @@ func (cfg Server) Validate() error {
 	}
 	if cfg.MaxLongURLLength <= 0 {
 		return fmt.Errorf("max long URL length must be greater than zero")
+	}
+	if cfg.MaxInputSize <= 0 {
+		return fmt.Errorf("max input size must be greater than zero")
+	}
+	if cfg.MaxURLsPerField <= 0 {
+		return fmt.Errorf("max URLs per field must be greater than zero")
 	}
 
 	parsedURL, err := url.Parse(cfg.PublicBaseURL)

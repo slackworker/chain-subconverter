@@ -40,7 +40,7 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 		t.Fatalf("BuildGenerateResponse() error = %v", err)
 	}
 
-	payload, err := DecodeLongURLPayload(generateResponse.LongURL)
+	payload, err := DecodeLongURLPayload(generateResponse.LongURL, InputLimits{})
 	if err != nil {
 		t.Fatalf("DecodeLongURLPayload() error = %v", err)
 	}
@@ -68,6 +68,28 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	}
 	if strings.TrimSpace(renderedConfig) != strings.TrimSpace(expectedCompleteConfig) {
 		t.Fatalf("complete-config.chain.yaml mismatch:\n--- got ---\n%s\n--- want ---\n%s", renderedConfig, expectedCompleteConfig)
+	}
+}
+
+func TestDecodeLongURLPayload_RejectsDecodedStage1InputOverLimit(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			Stage1Input{LandingRawText: strings.Repeat("a", 16)},
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{MaxInputSize: 8})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate stage1 input limits") {
+		t.Fatalf("error mismatch: got %v", err)
 	}
 }
 

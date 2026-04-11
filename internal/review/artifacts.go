@@ -94,7 +94,7 @@ func cloneRows(rows []service.Stage2Row) []service.Stage2Row {
 }
 
 func loadConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
-	return service.ExecuteConversion(ctx, source, stage1Input)
+	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
 }
 
 func mustMarshalJSON(value any) string {

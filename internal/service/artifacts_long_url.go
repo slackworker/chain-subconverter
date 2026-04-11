@@ -56,7 +56,7 @@ func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLengt
 	return longURL, nil
 }
 
-func DecodeLongURLPayload(longURL string) (LongURLPayload, error) {
+func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, error) {
 	parsedURL, err := url.Parse(longURL)
 	if err != nil {
 		return LongURLPayload{}, fmt.Errorf("parse long URL: %w", err)
@@ -87,9 +87,12 @@ func DecodeLongURLPayload(longURL string) (LongURLPayload, error) {
 	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
 		return LongURLPayload{}, fmt.Errorf("unmarshal long URL payload: %w", err)
 	}
-	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
 	if payload.V != 1 {
 		return LongURLPayload{}, fmt.Errorf("unsupported long URL payload version %d", payload.V)
+	}
+	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
+	if err := ValidateStage1InputLimits(payload.Stage1Input, limits); err != nil {
+		return LongURLPayload{}, fmt.Errorf("validate stage1 input limits: %w", err)
 	}
 
 	return payload, nil

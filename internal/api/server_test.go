@@ -226,7 +226,7 @@ func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
 
 	templateStore := service.NewInMemoryTemplateContentStore()
-	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, templateStore, "http://localhost:11200", "http://localhost:11200", 32)
+	handler, err := NewHandler(&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}, templateStore, "http://localhost:11200", "http://localhost:11200", 32, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -299,6 +299,42 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 	})
 }
 
+func TestSubscriptionHandler_RejectsDecodedInputLimitFailureAsInvalidLongURL(t *testing.T) {
+	handler, err := NewHandler(
+		&fakeConversionSource{},
+		service.NewInMemoryTemplateContentStore(),
+		"http://localhost:11200",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{MaxInputSize: 8},
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	longURL, err := service.EncodeLongURL(
+		"http://localhost:11200",
+		service.BuildLongURLPayload(
+			service.Stage1Input{LandingRawText: strings.Repeat("a", 16)},
+			service.Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, longURL, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: "validate stage1 input limits: normalized input total size 16 exceeds limit 8",
+		Scope:   "global",
+	})
+}
+
 func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
@@ -335,7 +371,7 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 		t.Fatal("managed config URL should not be nil")
 	}
 
-	handler, err := NewHandler(&fakeConversionSource{}, templateStore, "http://localhost:11200", "http://internal.example.com/base", 2048)
+	handler, err := NewHandler(&fakeConversionSource{}, templateStore, "http://localhost:11200", "http://internal.example.com/base", 2048, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
@@ -356,7 +392,7 @@ func mustNewTestHandler(t *testing.T, source service.ConversionSource) *Handler 
 	t.Helper()
 
 	templateStore := service.NewInMemoryTemplateContentStore()
-	handler, err := NewHandler(source, templateStore, "http://localhost:11200", "http://localhost:11200", 2048)
+	handler, err := NewHandler(source, templateStore, "http://localhost:11200", "http://localhost:11200", 2048, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
