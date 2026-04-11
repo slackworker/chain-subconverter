@@ -30,6 +30,8 @@
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
+`Phase 3` 的细化推进顺序见 [plan/phase-3-breakdown](../plan/phase-3-breakdown.md)。
+
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `review/cases/3pass-ss2022-test-subscription/`。
 
 ## Phase 3 前缺口

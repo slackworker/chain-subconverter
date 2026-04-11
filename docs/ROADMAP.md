@@ -66,6 +66,8 @@ flowchart LR
 
 **目标**：在最小闭环稳定后，补齐完整后端业务面与对外契约（未开始）
 
+细化实施顺序见 [plan/phase-3-breakdown](plan/phase-3-breakdown.md)。
+
 | 任务 | 说明 |
 |------|------|
 | `internal/api/` | `stage1/convert`、`generate`、`resolve-url`、`short-links`、`subscription` 端点 |
@@ -92,6 +94,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 进入 `Phase 3`，先补齐 `resolve-url`、短链与失败语义收口。
-2. 在 `Phase 3` 内同步落地 `internal/store` 与应用层限制配置化。
+1. 进入 `Phase 3`，先落地失败语义收口与应用层限制配置化。
+2. 再实现 `resolve-url` 的长链接恢复路径，随后补齐短链存储、短链端点与短链订阅。
 3. 最后推进前端与完整部署，形成正式的端到端路径。
