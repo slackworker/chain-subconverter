@@ -201,7 +201,7 @@ func TestResolveURLFromSource_ResolvesShortURL(t *testing.T) {
 	}
 
 	resolver := &fakeShortLinkResolver{
-		longURLByID: map[string]string{"abc123": storedLongURL},
+		longURLByID: map[string]string{"7NpK2mQx9a": storedLongURL},
 	}
 	source := &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -212,7 +212,7 @@ func TestResolveURLFromSource_ResolvesShortURL(t *testing.T) {
 		"http://localhost:11200",
 		source,
 		resolver,
-		"https://example.com/subscription/abc123.yaml",
+		"https://example.com/subscription/7NpK2mQx9a.yaml",
 		0,
 		InputLimits{},
 	)
@@ -231,7 +231,7 @@ func TestResolveURLFromSource_ResolvesShortURL(t *testing.T) {
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
 	}
-	if resolver.lastResolvedID != "abc123" {
+	if resolver.lastResolvedID != "7NpK2mQx9a" {
 		t.Fatalf("expected short ID to be resolved, got %q", resolver.lastResolvedID)
 	}
 }
@@ -268,7 +268,7 @@ func TestResolveURLFromSource_ShortLinkStoreUnavailable(t *testing.T) {
 		"http://localhost:11200",
 		&fakeConversionSource{},
 		&fakeShortLinkResolver{err: errors.New("store unavailable")},
-		"https://example.com/subscription/abc123.yaml",
+		"https://example.com/subscription/7NpK2mQx9a.yaml",
 		0,
 		InputLimits{},
 	)
@@ -300,10 +300,12 @@ func TestParseResolveURLInput(t *testing.T) {
 		wantError bool
 	}{
 		{name: "valid long url", url: "http://localhost:11200/subscription?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/subscription?data=abc", IsLong: true}},
-		{name: "valid short url", url: "http://localhost:11200/subscription/abc.yaml", want: resolveURLInput{ShortID: "abc"}},
+		{name: "valid long url with base path", url: "http://localhost:11200/base/subscription?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/base/subscription?data=abc", IsLong: true}},
+		{name: "valid short url", url: "http://localhost:11200/subscription/7NpK2mQx9a.yaml", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
+		{name: "valid short url with base path", url: "http://localhost:11200/base/subscription/7NpK2mQx9a.yaml", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
 		{name: "some random url", url: "https://example.com/page", wantError: true},
 		{name: "subscription without data", url: "http://localhost:11200/subscription", wantError: true},
-		{name: "relative url", url: "/subscription/abc.yaml", wantError: true},
+		{name: "relative url", url: "/subscription/7NpK2mQx9a.yaml", wantError: true},
 	}
 
 	for _, tt := range tests {

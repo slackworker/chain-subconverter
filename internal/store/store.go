@@ -4,7 +4,11 @@
 // The primary implementation is SQLiteShortLinkStore, backed by a local SQLite file.
 package store
 
-import "context"
+import (
+	"context"
+
+	"github.com/slackworker/chain-subconverter/internal/service"
+)
 
 // ShortLinkStore defines the contract for short-link index persistence.
 // Implementations must be safe for concurrent use.
@@ -24,7 +28,4 @@ type ShortLinkStore interface {
 }
 
 // ShortLinkEntry represents a stored short-link mapping.
-type ShortLinkEntry struct {
-	ShortID string
-	LongURL string
-}
+type ShortLinkEntry = service.ShortLinkEntry

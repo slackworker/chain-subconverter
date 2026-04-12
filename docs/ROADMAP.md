@@ -64,7 +64,7 @@ flowchart LR
 
 ## Phase 3：扩展业务与 API 收口
 
-**目标**：在最小闭环稳定后，补齐完整后端业务面与对外契约（未开始）
+**目标**：在最小闭环稳定后，补齐完整后端业务面与对外契约（已完成）
 
 细化实施顺序见 [plan/phase-3-breakdown](plan/phase-3-breakdown.md)。
 
@@ -94,6 +94,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 进入 `Phase 3`，先落地失败语义收口与应用层限制配置化。
-2. 再实现 `resolve-url` 的长链接恢复路径，随后补齐短链存储、短链端点与短链订阅。
-3. 最后推进前端与完整部署，形成正式的端到端路径。
+1. 进入 `Phase 4`，初始化 `web/` 并落地 React + TypeScript 前端骨架。
+2. 对接现有 `stage1/convert`、`generate`、`resolve-url`、`short-links` 与订阅入口，完成页面恢复与短链接展示流。
+3. 收口 `deploy/` 运行形态与 Compose 验证，形成正式端到端路径。

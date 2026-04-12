@@ -125,6 +125,9 @@ func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, shortID string, 
 			}
 			return ShortLinkEntry{ShortID: existingShortID, LongURL: longURL}, nil
 		}
+		if isShortIDConstraintError(err) {
+			return ShortLinkEntry{}, service.ErrShortIDCollision
+		}
 		return ShortLinkEntry{}, fmt.Errorf("insert short link: %w", err)
 	}
 
@@ -206,6 +209,17 @@ func isLongURLConstraintError(err error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), "short_links.long_url")
+}
+
+func isShortIDConstraintError(err error) bool {
+	var sqliteErr sqlite3.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+	if sqliteErr.Code != sqlite3.ErrConstraint {
+		return false
+	}
+	return strings.Contains(err.Error(), "short_links.short_id")
 }
 
 // Close closes the underlying database connection.

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,18 +27,18 @@ func TestCreateAndResolve(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	entry, err := store.CreateOrGet(ctx, "abc123", "http://example.com/subscription?data=payload1")
+	entry, err := store.CreateOrGet(ctx, "7NpK2mQx9a", "http://example.com/subscription?data=payload1")
 	if err != nil {
 		t.Fatalf("CreateOrGet() error = %v", err)
 	}
-	if entry.ShortID != "abc123" {
-		t.Fatalf("shortID mismatch: got %q want %q", entry.ShortID, "abc123")
+	if entry.ShortID != "7NpK2mQx9a" {
+		t.Fatalf("shortID mismatch: got %q want %q", entry.ShortID, "7NpK2mQx9a")
 	}
 	if entry.LongURL != "http://example.com/subscription?data=payload1" {
 		t.Fatalf("longURL mismatch: got %q want %q", entry.LongURL, "http://example.com/subscription?data=payload1")
 	}
 
-	longURL, err := store.ResolveShortID(ctx, "abc123")
+	longURL, err := store.ResolveShortID(ctx, "7NpK2mQx9a")
 	if err != nil {
 		t.Fatalf("ResolveShortID() error = %v", err)
 	}
@@ -99,6 +100,20 @@ func TestCreateOrGet_ExistingRecordRefreshesLastAccessedAt(t *testing.T) {
 	after := mustLastAccessedAt(t, store, entry.ShortID)
 	if !after.After(before) {
 		t.Fatalf("last_accessed_at was not refreshed: before=%v after=%v", before, after)
+	}
+}
+
+func TestCreateOrGet_ShortIDCollision(t *testing.T) {
+	store := newTestStore(t, 100)
+	ctx := context.Background()
+
+	if _, err := store.CreateOrGet(ctx, "sameid", "http://example.com/subscription?data=payload1"); err != nil {
+		t.Fatalf("first CreateOrGet() error = %v", err)
+	}
+
+	_, err := store.CreateOrGet(ctx, "sameid", "http://example.com/subscription?data=payload2")
+	if !errors.Is(err, service.ErrShortIDCollision) {
+		t.Fatalf("CreateOrGet() error = %v, want ErrShortIDCollision", err)
 	}
 }
 

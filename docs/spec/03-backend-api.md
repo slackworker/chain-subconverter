@@ -357,7 +357,7 @@
 ```json
 {
   "longUrl": "https://example.com/subscription?data=...",
-  "shortUrl": "https://example.com/subscription/abc123.yaml",
+  "shortUrl": "https://example.com/subscription/7NpK2mQx9a.yaml",
   "messages": [],
   "blockingErrors": []
 }
@@ -400,7 +400,7 @@
 
 ```json
 {
-  "url": "https://example.com/subscription/abc123.yaml"
+  "url": "https://example.com/subscription/7NpK2mQx9a.yaml"
 }
 ```
 
@@ -588,7 +588,9 @@ gzip 规则：
 - 长链接是唯一规范化状态源
 - 短链接只是不透明别名，不是另一套状态源
 - 短链接 ID 必须由规范化 `longUrl` 通过确定性算法生成；同一个 `longUrl` 必须得到同一个 `shortUrl`
+- 当前默认短链接 ID 生成算法为：对规范化 `longUrl` 计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
 - 短链接索引在逻辑上是 `longUrl ↔ shortId` 的双射子集：除淘汰导致的失效外，同一 `longUrl` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`longUrl`（或与其一一对应的规范化键）唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立
+- 在当前默认 `64` bit 设计下，允许仅实现极简碰撞防御：若检测到 `shortId` 已被另一条 `longUrl` 占用，后端必须 fail closed，不得静默覆盖或产生「一短多长」
 - 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为对应 `longUrl`
 - 短链接索引的默认持久化实现使用本地 SQLite 文件
 - 短链接索引记录至少包含 `shortId`、`longUrl` 与 `lastAccessedAt`

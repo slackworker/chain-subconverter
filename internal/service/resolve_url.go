@@ -162,20 +162,26 @@ func parseResolveURLInput(rawURL string) (resolveURLInput, error) {
 	if cleanPath == "." {
 		cleanPath = "/"
 	}
+	trimmedPath := strings.Trim(cleanPath, "/")
+	if trimmedPath == "" {
+		return resolveURLInput{}, fmt.Errorf("url path %q is not supported", cleanPath)
+	}
+	segments := strings.Split(trimmedPath, "/")
+	lastSegment := segments[len(segments)-1]
 
-	if cleanPath == "/subscription" {
+	if lastSegment == "subscription" {
 		if parsedURL.Query().Get("data") == "" {
 			return resolveURLInput{}, fmt.Errorf("subscription URL is missing data query parameter")
 		}
 		return resolveURLInput{LongURL: rawURL, IsLong: true}, nil
 	}
 
-	if !strings.HasPrefix(cleanPath, "/subscription/") || !strings.HasSuffix(cleanPath, ".yaml") {
+	if len(segments) < 2 || segments[len(segments)-2] != "subscription" || !strings.HasSuffix(lastSegment, ".yaml") {
 		return resolveURLInput{}, fmt.Errorf("url path %q is not supported", cleanPath)
 	}
 
-	shortID := strings.TrimSuffix(strings.TrimPrefix(cleanPath, "/subscription/"), ".yaml")
-	if shortID == "" || strings.Contains(shortID, "/") {
+	shortID := strings.TrimSuffix(lastSegment, ".yaml")
+	if shortID == "" {
 		return resolveURLInput{}, fmt.Errorf("short URL path %q is invalid", cleanPath)
 	}
 
