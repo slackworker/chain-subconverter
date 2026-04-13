@@ -97,12 +97,13 @@ flowchart LR
 - 基础阶段卡片、输入组件、主题 token 与共享壳层页面
 - 共享页面状态已接通 `restore -> stage1/convert -> generate -> short-links`
 - Stage 1 已补上高级菜单全量控件与手动 SOCKS5 追加入口
+- Stage 2 已补上 `chainTargets[]` 分组选择器：`proxy-groups` 默认展开，`proxies` 默认折叠，空策略组保留展示但禁止选择
 - `go test ./...` 与 `npm run build` 已通过
 
 当前未完成：
 
 - G1 公共组件完成确认与统一 review 场景固化
-- Stage 2 链式候选分组展示、导航外壳等剩余 spec 细节
+- 导航外壳等剩余 spec 细节
 - A/B/C 方案评审与单入口部署验收
 
 ### G1：公共组件完成确认
@@ -175,6 +176,6 @@ flowchart LR
 
 ## 当前下一步
 
-1. 收口共享壳层与 spec 的剩余差距，完成 G1 前的公共组件确认
+1. 收口导航外壳与 review 场景等剩余差距，完成 G1 前的公共组件确认
 2. 固化可复用的 review 场景与演示数据，准备 A/B/C 三分支对比
 3. 在共享业务层稳定后进入 G1，并切出 A/B/C 三个 UI 分支

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { ChainTargetPicker } from "./components/ChainTargetPicker";
 import { FieldErrorList } from "./components/FieldErrorList";
 import { NoticeStack } from "./components/NoticeStack";
 import { StageCard } from "./components/StageCard";
@@ -817,7 +818,7 @@ export default function App() {
 							{stage2Rows.map((row) => {
 								const rowMeta = getStage2RowMeta(row.landingNodeName);
 								const rowErrors = getStage2RowErrors(row.landingNodeName);
-								const targetChoices = getTargetChoices(state.stage2Init, row.mode);
+								const portForwardChoices = row.mode === "port_forward" ? getTargetChoices(state.stage2Init, row.mode) : [];
 								const restrictedReason = rowMeta?.restrictedModes?.[row.mode]?.reasonText;
 								return (
 								<div key={row.landingNodeName} className="border-t border-line bg-surface px-4 py-4 text-sm">
@@ -850,7 +851,13 @@ export default function App() {
 										)}
 									</div>
 									<div>
-										{isStage2Editable ? (
+										{isStage2Editable && row.mode === "chain" ? (
+											<ChainTargetPicker
+												targets={state.stage2Init?.chainTargets ?? []}
+												value={row.targetName}
+												onChange={(targetName) => handleTargetChange(row.landingNodeName, targetName ?? "")}
+											/>
+										) : isStage2Editable ? (
 											<select
 												value={row.targetName ?? ""}
 												onChange={(event) => handleTargetChange(row.landingNodeName, event.target.value)}
@@ -858,7 +865,7 @@ export default function App() {
 												className="w-full rounded-[16px] border border-line bg-panel px-3 py-3 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accentSoft disabled:cursor-not-allowed disabled:bg-surface disabled:text-muted"
 											>
 												<option value="">{row.mode === "none" ? "当前模式无需目标" : "请选择目标"}</option>
-												{targetChoices.map((choice) => (
+												{portForwardChoices.map((choice) => (
 													<option key={choice.value} value={choice.value} disabled={choice.disabled}>
 														{choice.label}
 													</option>

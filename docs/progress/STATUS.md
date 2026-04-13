@@ -35,15 +35,16 @@
 - `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、基础输入组件、阶段容器与公共壳层页面。
 - 共享页面状态已接通 `POST /api/resolve-url`、`POST /api/stage1/convert`、`POST /api/generate` 与 `POST /api/short-links`。
 - Stage 1 已补上完整高级菜单控件、条件显示的端口转发输入区与手动 SOCKS5 追加入口。
+- Stage 2 的 `chainTargets[]` 已按 `kind` 分组展示，`proxy-groups` 默认展开、`proxies` 默认折叠，空策略组保留展示但禁止选择。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
-- `Phase 4` 当前处于共享主线收口阶段，下一步是完成 G1 公共组件确认、A/B/C 方案评审准备与 Compose 单入口验收。
+- `Phase 4` 当前处于共享主线收口阶段，下一步是完成导航外壳与 review 场景收口，再进入 G1 公共组件确认、A/B/C 方案评审准备与 Compose 单入口验收。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `review/cases/3pass-ss2022-test-subscription/`。
 
-- 当前前端仍未完成 A/B/C 方案分支评审，Stage 2 候选分组展示、导航外壳等部分 spec 细节仍待收口。
+- 当前前端仍未完成 A/B/C 方案分支评审，导航外壳与 review 场景等部分 spec 细节仍待收口。
 - 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 
