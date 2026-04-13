@@ -1,12 +1,12 @@
 # 当前状态
 
-> 最近更新：2026-04-11
+> 最近更新：2026-04-13
 
 ## 摘要
 
 - `Phase 1` 已完成：`subconverter` 真实 `3-pass` 集成已落地。
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
-- `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 3` 可以开始。
+- `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 4` 可以开始。
 - `Phase 3` 已完成：3-A, 3-B, 3-C, 3-D, 3-E 已全部落地，后端扩展业务与 API 契约现已收口。
 - `Phase 4` 尚未开始。
 
@@ -31,10 +31,9 @@
 - `Phase 3` 已完成失败语义收口 (3-A)、输入应用层配置化 (3-B)、`POST /api/resolve-url` (3-C)、短链索引落地 (3-D) 与短链对外端点 (3-E)。
 - 已落地 `POST /api/short-links`、`GET /subscription/<id>.yaml`，并由同一短链索引支持 `resolve-url` 短链接恢复与短链订阅读取。
 - 订阅路由已按 `publicBaseURL` 的路径前缀注册，长链接与短链接在带 base path 的部署形态下都可直接回放。
+- 文档主导航已收敛到 `spec/`、`plan/`、`progress/`、`testing/`；已完成阶段计划与历史材料已移入 `docs/temp/` 待删区。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
-
-`Phase 3` 的细化推进顺序见 [plan/phase-3-breakdown](../plan/phase-3-breakdown.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `review/cases/3pass-ss2022-test-subscription/`。
 

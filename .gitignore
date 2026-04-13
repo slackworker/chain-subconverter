@@ -55,3 +55,9 @@ logs/
 *.sqlite3
 *.sqlite3-journal
 .tmp/
+
+# =====================
+# Temporary Docs
+# =====================
+docs/temp/*
+!docs/temp/README.md

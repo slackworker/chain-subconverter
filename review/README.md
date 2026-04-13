@@ -1,6 +1,6 @@
 # frontend review
 
-本目录承载本地手动 Front-end Review 工作区。
+本目录只承载本地手动 Front-end Review 的脚本与 case 工作区，不再维护权威流程文档。
 
 - 工作流说明统一见 `docs/testing/frontend-review-workflow.md`
 - 默认 case 位于 `review/cases/3pass-ss2022-test-subscription/`
