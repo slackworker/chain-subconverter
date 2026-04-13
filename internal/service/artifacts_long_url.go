@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -16,26 +15,26 @@ import (
 const defaultLongURLMaxLength = 2048
 
 type longURLPayloadSchema struct {
-	V              int                   `json:"v"`
 	Stage1Input    longURLStage1Input    `json:"stage1Input"`
 	Stage2Snapshot longURLStage2Snapshot `json:"stage2Snapshot"`
+	V              int                   `json:"v"`
 }
 
 type longURLStage1Input struct {
+	AdvancedOptions     longURLAdvancedOptions `json:"advancedOptions"`
+	ForwardRelayRawText string                 `json:"forwardRelayRawText"`
 	LandingRawText      string                 `json:"landingRawText"`
 	TransitRawText      string                 `json:"transitRawText"`
-	ForwardRelayRawText string                 `json:"forwardRelayRawText"`
-	AdvancedOptions     longURLAdvancedOptions `json:"advancedOptions"`
 }
 
 type longURLAdvancedOptions struct {
-	Emoji             *bool   `json:"emoji"`
-	UDP               *bool   `json:"udp"`
-	SkipCertVerify    *bool   `json:"skipCertVerify"`
 	Config            *string `json:"config"`
-	Include           *string `json:"include"`
-	Exclude           *string `json:"exclude"`
+	Emoji             *bool   `json:"emoji"`
 	EnablePortForward bool    `json:"enablePortForward"`
+	Exclude           *string `json:"exclude"`
+	Include           *string `json:"include"`
+	SkipCertVerify    *bool   `json:"skipCertVerify"`
+	UDP               *bool   `json:"udp"`
 }
 
 type longURLStage2Snapshot struct {
@@ -147,6 +146,11 @@ func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error 
 		return fmt.Errorf("unexpected extra data")
 	}
 
+	*payload = schema.payload()
+	return nil
+}
+
+func (schema longURLPayloadSchema) payload() LongURLPayload {
 	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
 	for index, row := range schema.Stage2Snapshot.Rows {
 		rows[index] = Stage2Row{
@@ -156,7 +160,7 @@ func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error 
 		}
 	}
 
-	*payload = LongURLPayload{
+	return LongURLPayload{
 		V: schema.V,
 		Stage1Input: Stage1Input{
 			LandingRawText:      schema.Stage1Input.LandingRawText,
@@ -174,8 +178,6 @@ func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error 
 		},
 		Stage2Snapshot: Stage2Snapshot{Rows: rows},
 	}
-
-	return nil
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
@@ -229,116 +231,35 @@ func joinSubscriptionURL(publicBaseURL string, data string) (string, error) {
 }
 
 func marshalCanonicalLongURLPayload(payload LongURLPayload) ([]byte, error) {
-	var buffer bytes.Buffer
-	buffer.WriteByte('{')
-	buffer.WriteString(`"stage1Input":`)
-	marshalStage1Input(&buffer, payload.Stage1Input)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"stage2Snapshot":`)
-	marshalStage2Snapshot(&buffer, payload.Stage2Snapshot)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"v":`)
-	buffer.WriteString(strconv.Itoa(payload.V))
-	buffer.WriteByte('}')
-	return buffer.Bytes(), nil
+	return json.Marshal(newLongURLPayloadSchema(payload))
 }
 
-func marshalStage1Input(buffer *bytes.Buffer, input Stage1Input) {
-	buffer.WriteByte('{')
-	buffer.WriteString(`"advancedOptions":`)
-	marshalAdvancedOptions(buffer, input.AdvancedOptions)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"forwardRelayRawText":`)
-	writeJSONString(buffer, input.ForwardRelayRawText)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"landingRawText":`)
-	writeJSONString(buffer, input.LandingRawText)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"transitRawText":`)
-	writeJSONString(buffer, input.TransitRawText)
-	buffer.WriteByte('}')
-}
-
-func marshalAdvancedOptions(buffer *bytes.Buffer, options AdvancedOptions) {
-	buffer.WriteByte('{')
-	buffer.WriteString(`"config":`)
-	writeJSONOptionalString(buffer, options.Config)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"emoji":`)
-	writeJSONOptionalBool(buffer, options.Emoji)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"enablePortForward":`)
-	writeJSONBool(buffer, options.EnablePortForward)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"exclude":`)
-	writeJSONOptionalString(buffer, options.Exclude)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"include":`)
-	writeJSONOptionalString(buffer, options.Include)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"skipCertVerify":`)
-	writeJSONOptionalBool(buffer, options.SkipCertVerify)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"udp":`)
-	writeJSONOptionalBool(buffer, options.UDP)
-	buffer.WriteByte('}')
-}
-
-func marshalStage2Snapshot(buffer *bytes.Buffer, snapshot Stage2Snapshot) {
-	buffer.WriteByte('{')
-	buffer.WriteString(`"rows":[`)
-	for i, row := range snapshot.Rows {
-		if i > 0 {
-			buffer.WriteByte(',')
+func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
+	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
+	for index, row := range payload.Stage2Snapshot.Rows {
+		rows[index] = longURLStage2Row{
+			LandingNodeName: row.LandingNodeName,
+			Mode:            row.Mode,
+			TargetName:      row.TargetName,
 		}
-		marshalStage2Row(buffer, row)
 	}
-	buffer.WriteByte(']')
-	buffer.WriteByte('}')
-}
 
-func marshalStage2Row(buffer *bytes.Buffer, row Stage2Row) {
-	buffer.WriteByte('{')
-	buffer.WriteString(`"landingNodeName":`)
-	writeJSONString(buffer, row.LandingNodeName)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"mode":`)
-	writeJSONString(buffer, row.Mode)
-	buffer.WriteByte(',')
-	buffer.WriteString(`"targetName":`)
-	if row.TargetName == nil {
-		buffer.WriteString("null")
-	} else {
-		writeJSONString(buffer, *row.TargetName)
+	return longURLPayloadSchema{
+		Stage1Input: longURLStage1Input{
+			AdvancedOptions: longURLAdvancedOptions{
+				Config:            payload.Stage1Input.AdvancedOptions.Config,
+				Emoji:             payload.Stage1Input.AdvancedOptions.Emoji,
+				EnablePortForward: payload.Stage1Input.AdvancedOptions.EnablePortForward,
+				Exclude:           payload.Stage1Input.AdvancedOptions.Exclude,
+				Include:           payload.Stage1Input.AdvancedOptions.Include,
+				SkipCertVerify:    payload.Stage1Input.AdvancedOptions.SkipCertVerify,
+				UDP:               payload.Stage1Input.AdvancedOptions.UDP,
+			},
+			ForwardRelayRawText: payload.Stage1Input.ForwardRelayRawText,
+			LandingRawText:      payload.Stage1Input.LandingRawText,
+			TransitRawText:      payload.Stage1Input.TransitRawText,
+		},
+		Stage2Snapshot: longURLStage2Snapshot{Rows: rows},
+		V:              payload.V,
 	}
-	buffer.WriteByte('}')
-}
-
-func writeJSONString(buffer *bytes.Buffer, value string) {
-	encoded, _ := json.Marshal(value)
-	buffer.Write(encoded)
-}
-
-func writeJSONOptionalString(buffer *bytes.Buffer, value *string) {
-	if value == nil {
-		buffer.WriteString("null")
-		return
-	}
-	writeJSONString(buffer, *value)
-}
-
-func writeJSONBool(buffer *bytes.Buffer, value bool) {
-	if value {
-		buffer.WriteString("true")
-		return
-	}
-	buffer.WriteString("false")
-}
-
-func writeJSONOptionalBool(buffer *bytes.Buffer, value *bool) {
-	if value == nil {
-		buffer.WriteString("null")
-		return
-	}
-	writeJSONBool(buffer, *value)
 }
