@@ -8,7 +8,7 @@
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 4` 可以开始。
 - `Phase 3` 已完成：3-A, 3-B, 3-C, 3-D, 3-E 已全部落地，后端扩展业务与 API 契约现已收口。
-- `Phase 4` 尚未开始。
+- `Phase 4` 已开始：主干公共基线已落地，当前正在接入真实 `stage1/convert` 与 `generate` 主线。
 
 ## Phase 进度
 
@@ -19,7 +19,7 @@
 | Phase 2 — 最小业务闭环 | 固定测试数据下的 `stage2Init`、`longUrl`、最终订阅 YAML + 最小 HTTP | ✅ 完成 |
 | Phase 2.5 — 阶段性整理 | 文档、结构与边界收口 | ✅ 完成 |
 | Phase 3 — 扩展业务与 API 收口 | 恢复、短链、失败语义、完整 API 契约 | ✅ 完成 |
-| Phase 4 — 前端与部署 | React + TS UI、运行形态、Compose | ⛔ 未开始 |
+| Phase 4 — 前端与部署 | React + TS UI、运行形态、Compose | 🚧 进行中 |
 
 ## 已完成
 
@@ -32,17 +32,23 @@
 - 已落地 `POST /api/short-links`、`GET /subscription/<id>.yaml`，并由同一短链索引支持 `resolve-url` 短链接恢复与短链订阅读取。
 - 订阅路由已按 `publicBaseURL` 的路径前缀注册，长链接与短链接在带 base path 的部署形态下都可直接回放。
 - 文档主导航已收敛到 `spec/`、`plan/`、`progress/`、`testing/`；已完成阶段计划与历史材料已移入 `docs/temp/` 待删区。
+- `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、基础输入组件、阶段容器与公共壳层页面。
+- 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
+- Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
+- `Phase 4` 当前已进入主干公共基线阶段，下一步是接入真实 `POST /api/stage1/convert` 与 `POST /api/generate` 主线。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `review/cases/3pass-ss2022-test-subscription/`。
 
-- `web/` 尚未初始化；当前 API-only Compose 仅用于本地验证，不代表完整部署形态已完成 (属于 Phase 4 预期)。
+- 当前前端页面仍是共享壳层与演示态，尚未接入真实 `stage1/convert`、`generate`、`resolve-url`、`short-links` 请求。
+- 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 
 ## 验证
 
-- `go test ./...`：2026-04-11 全量通过（含 `POST /api/short-links`、短链订阅与相关回归测试）
+- `npm run build`：2026-04-13 通过（前端公共基线可完成生产构建）
+- `go test ./...`：2026-04-13 全量通过（含新增 SPA 静态资源托管回归测试，以及既有 `POST /api/short-links`、短链订阅相关回归测试）
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
 - 真实容器 smoke：已跑通 `app + subconverter`，并通过本地静态文件服务托管中转订阅样例与模板完成 3 个现有 API 验证

@@ -58,14 +58,15 @@ func main() {
 
 	server := &http.Server{
 		Addr:              serverCfg.HTTPAddress,
-		Handler:           handler,
+		Handler:           api.WithFrontendAssets(handler, serverCfg.FrontendDistDir),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	fmt.Printf(
-		"chain-subconverter listening on %s (public base URL: %s, subconverter: %s)\n",
+		"chain-subconverter listening on %s (public base URL: %s, frontend dist: %s, subconverter: %s)\n",
 		serverCfg.HTTPAddress,
 		serverCfg.PublicBaseURL,
+		serverCfg.FrontendDistDir,
 		subconverterCfg.BaseURL,
 	)
 

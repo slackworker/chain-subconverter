@@ -16,6 +16,7 @@ vendor/
 # =====================
 node_modules/
 web/dist/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

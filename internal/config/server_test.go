@@ -18,6 +18,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvHTTPAddress:            "   ",
 				EnvPublicBaseURL:          "",
 				EnvManagedTemplateBaseURL: "",
+				EnvFrontendDistDir:        "  ",
 				EnvMaxLongURLLength:       "\t",
 				EnvShortLinkDBPath:        "  ",
 			},
@@ -29,6 +30,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvHTTPAddress:            "  :11300  ",
 				EnvPublicBaseURL:          "  https://example.com/base  ",
 				EnvManagedTemplateBaseURL: "  https://internal.example.com/base  ",
+				EnvFrontendDistDir:        "  web/app-dist  ",
 				EnvMaxLongURLLength:       " 4096 ",
 				EnvShortLinkDBPath:        "  tmp/short-links.sqlite3  ",
 				EnvShortLinkCapacity:      " 2048 ",
@@ -37,6 +39,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				HTTPAddress:            ":11300",
 				PublicBaseURL:          "https://example.com/base",
 				ManagedTemplateBaseURL: "https://internal.example.com/base",
+				FrontendDistDir:        "web/app-dist",
 				MaxLongURLLength:       4096,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -118,6 +121,7 @@ func TestServerValidate(t *testing.T) {
 				HTTPAddress:            " ",
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -127,11 +131,27 @@ func TestServerValidate(t *testing.T) {
 			wantErr: "HTTP address must not be empty",
 		},
 		{
+			name: "empty frontend dist dir",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        " ",
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
+			},
+			wantErr: "frontend dist dir must not be empty",
+		},
+		{
 			name: "non-positive max long url length",
 			cfg: Server{
 				HTTPAddress:            DefaultHTTPAddress,
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
 				MaxLongURLLength:       0,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -146,6 +166,7 @@ func TestServerValidate(t *testing.T) {
 				HTTPAddress:            DefaultHTTPAddress,
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -160,6 +181,7 @@ func TestServerValidate(t *testing.T) {
 				HTTPAddress:            DefaultHTTPAddress,
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -174,6 +196,7 @@ func TestServerValidate(t *testing.T) {
 				HTTPAddress:            DefaultHTTPAddress,
 				PublicBaseURL:          "localhost:11200",
 				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -188,6 +211,7 @@ func TestServerValidate(t *testing.T) {
 				HTTPAddress:            DefaultHTTPAddress,
 				PublicBaseURL:          DefaultPublicBaseURL,
 				ManagedTemplateBaseURL: "localhost:11200",
+				FrontendDistDir:        DefaultFrontendDistDir,
 				MaxLongURLLength:       DefaultMaxLongURLLength,
 				MaxInputSize:           DefaultMaxInputSize,
 				MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -224,6 +248,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvHTTPAddress, "")
 	t.Setenv(EnvPublicBaseURL, "")
 	t.Setenv(EnvManagedTemplateBaseURL, "")
+	t.Setenv(EnvFrontendDistDir, "")
 	t.Setenv(EnvMaxLongURLLength, "")
 	t.Setenv(EnvMaxInputSize, "")
 	t.Setenv(EnvMaxURLsPerField, "")

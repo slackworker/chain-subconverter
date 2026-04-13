@@ -1,0 +1,177 @@
+# Phase 4 细化计划
+
+本文定义 [ROADMAP](../ROADMAP.md) 中 `Phase 4` 的推进顺序、当前已落地范围、并行 UI 分支策略与验收关口。界面结构、接口契约与业务规则仍分别以 [spec/02-frontend-spec](../spec/02-frontend-spec.md)、[spec/03-backend-api](../spec/03-backend-api.md)、[spec/04-business-rules](../spec/04-business-rules.md) 为准。
+
+## 当前状态
+
+- `Phase 4` 已开始，当前处于“主干公共基线”阶段
+- 已初始化 `web/` 下的 `Vite + React + TypeScript + Tailwind CSS` 前端工程
+- 已落地统一前端 domain types、基础组件、阶段壳层与静态资源托管接线
+- 尚未打通真实 `POST /api/stage1/convert -> stage2Init -> POST /api/generate -> longUrl` 主线
+- 尚未接入 `resolve-url`、`short-links` 与最终 Compose 单入口验证
+
+## 主线业务路径
+
+`Phase 4` 的业务主线固定为：
+
+1. 可选地从既有 `longUrl` 或 `shortUrl` 恢复页面状态
+2. 编辑阶段 1 输入并执行“转换并自动填充”
+3. 在阶段 2 调整每个落地节点的 `mode` 与 `targetName`
+4. 生成 `longUrl`
+5. 可选创建 `shortUrl`
+6. 打开、复制或下载当前选中的订阅链接
+
+约束：
+
+- `resolve-url` 只承担恢复入口，不形成独立业务阶段
+- 前端不复制后端阶段 2 规则判定，只消费后端返回结果
+- `longUrl` 始终是规范状态来源；`shortUrl` 只作为其别名
+
+## 并行 UI 策略
+
+本阶段采用“共享层先行，A/B/C 三分支并行探索，最终只保留 1 套方案”的策略。
+
+共享层必须统一：
+
+- `web/` 工程骨架与构建链
+- API client 与 domain types
+- `stage1Input`、`stage2Snapshot`、`generatedUrls`、`restoreStatus` 等页面状态模型
+- 错误/消息语义与后端契约映射
+- 基础输入组件、阶段容器、设计 token 与通用布局基线
+
+允许 A/B/C 分化的层：
+
+- 页面结构
+- 信息架构
+- 交互节奏
+- 视觉呈现
+
+不允许 A/B/C 分化的层：
+
+- 后端 API 契约
+- 共享 domain model
+- 错误语义
+- Stage1/Stage2/Stage3 的业务边界
+
+## 子阶段与关口
+
+```mermaid
+flowchart LR
+    P40["4-0\n文档收口"] --> P41["4-1\n主干公共基线"]
+    P41 --> G1["G1\n公共组件完成确认"]
+    G1 --> P42A["4-2A\nUI A 分支"]
+    G1 --> P42B["4-2B\nUI B 分支"]
+    G1 --> P42C["4-2C\nUI C 分支"]
+    P42A --> G2["G2\n方案评审选型"]
+    P42B --> G2
+    P42C --> G2
+    G2 --> P43["4-3\n胜出方案补齐长链接主线"]
+    P43 --> P44["4-4\n恢复与短链"]
+    P44 --> P45["4-5\n静态资源托管与 Compose 收口"]
+```
+
+### 4-0：文档收口
+
+目标：
+
+- 固化 Phase 4 的共享层、分支策略、关口与验收顺序
+- 保证后续实现都按同一份计划裁决
+
+完成口径：
+
+- `phase-4-breakdown`、`STATUS` 与相关导航对齐
+
+### 4-1：主干公共基线
+
+目标：
+
+- 初始化 `web/` 前端工程
+- 落地共享状态模型、domain types、基础组件与阶段壳层
+- 接入后端静态资源托管包装器与前端构建链
+
+当前已完成：
+
+- `web/` 工程骨架与生产构建
+- SPA 静态资源托管包装器
+- 基础阶段卡片、输入组件、主题 token 与共享壳层页面
+- `go test ./...` 与 `npm run build` 已通过
+
+当前未完成：
+
+- Stage1 真正调用 `POST /api/stage1/convert`
+- Stage2 可编辑控件与 `POST /api/generate`
+- 恢复、短链与单入口部署验收
+
+### G1：公共组件完成确认
+
+通过条件：
+
+- 共享状态模型稳定
+- API client 与 domain types 固定
+- 公共组件已足以支撑 A/B/C 三条分支
+- review fixture 与基础演示场景可复用
+- 静态资源托管和前端构建链可重复运行
+
+### 4-2A / 4-2B / 4-2C：A/B/C 并行 UI 探索
+
+目标：
+
+- 从同一公共基线切出 `phase4-ui-a`、`phase4-ui-b`、`phase4-ui-c` 三个 Git 分支
+- 在不改变共享业务边界的前提下，探索 3 套页面结构和交互方案
+
+约束：
+
+- 当前评审顺序是“先看设计方向，再补完整功能”
+- 三条分支必须使用同一组演示场景与回归输入
+
+### G2：方案评审选型
+
+统一对比场景：
+
+- 空白进入
+- Stage1 输入
+- Stage1 成功进入 Stage2
+- Stage2 过期提示
+- Stage3 链接展示位
+- 错误态
+- 桌面端与移动端阅读性
+
+结论要求：
+
+- 明确 1 套胜出方案
+- 记录落选方案的问题与可吸收优点
+
+### 4-3：胜出方案补齐长链接主线
+
+目标：
+
+- 打通 `stage1/convert -> stage2Init -> generate -> longUrl`
+- 落地 Stage2 重建、Stage2 过期态、长链接展示与打开/复制/下载动作
+
+### 4-4：恢复与短链
+
+目标：
+
+- 接入 `resolve-url`
+- 接入 `short-links`
+- 落地 `replayable | conflicted` 页面态与短链按需创建逻辑
+
+### 4-5：静态资源托管与 Compose 收口
+
+目标：
+
+- 收口后端静态资源分发的正式路径
+- 验证 `docker compose -f deploy/docker-compose.yml up --build -d` 下的单入口页面、API 与订阅路径
+
+## 验证基线
+
+1. 公共基线验证：`npm run build` 与 `go test ./...` 都通过
+2. 主线闭环验证：真实跑通 `POST /api/stage1/convert -> POST /api/generate -> longUrl`
+3. 恢复/短链验证：真实跑通 `resolve-url`、`short-links` 与短链订阅读取
+4. 部署验证：Compose 单入口下页面、API、订阅与短链路径全部可访问
+
+## 当前下一步
+
+1. 在共享壳层上接入真实 `POST /api/stage1/convert`
+2. 接着落地 Stage2 的可编辑共享控件与 `POST /api/generate`
+3. 当共享业务层稳定后，再进入 G1，切出 A/B/C 三个 UI 分支

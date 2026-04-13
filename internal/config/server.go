@@ -11,6 +11,7 @@ const (
 	DefaultHTTPAddress            = ":11200"
 	DefaultPublicBaseURL          = "http://localhost:11200"
 	DefaultManagedTemplateBaseURL = DefaultPublicBaseURL
+	DefaultFrontendDistDir        = "web/dist"
 	DefaultMaxLongURLLength       = 2048
 	DefaultMaxInputSize           = 2048
 	DefaultMaxURLsPerField        = 20
@@ -20,6 +21,7 @@ const (
 	EnvHTTPAddress            = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL          = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
 	EnvManagedTemplateBaseURL = "CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL"
+	EnvFrontendDistDir        = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
 	EnvMaxLongURLLength       = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
 	EnvMaxInputSize           = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
 	EnvMaxURLsPerField        = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
@@ -31,6 +33,7 @@ type Server struct {
 	HTTPAddress            string
 	PublicBaseURL          string
 	ManagedTemplateBaseURL string
+	FrontendDistDir        string
 	MaxLongURLLength       int
 	MaxInputSize           int
 	MaxURLsPerField        int
@@ -43,6 +46,7 @@ func DefaultServer() Server {
 		HTTPAddress:            DefaultHTTPAddress,
 		PublicBaseURL:          DefaultPublicBaseURL,
 		ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+		FrontendDistDir:        DefaultFrontendDistDir,
 		MaxLongURLLength:       DefaultMaxLongURLLength,
 		MaxInputSize:           DefaultMaxInputSize,
 		MaxURLsPerField:        DefaultMaxURLsPerField,
@@ -62,6 +66,9 @@ func LoadServerFromEnv() (Server, error) {
 	}
 	if value, ok := lookupTrimmedEnv(EnvManagedTemplateBaseURL); ok {
 		cfg.ManagedTemplateBaseURL = value
+	}
+	if value, ok := lookupTrimmedEnv(EnvFrontendDistDir); ok {
+		cfg.FrontendDistDir = value
 	}
 	if value, ok := lookupTrimmedEnv(EnvMaxLongURLLength); ok {
 		maxLongURLLength, err := strconv.Atoi(value)
@@ -104,6 +111,9 @@ func LoadServerFromEnv() (Server, error) {
 func (cfg Server) Validate() error {
 	if strings.TrimSpace(cfg.HTTPAddress) == "" {
 		return fmt.Errorf("HTTP address must not be empty")
+	}
+	if strings.TrimSpace(cfg.FrontendDistDir) == "" {
+		return fmt.Errorf("frontend dist dir must not be empty")
 	}
 	if cfg.MaxLongURLLength <= 0 {
 		return fmt.Errorf("max long URL length must be greater than zero")

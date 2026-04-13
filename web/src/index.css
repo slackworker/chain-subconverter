@@ -1,0 +1,70 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	color-scheme: light;
+	--color-canvas: #f7f2e8;
+	--color-surface: rgba(255, 250, 243, 0.88);
+	--color-panel: #fff7ec;
+	--color-line: rgba(126, 101, 76, 0.18);
+	--color-ink: #1d2b34;
+	--color-muted: #5c6b73;
+	--color-accent: #0f8b8d;
+	--color-accent-soft: rgba(15, 139, 141, 0.14);
+	--color-warm: #b35c2e;
+	--color-danger: #b34a36;
+	--color-success: #2f7d53;
+	background:
+		radial-gradient(circle at top left, rgba(255, 183, 107, 0.2), transparent 30%),
+		radial-gradient(circle at top right, rgba(15, 139, 141, 0.16), transparent 28%),
+		linear-gradient(180deg, #fbf6ee 0%, #f5ecde 100%);
+}
+
+:root[data-theme="night"] {
+	color-scheme: dark;
+	--color-canvas: #152028;
+	--color-surface: rgba(22, 32, 40, 0.9);
+	--color-panel: #1b2a33;
+	--color-line: rgba(167, 187, 200, 0.18);
+	--color-ink: #edf3f4;
+	--color-muted: #a5b6be;
+	--color-accent: #52c7b8;
+	--color-accent-soft: rgba(82, 199, 184, 0.16);
+	--color-warm: #ef9f76;
+	--color-danger: #ef8f7a;
+	--color-success: #80d4a7;
+	background:
+		radial-gradient(circle at top left, rgba(239, 159, 118, 0.16), transparent 24%),
+		radial-gradient(circle at top right, rgba(82, 199, 184, 0.2), transparent 28%),
+		linear-gradient(180deg, #12202a 0%, #101a20 100%);
+}
+
+html,
+body,
+#root {
+	min-height: 100%;
+}
+
+body {
+	margin: 0;
+	font-family: "Space Grotesk", "Segoe UI", sans-serif;
+	color: var(--color-ink);
+	background: inherit;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+	font: inherit;
+}
+
+::selection {
+	background: rgba(15, 139, 141, 0.2);
+}

@@ -1,3 +1,13 @@
+FROM node:22-alpine AS web-builder
+
+WORKDIR /web
+
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+
+COPY web ./
+RUN npm run build
+
 FROM golang:1.25-alpine AS builder
 
 ARG TARGETOS=linux
@@ -23,6 +33,7 @@ RUN addgroup -S app && adduser -S -G app app \
 WORKDIR /app
 
 COPY --from=builder /out/chain-subconverter /usr/local/bin/chain-subconverter
+COPY --from=web-builder /web/dist /app/web/dist
 
 USER app
 
