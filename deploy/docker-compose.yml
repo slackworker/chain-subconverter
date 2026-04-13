@@ -1,8 +1,6 @@
 services:
   subconverter:
     image: ${CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE:-ghcr.io/slackworker/subconverter:integration-chain-subconverter}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:25500/version || exit 1"]
@@ -21,7 +19,7 @@ services:
     environment:
       CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
       CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: http://localhost:11200
-      CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://host.docker.internal:11200
+      CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
       CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY: 1000

@@ -2,6 +2,12 @@
 
 > 本章只定义界面结构与交互边界。业务规则见 [04-business-rules](04-business-rules.md)，接口字段见 [03-backend-api](03-backend-api.md)。
 
+## 主线业务路径
+
+- 当前前端主线固定为：恢复已有链接（可选） -> 阶段 1 输入 -> 转换并自动填充 -> 阶段 2 调整 -> 生成链接 -> 阶段 3 消费链接
+- `resolve-url` 只承担“从既有 `longUrl` / `shortUrl` 恢复页面状态”的入口职责，不单独形成新的业务阶段
+- Nav Bar、主题切换、GitHub 跳转等外壳元素不得阻塞主线闭环实现与验收
+
 ---
 
 ## 全局布局
@@ -15,6 +21,16 @@
 | GitHub 跳转 | 图标链接至项目 GitHub 仓库 |
 
 > 当前版本仅设计中文界面，不提供语言切换。
+
+### 页面恢复入口
+
+- 位置：位于阶段 1 之前，作为页面级辅助入口
+- 形态：单一 URL 输入框 + “恢复”按钮
+- 输入：只接受本系统生成的 `longUrl` 或 `shortUrl`
+- 行为：调用 `POST /api/resolve-url`
+- `restoreStatus = replayable` 时，前端恢复阶段 1 与阶段 2 为可编辑态
+- `restoreStatus = conflicted` 时，前端恢复阶段 1 与阶段 2 为只读冲突态
+- 恢复失败时，前端按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`，并保留当前页面状态
 
 ### 响应式设计
 

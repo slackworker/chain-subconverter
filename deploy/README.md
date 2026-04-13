@@ -33,7 +33,7 @@ curl http://localhost:11200/healthz
 - 传给 `app` 的运行时环境变量
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
   - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=http://localhost:11200`
-  - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://host.docker.internal:11200`
+  - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
   - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL=http://subconverter:25500/sub?`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY=1000`
@@ -43,6 +43,8 @@ curl http://localhost:11200/healthz
 如需切换镜像标签，可在启动前覆盖 `CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE`。
 
 `app` 服务会把 SQLite 文件写入命名卷 `short-link-data`，用于在容器重建后保留短链接索引。
+
+`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 默认走 Compose 内部服务地址 `http://app:11200`，供 `subconverter` 在私有网络内回取托管模板；该地址不是对外公开入口。
 
 ## 边界
 

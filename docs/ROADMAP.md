@@ -80,13 +80,15 @@ flowchart LR
 
 **目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（尚未开始）
 
+细化实施顺序见 [plan/phase-4-breakdown](plan/phase-4-breakdown.md)。
+
 | 任务 | 说明 |
 |------|------|
-| 初始化 Vite + React + TS | `web/` 目录 |
-| 三阶段 UI | 输入区、配置区、输出区 |
-| 对接 API | 消费后端完整对外契约 |
-| `cmd/server/` | HTTP 启动、路由注册与运行形态收口 |
-| `deploy/` | Docker Compose（app + subconverter） |
+| 初始化 `web/` | `Vite + React + TypeScript` 单页骨架与页面状态主线 |
+| 三阶段主线 UI | 先打通 `stage1/convert -> stage2 -> generate -> longUrl` |
+| 恢复与短链 | 在长链接主线稳定后接入 `resolve-url` 与 `short-links` |
+| `cmd/server/` | HTTP 启动、静态资源分发与运行形态收口 |
+| `deploy/` | Docker Compose 单入口路径（`app + subconverter`） |
 
 > 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 
@@ -94,6 +96,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 进入 `Phase 4`，初始化 `web/` 并落地 React + TypeScript 前端骨架。
-2. 对接现有 `stage1/convert`、`generate`、`resolve-url`、`short-links` 与订阅入口，完成页面恢复与短链接展示流。
-3. 收口 `deploy/` 运行形态与 Compose 验证，形成正式端到端路径。
+1. 按 [plan/phase-4-breakdown](plan/phase-4-breakdown.md) 先落地 `web/` 骨架与 `stage1/convert -> stage2 -> generate -> longUrl` 主线。
+2. 在长链接主线稳定后接入 `resolve-url` 与 `short-links`，完成恢复与别名流。
+3. 最后收口后端静态资源托管与 Compose 单入口部署路径。
