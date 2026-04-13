@@ -15,6 +15,39 @@ import (
 
 const defaultLongURLMaxLength = 2048
 
+type longURLPayloadSchema struct {
+	V              int                   `json:"v"`
+	Stage1Input    longURLStage1Input    `json:"stage1Input"`
+	Stage2Snapshot longURLStage2Snapshot `json:"stage2Snapshot"`
+}
+
+type longURLStage1Input struct {
+	LandingRawText      string                 `json:"landingRawText"`
+	TransitRawText      string                 `json:"transitRawText"`
+	ForwardRelayRawText string                 `json:"forwardRelayRawText"`
+	AdvancedOptions     longURLAdvancedOptions `json:"advancedOptions"`
+}
+
+type longURLAdvancedOptions struct {
+	Emoji             *bool   `json:"emoji"`
+	UDP               *bool   `json:"udp"`
+	SkipCertVerify    *bool   `json:"skipCertVerify"`
+	Config            *string `json:"config"`
+	Include           *string `json:"include"`
+	Exclude           *string `json:"exclude"`
+	EnablePortForward bool    `json:"enablePortForward"`
+}
+
+type longURLStage2Snapshot struct {
+	Rows []longURLStage2Row `json:"rows"`
+}
+
+type longURLStage2Row struct {
+	LandingNodeName string  `json:"landingNodeName"`
+	Mode            string  `json:"mode"`
+	TargetName      *string `json:"targetName"`
+}
+
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
 	if payload.V != 1 {
 		return "", fmt.Errorf("unsupported long URL payload version %d", payload.V)
@@ -84,18 +117,99 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 	}
 
 	var payload LongURLPayload
-	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
+	if err := unmarshalLongURLPayload(payloadJSON, &payload); err != nil {
 		return LongURLPayload{}, fmt.Errorf("unmarshal long URL payload: %w", err)
 	}
 	if payload.V != 1 {
 		return LongURLPayload{}, fmt.Errorf("unsupported long URL payload version %d", payload.V)
 	}
 	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
+	if err := validateLongURLPayloadSchema(payload); err != nil {
+		return LongURLPayload{}, fmt.Errorf("validate long URL payload schema: %w", err)
+	}
 	if err := ValidateStage1InputLimits(payload.Stage1Input, limits); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate stage1 input limits: %w", err)
 	}
 
 	return payload, nil
+}
+
+func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error {
+	decoder := json.NewDecoder(bytes.NewReader(payloadJSON))
+	decoder.DisallowUnknownFields()
+
+	var schema longURLPayloadSchema
+	if err := decoder.Decode(&schema); err != nil {
+		return err
+	}
+	var extra json.RawMessage
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("unexpected extra data")
+	}
+
+	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
+	for index, row := range schema.Stage2Snapshot.Rows {
+		rows[index] = Stage2Row{
+			LandingNodeName: row.LandingNodeName,
+			Mode:            row.Mode,
+			TargetName:      row.TargetName,
+		}
+	}
+
+	*payload = LongURLPayload{
+		V: schema.V,
+		Stage1Input: Stage1Input{
+			LandingRawText:      schema.Stage1Input.LandingRawText,
+			TransitRawText:      schema.Stage1Input.TransitRawText,
+			ForwardRelayRawText: schema.Stage1Input.ForwardRelayRawText,
+			AdvancedOptions: AdvancedOptions{
+				Emoji:             schema.Stage1Input.AdvancedOptions.Emoji,
+				UDP:               schema.Stage1Input.AdvancedOptions.UDP,
+				SkipCertVerify:    schema.Stage1Input.AdvancedOptions.SkipCertVerify,
+				Config:            schema.Stage1Input.AdvancedOptions.Config,
+				Include:           schema.Stage1Input.AdvancedOptions.Include,
+				Exclude:           schema.Stage1Input.AdvancedOptions.Exclude,
+				EnablePortForward: schema.Stage1Input.AdvancedOptions.EnablePortForward,
+			},
+		},
+		Stage2Snapshot: Stage2Snapshot{Rows: rows},
+	}
+
+	return nil
+}
+
+func validateLongURLPayloadSchema(payload LongURLPayload) error {
+	rowsByLanding := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
+	for _, row := range payload.Stage2Snapshot.Rows {
+		landingNodeName := strings.TrimSpace(row.LandingNodeName)
+		if landingNodeName == "" {
+			return fmt.Errorf("landingNodeName must not be empty")
+		}
+		if _, exists := rowsByLanding[landingNodeName]; exists {
+			return fmt.Errorf("duplicate stage2 row for landing node %q", row.LandingNodeName)
+		}
+		rowsByLanding[landingNodeName] = struct{}{}
+
+		targetName := ""
+		if row.TargetName != nil {
+			targetName = strings.TrimSpace(*row.TargetName)
+		}
+
+		switch row.Mode {
+		case "none":
+			if targetName != "" {
+				return fmt.Errorf("targetName must be empty for landing node %q when mode is none", row.LandingNodeName)
+			}
+		case "chain", "port_forward":
+			if targetName == "" {
+				return fmt.Errorf("missing targetName for landing node %q", row.LandingNodeName)
+			}
+		default:
+			return fmt.Errorf("unsupported mode %q for landing node %q", row.Mode, row.LandingNodeName)
+		}
+	}
+
+	return nil
 }
 
 func joinSubscriptionURL(publicBaseURL string, data string) (string, error) {

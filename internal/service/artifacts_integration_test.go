@@ -93,6 +93,62 @@ func TestDecodeLongURLPayload_RejectsDecodedStage1InputOverLimit(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsUnsupportedMode(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			Stage1Input{},
+			Stage2Snapshot{
+				Rows: []Stage2Row{{
+					LandingNodeName: "HK 01",
+					Mode:            "unsupported",
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported mode") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
+func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
+	targetName := "HK Relay"
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			Stage1Input{},
+			Stage2Snapshot{
+				Rows: []Stage2Row{{
+					LandingNodeName: "HK 01",
+					Mode:            "none",
+					TargetName:      &targetName,
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: targetName must be empty") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
 func mustMarshalIndented(t *testing.T, value any) string {
 	t.Helper()
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -183,6 +184,49 @@ func TestResolveURLFromSource_InvalidLongURL(t *testing.T) {
 	respErr, ok := AsResponseError(err)
 	if !ok {
 		t.Fatalf("expected ResponseError, got %T: %v", err, err)
+	}
+	if respErr.BlockingError().Code != "INVALID_LONG_URL" {
+		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "INVALID_LONG_URL")
+	}
+}
+
+func TestResolveURLFromSource_RejectsSchemaInvalidLongURLPayload(t *testing.T) {
+	invalidLongURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			Stage1Input{},
+			Stage2Snapshot{
+				Rows: []Stage2Row{{
+					LandingNodeName: "HK 01",
+					Mode:            "unsupported",
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = ResolveURLFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		&fakeConversionSource{},
+		nil,
+		invalidLongURL,
+		0,
+		InputLimits{},
+	)
+	if err == nil {
+		t.Fatal("expected error for schema-invalid long URL payload")
+	}
+
+	respErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected ResponseError, got %T: %v", err, err)
+	}
+	if respErr.StatusCode() != http.StatusUnprocessableEntity {
+		t.Fatalf("status code mismatch: got %d want %d", respErr.StatusCode(), http.StatusUnprocessableEntity)
 	}
 	if respErr.BlockingError().Code != "INVALID_LONG_URL" {
 		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "INVALID_LONG_URL")

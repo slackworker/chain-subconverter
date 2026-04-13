@@ -53,7 +53,10 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		return ResolveURLResponse{}, err
 	}
 
-	restoreStatus, messages := determineRestoreStatus(payload.Stage1Input, payload.Stage2Snapshot, fixtures)
+	restoreStatus, messages, err := determineRestoreStatus(payload.Stage1Input, payload.Stage2Snapshot, fixtures)
+	if err != nil {
+		return ResolveURLResponse{}, err
+	}
 
 	return ResolveURLResponse{
 		LongURL:        resolved,
@@ -134,19 +137,48 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 // restored snapshot and current fixtures to decide replayable vs conflicted.
 //
 // Per spec 04-business-rules §3.2.1:
-//   - If every row passes validation → "replayable"
-//   - If any row has an invalid reference → "conflicted" + RESTORE_CONFLICT message
-func determineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message) {
+//   - If every row passes validation -> "replayable"
+//   - If any row has an invalid reference -> "conflicted" + RESTORE_CONFLICT message
+func determineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, error) {
 	_, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
 	if err == nil {
-		return "replayable", []Message{}
+		return "replayable", []Message{}, nil
+	}
+
+	if !isRestoreConflictError(err) {
+		if responseErr, ok := AsResponseError(err); ok && responseErr.StatusCode() < http.StatusInternalServerError {
+			return "", nil, newResponseError(
+				http.StatusUnprocessableEntity,
+				"INVALID_LONG_URL",
+				"long URL payload is invalid",
+				"global",
+				nil,
+				nil,
+				err,
+			)
+		}
+		return "", nil, err
 	}
 
 	return "conflicted", []Message{{
 		Level:   "warning",
 		Code:    "RESTORE_CONFLICT",
 		Message: fmt.Sprintf("restore conflict: %s", err.Error()),
-	}}
+	}}, nil
+}
+
+func isRestoreConflictError(err error) bool {
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		return false
+	}
+
+	switch responseErr.BlockingError().Code {
+	case "STAGE2_ROWSET_MISMATCH", "CHAIN_MODE_NOT_ALLOWED", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND":
+		return true
+	default:
+		return false
+	}
 }
 
 func parseResolveURLInput(rawURL string) (resolveURLInput, error) {

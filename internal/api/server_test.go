@@ -637,6 +637,70 @@ func TestSubscriptionHandler_RejectsDecodedInputLimitFailureAsInvalidLongURL(t *
 	})
 }
 
+func TestSubscriptionHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testing.T) {
+	targetName := "HK Relay"
+	longURL, err := service.EncodeLongURL(
+		"http://localhost:11200",
+		service.BuildLongURLPayload(
+			service.Stage1Input{},
+			service.Stage2Snapshot{
+				Rows: []service.Stage2Row{{
+					LandingNodeName: "HK 01",
+					Mode:            "none",
+					TargetName:      &targetName,
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{})
+
+	request := httptest.NewRequest(http.MethodGet, longURL, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: `validate long URL payload schema: targetName must be empty for landing node "HK 01" when mode is none`,
+		Scope:   "global",
+	})
+}
+
+func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testing.T) {
+	longURL, err := service.EncodeLongURL(
+		"http://localhost:11200",
+		service.BuildLongURLPayload(
+			service.Stage1Input{},
+			service.Stage2Snapshot{
+				Rows: []service.Stage2Row{{
+					LandingNodeName: "HK 01",
+					Mode:            "unsupported",
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
+
+	request := httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"`+longURL+`"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: "long URL payload is invalid",
+		Scope:   "global",
+	})
+}
+
 func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
