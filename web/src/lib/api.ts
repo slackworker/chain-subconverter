@@ -8,10 +8,23 @@ import type {
 	Stage1ConvertResponse,
 } from "../types/api";
 
-const apiBase =
+function normalizeConfiguredBase(value: string | undefined): string {
+	const trimmedValue = value?.trim() ?? "";
+	if (trimmedValue === "" || trimmedValue === "/") {
+		return "";
+	}
+	if (/^https?:\/\//i.test(trimmedValue)) {
+		return trimmedValue.replace(/\/+$/, "");
+	}
+	const withLeadingSlash = trimmedValue.startsWith("/") ? trimmedValue : `/${trimmedValue}`;
+	return withLeadingSlash.replace(/\/+$/, "");
+}
+
+const apiBase = normalizeConfiguredBase(
 	window.__CHAIN_SUBCONVERTER_API_BASE__ ??
-	import.meta.env.VITE_CHAIN_SUBCONVERTER_API_BASE ??
-	"";
+		import.meta.env.VITE_CHAIN_SUBCONVERTER_API_BASE ??
+		import.meta.env.BASE_URL,
+);
 
 export interface APIRequestError extends Error {
 	status?: number;
