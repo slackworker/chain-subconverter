@@ -78,15 +78,15 @@ flowchart LR
 
 ## Phase 4：前端与部署
 
-**目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（尚未开始）
+**目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（进行中）
 
 细化实施顺序见 [plan/phase-4-breakdown](plan/phase-4-breakdown.md)。
 
 | 任务 | 说明 |
 |------|------|
 | 初始化 `web/` | `Vite + React + TypeScript` 单页骨架与页面状态主线 |
-| 三阶段主线 UI | 先打通 `stage1/convert -> stage2 -> generate -> longUrl` |
-| 恢复与短链 | 在长链接主线稳定后接入 `resolve-url` 与 `short-links` |
+| 三阶段主线 UI | 当前共享主线已接入 `stage1/convert -> stage2 -> generate -> longUrl`，仍待 UI 方案评审与细节收口 |
+| 恢复与短链 | 共享主线已接入 `resolve-url` 与 `short-links`，仍待与最终 UI 方案合并验收 |
 | `cmd/server/` | HTTP 启动、静态资源分发与运行形态收口 |
 | `deploy/` | Docker Compose 单入口路径（`app + subconverter`） |
 
@@ -96,6 +96,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 按 [plan/phase-4-breakdown](plan/phase-4-breakdown.md) 先落地 `web/` 骨架与 `stage1/convert -> stage2 -> generate -> longUrl` 主线。
-2. 在长链接主线稳定后接入 `resolve-url` 与 `short-links`，完成恢复与别名流。
+1. 收口共享主线与 spec 的剩余差距，确认 G1 所需的公共状态、控件和 review 场景已经稳定。
+2. 在共享业务层稳定后切出 A/B/C 三个 UI 分支，完成方案评审选型。
 3. 最后收口后端静态资源托管与 Compose 单入口部署路径。

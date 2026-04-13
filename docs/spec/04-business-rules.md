@@ -56,9 +56,9 @@
 |------|----------|--------|----------|
 | `target` | 隐藏 | `clash` | 必传，固定传 `clash` |
 | `url` | 隐藏 | 无 | 必传；按 `0.2.1` 的 pass 规则传 |
-| `emoji` | 展示 | 勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
-| `udp` | 展示 | 勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
-| `scv` | 展示 | 不勾选 | 显式 `true` 传 `true`；显式 `false` 传 `false`；`null`/留空时不传 |
+| `emoji` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
+| `udp` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
+| `scv` | 展示 | 不勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
 | `config` | 展示 | 见下方补充 | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 非空字符串才传；`null`/留空时不传 |
@@ -75,7 +75,8 @@
 - 模板拉取返回非成功 HTTP 状态、请求失败或空内容时，当前请求必须在调用 `subconverter` 前失败
 - 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
 - 模板可正常拉取但未识别出任何地域策略组时，请求仍可继续；此时只是不支持基于地域策略组的自动填充
-- `chain-subconverter` 当前阶段 1/API 快照统一采用三态：复选框 `true/false/null`、文本框 `非空字符串/null`；query 构造必须逐项保持该语义，不得把 `null` 翻译成 `false` 或空 query
+- `chain-subconverter` 当前阶段 1/API 快照统一采用三态：复选框 `true/false/null`、文本框 `非空字符串/null`；其中当前 Web 前端 checkbox 只产出 `true/null`，但服务端仍必须正确处理显式传入的 `false`
+- query 构造必须逐项保持该语义，不得把 `null` 翻译成 `false` 或空 query
 - 文本框留空若以 `""` 进入服务端，必须先归一化为 `null`；query 构造阶段不得拼出 `include=`、`exclude=`；`config` 由后端模板准备流程统一处理
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递

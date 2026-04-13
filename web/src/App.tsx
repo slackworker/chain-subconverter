@@ -13,6 +13,23 @@ import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from 
 
 type ThemeMode = "dawn" | "night";
 
+interface ManualSocks5FormState {
+	name: string;
+	server: string;
+	port: string;
+	username: string;
+	password: string;
+}
+
+const githubRepositoryURL = "https://github.com/slackworker/chain-subconverter";
+const initialManualSocks5FormState: ManualSocks5FormState = {
+	name: "",
+	server: "",
+	port: "",
+	username: "",
+	password: "",
+};
+
 const modeLabelMap: Record<Stage2Row["mode"], string> = {
 	none: "不修改",
 	chain: "链式代理",
@@ -53,6 +70,41 @@ function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined
 		shortUrl: shortUrl ?? null,
 		preferShortUrl: preferShortUrl && Boolean(shortUrl),
 	};
+}
+
+function appendMultilineValue(currentValue: string, nextLine: string) {
+	if (currentValue === "") {
+		return nextLine;
+	}
+	return currentValue.endsWith("\n") ? `${currentValue}${nextLine}` : `${currentValue}\n${nextLine}`;
+}
+
+function buildManualSocks5URI(formState: ManualSocks5FormState) {
+	const name = formState.name.trim();
+	const server = formState.server.trim();
+	const portText = formState.port.trim();
+	const username = formState.username.trim();
+	const password = formState.password.trim();
+
+	if (name === "") {
+		throw new Error("SOCKS5 节点名称不能为空");
+	}
+	if (server === "") {
+		throw new Error("SOCKS5 服务器地址不能为空");
+	}
+	if (!/^\d+$/.test(portText)) {
+		throw new Error("SOCKS5 端口必须是 1-65535 的整数");
+	}
+	const port = Number(portText);
+	if (port < 1 || port > 65535) {
+		throw new Error("SOCKS5 端口必须是 1-65535 的整数");
+	}
+	if ((username === "") !== (password === "")) {
+		throw new Error("用户名与密码必须同时填写或同时留空");
+	}
+
+	const credentials = username === "" ? "" : `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`;
+	return `socks5://${credentials}${server}:${port}#${encodeURIComponent(name)}`;
 }
 
 function withDownloadFlag(urlString: string) {
@@ -107,6 +159,9 @@ function pickNextTarget(stage2Init: Stage2Init | null, mode: Stage2Row["mode"], 
 export default function App() {
 	const [theme, setTheme] = useState<ThemeMode>("dawn");
 	const [state, setState] = useState(initialAppState);
+	const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
+	const [manualSocks5Form, setManualSocks5Form] = useState(initialManualSocks5FormState);
+	const [manualSocks5Error, setManualSocks5Error] = useState<string | null>(null);
 	const [isConverting, setIsConverting] = useState(false);
 	const [isRestoring, setIsRestoring] = useState(false);
 	const [isGenerating, setIsGenerating] = useState(false);
@@ -163,6 +218,30 @@ export default function App() {
 
 	function getStage2RowErrors(landingNodeName: string) {
 		return state.blockingErrors.filter((error) => error.scope === "stage2_row" && error.context?.landingNodeName === landingNodeName);
+	}
+
+	function updateManualSocks5Field(field: keyof ManualSocks5FormState, value: string) {
+		setManualSocks5Form((current) => ({
+			...current,
+			[field]: value,
+		}));
+		if (manualSocks5Error !== null) {
+			setManualSocks5Error(null);
+		}
+	}
+
+	function handleAppendManualSocks5() {
+		try {
+			const socks5URI = buildManualSocks5URI(manualSocks5Form);
+			updateStage1Input((current) => ({
+				...current,
+				landingRawText: appendMultilineValue(current.landingRawText, socks5URI),
+			}));
+			setManualSocks5Form(initialManualSocks5FormState);
+			setManualSocks5Error(null);
+		} catch (error) {
+			setManualSocks5Error(error instanceof Error ? error.message : "无法追加 SOCKS5 节点");
+		}
 	}
 
 	async function handleStage1Convert() {
@@ -414,35 +493,45 @@ export default function App() {
 				<header className="overflow-hidden rounded-[32px] border border-line bg-surface shadow-panel shadow-black/5">
 					<div className="grid gap-8 px-6 py-8 md:grid-cols-[1.7fr_0.9fr] md:px-8">
 						<div className="space-y-5">
-							<p className="font-mono text-xs uppercase tracking-[0.4em] text-accent">Phase 4 Public Baseline</p>
+							<p className="font-mono text-xs uppercase tracking-[0.4em] text-accent">Phase 4 Shared Mainline</p>
 							<div className="space-y-3">
 								<h1 className="max-w-3xl font-display text-4xl leading-tight md:text-6xl">Chain Converter for Mihomo</h1>
 								<p className="max-w-2xl text-base leading-8 text-muted md:text-lg">
-									前端主干公共基线已经起步：统一状态模型、公共组件、阶段壳层和后端静态托管已接线，接下来可以在同一基础上分出 A/B/C 三个 UI 方案分支。
+									恢复、转换、生成和短链接别名已经接到同一条共享主线，当前继续补齐 Stage 1 交互细节与 spec 对齐，再进入 A/B/C 方案分支评审。
 								</p>
 							</div>
 							<div className="flex flex-wrap gap-3">
 								<StatusPill label="React + TypeScript" tone="success" />
 								<StatusPill label="Tailwind CSS" tone="success" />
-								<StatusPill label="Static Hosting Ready" tone="warning" />
+								<StatusPill label="Restore / Generate Wired" tone="success" />
 							</div>
 						</div>
 						<div className="flex flex-col justify-between gap-6 rounded-[28px] border border-line bg-panel p-5">
 							<div className="space-y-3">
 								<p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted">Current Focus</p>
 								<ul className="space-y-3 text-sm leading-7 text-ink">
-									<li>共享 API client 与 domain types</li>
-									<li>公共输入控件与阶段容器</li>
-									<li>同源静态资源托管入口</li>
+									<li>Stage 1 高级菜单与手动输入完整化</li>
+									<li>Stage 2 / Stage 3 主线可用性收口</li>
+									<li>静态托管与单入口部署复核</li>
 								</ul>
 							</div>
-							<button
-								type="button"
-								onClick={() => setTheme((current) => (current === "dawn" ? "night" : "dawn"))}
-								className="rounded-full border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
-							>
-								切换{theme === "dawn" ? "夜色" : "晨光"}主题
-							</button>
+							<div className="flex flex-wrap gap-3">
+								<a
+									href={githubRepositoryURL}
+									target="_blank"
+									rel="noreferrer"
+									className="rounded-full border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+								>
+									GitHub
+								</a>
+								<button
+									type="button"
+									onClick={() => setTheme((current) => (current === "dawn" ? "night" : "dawn"))}
+									className="rounded-full border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+								>
+									切换{theme === "dawn" ? "夜色" : "晨光"}主题
+								</button>
+							</div>
 						</div>
 					</div>
 				</header>
@@ -489,6 +578,59 @@ export default function App() {
 								onChange={(value) => updateStage1Input((current) => ({ ...current, landingRawText: value }))}
 							/>
 							<FieldErrorList errors={state.blockingErrors} field="landingRawText" />
+							<div className="rounded-[24px] border border-line bg-panel p-4">
+								<div className="flex flex-wrap items-start justify-between gap-3">
+									<div>
+										<p className="text-sm font-semibold text-ink">手动添加 SOCKS5 节点</p>
+										<p className="mt-1 text-sm leading-6 text-muted">只支持 SOCKS5。提交后会生成标准 socks5 URI，并追加到落地输入区末尾。</p>
+									</div>
+									<button
+										type="button"
+										onClick={handleAppendManualSocks5}
+										className="rounded-[18px] border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+									>
+										追加到落地信息
+									</button>
+								</div>
+								<div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									<TextField
+										label="节点名称"
+										helper="必填"
+										placeholder="Tokyo Socks"
+										value={manualSocks5Form.name}
+										onChange={(value) => updateManualSocks5Field("name", value)}
+									/>
+									<TextField
+										label="服务器地址"
+										helper="必填"
+										placeholder="relay.example.com"
+										value={manualSocks5Form.server}
+										onChange={(value) => updateManualSocks5Field("server", value)}
+									/>
+									<TextField
+										label="端口"
+										helper="1-65535"
+										placeholder="1080"
+										value={manualSocks5Form.port}
+										onChange={(value) => updateManualSocks5Field("port", value)}
+									/>
+									<TextField
+										label="用户名"
+										helper="可选"
+										placeholder="username"
+										value={manualSocks5Form.username}
+										onChange={(value) => updateManualSocks5Field("username", value)}
+									/>
+									<TextField
+										label="密码"
+										helper="与用户名成对出现"
+										placeholder="password"
+										value={manualSocks5Form.password}
+										onChange={(value) => updateManualSocks5Field("password", value)}
+									/>
+								</div>
+								{manualSocks5Error ? <p className="mt-3 text-sm leading-7 text-danger">{manualSocks5Error}</p> : null}
+							</div>
 							<TextAreaField
 								label="中转信息"
 								helper="支持订阅 URL、节点 URI、data:text/plain"
@@ -497,40 +639,6 @@ export default function App() {
 								onChange={(value) => updateStage1Input((current) => ({ ...current, transitRawText: value }))}
 							/>
 							<FieldErrorList errors={state.blockingErrors} field="transitRawText" />
-
-							<div className="grid gap-4 lg:grid-cols-2">
-								<ToggleField
-									label="启用端口转发（实验性）"
-									description="公共基线先固定启停和清空行为，具体布局与提示方式交给 A/B/C 分支探索。"
-									checked={state.stage1Input.advancedOptions.enablePortForward}
-									onChange={(checked) =>
-										updateStage1Input((current) => ({
-											...current,
-											forwardRelayRawText: checked ? current.forwardRelayRawText : "",
-											advancedOptions: {
-												...current.advancedOptions,
-												enablePortForward: checked,
-											},
-										}))
-									}
-								/>
-								<TextField
-									label="模板 URL"
-									helper="留空时使用默认 Aethersailor 模板"
-									placeholder="不填写将使用默认 Aethersailor 模板"
-									value={state.stage1Input.advancedOptions.config ?? ""}
-									onChange={(value) =>
-										updateStage1Input((current) => ({
-											...current,
-											advancedOptions: {
-												...current.advancedOptions,
-												config: value.trim() === "" ? null : value,
-											},
-										}))
-									}
-								/>
-							</div>
-							<FieldErrorList errors={state.blockingErrors} field="config" />
 
 							{state.stage1Input.advancedOptions.enablePortForward ? (
 								<TextAreaField
@@ -542,6 +650,142 @@ export default function App() {
 								/>
 							) : null}
 							<FieldErrorList errors={state.blockingErrors} field="forwardRelayRawText" />
+
+							<div className="overflow-hidden rounded-[24px] border border-line bg-panel">
+								<button
+									type="button"
+									onClick={() => setIsAdvancedOptionsOpen((current) => !current)}
+									className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left"
+								>
+									<div>
+										<p className="text-sm font-semibold text-ink">高级菜单</p>
+										<p className="mt-1 text-sm leading-6 text-muted">Stage 1 的高级参数统一收纳在这里；展开后可编辑 emoji、udp、证书校验、模板 URL 与过滤条件。</p>
+									</div>
+									<span className="rounded-full border border-line px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+										{isAdvancedOptionsOpen ? "收起" : "展开"}
+									</span>
+								</button>
+								{isAdvancedOptionsOpen ? (
+									<div className="border-t border-line px-4 py-4">
+										<div className="grid gap-4 lg:grid-cols-2">
+											<ToggleField
+												label="Emoji"
+												description="对应上游 emoji 参数；当前前端 checkbox 只在 true 与 null 之间切换。"
+												checked={state.stage1Input.advancedOptions.emoji === true}
+												onChange={(checked) =>
+													updateStage1Input((current) => ({
+														...current,
+														advancedOptions: {
+															...current.advancedOptions,
+															emoji: checked ? true : null,
+														},
+													}))
+												}
+											/>
+											<ToggleField
+												label="UDP"
+												description="对应上游 udp 参数；当前前端 checkbox 只在 true 与 null 之间切换。"
+												checked={state.stage1Input.advancedOptions.udp === true}
+												onChange={(checked) =>
+													updateStage1Input((current) => ({
+														...current,
+														advancedOptions: {
+															...current.advancedOptions,
+															udp: checked ? true : null,
+														},
+													}))
+												}
+											/>
+											<ToggleField
+												label="跳过证书验证"
+												description="业务语义对应 skip_cert_verify；当前前端 checkbox 只在 true 与 null 之间切换，实际映射到上游 scv 参数。"
+												checked={state.stage1Input.advancedOptions.skipCertVerify === true}
+												onChange={(checked) =>
+													updateStage1Input((current) => ({
+														...current,
+														advancedOptions: {
+															...current.advancedOptions,
+															skipCertVerify: checked ? true : null,
+														},
+													}))
+												}
+											/>
+											<ToggleField
+												label="启用端口转发（实验性）"
+												description="关闭时会隐藏并清空端口转发服务输入区。"
+												checked={state.stage1Input.advancedOptions.enablePortForward}
+												onChange={(checked) =>
+													updateStage1Input((current) => ({
+														...current,
+														forwardRelayRawText: checked ? current.forwardRelayRawText : "",
+														advancedOptions: {
+															...current.advancedOptions,
+															enablePortForward: checked,
+														},
+													}))
+												}
+											/>
+										</div>
+										<div className="mt-4 grid gap-4 lg:grid-cols-2">
+											<div className="space-y-3">
+												<TextField
+													label="模板 URL"
+													helper="留空时使用默认 Aethersailor 模板"
+													placeholder="不填写将使用默认 Aethersailor 模板"
+													value={state.stage1Input.advancedOptions.config ?? ""}
+													onChange={(value) =>
+														updateStage1Input((current) => ({
+															...current,
+															advancedOptions: {
+																...current.advancedOptions,
+																config: value.trim() === "" ? null : value,
+															},
+														}))
+													}
+												/>
+												<p className="rounded-[18px] border border-line bg-surface px-4 py-3 text-sm leading-7 text-muted">
+													! 当前默认推荐模板 URL 为 https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini，上游更新可能导致规则变化。
+												</p>
+												<FieldErrorList errors={state.blockingErrors} field="config" />
+											</div>
+											<div className="space-y-3">
+												<TextField
+													label="Include"
+													helper="非空时透传给上游 include"
+													placeholder="hk|jp"
+													value={state.stage1Input.advancedOptions.include ?? ""}
+													onChange={(value) =>
+														updateStage1Input((current) => ({
+															...current,
+															advancedOptions: {
+																...current.advancedOptions,
+																include: value.trim() === "" ? null : value,
+															},
+														}))
+													}
+												/>
+												<FieldErrorList errors={state.blockingErrors} field="include" />
+												<TextField
+													label="Exclude"
+													helper="非空时透传给上游 exclude"
+													placeholder="test|expire"
+													value={state.stage1Input.advancedOptions.exclude ?? ""}
+													onChange={(value) =>
+														updateStage1Input((current) => ({
+															...current,
+															advancedOptions: {
+																...current.advancedOptions,
+																exclude: value.trim() === "" ? null : value,
+															},
+														}))
+													}
+												/>
+												<FieldErrorList errors={state.blockingErrors} field="exclude" />
+											</div>
+										</div>
+									</div>
+								) : null}
+							</div>
 
 							<div className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-dashed border-line bg-panel px-4 py-4">
 								<p className="text-sm leading-7 text-muted">当前输入框已支持行号、禁止自动换行和横向滚动，长 URI 与多行订阅文本会按原始分行编辑。</p>

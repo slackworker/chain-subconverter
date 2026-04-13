@@ -4,11 +4,12 @@
 
 ## 当前状态
 
-- `Phase 4` 已开始，当前处于“主干公共基线”阶段
+- `Phase 4` 已开始，当前处于“共享主线收口”阶段
 - 已初始化 `web/` 下的 `Vite + React + TypeScript + Tailwind CSS` 前端工程
 - 已落地统一前端 domain types、基础组件、阶段壳层与静态资源托管接线
-- 尚未打通真实 `POST /api/stage1/convert -> stage2Init -> POST /api/generate -> longUrl` 主线
-- 尚未接入 `resolve-url`、`short-links` 与最终 Compose 单入口验证
+- 已接入真实 `POST /api/stage1/convert -> stage2Init -> POST /api/generate -> longUrl` 主线
+- 已接入 `resolve-url` 与 `short-links` 到共享页面状态主线
+- 尚未完成 G1 公共组件收口、A/B/C 方案分支评审与最终 Compose 单入口验证
 
 ## 主线业务路径
 
@@ -94,13 +95,15 @@ flowchart LR
 - `web/` 工程骨架与生产构建
 - SPA 静态资源托管包装器
 - 基础阶段卡片、输入组件、主题 token 与共享壳层页面
+- 共享页面状态已接通 `restore -> stage1/convert -> generate -> short-links`
+- Stage 1 已补上高级菜单全量控件与手动 SOCKS5 追加入口
 - `go test ./...` 与 `npm run build` 已通过
 
 当前未完成：
 
-- Stage1 真正调用 `POST /api/stage1/convert`
-- Stage2 可编辑控件与 `POST /api/generate`
-- 恢复、短链与单入口部署验收
+- G1 公共组件完成确认与统一 review 场景固化
+- Stage 2 链式候选分组展示、导航外壳等剩余 spec 细节
+- A/B/C 方案评审与单入口部署验收
 
 ### G1：公共组件完成确认
 
@@ -172,6 +175,6 @@ flowchart LR
 
 ## 当前下一步
 
-1. 在共享壳层上接入真实 `POST /api/stage1/convert`
-2. 接着落地 Stage2 的可编辑共享控件与 `POST /api/generate`
-3. 当共享业务层稳定后，再进入 G1，切出 A/B/C 三个 UI 分支
+1. 收口共享壳层与 spec 的剩余差距，完成 G1 前的公共组件确认
+2. 固化可复用的 review 场景与演示数据，准备 A/B/C 三分支对比
+3. 在共享业务层稳定后进入 G1，并切出 A/B/C 三个 UI 分支

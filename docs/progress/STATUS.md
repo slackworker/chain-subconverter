@@ -8,7 +8,7 @@
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 4` 可以开始。
 - `Phase 3` 已完成：3-A, 3-B, 3-C, 3-D, 3-E 已全部落地，后端扩展业务与 API 契约现已收口。
-- `Phase 4` 已开始：主干公共基线已落地，当前正在接入真实 `stage1/convert` 与 `generate` 主线。
+- `Phase 4` 已开始：共享主线已接入真实恢复、转换、生成与短链别名流程，当前正在收口公共组件与 spec 细节。
 
 ## Phase 进度
 
@@ -33,15 +33,17 @@
 - 订阅路由已按 `publicBaseURL` 的路径前缀注册，长链接与短链接在带 base path 的部署形态下都可直接回放。
 - 文档主导航已收敛到 `spec/`、`plan/`、`progress/`、`testing/`；已完成阶段计划与历史材料已移入 `docs/temp/` 待删区。
 - `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、基础输入组件、阶段容器与公共壳层页面。
+- 共享页面状态已接通 `POST /api/resolve-url`、`POST /api/stage1/convert`、`POST /api/generate` 与 `POST /api/short-links`。
+- Stage 1 已补上完整高级菜单控件、条件显示的端口转发输入区与手动 SOCKS5 追加入口。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
-- `Phase 4` 当前已进入主干公共基线阶段，下一步是接入真实 `POST /api/stage1/convert` 与 `POST /api/generate` 主线。
+- `Phase 4` 当前处于共享主线收口阶段，下一步是完成 G1 公共组件确认、A/B/C 方案评审准备与 Compose 单入口验收。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `review/cases/3pass-ss2022-test-subscription/`。
 
-- 当前前端页面仍是共享壳层与演示态，尚未接入真实 `stage1/convert`、`generate`、`resolve-url`、`short-links` 请求。
+- 当前前端仍未完成 A/B/C 方案分支评审，Stage 2 候选分组展示、导航外壳等部分 spec 细节仍待收口。
 - 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 

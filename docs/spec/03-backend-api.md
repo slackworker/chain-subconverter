@@ -41,6 +41,7 @@
 - `advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config`、`include`、`exclude` 使用 `非空字符串 | null`
 - `advancedOptions.config` 的字段名保留 `config`，用于兼容 `subconverter` 的既有 `config` 查询参数；其业务语义固定为“模板 URL”或“外部配置（模板）URL”，不得理解为最终 Mihomo YAML
 - 复选框字段中：`true` 表示显式传 `true`，`false` 表示显式传 `false`，`null` 表示不向上游传该参数
+- 当前 Web 前端的 checkbox 交互只会产出 `true` 或 `null`；`false` 仍保留在接口模型中，供非 UI 调用方或兼容历史快照时使用
 - 文本字段中：`config` 表示用户填写的模板 URL；`include` 与 `exclude` 为透传文本参数；`null` 表示该字段留空
 - 为兼容文本框空输入，服务端可接受 `config = ""`、`include = ""`、`exclude = ""`，但必须在入站归一化为 `null`，后续快照、long URL payload 与 query 构造都按“不传参数”处理
 - `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`

@@ -100,8 +100,8 @@
 - “模板 URL”输入框 placeholder：`不填写将使用默认 Aethersailor 模板`
 - “模板 URL”输入框右侧必须提供感叹号提示 icon，说明当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，且上游更新可能导致规则变化
 - 参数默认值与 `GET /sub` 传递规则的唯一权威定义位于 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表`
-- 前端提交阶段 1 快照时不得依赖“省略键 = 默认值”的隐式约定：复选框提交显式 `true` 或 `false`，文本框留空时提交 `null`
-- 前端只负责渲染与提交高级选项快照，不在本章重复定义参数传递语义
+- 前端提交阶段 1 快照时不得依赖“省略键 = 默认值”的隐式约定：`emoji`、`udp`、`skipCertVerify` 的 checkbox 在当前前端交互中只在 `true` 与 `null` 之间切换，勾选时提交 `true`，不勾选时提交 `null`；其中 `emoji` 与 `udp` 默认勾选，`skipCertVerify` 默认不勾选；文本框留空时提交 `null`
+- 前端只负责渲染与提交高级选项快照；具体参数传递语义以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 
 ### 1.5 转换按钮
 
