@@ -388,7 +388,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`INVALID_LONG_URL`；必须返回 `scope = global`
+- `422`：`INVALID_LONG_URL`、`LONG_URL_TOO_LONG`；必须返回 `scope = global`
 - `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -453,7 +453,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = global`
-- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`；两者都必须返回 `scope = global`
+- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`、`LONG_URL_TOO_LONG`；三者都必须返回 `scope = global`
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -563,7 +563,7 @@ gzip 规则：
 - 后端解码长链接时，必须执行 `base64url -> gunzip -> JSON parse -> version check`
 - 解码管线包含以下步骤：`base64url` 解码、`gunzip` 解压、JSON parse、version check、schema 结构校验、输入上限校验；任一步骤失败都必须返回 `INVALID_LONG_URL`
 - `INVALID_LONG_URL` 的覆盖范围严格限定于解码管线失败；解码成功后的业务处理（包括 subconverter 调用、YAML 渲染）不属于 `INVALID_LONG_URL` 语义范畴
-- `POST /api/resolve-url` 与 `POST /api/short-links` 对无效长链接的错误语义必须保持一致
+- `POST /api/resolve-url` 与 `POST /api/short-links` 对解码管线失败须一致返回 `INVALID_LONG_URL`
 
 ### 5. 长度约束
 
@@ -574,6 +574,7 @@ gzip 规则：
 - `POST /api/generate` 若生成结果超过上限，必须返回阻断错误，不得静默截断、不得自动改为短链接
 - 满足阶段 1 输入边界的合法请求，仍可能因最终 `longUrl` 超长而在生成阶段失败；该情形必须以 `LONG_URL_TOO_LONG` 返回
 - 超限时错误码必须为 `LONG_URL_TOO_LONG`
+- `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，若规范化重编码超出当前上限，同样返回 `LONG_URL_TOO_LONG`（非解码管线失败，故不使用 `INVALID_LONG_URL`）
 
 ---
 
