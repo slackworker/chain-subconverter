@@ -1,4 +1,0 @@
-services:
-  subconverter:
-    ports:
-      - "25511:25500"

@@ -2,8 +2,6 @@
 
 本目录只承载部署相关内容。
 
-如果你的目标是编辑样例输入、运行 task、查看 stage1/stage2 review 产物，请改走 [docs/testing/frontend-review-workflow](../docs/testing/frontend-review-workflow.md)。
-
 ## 当前范围
 
 - 已提供 `docker-compose.yml`，用于编排 `app + subconverter`
@@ -48,6 +46,6 @@ curl http://localhost:11200/healthz
 
 ## 边界
 
-- `review/cases/` 提供 frontend-review 的手动输入样例与运行产物
 - 稳定自动化 fixture 位于 `internal/review/testdata/`
+- 真实人工验证统一走 Compose 启动后的前端页面、`/api/*` 与订阅路径
 - 本 README 只说明 Compose 启动与环境变量；不重复维护阶段状态说明

@@ -41,7 +41,6 @@
 | [plan/phase-4-breakdown](plan/phase-4-breakdown.md) | Phase 4 细化计划：前端主线、非目标与建议推进顺序 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已完成范围、已知缺口 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
-| [testing/frontend-review-workflow](testing/frontend-review-workflow.md) | 文件驱动的前端业务 review 工作流 |
 
 ## 临时区规则
 

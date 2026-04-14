@@ -41,9 +41,9 @@ func (source *fakeTemplatePreparingSource) Convert(_ context.Context, request su
 }
 
 func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
-	testCase, err := LoadScenario(filepath.Join("testdata", "3pass-ss2022-test-subscription"))
+	testCase, err := LoadCase(filepath.Join("testdata", "3pass-ss2022-test-subscription"))
 	if err != nil {
-		t.Fatalf("LoadScenario() error = %v", err)
+		t.Fatalf("LoadCase() error = %v", err)
 	}
 
 	fixtureDir := filepath.Join("testdata", "3pass-ss2022-test-subscription")

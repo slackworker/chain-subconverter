@@ -107,8 +107,8 @@ func mustMarshalJSON(value any) string {
 
 func buildSummaryMarkdown(scenarioName string, stage2Init service.Stage2Init) string {
 	var builder strings.Builder
-	builder.WriteString("# Frontend Review Summary\n\n")
-	builder.WriteString("- Scenario: ")
+	builder.WriteString("# Fixture Summary\n\n")
+	builder.WriteString("- Case: ")
 	builder.WriteString(scenarioName)
 	builder.WriteString("\n")
 	builder.WriteString("- Landing rows: ")

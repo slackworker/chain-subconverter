@@ -5,5 +5,5 @@
 //   - 将业务错误与 subconverter 不可用映射为 HTTP 状态码与 JSON 响应（含 blockingErrors）；
 //   - 不包含业务规则推导、YAML 内容生成或 subconverter HTTP 细节（见 internal/service、internal/subconverter）。
 //
-// 验收基线：internal/api/server_test.go 与 review/cases/3pass-ss2022-test-subscription/ 对齐。
+// 验收基线：internal/api/server_test.go 与 internal/review/testdata/3pass-ss2022-test-subscription/ 对齐。
 package api

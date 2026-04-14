@@ -26,8 +26,6 @@ type Case struct {
 	Stage2Input service.Stage2Snapshot
 }
 
-type Scenario = Case
-
 type advancedOptionsFile struct {
 	Emoji             *bool   `yaml:"emoji"`
 	UDP               *bool   `yaml:"udp"`
@@ -77,10 +75,6 @@ func LoadStage1Case(directory string) (Case, error) {
 		Directory:   absDir,
 		Stage1Input: stage1Input,
 	}, nil
-}
-
-func LoadScenario(directory string) (Scenario, error) {
-	return LoadCase(directory)
 }
 
 func readStage1Input(directory string) (service.Stage1Input, error) {

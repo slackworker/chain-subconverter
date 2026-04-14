@@ -7,46 +7,46 @@ import (
 	"testing"
 )
 
-func TestLoadScenario_DefaultExample(t *testing.T) {
-	scenario, err := LoadScenario(filepath.Join("testdata", "3pass-ss2022-test-subscription"))
+func TestLoadCase_DefaultExample(t *testing.T) {
+	testCase, err := LoadCase(filepath.Join("testdata", "3pass-ss2022-test-subscription"))
 	if err != nil {
-		t.Fatalf("LoadScenario() error = %v", err)
+		t.Fatalf("LoadCase() error = %v", err)
 	}
 
-	if scenario.Name != "3pass-ss2022-test-subscription" {
-		t.Fatalf("scenario.Name = %q, want %q", scenario.Name, "3pass-ss2022-test-subscription")
+	if testCase.Name != "3pass-ss2022-test-subscription" {
+		t.Fatalf("testCase.Name = %q, want %q", testCase.Name, "3pass-ss2022-test-subscription")
 	}
-	if scenario.Stage1Input.LandingRawText == "" {
+	if testCase.Stage1Input.LandingRawText == "" {
 		t.Fatal("LandingRawText should not be empty")
 	}
-	if scenario.Stage1Input.TransitRawText == "" {
+	if testCase.Stage1Input.TransitRawText == "" {
 		t.Fatal("TransitRawText should not be empty")
 	}
-	if scenario.Stage1Input.ForwardRelayRawText != "" {
-		t.Fatalf("ForwardRelayRawText = %q, want empty", scenario.Stage1Input.ForwardRelayRawText)
+	if testCase.Stage1Input.ForwardRelayRawText != "" {
+		t.Fatalf("ForwardRelayRawText = %q, want empty", testCase.Stage1Input.ForwardRelayRawText)
 	}
-	if !hasBoolValue(scenario.Stage1Input.AdvancedOptions.Emoji, true) {
+	if !hasBoolValue(testCase.Stage1Input.AdvancedOptions.Emoji, true) {
 		t.Fatal("Emoji default should be true")
 	}
-	if !hasBoolValue(scenario.Stage1Input.AdvancedOptions.UDP, true) {
+	if !hasBoolValue(testCase.Stage1Input.AdvancedOptions.UDP, true) {
 		t.Fatal("UDP default should be true")
 	}
-	if scenario.Stage1Input.AdvancedOptions.SkipCertVerify != nil {
+	if testCase.Stage1Input.AdvancedOptions.SkipCertVerify != nil {
 		t.Fatal("SkipCertVerify placeholder should stay omitted")
 	}
-	if scenario.Stage1Input.AdvancedOptions.Config != nil {
-		t.Fatalf("Config = %v, want omitted placeholder", scenario.Stage1Input.AdvancedOptions.Config)
+	if testCase.Stage1Input.AdvancedOptions.Config != nil {
+		t.Fatalf("Config = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Config)
 	}
-	if scenario.Stage1Input.AdvancedOptions.Include != nil {
-		t.Fatalf("Include = %v, want omitted placeholder", scenario.Stage1Input.AdvancedOptions.Include)
+	if testCase.Stage1Input.AdvancedOptions.Include != nil {
+		t.Fatalf("Include = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Include)
 	}
-	if scenario.Stage1Input.AdvancedOptions.Exclude != nil {
-		t.Fatalf("Exclude = %v, want omitted placeholder", scenario.Stage1Input.AdvancedOptions.Exclude)
+	if testCase.Stage1Input.AdvancedOptions.Exclude != nil {
+		t.Fatalf("Exclude = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Exclude)
 	}
-	if scenario.Stage1Input.AdvancedOptions.EnablePortForward {
+	if testCase.Stage1Input.AdvancedOptions.EnablePortForward {
 		t.Fatal("EnablePortForward default should be false")
 	}
-	if len(scenario.Stage2Input.Rows) == 0 {
+	if len(testCase.Stage2Input.Rows) == 0 {
 		t.Fatal("Stage2Input.Rows should not be empty")
 	}
 }

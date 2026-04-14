@@ -14,36 +14,11 @@
 - `POST /api/generate`
 - 最终 `complete-config.chain.yaml`
 
-## 两套目录的职责
-
-同一个用例现在分成两套材料，各自职责单一：
-
-- `review/cases/3pass-ss2022-test-subscription/`
-  - 手动 Front-end Review 工作区
-  - 只放可编辑输入以及运行后生成的 output
-- `internal/review/testdata/3pass-ss2022-test-subscription/`
-  - 自动化测试固定 fixture
-  - 放稳定的输入与输出基线，供 `internal/review` 单元测试回放
-
-## 手动 Review 工作区
-
-目录：`review/cases/3pass-ss2022-test-subscription/`
-
-- `stage1/input/`
-  - 手动编辑的阶段 1 输入
-- `stage1/output/`
-  - 运行 Stage1 后生成的 URL、YAML、请求响应与 review 摘要
-- `stage2/input/stage2-snapshot.json`
-  - Stage1 刷新的默认 snapshot，供手动编辑
-- `stage2/output/`
-  - 运行 Stage2 后生成的请求响应、payload 与最终订阅 YAML
-- 手动执行顺序与 `transit.txt` 输入规则统一见 [frontend-review-workflow](frontend-review-workflow.md)
-
-执行 Stage1 时只刷新 `stage1/output/` 与 `stage2/input/stage2-snapshot.json`，不会清理 `stage2/output/`；后者仅代表最近一次 Stage2 运行结果。
-
 ## 自动化测试 Fixture
 
 目录：`internal/review/testdata/3pass-ss2022-test-subscription/`
+
+该目录是当前唯一保留的固定基线目录，供 `internal/review`、`internal/service` 与 `internal/api` 相关自动化测试回放。
 
 该目录固定保存以下基线材料：
 
@@ -84,6 +59,6 @@
 
 ## 边界
 
-- `review/cases/` 保存手动 review 输入与运行产物
-- `.tmp/review/` 保存运行日志
-- 若后续扩展高级设置、手动 override、端口转发或恢复冲突，应新增并列用例
+- 仓库内不再保留文件驱动的手动前端回放工作区
+- 若后续扩展高级设置、手动 override、端口转发或恢复冲突，应在 `internal/review/testdata/` 下新增并列 fixture
+- 真实人工验证统一走实际前端服务、`/api/*` 与订阅路径，不复用旧的文本输入回放链
