@@ -1,11 +1,11 @@
-import type { BlockingError, Message } from "../types/api";
+import type { BlockingError, Message } from "../../types/api";
 
-interface NoticeStackProps {
+interface DefaultNoticeListProps {
 	messages: Message[];
 	blockingErrors: BlockingError[];
 }
 
-export function NoticeStack({ messages, blockingErrors }: NoticeStackProps) {
+export function DefaultNoticeList({ messages, blockingErrors }: DefaultNoticeListProps) {
 	if (messages.length === 0 && blockingErrors.length === 0) {
 		return null;
 	}

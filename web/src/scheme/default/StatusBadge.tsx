@@ -1,4 +1,4 @@
-interface StatusPillProps {
+interface DefaultStatusBadgeProps {
 	label: string;
 	tone?: "neutral" | "warning" | "success";
 }
@@ -9,6 +9,6 @@ const toneClassMap = {
 	success: "border-success/30 bg-success/10 text-success",
 };
 
-export function StatusPill({ label, tone = "neutral" }: StatusPillProps) {
+export function DefaultStatusBadge({ label, tone = "neutral" }: DefaultStatusBadgeProps) {
 	return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${toneClassMap[tone]}`}>{label}</span>;
 }

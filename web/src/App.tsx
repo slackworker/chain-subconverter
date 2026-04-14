@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 
-import { ChainTargetPicker } from "./components/ChainTargetPicker";
 import { FieldErrorList } from "./components/FieldErrorList";
-import { NoticeStack } from "./components/NoticeStack";
-import { StageCard } from "./components/StageCard";
-import { StatusPill } from "./components/StatusPill";
 import { TextAreaField } from "./components/TextAreaField";
 import { TextField } from "./components/TextField";
 import { ToggleField } from "./components/ToggleField";
-import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "./lib/api";
-import { initialAppState } from "./lib/state";
-import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "./types/api";
+import { useAppWorkflow } from "./hooks/useAppWorkflow";
+import { DefaultChainTargetChooser } from "./scheme/default/ChainTargetChooser";
+import { DefaultNoticeList } from "./scheme/default/NoticeList";
+import { DefaultSectionBlock } from "./scheme/default/SectionBlock";
+import { DefaultStatusBadge } from "./scheme/default/StatusBadge";
+import type { Stage2Row } from "./types/api";
 
 interface ManualSocks5FormState {
 	name: string;
@@ -33,42 +32,6 @@ const modeLabelMap: Record<Stage2Row["mode"], string> = {
 	chain: "链式代理",
 	port_forward: "端口转发",
 };
-
-function snapshotRowsFromInit(stage2Init: Stage2Init) {
-	return stage2Init.rows.map((row) => ({
-		landingNodeName: row.landingNodeName,
-		mode: row.mode,
-		targetName: row.targetName,
-	}));
-}
-
-function fallbackBlockingError(error: unknown): BlockingError {
-	return {
-		code: "REQUEST_FAILED",
-		message: error instanceof Error ? error.message : "请求失败",
-		scope: "global",
-	};
-}
-
-function mergeMessages(...messageGroups: Message[][]): Message[] {
-	const seen = new Set<string>();
-	return messageGroups.flat().filter((message) => {
-		const key = `${message.level}:${message.code}:${message.message}`;
-		if (seen.has(key)) {
-			return false;
-		}
-		seen.add(key);
-		return true;
-	});
-}
-
-function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined, preferShortUrl = false) {
-	return {
-		longUrl,
-		shortUrl: shortUrl ?? null,
-		preferShortUrl: preferShortUrl && Boolean(shortUrl),
-	};
-}
 
 function appendMultilineValue(currentValue: string, nextLine: string) {
 	if (currentValue === "") {
@@ -115,54 +78,38 @@ function withDownloadFlag(urlString: string) {
 	}
 }
 
-function getModeOptions(stage2Init: Stage2Init | null) {
-	return stage2Init?.availableModes ?? [];
-}
-
-function getTargetChoices(stage2Init: Stage2Init | null, mode: Stage2Row["mode"]) {
-	if (stage2Init === null) {
-		return [];
-	}
-	if (mode === "chain") {
-		return stage2Init.chainTargets.map((target) => ({
-			value: target.name,
-			label: target.isEmpty ? `${target.name}（策略组为空）` : target.name,
-			disabled: target.isEmpty === true,
-		}));
-	}
-	if (mode === "port_forward") {
-		return stage2Init.forwardRelays.map((relay) => ({
-			value: relay.name,
-			label: relay.name,
-			disabled: false,
-		}));
-	}
-	return [];
-}
-
-function pickNextTarget(stage2Init: Stage2Init | null, mode: Stage2Row["mode"], currentTarget: string | null) {
-	if (mode === "none") {
-		return null;
-	}
-	const choices = getTargetChoices(stage2Init, mode).filter((choice) => !choice.disabled);
-	if (choices.some((choice) => choice.value === currentTarget)) {
-		return currentTarget;
-	}
-	if (mode === "port_forward" && choices.length === 1) {
-		return choices[0].value;
-	}
-	return null;
-}
-
 export default function App() {
-	const [state, setState] = useState(initialAppState);
+	const {
+		state,
+		globalErrors,
+		stage2Rows,
+		modeOptions,
+		isConverting,
+		isRestoring,
+		isGenerating,
+		isCreatingShortUrl,
+		isConflictReadonly,
+		isStage2Editable,
+		canGenerate,
+		stage1Status,
+		stage2Status,
+		stage3Status,
+		setRestoreInput,
+		updateStage1Input,
+		getStage2RowMeta,
+		getStage2RowErrors,
+		getTargetChoices,
+		handleStage1Convert,
+		handleRestore,
+		handleModeChange,
+		handleTargetChange,
+		handleGenerate,
+		handlePreferShortUrl,
+	} = useAppWorkflow();
 	const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
+	const [isRestorePanelOpen, setIsRestorePanelOpen] = useState(false);
 	const [manualSocks5Form, setManualSocks5Form] = useState(initialManualSocks5FormState);
 	const [manualSocks5Error, setManualSocks5Error] = useState<string | null>(null);
-	const [isConverting, setIsConverting] = useState(false);
-	const [isRestoring, setIsRestoring] = useState(false);
-	const [isGenerating, setIsGenerating] = useState(false);
-	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
 
 	useEffect(() => {
@@ -176,54 +123,6 @@ export default function App() {
 	const activeOutput = state.generatedUrls?.preferShortUrl && state.generatedUrls.shortUrl
 		? state.generatedUrls.shortUrl
 		: state.generatedUrls?.longUrl ?? "尚未生成链接";
-	const globalErrors = state.blockingErrors.filter((error) => error.scope === "global");
-	const stage2Rows = state.stage2Snapshot.rows;
-	const modeOptions = getModeOptions(state.stage2Init);
-	const isConflictReadonly = state.restoreStatus === "conflicted";
-	const isStage2Editable = state.stage2Init !== null && !state.stage2Stale && !isConflictReadonly;
-	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating;
-	const stage2StatusLabel = isConflictReadonly ? "Conflict" : state.stage2Stale ? "Stage 2 Stale" : state.stage2Init === null ? "Awaiting Init" : "Ready";
-	const stage2StatusTone = isConflictReadonly || state.stage2Stale || state.stage2Init === null ? "warning" : "success";
-	const stage1StatusLabel =
-		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === ""
-			? "Awaiting Input"
-			: state.stage2Stale && stage2Rows.length > 0
-				? "Changed"
-				: state.stage2Init !== null
-					? "Converted"
-					: "Editing";
-	const stage1StatusTone = state.stage2Init !== null && !state.stage2Stale ? "success" : stage1StatusLabel === "Changed" ? "warning" : "neutral";
-	const stage3StatusLabel = state.generatedUrls === null ? "Awaiting Generate" : state.generatedUrls.shortUrl ? "Short URL Ready" : "Long URL Ready";
-	const stage3StatusTone = state.generatedUrls === null ? "neutral" : "success";
-	const restoreStatusLabel = state.restoreStatus === "idle" ? "Idle" : state.restoreStatus;
-
-	function updateStage1Input(updater: (current: Stage1Input) => Stage1Input) {
-		setState((current) => ({
-			...current,
-			stage1Input: updater(current.stage1Input),
-			generatedUrls: null,
-			stage2Stale: current.stage2Snapshot.rows.length > 0 ? true : current.stage2Stale,
-		}));
-	}
-
-	function applyStage2Init(stage2Init: Stage2Init) {
-		setState((current) => ({
-			...current,
-			stage2Init,
-			stage2Snapshot: { rows: snapshotRowsFromInit(stage2Init) },
-			generatedUrls: null,
-			stage2Stale: false,
-			restoreStatus: "idle",
-		}));
-	}
-
-	function getStage2RowMeta(landingNodeName: string) {
-		return state.stage2Init?.rows.find((row) => row.landingNodeName === landingNodeName) ?? null;
-	}
-
-	function getStage2RowErrors(landingNodeName: string) {
-		return state.blockingErrors.filter((error) => error.scope === "stage2_row" && error.context?.landingNodeName === landingNodeName);
-	}
 
 	function updateManualSocks5Field(field: keyof ManualSocks5FormState, value: string) {
 		setManualSocks5Form((current) => ({
@@ -246,218 +145,6 @@ export default function App() {
 			setManualSocks5Error(null);
 		} catch (error) {
 			setManualSocks5Error(error instanceof Error ? error.message : "无法追加 SOCKS5 节点");
-		}
-	}
-
-	async function handleStage1Convert() {
-		const stage1Input = state.stage1Input;
-		setIsConverting(true);
-		setState((current) => ({
-			...current,
-			messages: [],
-			blockingErrors: [],
-		}));
-
-		try {
-			const response = await postStage1Convert({ stage1Input });
-			applyStage2Init(response.stage2Init);
-			setState((current) => ({
-				...current,
-				messages: response.messages,
-				blockingErrors: response.blockingErrors,
-			}));
-		} catch (error) {
-			const errorResponse = getErrorResponse(error);
-			setState((current) => ({
-				...current,
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
-			}));
-		} finally {
-			setIsConverting(false);
-		}
-	}
-
-	async function handleRestore() {
-		const restoreInput = state.restoreInput.trim();
-		if (restoreInput === "") {
-			return;
-		}
-
-		setIsRestoring(true);
-		setState((current) => ({
-			...current,
-			messages: [],
-			blockingErrors: [],
-		}));
-
-		try {
-			const restoreResponse = await postResolveURL(restoreInput);
-			if (restoreResponse.restoreStatus === "conflicted") {
-				setState((current) => ({
-					...current,
-					restoreInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
-					stage1Input: restoreResponse.stage1Input,
-					stage2Init: null,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
-					stage2Stale: false,
-					restoreStatus: restoreResponse.restoreStatus,
-					messages: restoreResponse.messages,
-					blockingErrors: restoreResponse.blockingErrors,
-				}));
-				return;
-			}
-
-			try {
-				const convertResponse = await postStage1Convert({ stage1Input: restoreResponse.stage1Input });
-				setState((current) => ({
-					...current,
-					restoreInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
-					stage1Input: restoreResponse.stage1Input,
-					stage2Init: convertResponse.stage2Init,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
-					stage2Stale: false,
-					restoreStatus: restoreResponse.restoreStatus,
-					messages: mergeMessages(restoreResponse.messages, convertResponse.messages),
-					blockingErrors: restoreResponse.blockingErrors.length > 0 ? restoreResponse.blockingErrors : convertResponse.blockingErrors,
-				}));
-			} catch (convertError) {
-				const errorResponse = getErrorResponse(convertError);
-				setState((current) => ({
-					...current,
-					restoreInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
-					stage1Input: restoreResponse.stage1Input,
-					stage2Init: null,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
-					stage2Stale: true,
-					restoreStatus: restoreResponse.restoreStatus,
-					messages: restoreResponse.messages,
-					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError)],
-				}));
-			}
-		} catch (error) {
-			const errorResponse = getErrorResponse(error);
-			setState((current) => ({
-				...current,
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
-			}));
-		} finally {
-			setIsRestoring(false);
-		}
-	}
-
-	function updateStage2Row(landingNodeName: string, updater: (row: Stage2Row) => Stage2Row) {
-		setState((current) => ({
-			...current,
-			generatedUrls: null,
-			blockingErrors: current.blockingErrors.filter(
-				(error) => !(error.scope === "stage2_row" && error.context?.landingNodeName === landingNodeName),
-			),
-			stage2Snapshot: {
-				rows: current.stage2Snapshot.rows.map((row) => (row.landingNodeName === landingNodeName ? updater(row) : row)),
-			},
-		}));
-	}
-
-	function handleModeChange(landingNodeName: string, mode: Stage2Row["mode"]) {
-		updateStage2Row(landingNodeName, (row) => ({
-			...row,
-			mode,
-			targetName: pickNextTarget(state.stage2Init, mode, row.targetName),
-		}));
-	}
-
-	function handleTargetChange(landingNodeName: string, targetName: string) {
-		updateStage2Row(landingNodeName, (row) => ({
-			...row,
-			targetName: targetName === "" ? null : targetName,
-		}));
-	}
-
-	async function handleGenerate() {
-		setIsGenerating(true);
-		setState((current) => ({
-			...current,
-			messages: [],
-			blockingErrors: [],
-		}));
-
-		try {
-			const response = await postGenerate({
-				stage1Input: state.stage1Input,
-				stage2Snapshot: state.stage2Snapshot,
-			});
-			setState((current) => ({
-				...current,
-				generatedUrls: buildGeneratedUrls(response.longUrl, null),
-				messages: response.messages,
-				blockingErrors: response.blockingErrors,
-			}));
-		} catch (error) {
-			const errorResponse = getErrorResponse(error);
-			setState((current) => ({
-				...current,
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
-			}));
-		} finally {
-			setIsGenerating(false);
-		}
-	}
-
-	async function handlePreferShortUrl(checked: boolean) {
-		if (state.generatedUrls === null) {
-			return;
-		}
-		if (!checked) {
-			setState((current) => current.generatedUrls === null ? current : ({
-				...current,
-				generatedUrls: {
-					...current.generatedUrls,
-					preferShortUrl: false,
-				},
-			}));
-			return;
-		}
-		if (state.generatedUrls.shortUrl) {
-			setState((current) => current.generatedUrls === null ? current : ({
-				...current,
-				generatedUrls: {
-					...current.generatedUrls,
-					preferShortUrl: true,
-				},
-			}));
-			return;
-		}
-
-		setIsCreatingShortUrl(true);
-		setState((current) => ({
-			...current,
-			messages: [],
-			blockingErrors: [],
-		}));
-
-		try {
-			const response = await postShortLink(state.generatedUrls.longUrl);
-			setState((current) => ({
-				...current,
-				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl, true),
-				messages: response.messages,
-				blockingErrors: response.blockingErrors,
-			}));
-		} catch (error) {
-			const errorResponse = getErrorResponse(error);
-			setState((current) => ({
-				...current,
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
-			}));
-		} finally {
-			setIsCreatingShortUrl(false);
 		}
 	}
 
@@ -496,41 +183,13 @@ export default function App() {
 		<div className="min-h-screen bg-canvas text-ink">
 			<div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 md:px-8 md:py-10">
 				<main className="space-y-6">
-					<div id="restore" className="scroll-mt-32">
-					<StageCard
-						eyebrow="Restore"
-						title="恢复入口"
-						description="支持从 longUrl 或 shortUrl 恢复 Stage 1 与 Stage 2；可重放时进入可编辑态，冲突时保留只读快照。"
-						aside={<StatusPill label={restoreStatusLabel} />}
-					>
-						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
-						<div className="grid gap-4 md:grid-cols-[1fr_auto]">
-							<input
-								className="w-full rounded-[20px] border border-line bg-panel px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accentSoft"
-								placeholder="粘贴 longUrl 或 shortUrl"
-								value={state.restoreInput}
-								onChange={(event) => setState((current) => ({ ...current, restoreInput: event.target.value }))}
-							/>
-							<button
-								type="button"
-								onClick={handleRestore}
-								disabled={isRestoring || state.restoreInput.trim() === ""}
-								className="rounded-[20px] bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-							>
-								{isRestoring ? "恢复中..." : "恢复"}
-							</button>
-						</div>
-					</StageCard>
-					</div>
-
-					<div id="stage-1" className="scroll-mt-32">
-					<StageCard
+					<DefaultSectionBlock
 						eyebrow="Stage 1"
 						title="输入与自动填充"
 						description="按 spec 收集落地与中转输入，修改任一输入后 Stage 2 标记过期，需重新执行转换并自动填充。"
-						aside={<StatusPill label={stage1StatusLabel} tone={stage1StatusTone} />}
+						aside={<DefaultStatusBadge label={stage1Status.label} tone={stage1Status.tone} />}
 					>
-						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
+						<DefaultNoticeList messages={state.messages} blockingErrors={globalErrors} />
 						<div className="grid gap-5">
 							<TextAreaField
 								label="落地信息"
@@ -760,22 +419,20 @@ export default function App() {
 
 							<div className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-dashed border-line bg-panel px-4 py-4">
 								<p className="text-sm leading-7 text-muted">当前输入框已支持行号、禁止自动换行和横向滚动，长 URI 与多行订阅文本会按原始分行编辑。</p>
-								<button type="button" onClick={handleStage1Convert} disabled={isConverting} className="rounded-[18px] bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
+								<button type="button" onClick={() => void handleStage1Convert()} disabled={isConverting} className="rounded-[18px] bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
 									{isConverting ? "转换中..." : "转换并自动填充"}
 								</button>
 							</div>
 						</div>
-					</StageCard>
-					</div>
+					</DefaultSectionBlock>
 
-					<div id="stage-2" className="scroll-mt-32">
-					<StageCard
+					<DefaultSectionBlock
 						eyebrow="Stage 2"
 						title="配置区"
 						description="Stage 2 直接消费后端返回的固定行模型；可编辑态使用当前候选列表，只读冲突态保留恢复快照以便核对。"
-						aside={<StatusPill label={stage2StatusLabel} tone={stage2StatusTone} />}
+						aside={<DefaultStatusBadge label={stage2Status.label} tone={stage2Status.tone} />}
 					>
-						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
+						<DefaultNoticeList messages={state.messages} blockingErrors={globalErrors} />
 						<div className="overflow-hidden rounded-[24px] border border-line">
 							<div className="grid grid-cols-[1.2fr_0.8fr_1fr] bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
 								<span>落地节点</span>
@@ -790,7 +447,7 @@ export default function App() {
 							{stage2Rows.map((row) => {
 								const rowMeta = getStage2RowMeta(row.landingNodeName);
 								const rowErrors = getStage2RowErrors(row.landingNodeName);
-								const portForwardChoices = row.mode === "port_forward" ? getTargetChoices(state.stage2Init, row.mode) : [];
+								const portForwardChoices = row.mode === "port_forward" ? getTargetChoices(row.mode) : [];
 								const restrictedReason = rowMeta?.restrictedModes?.[row.mode]?.reasonText;
 								return (
 								<div key={row.landingNodeName} className="border-t border-line bg-surface px-4 py-4 text-sm">
@@ -824,7 +481,7 @@ export default function App() {
 									</div>
 									<div>
 										{isStage2Editable && row.mode === "chain" ? (
-											<ChainTargetPicker
+											<DefaultChainTargetChooser
 												targets={state.stage2Init?.chainTargets ?? []}
 												value={row.targetName}
 												onChange={(targetName) => handleTargetChange(row.landingNodeName, targetName ?? "")}
@@ -875,24 +532,58 @@ export default function App() {
 							</p>
 							<button
 								type="button"
-								onClick={handleGenerate}
+								onClick={() => void handleGenerate()}
 								disabled={!canGenerate}
 								className="rounded-[18px] bg-ink px-5 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
 							>
 								{isGenerating ? "校验并生成链接..." : "生成链接"}
 							</button>
 						</div>
-					</StageCard>
-					</div>
+					</DefaultSectionBlock>
 
-					<div id="stage-3" className="scroll-mt-32">
-					<StageCard
+					<DefaultSectionBlock
 						eyebrow="Stage 3"
-						title="输出区与操作位"
-						description="长链接始终是规范来源；可按需生成短链接，并直接对当前选中的订阅链接执行打开、复制和下载。"
-						aside={<StatusPill label={stage3StatusLabel} tone={stage3StatusTone} />}
+						title="输出与恢复"
+						description="Stage 3 负责订阅链接消费、短链切换与恢复入口；恢复能力默认隐藏，由当前方案层决定如何呼出。"
+						aside={<DefaultStatusBadge label={stage3Status.label} tone={stage3Status.tone} />}
 					>
-						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
+						<DefaultNoticeList messages={state.messages} blockingErrors={globalErrors} />
+						<div className="rounded-[24px] border border-line bg-panel p-4">
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div>
+									<p className="text-sm font-semibold text-ink">恢复已有链接</p>
+									<p className="mt-1 text-sm leading-6 text-muted">从 longUrl 或 shortUrl 恢复阶段 1 与阶段 2。可重放时进入可编辑态，冲突时保留只读快照。</p>
+								</div>
+								<div className="flex items-center gap-3">
+									<DefaultStatusBadge label={state.restoreStatus === "idle" ? "Idle" : state.restoreStatus} tone={state.restoreStatus === "idle" ? "neutral" : "warning"} />
+									<button
+										type="button"
+										onClick={() => setIsRestorePanelOpen((current) => !current)}
+										className="rounded-[18px] border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+									>
+										{isRestorePanelOpen ? "收起恢复入口" : "打开恢复入口"}
+									</button>
+								</div>
+							</div>
+							{isRestorePanelOpen ? (
+								<div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
+									<input
+										className="w-full rounded-[20px] border border-line bg-surface px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accentSoft"
+										placeholder="粘贴 longUrl 或 shortUrl"
+										value={state.restoreInput}
+										onChange={(event) => setRestoreInput(event.target.value)}
+									/>
+									<button
+										type="button"
+										onClick={() => void handleRestore()}
+										disabled={isRestoring || state.restoreInput.trim() === ""}
+										className="rounded-[20px] bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+									>
+										{isRestoring ? "恢复中..." : "恢复"}
+									</button>
+								</div>
+							) : null}
+						</div>
 						{state.generatedUrls !== null ? (
 							<ToggleField
 								label="使用短链接"
@@ -911,8 +602,7 @@ export default function App() {
 							<button type="button" onClick={() => void handleCopyOutput()} disabled={state.generatedUrls === null} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">{copyState === "done" ? "已复制" : copyState === "failed" ? "复制失败" : "复制"}</button>
 							<button type="button" onClick={handleDownloadOutput} disabled={state.generatedUrls === null} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">下载</button>
 						</div>
-					</StageCard>
-					</div>
+					</DefaultSectionBlock>
 				</main>
 			</div>
 		</div>

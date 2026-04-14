@@ -1,45 +1,24 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import type { ChainTarget } from "../types/api";
+import { getChainTargetGroups } from "../../lib/chainTargets";
+import type { ChainTarget } from "../../types/api";
 
-interface ChainTargetPickerProps {
+interface DefaultChainTargetChooserProps {
 	targets: ChainTarget[];
 	value: string | null;
 	onChange: (targetName: string | null) => void;
 }
 
-type ChainTargetGroupKind = ChainTarget["kind"];
+type TargetKind = ChainTarget["kind"];
 
-const groupMeta: Record<ChainTargetGroupKind, { title: string; description: string; emptyText: string }> = {
-	"proxy-groups": {
-		title: "策略组",
-		description: "默认展开，优先展示地域策略组。",
-		emptyText: "当前没有可展示的策略组候选。",
-	},
-	proxies: {
-		title: "代理节点",
-		description: "默认折叠，需要时再展开查看单个中转节点。",
-		emptyText: "当前没有可展示的代理节点候选。",
-	},
-};
-
-const groupOrder: ChainTargetGroupKind[] = ["proxy-groups", "proxies"];
-
-function groupTargets(targets: ChainTarget[]) {
-	return {
-		"proxy-groups": targets.filter((target) => target.kind === "proxy-groups"),
-		proxies: targets.filter((target) => target.kind === "proxies"),
-	};
-}
-
-export function ChainTargetPicker({ targets, value, onChange }: ChainTargetPickerProps) {
-	const [expandedGroups, setExpandedGroups] = useState<Record<ChainTargetGroupKind, boolean>>({
+export function DefaultChainTargetChooser({ targets, value, onChange }: DefaultChainTargetChooserProps) {
+	const [expandedGroups, setExpandedGroups] = useState<Record<TargetKind, boolean>>({
 		"proxy-groups": true,
 		proxies: false,
 	});
-	const groupedTargets = groupTargets(targets);
+	const groups = useMemo(() => getChainTargetGroups(targets), [targets]);
 
-	function toggleGroup(kind: ChainTargetGroupKind) {
+	function toggleGroup(kind: TargetKind) {
 		setExpandedGroups((current) => ({
 			...current,
 			[kind]: !current[kind],
@@ -50,7 +29,7 @@ export function ChainTargetPicker({ targets, value, onChange }: ChainTargetPicke
 		<div className="rounded-[16px] border border-line bg-panel">
 			<div className="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
 				<div>
-					<p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">链式候选</p>
+					<p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">链式目标</p>
 					<p className="mt-1 text-sm font-semibold text-ink">{value ?? "请选择目标"}</p>
 				</div>
 				{value ? (
@@ -68,38 +47,41 @@ export function ChainTargetPicker({ targets, value, onChange }: ChainTargetPicke
 				)}
 			</div>
 			<div className="border-t border-line p-2">
-				{groupOrder.map((kind) => {
-					const items = groupedTargets[kind];
-					const expanded = expandedGroups[kind];
-					const meta = groupMeta[kind];
+				{groups.map((group) => {
+					const expanded = expandedGroups[group.kind];
 					return (
-						<div key={kind} className="overflow-hidden rounded-[14px] border border-line bg-surface not-last:mb-2">
+						<div key={group.kind} className="overflow-hidden rounded-[14px] border border-line bg-surface not-last:mb-2">
 							<button
 								type="button"
-								onClick={() => toggleGroup(kind)}
+								onClick={() => toggleGroup(group.kind)}
 								aria-expanded={expanded}
 								className="flex w-full items-start justify-between gap-3 px-3 py-3 text-left"
 							>
 								<div>
-									<p className="text-sm font-semibold text-ink">{meta.title}</p>
-									<p className="mt-1 text-xs leading-6 text-muted">{meta.description}</p>
+									<div className="flex flex-wrap items-center gap-2">
+										<p className="text-sm font-semibold text-ink">{group.title}</p>
+										<span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${group.priority === "primary" ? "bg-accentSoft text-accent" : "bg-panel text-muted"}`}>
+											{group.priority === "primary" ? "主路径" : "补充路径"}
+										</span>
+									</div>
+									<p className="mt-1 text-xs leading-6 text-muted">{group.description}</p>
 								</div>
 								<span className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-muted">
-									{expanded ? "收起" : "展开"} · {items.length}
+									{expanded ? "收起" : "展开"} · {group.targets.length}
 								</span>
 							</button>
 							{expanded ? (
 								<div className="border-t border-line p-2">
-									{items.length === 0 ? (
-										<p className="rounded-[12px] bg-panel px-3 py-3 text-sm leading-6 text-muted">{meta.emptyText}</p>
+									{group.targets.length === 0 ? (
+										<p className="rounded-[12px] bg-panel px-3 py-3 text-sm leading-6 text-muted">{group.emptyText}</p>
 									) : (
 										<div className="max-h-64 space-y-2 overflow-auto pr-1">
-											{items.map((target) => {
+											{group.targets.map((target) => {
 												const isSelected = value === target.name;
 												const isDisabled = target.isEmpty === true;
 												return (
 													<button
-														key={`${kind}-${target.name}`}
+														key={`${group.kind}-${target.name}`}
 														type="button"
 														onClick={() => onChange(target.name)}
 														disabled={isDisabled}

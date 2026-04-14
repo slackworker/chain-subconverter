@@ -8,7 +8,7 @@
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 4` 可以开始。
 - `Phase 3` 已完成：3-A, 3-B, 3-C, 3-D, 3-E 已全部落地，后端扩展业务与 API 契约现已收口。
-- `Phase 4` 已开始：共享主线已接入真实恢复、转换、生成与短链别名流程，当前已将共享层回收到业务交互边界，并继续收口 spec 细节。
+- `Phase 4` 已开始：共享主线已接入真实恢复、转换、生成与短链别名流程，当前正在将共享层继续收缩到业务交互边界，并移除旧的共享视觉组件假设。
 
 ## Phase 进度
 
@@ -32,11 +32,13 @@
 - 已落地 `POST /api/short-links`、`GET /subscription/<id>.yaml`，并由同一短链索引支持 `resolve-url` 短链接恢复与短链订阅读取。
 - 订阅路由已按 `publicBaseURL` 的路径前缀注册，长链接与短链接在带 base path 的部署形态下都可直接回放。
 - 文档主导航已收敛到 `spec/`、`plan/`、`progress/`、`testing/`；已完成阶段计划与历史材料已移入 `docs/temp/` 待删区。
-- `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、基础输入组件、阶段业务容器与业务交互状态主线。
+- `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、基础输入组件与业务交互状态主线。
 - 共享页面状态已接通 `POST /api/resolve-url`、`POST /api/stage1/convert`、`POST /api/generate` 与 `POST /api/short-links`。
 - Stage 1 已补上完整高级菜单控件、条件显示的端口转发输入区与手动 SOCKS5 追加入口。
-- Stage 2 的 `chainTargets[]` 已按 `kind` 分组展示，`proxy-groups` 默认展开、`proxies` 默认折叠，空策略组保留展示但禁止选择。
+- Stage 2 的 `chainTargets[]` 已具备按 `kind` 区分主路径与补充路径的业务语义，空策略组保留展示但禁止选择。
 - 已从共享层移除 Navbar、stepper 与顶部介绍 header，避免提前冻结 A/B/C 页面结构与交互节奏。
+- 已确认 StageCard、NoticeStack、StatusPill 不再保留共享层或参考实现地位，后续由方案层按需重写或直接删除。
+- 已确认恢复入口归属 Stage 3 输出域，且不再要求共享层固定页面顶部 restore 区或固定 DOM 锚点。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
 - `Phase 4` 当前处于共享主线收口阶段，下一步是完成 review 场景收口与 G1 公共组件确认，再进入 A/B/C 方案评审准备与 Compose 单入口验收。

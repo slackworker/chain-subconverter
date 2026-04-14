@@ -1,3 +1,4 @@
+import { getFieldErrors } from "../lib/notices";
 import type { BlockingError } from "../types/api";
 
 interface FieldErrorListProps {
@@ -6,7 +7,7 @@ interface FieldErrorListProps {
 }
 
 export function FieldErrorList({ errors, field }: FieldErrorListProps) {
-	const fieldErrors = errors.filter((error) => error.scope === "stage1_field" && error.context?.field === field);
+	const fieldErrors = getFieldErrors(errors, field);
 
 	if (fieldErrors.length === 0) {
 		return null;

@@ -1,13 +1,13 @@
 import type { PropsWithChildren, ReactNode } from "react";
 
-interface StageCardProps extends PropsWithChildren {
+interface DefaultSectionBlockProps extends PropsWithChildren {
 	eyebrow: string;
 	title: string;
 	description: string;
 	aside?: ReactNode;
 }
 
-export function StageCard({ eyebrow, title, description, aside, children }: StageCardProps) {
+export function DefaultSectionBlock({ eyebrow, title, description, aside, children }: DefaultSectionBlockProps) {
 	return (
 		<section className="rounded-[28px] border border-line bg-surface/90 p-6 shadow-panel shadow-black/5 backdrop-blur md:p-8">
 			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
