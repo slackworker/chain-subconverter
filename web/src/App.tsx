@@ -12,8 +12,6 @@ import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStag
 import { initialAppState } from "./lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "./types/api";
 
-type ThemeMode = "dawn" | "night";
-
 interface ManualSocks5FormState {
 	name: string;
 	server: string;
@@ -22,7 +20,6 @@ interface ManualSocks5FormState {
 	password: string;
 }
 
-const githubRepositoryURL = "https://github.com/slackworker/chain-subconverter";
 const initialManualSocks5FormState: ManualSocks5FormState = {
 	name: "",
 	server: "",
@@ -158,7 +155,6 @@ function pickNextTarget(stage2Init: Stage2Init | null, mode: Stage2Row["mode"], 
 }
 
 export default function App() {
-	const [theme, setTheme] = useState<ThemeMode>("dawn");
 	const [state, setState] = useState(initialAppState);
 	const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
 	const [manualSocks5Form, setManualSocks5Form] = useState(initialManualSocks5FormState);
@@ -168,10 +164,6 @@ export default function App() {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
-
-	useEffect(() => {
-		document.documentElement.dataset.theme = theme;
-	}, [theme]);
 
 	useEffect(() => {
 		if (copyState === "idle") {
@@ -192,6 +184,18 @@ export default function App() {
 	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating;
 	const stage2StatusLabel = isConflictReadonly ? "Conflict" : state.stage2Stale ? "Stage 2 Stale" : state.stage2Init === null ? "Awaiting Init" : "Ready";
 	const stage2StatusTone = isConflictReadonly || state.stage2Stale || state.stage2Init === null ? "warning" : "success";
+	const stage1StatusLabel =
+		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === ""
+			? "Awaiting Input"
+			: state.stage2Stale && stage2Rows.length > 0
+				? "Changed"
+				: state.stage2Init !== null
+					? "Converted"
+					: "Editing";
+	const stage1StatusTone = state.stage2Init !== null && !state.stage2Stale ? "success" : stage1StatusLabel === "Changed" ? "warning" : "neutral";
+	const stage3StatusLabel = state.generatedUrls === null ? "Awaiting Generate" : state.generatedUrls.shortUrl ? "Short URL Ready" : "Long URL Ready";
+	const stage3StatusTone = state.generatedUrls === null ? "neutral" : "success";
+	const restoreStatusLabel = state.restoreStatus === "idle" ? "Idle" : state.restoreStatus;
 
 	function updateStage1Input(updater: (current: Stage1Input) => Stage1Input) {
 		setState((current) => ({
@@ -490,59 +494,14 @@ export default function App() {
 
 	return (
 		<div className="min-h-screen bg-canvas text-ink">
-			<div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 px-4 py-6 md:px-8 md:py-10">
-				<header className="overflow-hidden rounded-[32px] border border-line bg-surface shadow-panel shadow-black/5">
-					<div className="grid gap-8 px-6 py-8 md:grid-cols-[1.7fr_0.9fr] md:px-8">
-						<div className="space-y-5">
-							<p className="font-mono text-xs uppercase tracking-[0.4em] text-accent">Phase 4 Shared Mainline</p>
-							<div className="space-y-3">
-								<h1 className="max-w-3xl font-display text-4xl leading-tight md:text-6xl">Chain Converter for Mihomo</h1>
-								<p className="max-w-2xl text-base leading-8 text-muted md:text-lg">
-									恢复、转换、生成和短链接别名已经接到同一条共享主线，当前继续补齐 Stage 1 交互细节与 spec 对齐，再进入 A/B/C 方案分支评审。
-								</p>
-							</div>
-							<div className="flex flex-wrap gap-3">
-								<StatusPill label="React + TypeScript" tone="success" />
-								<StatusPill label="Tailwind CSS" tone="success" />
-								<StatusPill label="Restore / Generate Wired" tone="success" />
-							</div>
-						</div>
-						<div className="flex flex-col justify-between gap-6 rounded-[28px] border border-line bg-panel p-5">
-							<div className="space-y-3">
-								<p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted">Current Focus</p>
-								<ul className="space-y-3 text-sm leading-7 text-ink">
-									<li>Stage 1 高级菜单与手动输入完整化</li>
-									<li>Stage 2 / Stage 3 主线可用性收口</li>
-									<li>静态托管与单入口部署复核</li>
-								</ul>
-							</div>
-							<div className="flex flex-wrap gap-3">
-								<a
-									href={githubRepositoryURL}
-									target="_blank"
-									rel="noreferrer"
-									className="rounded-full border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
-								>
-									GitHub
-								</a>
-								<button
-									type="button"
-									onClick={() => setTheme((current) => (current === "dawn" ? "night" : "dawn"))}
-									className="rounded-full border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
-								>
-									切换{theme === "dawn" ? "夜色" : "晨光"}主题
-								</button>
-							</div>
-						</div>
-					</div>
-				</header>
-
+			<div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 md:px-8 md:py-10">
 				<main className="space-y-6">
+					<div id="restore" className="scroll-mt-32">
 					<StageCard
 						eyebrow="Restore"
 						title="恢复入口"
 						description="支持从 longUrl 或 shortUrl 恢复 Stage 1 与 Stage 2；可重放时进入可编辑态，冲突时保留只读快照。"
-						aside={<StatusPill label={state.restoreStatus === "idle" ? "Idle" : state.restoreStatus} />}
+						aside={<StatusPill label={restoreStatusLabel} />}
 					>
 						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
 						<div className="grid gap-4 md:grid-cols-[1fr_auto]">
@@ -562,12 +521,14 @@ export default function App() {
 							</button>
 						</div>
 					</StageCard>
+					</div>
 
+					<div id="stage-1" className="scroll-mt-32">
 					<StageCard
 						eyebrow="Stage 1"
 						title="输入与自动填充"
 						description="按 spec 收集落地与中转输入，修改任一输入后 Stage 2 标记过期，需重新执行转换并自动填充。"
-						aside={<StatusPill label={state.stage2Stale ? "Stage 2 Stale" : "Ready"} tone={state.stage2Stale ? "warning" : "success"} />}
+						aside={<StatusPill label={stage1StatusLabel} tone={stage1StatusTone} />}
 					>
 						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
 						<div className="grid gap-5">
@@ -734,6 +695,15 @@ export default function App() {
 													helper="留空时使用默认 Aethersailor 模板"
 													placeholder="不填写将使用默认 Aethersailor 模板"
 													value={state.stage1Input.advancedOptions.config ?? ""}
+													inputAside={
+														<span
+															title="当前默认推荐模板 URL 为 https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini，上游更新可能导致规则变化。"
+															aria-label="默认推荐模板提示"
+															className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-warm/30 bg-warm/10 text-sm font-bold text-warm"
+														>
+															!
+														</span>
+													}
 													onChange={(value) =>
 														updateStage1Input((current) => ({
 															...current,
@@ -796,10 +766,12 @@ export default function App() {
 							</div>
 						</div>
 					</StageCard>
+					</div>
 
+					<div id="stage-2" className="scroll-mt-32">
 					<StageCard
 						eyebrow="Stage 2"
-						title="配置区公共骨架"
+						title="配置区"
 						description="Stage 2 直接消费后端返回的固定行模型；可编辑态使用当前候选列表，只读冲突态保留恢复快照以便核对。"
 						aside={<StatusPill label={stage2StatusLabel} tone={stage2StatusTone} />}
 					>
@@ -911,12 +883,14 @@ export default function App() {
 							</button>
 						</div>
 					</StageCard>
+					</div>
 
+					<div id="stage-3" className="scroll-mt-32">
 					<StageCard
 						eyebrow="Stage 3"
 						title="输出区与操作位"
 						description="长链接始终是规范来源；可按需生成短链接，并直接对当前选中的订阅链接执行打开、复制和下载。"
-						aside={<StatusPill label={state.generatedUrls?.shortUrl ? "Short URL Ready" : "Long URL Preview"} tone="success" />}
+						aside={<StatusPill label={stage3StatusLabel} tone={stage3StatusTone} />}
 					>
 						<NoticeStack messages={state.messages} blockingErrors={globalErrors} />
 						{state.generatedUrls !== null ? (
@@ -938,6 +912,7 @@ export default function App() {
 							<button type="button" onClick={handleDownloadOutput} disabled={state.generatedUrls === null} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">下载</button>
 						</div>
 					</StageCard>
+					</div>
 				</main>
 			</div>
 		</div>

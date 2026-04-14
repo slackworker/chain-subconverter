@@ -6,7 +6,7 @@
 
 - `Phase 4` 已开始，当前处于“共享主线收口”阶段
 - 已初始化 `web/` 下的 `Vite + React + TypeScript + Tailwind CSS` 前端工程
-- 已落地统一前端 domain types、基础组件、阶段壳层与静态资源托管接线
+- 已落地统一前端 domain types、字段级交互组件、阶段业务容器与静态资源托管接线
 - 已接入真实 `POST /api/stage1/convert -> stage2Init -> POST /api/generate -> longUrl` 主线
 - 已接入 `resolve-url` 与 `short-links` 到共享页面状态主线
 - 尚未完成 G1 公共组件收口、A/B/C 方案分支评审与最终 Compose 单入口验证
@@ -38,7 +38,8 @@
 - API client 与 domain types
 - `stage1Input`、`stage2Snapshot`、`generatedUrls`、`restoreStatus` 等页面状态模型
 - 错误/消息语义与后端契约映射
-- 基础输入组件、阶段容器、设计 token 与通用布局基线
+- 基础输入组件、消息/错误展示、状态标签、节点目标选择器与阶段业务容器
+- 仅保留支撑恢复、Stage 1、Stage 2、Stage 3 数据交互所需的接口
 
 允许 A/B/C 分化的层：
 
@@ -46,6 +47,7 @@
 - 信息架构
 - 交互节奏
 - 视觉呈现
+- Navbar、stepper/tab、品牌头图、主题切换等页面壳层
 
 不允许 A/B/C 分化的层：
 
@@ -87,14 +89,15 @@ flowchart LR
 目标：
 
 - 初始化 `web/` 前端工程
-- 落地共享状态模型、domain types、基础组件与阶段壳层
+- 落地共享状态模型、domain types、字段级交互组件与阶段业务容器
 - 接入后端静态资源托管包装器与前端构建链
 
 当前已完成：
 
 - `web/` 工程骨架与生产构建
 - SPA 静态资源托管包装器
-- 基础阶段卡片、输入组件、主题 token 与共享壳层页面
+- 基础阶段卡片、输入组件、消息/错误展示、状态标签与目标选择器
+- 已将 Navbar、hero header、stepper 等页面结构从共享层剥离，避免提前冻结 A/B/C 方案
 - 共享页面状态已接通 `restore -> stage1/convert -> generate -> short-links`
 - Stage 1 已补上高级菜单全量控件与手动 SOCKS5 追加入口
 - Stage 2 已补上 `chainTargets[]` 分组选择器：`proxy-groups` 默认展开，`proxies` 默认折叠，空策略组保留展示但禁止选择
@@ -103,7 +106,6 @@ flowchart LR
 当前未完成：
 
 - G1 公共组件完成确认与统一 review 场景固化
-- 导航外壳等剩余 spec 细节
 - A/B/C 方案评审与单入口部署验收
 
 ### G1：公共组件完成确认
@@ -112,7 +114,8 @@ flowchart LR
 
 - 共享状态模型稳定
 - API client 与 domain types 固定
-- 公共组件已足以支撑 A/B/C 三条分支
+- 公共组件边界已收敛为业务数据交互接口：输入字段、消息/错误展示、状态标签、节点目标选择器与阶段业务容器
+- Navbar、stepper/tab、品牌头图、主题切换等页面壳层不再属于共享层，由 A/B/C 分支自行决定
 - review fixture 与基础演示场景可复用
 - 静态资源托管和前端构建链可重复运行
 
@@ -176,6 +179,6 @@ flowchart LR
 
 ## 当前下一步
 
-1. 收口导航外壳与 review 场景等剩余差距，完成 G1 前的公共组件确认
+1. 收口 review 场景与演示数据，完成 G1 前的公共组件确认
 2. 固化可复用的 review 场景与演示数据，准备 A/B/C 三分支对比
 3. 在共享业务层稳定后进入 G1，并切出 A/B/C 三个 UI 分支

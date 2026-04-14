@@ -6,21 +6,11 @@
 
 - 当前前端主线固定为：恢复已有链接（可选） -> 阶段 1 输入 -> 转换并自动填充 -> 阶段 2 调整 -> 生成链接 -> 阶段 3 消费链接
 - `resolve-url` 只承担“从既有 `longUrl` / `shortUrl` 恢复页面状态”的入口职责，不单独形成新的业务阶段
-- Nav Bar、主题切换、GitHub 跳转等外壳元素不得阻塞主线闭环实现与验收
+- Navbar、stepper/tab、品牌头图、主题切换等页面外壳不属于共享业务边界，可由 A/B/C 方案自行决定
 
 ---
 
 ## 全局布局
-
-### Nav Bar
-
-| 元素 | 说明 |
-|------|------|
-| Title | `Chain Converter for Mihomo` |
-| 亮/暗色主题切换 | 切换 light / dark mode |
-| GitHub 跳转 | 图标链接至项目 GitHub 仓库 |
-
-> 当前版本仅设计中文界面，不提供语言切换。
 
 ### 页面恢复入口
 
@@ -213,7 +203,7 @@
 
 ## 跨阶段交互
 
-- 三个阶段依次展开，或用 stepper/tab 导航
+- 业务流程通常按“恢复（可选） -> Stage 1 -> Stage 2 -> Stage 3”推进；前端界面可采用自上而下平铺、分段滚动或其他不改变业务边界的组织方式
 - 重新执行阶段 1 后，阶段 2 必须完全按新的 `stage2Init` 重建
 - 阶段 3 的长链接可作为页面状态恢复来源
 - 前端通过 `resolve-url` 恢复页面时，成功响应只消费后端返回的 `stage1Input`、`stage2Snapshot`、`restoreStatus` 与 `messages[]`；失败响应按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
