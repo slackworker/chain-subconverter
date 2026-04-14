@@ -1,7 +1,0 @@
-proxies:
-  - {name: 🇭🇰 HK-Test-Relay, server: 198.51.100.21, port: 9101, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}
-  - {name: 🇺🇸 US-Test-Relay, server: 198.51.100.22, port: 9102, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}
-  - {name: 🇯🇵 JP-Test-Relay, server: 198.51.100.23, port: 9103, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}
-  - {name: 🇸🇬 SG-Test-Relay, server: 198.51.100.24, port: 9104, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}
-  - {name: 🇨🇳 TW-Test-Relay, server: 198.51.100.25, port: 9105, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}
-  - {name: 🇰🇷 KR-Test-Relay, server: 198.51.100.26, port: 9106, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}

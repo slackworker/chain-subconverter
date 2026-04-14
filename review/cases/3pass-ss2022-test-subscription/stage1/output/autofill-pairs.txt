@@ -1,2 +1,0 @@
-🇺🇸 SS2022-Test-256-US => chain => 🇺🇸 美国节点
-SS2022-Test-256 => none
