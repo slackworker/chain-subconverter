@@ -98,7 +98,7 @@ flowchart LR
 - SPA 静态资源托管包装器
 - 基础阶段卡片、输入组件、消息/错误展示、状态标签与目标选择器
 - 已将 Navbar、hero header、stepper 等页面结构从共享层剥离，避免提前冻结 A/B/C 方案
-- 共享页面状态已接通 `restore -> stage1/convert -> generate -> short-links`
+- 共享页面状态已接通 `resolve-url -> stage1/convert -> generate -> short-links`
 - Stage 1 已补上高级菜单全量控件与手动 SOCKS5 追加入口
 - Stage 2 已补上 `chainTargets[]` 分组选择器：`proxy-groups` 默认展开，`proxies` 默认折叠，空策略组保留展示但禁止选择
 - `go test ./...` 与 `npm run build` 已通过
