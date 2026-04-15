@@ -14,12 +14,12 @@
 
 - 后端统一调用同部署内常驻的 `subconverter` HTTP 服务
 - 后端对 `subconverter` 的每次调用都必须设置超时；超时值必须可配置，默认 `15s`
-- 默认部署下，`subconverter` 必须开启订阅/配置/规则集缓存，或提供等价的重复拉取收敛机制；不得以关闭缓存作为正常运行默认值
+- 默认部署下，`subconverter` 以“开启订阅/配置/规则集缓存”或“等价的重复拉取收敛机制”运行
 - 后端对 `subconverter` 的同时在途请求数必须受控且可配置，默认 `10`
-- 达到并发上限时，后端必须立即失败；不得继续转发、不得排队等待
+- 达到并发上限时，后端立即失败，不转发、不排队
 - 业务层默认不对失败的 `subconverter` 调用自动重试
 - 若显式启用重试，最多只允许 `1` 次串行重试，且不得并行放大请求
-- 后端必须在转发给 `subconverter` 前先校验参与本次转换的输入边界；超限时必须直接拒绝，不得转发给 `subconverter`
+- 后端在转发给 `subconverter` 前先校验参与本次转换的输入边界；超限请求直接拒绝
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小上限必须可配置，默认 `2048` bytes
 - 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的 URL 数量上限都必须可配置，默认每个字段最多 `20` 条
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
@@ -76,8 +76,8 @@
 - 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
 - 模板可正常拉取但未识别出任何地域策略组时，请求仍可继续；此时只是不支持基于地域策略组的自动填充
 - `chain-subconverter` 当前阶段 1/API 快照统一采用三态：复选框 `true/false/null`、文本框 `非空字符串/null`；其中当前 Web 前端 checkbox 只产出 `true/null`，但服务端仍必须正确处理显式传入的 `false`
-- query 构造必须逐项保持该语义，不得把 `null` 翻译成 `false` 或空 query
-- 文本框留空若以 `""` 进入服务端，必须先归一化为 `null`；query 构造阶段不得拼出 `include=`、`exclude=`；`config` 由后端模板准备流程统一处理
+- query 构造逐项保持该语义：`null` 保持为“不传参数”
+- 文本框留空若以 `""` 进入服务端，先归一化为 `null`；query 构造阶段仅拼接非空文本参数（`config` 由后端模板准备流程统一处理）
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
@@ -92,14 +92,14 @@
 - 落地节点信息
 - 中转节点信息
 - `config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
-- 端口转发服务信息
+- 端口转发服务信息（`forwardRelayItems[]`）
 
 其中：
 
 - `subconverter` 使用落地节点信息、中转节点信息、`config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
 - `config` 的用户输入只用于确定本次有效模板来源；模板内容由 `chain-subconverter` 拉取、校验并托管后，再供 `subconverter` 使用
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
-- `advancedOptions.enablePortForward = false` 时，端口转发服务信息必须为空字符串，且不得参与解析、校验或候选生成
+- `advancedOptions.enablePortForward = false` 时，`forwardRelayItems` 固定为空数组，且不参与解析、校验或候选生成
 - `transitRawText` 支持三种输入项：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
 - `data:text/plain,<base64文本>` 在业务语义上视为订阅 URL，不单独引入“内联原始订阅文本”输入类型
 
@@ -134,16 +134,17 @@
 
 输入与校验规则：
 
-- 逐行解析；空行忽略；保留其余非空行原始顺序
-- 每个非空行必须严格匹配 `server:port`
+- `stage1Input.forwardRelayItems` 必须是数组；每个元素承载一个独立输入项，不使用连续文本回拼
+- 逐个解析 `stage1Input.forwardRelayItems[]` 中的输入项；空字符串项忽略；保留其余有效输入项的原始顺序
+- 每个有效输入项都必须严格匹配 `server:port`
 - 当前不支持 IPv6；`server` 只允许两类：严格 IPv4、ASCII hostname
 - 若 `server` 仅由数字与 `.` 组成，则必须按严格 IPv4 校验：恰有 `4` 段、每段为 `0-255` 的十进制整数、多位段不得有前导 `0`
 - 否则必须按 ASCII hostname 校验：总长度 `1-253`、至少包含一个 `.`、按 `.` 分段后每段长度 `1-63`、每段仅允许字母/数字/`-`、段首尾不得为 `-`
 - ASCII hostname 不允许空段，因此不允许连续 `.` 与尾点；不允许 `_`；不允许原始 Unicode 字符
 - `port` 必须是十进制整数，取值范围 `1-65535`
-- 不做自动纠错；非空行若包含首尾空白、缺失 `:`、端口非数字或越界，都视为非法行
+- 不做自动纠错；有效输入项若包含首尾空白、缺失 `:`、端口非数字或越界，都视为非法项
 - 本规则只做语法校验；不做 DNS 解析、可达性校验；私网、环回与其他保留 IPv4 地址不因地址类型额外判错
-- 非法行报错；重复行报错。重复判定时，hostname 必须按 ASCII 小写归一化后与 `port` 一起比较；IPv4 按原值与 `port` 一起比较
+- 非法输入项报错；重复输入项报错。重复判定时，hostname 必须按 ASCII 小写归一化后与 `port` 一起比较；IPv4 按原值与 `port` 一起比较
 - 每条合法服务都必须生成唯一的规范化字面量 `server:port`：hostname 一律转为 ASCII 小写，IPv4 保持原值，`port` 一律转为无前导 `0` 的十进制字符串
 - 只要存在任一报错，阶段 1 视为失败，不产出 `stage2Init.forwardRelays[]`
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
@@ -173,7 +174,7 @@
 2. 从这些区域策略组的成员列表中剔除所有落地节点
 3. 若某落地节点同时出现在多个区域策略组中，必须在每个命中的区域策略组内都剔除
 4. 完成剔除后的结果，才是后续校验与订阅渲染统一使用的 `baseCompleteConfig`
-5. 在执行 2.3 的区域策略组成员统计前，必须保证剔除语义已生效；不得把落地节点计入区域策略组成员数
+5. 在执行 2.3 的区域策略组成员统计前，先应用剔除语义；区域策略组成员统计只计入中转节点
 
 ---
 
@@ -245,14 +246,14 @@
 
 ### 2.4 收集端口转发候选
 
-- 从阶段 1 录入并校验通过的端口转发服务信息中收集 `forwardRelays[]`
+- 从阶段 1 录入并校验通过的 `forwardRelayItems[]` 中收集 `forwardRelays[]`
 - `forwardRelays[].name` 必须等于该服务的规范化 `server:port` 字面量
 - 保留用户输入顺序
 - 当端口转发功能未开启时，`forwardRelays[]` 为空
 
 ### 2.5 自动填写 `mode` 与第三列
 
-阶段 2 初始化时，后端必须直接为每行产出默认的 `mode` 与 `targetName`；前端只消费 `stage2Init.rows[]`，不得自行补算初始状态。
+阶段 2 初始化时，后端必须直接为每行产出默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
 
 #### 初始化决策顺序
 
@@ -276,7 +277,7 @@
 #### 当 `mode = port_forward`
 
 - 本规则同时适用于“初始化直接落到 `port_forward`”和“用户后续手动切换到 `port_forward`”
-- `targetName` 必须保存所选 `forwardRelays[].name`，不得另造别名
+- `targetName` 保存所选 `forwardRelays[].name`
 - 若 `forwardRelays[]` 中仅有 1 个服务，则 `targetName` 自动填写该服务的 `name`
 - 若 `forwardRelays[]` 中有多个服务，则 `targetName = null`，并保留完整 `forwardRelays[]` 供用户手动选择
 
@@ -334,29 +335,24 @@
 
 ### 3.2.1 恢复链接时的可重放性判定
 
-本节是 `POST /api/resolve-url` 判断 `restoreStatus` 的权威口径。其关注点是“恢复快照中的目标引用是否仍然有效”，而不是“上游输入是否发生过任何变化”。`resolve-url` 的校验必须复用本章定义的生成前校验口径。
+本节是 `POST /api/resolve-url` 判断 `restoreStatus` 的权威口径。判定目标是“恢复快照中的目标引用是否仍然有效”。`resolve-url` 的校验必须复用本章定义的生成前校验口径。
 
 判定规则：
 
 - 后端必须基于恢复出的 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
-- 若任一必需 pass 失败，`resolve-url` 必须直接返回失败响应；该情形不是 `restoreStatus = conflicted`
+- 若任一必需 pass 失败，`resolve-url` 直接返回失败响应；`restoreStatus` 只用于解码与校验成功后的可重放性结果
 - 后端必须用恢复出的 `stage2Snapshot` 执行与生成阶段一致的逐行校验
 - 只要每一行的 `landingNodeName` 仍可定位、`mode` 仍合法、`targetName` 仍可在对应候选集合中解析，则该恢复快照应视为可重放
 - 任一行只要出现引用失效，即应判定整个恢复快照不可重放，并返回 `restoreStatus = conflicted`
 
-补充说明：
+补充规则：
 
-- 上游订阅内容变化本身不是失败条件；只有变化导致恢复快照中的引用失效，才构成不可重放
+- 上游订阅内容变化导致引用仍有效时，恢复结果保持可重放；导致任一引用失效时，恢复结果为不可重放
 - 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
 - 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `landingNodeName` 在当前转换结果中已不存在、被重命名或无法唯一对应，则视为引用失效
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
-
-示例：
-
-- 合法放行：中转订阅更新后，`🇭🇰 香港节点` 这个区域策略组的成员发生变化，但恢复快照中的某行仍引用 `targetName = "🇭🇰 香港节点"`；此时应判定为可重放
-- 不合法阻断：落地订阅更新后，原来的 `landingNodeName = "HK 01"` 变成了其他名称，导致恢复快照无法按原名称定位该落地节点；此时应判定为不可重放
 
 ### 3.3 链式代理改写
 

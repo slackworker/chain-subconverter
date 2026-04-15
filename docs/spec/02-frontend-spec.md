@@ -20,23 +20,22 @@
 - 恢复、转换、生成、短链切换、错误阻断、只读冲突态等状态语义
 - 阻断错误与普通消息如何按 `scope` 和 `level` 映射到页面承载区
 
-### 方案层可自由决定的内容
+### 方案层可自由决定的内容（如无特别约定）
 
 - 页面结构、信息架构、布局方向、滚动节奏、分栏方式
 - Stage 标题、说明文案、按钮文案、图标与视觉层级
 - 是否使用卡片、分段、抽屉、弹层、菜单、页内折叠等具体呈现形式
-- 是否提供页面锚点、页内导航或其他跳转机制；共享层不再固定要求 `#restore`、`#stage-1`、`#stage-2`、`#stage-3` 这类 DOM id
 
 ---
 
 ## 阶段 1：输入区
 
-阶段 1 负责收集原始输入，并触发“转换并自动填充”。
+阶段 1 负责收集原始输入，并通过“转换并自动填充”生成阶段 2 所需的配置基底。
 
 ### 1.1 落地节点信息输入区
 
 - 用途：输入落地节点或落地订阅信息
-- 输入方式：订阅 URL、节点 URI、手动添加 SOCKS5 节点
+- 输入方式：通过多行文本框输入订阅 URL、节点 URI；通过按钮弹出表单手动添加 SOCKS5 节点
 - 展示规则：每条一行，显示行号，不自动换行，允许横向滚动
 
 #### 1.1.1 手动添加 SOCKS5 节点
@@ -49,9 +48,9 @@
 | `username` | text | 否 | 用户名 |
 | `password` | text | 否 | 密码 |
 
-- 仅支持手动添加 SOCKS5
+- 仅支持手动添加 SOCKS5 类型的节点
 - `username` 与 `password` 必须成对出现
-- 提交后以一条标准 `socks5://` URI 追加到落地输入区
+- 提交后转换为一条标准 `socks5://` URI 追加到落地输入区
 
 #### 1.1.2 落地副本
 
@@ -66,12 +65,14 @@
 - 展示规则：每条一行，显示行号，不自动换行，允许横向滚动
 - 具体输入归一化与上游传递规则见 [04-business-rules](04-business-rules.md)
 
-### 1.3 端口转发服务信息区
+### 1.3 端口转发服务信息区（属于中转信息输入区的一部分）
 
 - 启用前提：先展开高级菜单，再开启“启用端口转发（实验性）”
 - 默认状态：隐藏
-- 输入形态：多行文本；每行一条候选服务
+- 布局位置：位于“中转信息输入区”下方，作为该输入区的附加输入行；启用后占用该区域最下面一行空间
+- 输入形态：TagInput，按输入项逐个录入 `server:port`
 - 关闭“启用端口转发（实验性）”时，前端必须隐藏并清空该输入区
+- 提交阶段 1 快照时，端口转发服务信息必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
 - 校验与去重口径：统一遵循 [04-business-rules](04-business-rules.md) `1.1.2 端口转发服务输入校验（权威口径）`
 
 ### 1.4 高级菜单区
@@ -79,13 +80,20 @@
 - 形态：默认折叠
 - 阶段 1 中可配置的 `subconverter` 参数统一收纳在此区域
 - 前端控件集合（阶段 1 快照字段名）：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
+- 阶段 1 提交模型必须保持结构化：高级菜单区作为 `advancedOptions` 对象提交；端口转发服务信息区作为 `forwardRelayItems` 数组提交
+- 控件类型：
+  - `config`、`include`、`exclude`：单行文本输入框
+  - `emoji`、`udp`、`skipCertVerify`：checkbox
+  - `enablePortForward`：switch
+- 交互联动：开启 `enablePortForward` 后，前端必须在“中转信息输入区”下方显示“端口转发服务信息区”；关闭时必须隐藏并清空该输入区
 - 隐藏固定参数不展示控件
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
 - “模板 URL”输入框默认视觉上留空
 - “模板 URL”输入框 placeholder：`不填写将使用默认 Aethersailor 模板`
 - 方案层必须向用户清楚暴露当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，并说明上游更新可能导致规则变化；具体使用提示 icon、说明文本或其他呈现方式由方案层决定
 - 参数默认值与 `GET /sub` 传递规则的唯一权威定义位于 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表`
-- 前端提交阶段 1 快照时不得依赖“省略键 = 默认值”的隐式约定：`emoji`、`udp`、`skipCertVerify` 的 checkbox 在当前前端交互中只在 `true` 与 `null` 之间切换，勾选时提交 `true`，不勾选时提交 `null`；其中 `emoji` 与 `udp` 默认勾选，`skipCertVerify` 默认不勾选；文本框留空时提交 `null`
+- 前端提交值规则：`emoji`、`udp`、`skipCertVerify` 的 checkbox 只提交 `true | null`（勾选 `true`，未勾选 `null`）；`config`、`include`、`exclude` 留空提交 `null`
+- 前端默认状态：`emoji` 与 `udp` 默认勾选，`skipCertVerify` 默认不勾选
 - 前端只负责渲染与提交高级选项快照；具体参数传递语义以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 
 ### 1.5 转换动作
@@ -106,7 +114,7 @@
 
 ## 阶段 2：配置区
 
-阶段 2 以“每个落地节点一项配置单元”的固定业务模型渲染，数据完全来自后端返回的 `stage2Init`。方案层可将该模型呈现为表格、卡片、列表或其他形式，但不得改变其字段语义。
+阶段 2 以“每个落地节点一项配置单元”的固定业务模型渲染，数据完全来自后端返回的 `stage2Init`，并固定以列表形式呈现。
 
 ### 2.1 数据模型
 
@@ -140,7 +148,7 @@
 - 模式可用性、行级限制与禁用原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes` 与 `reasonText`
 - 前端按后端返回结果渲染可选项与禁用态，不自行补算额外规则
 
-### 2.5 第三列：目标
+### 2.5 第三列：目标（单项选择器）
 
 - 当 `mode = none` 时，第三列清空并禁用
 - 当 `mode = chain` 时，第三列展示链式候选列表

@@ -7,7 +7,7 @@
 ## 通用访问约束
 
 - 当前 spec 定义的所有对外 HTTP 端点都不需要鉴权
-- 服务端不得要求登录态、`Authorization` 头、API Key、签名或其他认证凭据作为调用前提
+- 服务端按匿名请求处理，不校验登录态、`Authorization` 头、API Key、签名或其他认证凭据
 - `POST /api/*`、`GET /subscription/<id>.yaml` 与 `GET /subscription?data=...` 都按匿名请求处理
 - 可额外暴露 `GET /healthz` 作为部署侧健康检查端点；该端点只用于存活/就绪探测，不承载业务契约，也不改变本文对 `/api/*` 与 `/subscription*` 的定义范围
 
@@ -20,7 +20,7 @@
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
-    "forwardRelayRawText": "...",
+    "forwardRelayItems": [],
     "advancedOptions": {
       "emoji": true,
       "udp": true,
@@ -36,7 +36,8 @@
 
 约束：
 
-- `forwardRelayRawText` 始终是字符串；`advancedOptions.enablePortForward = false` 时必须为 `""`，非空视为无效请求
+- `forwardRelayItems` 始终是字符串数组；`advancedOptions.enablePortForward = false` 时必须为 `[]`，非空视为无效请求
+- `forwardRelayItems[]` 的每个元素对应一个独立端口转发输入项；数组顺序保留用户输入顺序，不使用连续文本序列化
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
 - `advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config`、`include`、`exclude` 使用 `非空字符串 | null`
 - `advancedOptions.config` 的字段名保留 `config`，用于兼容 `subconverter` 的既有 `config` 查询参数；其业务语义固定为“模板 URL”或“外部配置（模板）URL”，不得理解为最终 Mihomo YAML
@@ -195,7 +196,7 @@
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
-    "forwardRelayRawText": "...",
+    "forwardRelayItems": ["relay.example.com:1080"],
     "advancedOptions": {
       "emoji": true,
       "udp": true,
@@ -243,7 +244,7 @@
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
 - `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`、`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`
-- `INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`：都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayRawText`
+- `INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`：都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayItems`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
@@ -261,7 +262,7 @@
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
-    "forwardRelayRawText": "...",
+    "forwardRelayItems": ["relay.example.com:1080"],
     "advancedOptions": {
       "emoji": true,
       "udp": true,
@@ -414,7 +415,7 @@
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
-    "forwardRelayRawText": "...",
+    "forwardRelayItems": ["relay.example.com:1080"],
     "advancedOptions": {
       "emoji": true,
       "udp": true,
@@ -444,7 +445,7 @@
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
 - 传入短链接时，先解析为长链接，再解码同一份快照
-- 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，必须直接返回失败响应，不得返回 `restoreStatus`
+- 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
@@ -468,7 +469,7 @@
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
-- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」，不得返回 YAML；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
+- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
 
 ### 6. `GET /subscription?data=...`
 
@@ -507,7 +508,7 @@
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
-    "forwardRelayRawText": "...",
+    "forwardRelayItems": ["relay.example.com:1080"],
     "advancedOptions": {
       "emoji": true,
       "udp": true,
@@ -533,7 +534,7 @@
 规则：
 
 - `v` 是长链接编码版本字段，当前固定为 `1`
-- 当前版本的规范长链接必须完整编码 `stage1Input` 与 `stage2Snapshot`，不得额外编码其他业务字段
+- 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
 ### 3. 规范编码算法
@@ -549,7 +550,7 @@
 规范化 JSON 规则：
 
 - 对象键必须按字典序递归排序
-- 数组顺序必须保持原语义顺序，不得重排
+- 数组顺序按原语义顺序保留
 - JSON 文本不得包含额外空白
 - 布尔值、`null`、数字与字符串必须使用标准 JSON 表示
 - 当前版本的规范编码输出中，不得包含 schema 未定义字段
@@ -572,7 +573,7 @@ gzip 规则：
 - 早期原型默认上限为 `2048` bytes
 - 阶段 1 输入总大小上限与 `longUrl` 总长度上限都必须可配置；两者可以分别调节
 - 当前 `v = 1` 编码下，早期原型默认将阶段 1 的 `landingRawText` 与 `transitRawText` 规范化后总大小上限设为 `2048` bytes
-- `POST /api/generate` 若生成结果超过上限，必须返回阻断错误，不得静默截断、不得自动改为短链接
+- `POST /api/generate` 若生成结果超过上限，必须返回阻断错误；结果按原请求语义终止，不截断、不自动切换为短链接
 - 满足阶段 1 输入边界的合法请求，仍可能因最终 `longUrl` 超长而在生成阶段失败；该情形必须以 `LONG_URL_TOO_LONG` 返回
 - 超限时错误码必须为 `LONG_URL_TOO_LONG`
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，若规范化重编码超出当前上限，同样返回 `LONG_URL_TOO_LONG`（非解码管线失败，故不使用 `INVALID_LONG_URL`）
@@ -588,11 +589,11 @@ gzip 规则：
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接是唯一规范化状态源
-- 短链接只是不透明别名，不是另一套状态源
+- 短链接是长链接的不透明别名，不单独承载状态源语义
 - 短链接 ID 必须由规范化 `longUrl` 通过确定性算法生成；同一个 `longUrl` 必须得到同一个 `shortUrl`
 - 当前默认短链接 ID 生成算法为：对规范化 `longUrl` 计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
 - 短链接索引在逻辑上是 `longUrl ↔ shortId` 的双射子集：除淘汰导致的失效外，同一 `longUrl` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`longUrl`（或与其一一对应的规范化键）唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立
-- 在当前默认 `64` bit 设计下，允许仅实现极简碰撞防御：若检测到 `shortId` 已被另一条 `longUrl` 占用，后端必须 fail closed，不得静默覆盖或产生「一短多长」
+- 在当前默认 `64` bit 设计下，允许仅实现极简碰撞防御：若检测到 `shortId` 已被另一条 `longUrl` 占用，后端必须 fail closed，并保持「一短一长」映射关系
 - 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为对应 `longUrl`
 - 短链接索引的默认持久化实现使用本地 SQLite 文件
 - 短链接索引记录至少包含 `shortId`、`longUrl` 与 `lastAccessedAt`
