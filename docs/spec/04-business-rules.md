@@ -75,9 +75,8 @@
 - 模板拉取返回非成功 HTTP 状态、请求失败或空内容时，当前请求必须在调用 `subconverter` 前失败
 - 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
 - 模板可正常拉取但未识别出任何地域策略组时，请求仍可继续；此时只是不支持基于地域策略组的自动填充
-- `chain-subconverter` 当前阶段 1/API 快照统一采用三态：复选框 `true/false/null`、文本框 `非空字符串/null`；其中当前 Web 前端 checkbox 只产出 `true/null`，但服务端仍必须正确处理显式传入的 `false`
-- query 构造逐项保持该语义：`null` 保持为“不传参数”
-- 文本框留空若以 `""` 进入服务端，先归一化为 `null`；query 构造阶段仅拼接非空文本参数（`config` 由后端模板准备流程统一处理）
+- 阶段 1 高级选项快照进入 query 构造前，先按 [03-backend-api](03-backend-api.md) 的接口接受层模型完成入站归一化
+- query 构造逐项保持该语义：复选框 `null` 不传、显式 `true/false` 按值传递；文本字段仅拼接非空字符串参数（`config` 由后端模板准备流程统一处理）
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 

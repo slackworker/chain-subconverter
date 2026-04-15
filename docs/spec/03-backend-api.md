@@ -39,13 +39,11 @@
 - `forwardRelayItems` 始终是字符串数组；`advancedOptions.enablePortForward = false` 时必须为 `[]`，非空视为无效请求
 - `forwardRelayItems[]` 的每个元素对应一个独立端口转发输入项；数组顺序保留用户输入顺序，不使用连续文本序列化
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
-- `advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config`、`include`、`exclude` 使用 `非空字符串 | null`
+- 接口接受层中，`advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config`、`include`、`exclude` 使用 `非空字符串 | null`
 - `advancedOptions.config` 的字段名保留 `config`，用于兼容 `subconverter` 的既有 `config` 查询参数；其业务语义固定为“模板 URL”或“外部配置（模板）URL”，不得理解为最终 Mihomo YAML
-- 复选框字段中：`true` 表示显式传 `true`，`false` 表示显式传 `false`，`null` 表示不向上游传该参数
-- 当前 Web 前端的 checkbox 交互只会产出 `true` 或 `null`；`false` 仍保留在接口模型中，供非 UI 调用方或兼容历史快照时使用
-- 文本字段中：`config` 表示用户填写的模板 URL；`include` 与 `exclude` 为透传文本参数；`null` 表示该字段留空
-- 为兼容文本框空输入，服务端可接受 `config = ""`、`include = ""`、`exclude = ""`，但必须在入站归一化为 `null`，后续快照、long URL payload 与 query 构造都按“不传参数”处理
-- `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`
+- 三态语义为：复选框 `true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；文本字段 `null` 表示该字段留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
+- `config` 表示用户填写的模板 URL；`include` 与 `exclude` 为透传文本参数。为兼容文本框空输入，服务端可接受 `config = ""`、`include = ""`、`exclude = ""`，但必须在入站归一化为 `null`
+- `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`；参数默认值与具体传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
 
@@ -255,24 +253,16 @@
 
 用途：接收阶段 1 快照与阶段 2 快照，完成最终校验并返回可消费的长链接。
 
-请求：
+请求结构：
+
+- `stage1Input`：结构同 `POST /api/stage1/convert` 的请求体中的 `stage1Input`
+- `stage2Snapshot`：结构见本文“2. 阶段 2 配置快照”
+
+最小请求示例：
 
 ```json
 {
-  "stage1Input": {
-    "landingRawText": "...",
-    "transitRawText": "...",
-    "forwardRelayItems": ["relay.example.com:1080"],
-    "advancedOptions": {
-      "emoji": true,
-      "udp": true,
-      "skipCertVerify": null,
-      "config": null,
-      "include": null,
-      "exclude": null,
-      "enablePortForward": true
-    }
-  },
+  "stage1Input": { "...": "同 POST /api/stage1/convert 请求示例" },
   "stage2Snapshot": {
     "rows": [
       {
@@ -412,29 +402,8 @@
 {
   "longUrl": "https://example.com/subscription?data=...",
   "restoreStatus": "replayable",
-  "stage1Input": {
-    "landingRawText": "...",
-    "transitRawText": "...",
-    "forwardRelayItems": ["relay.example.com:1080"],
-    "advancedOptions": {
-      "emoji": true,
-      "udp": true,
-      "skipCertVerify": null,
-      "config": null,
-      "include": null,
-      "exclude": null,
-      "enablePortForward": true
-    }
-  },
-  "stage2Snapshot": {
-    "rows": [
-      {
-        "landingNodeName": "HK 01",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ]
-  },
+  "stage1Input": { "...": "结构同 POST /api/stage1/convert 请求中的 stage1Input" },
+  "stage2Snapshot": { "...": "结构同本文“2. 阶段 2 配置快照”" },
   "messages": [],
   "blockingErrors": []
 }
