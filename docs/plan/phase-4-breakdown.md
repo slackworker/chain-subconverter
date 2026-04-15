@@ -38,7 +38,7 @@
 - API client 与 domain types
 - `stage1Input`、`stage2Snapshot`、`generatedUrls`、`restoreStatus` 等页面状态模型
 - 恢复、转换、生成、短链切换、过期态与只读冲突态的流程编排
-- 错误/消息语义与后端契约映射
+- 错误/消息语义与后端契约映射，以及 `blockingErrors.scope` 到共享定位语义的映射
 - 基础输入组件与目标选择所需的业务抽象接口
 - 仅保留支撑恢复、Stage 1、Stage 2、Stage 3 数据交互所需的接口
 
@@ -48,7 +48,7 @@
 - 信息架构
 - 交互节奏
 - 视觉呈现
-- 阶段容器、消息容器、状态标签、目标选择器的具体 UI 实现
+- 阶段容器、消息容器、状态标签、目标选择器、全局错误承载区与局部阻断提示的具体 UI 实现
 - Navbar、stepper/tab、品牌头图、主题切换等页面壳层
 
 不允许 A/B/C 分化的层：
