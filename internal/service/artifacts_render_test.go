@@ -14,7 +14,7 @@ func TestRenderCompleteConfig_PortForwardRewritesServerAndPort(t *testing.T) {
 			AdvancedOptions: AdvancedOptions{
 				EnablePortForward: true,
 			},
-			ForwardRelayRawText: targetName,
+			ForwardRelayItems: []string{targetName},
 		},
 		Stage2Snapshot{
 			Rows: []Stage2Row{

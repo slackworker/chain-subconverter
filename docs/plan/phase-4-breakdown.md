@@ -8,7 +8,7 @@
 - 已初始化 `web/` 下的 `Vite + React + TypeScript + Tailwind CSS` 前端工程
 - 已落地统一前端 domain types、字段级交互组件、共享流程主线与静态资源托管接线
 - 已接入真实 `POST /api/stage1/convert -> stage2Init -> POST /api/generate -> longUrl` 主线
-- 已接入 `resolve-url` 与 `short-links` 到共享页面状态主线
+- 共享主线已接通 `resolve-url`、`short-links` 与当前链接输入状态，但 G1 共享边界验收尚未完成
 - 尚未完成 G1 共享业务层收口、A/B/C 方案分支评审与最终 Compose 单入口验证
 
 ## 主线业务路径
@@ -102,7 +102,9 @@ flowchart LR
 - 已将 Navbar、hero header、stepper 等页面结构从共享层剥离，避免提前冻结 A/B/C 方案
 - 共享页面状态已接通 `resolve-url -> stage1/convert -> generate -> short-links`
 - Stage 1 已补上高级菜单全量控件与手动 SOCKS5 追加入口
+- Stage 1 端口转发输入已切到 `forwardRelayItems` 结构化数组，并按 TagInput 语义逐项录入
 - Stage 2 已补上按 `chainTargets[].kind` 区分主路径与补充路径的默认方案选择器，空策略组保留展示但禁止选择
+- 全局阻断错误承载区已收敛为单一入口；Stage 内仅保留消息日志与局部定位提示
 - `go test ./...` 与 `npm run build` 已通过
 
 当前未完成：
@@ -117,6 +119,9 @@ flowchart LR
 - 共享状态模型稳定
 - API client 与 domain types 固定
 - 共享层边界已收敛为业务数据交互接口：输入字段、错误/消息语义分发、状态与流程接口、节点目标选择抽象
+- Stage 1 端口转发输入快照已统一为 `forwardRelayItems: string[]`
+- Stage 3 已完成单一当前链接输入框；反向解析、打开、复制、下载都消费同一输入值
+- 全局阻断错误承载区保持单一入口，消息日志入口与局部定位提示语义稳定
 - StageCard、NoticeStack、StatusPill 等强视觉组件已退出共享层，不保留参考实现地位
 - Navbar、stepper/tab、品牌头图、主题切换等页面壳层不再属于共享层，由 A/B/C 分支自行决定
 - 自动化 fixture 与基础演示场景可复用
@@ -162,9 +167,9 @@ flowchart LR
 
 目标：
 
-- 接入 `resolve-url`
-- 接入 `short-links`
+- 在最终方案中收口 `resolve-url` 与 `short-links` 的交互呈现
 - 落地 `replayable | conflicted` 页面态与短链按需创建逻辑
+- 确认 Stage 3 单一当前链接输入框在最终方案中的信息层级与动作编排
 
 ### 4-5：静态资源托管与 Compose 收口
 
@@ -182,6 +187,6 @@ flowchart LR
 
 ## 当前下一步
 
-1. 完成 spec 与共享业务层边界同步，移除旧的共享视觉组件假设
-2. 收口真实前端验收场景与演示数据，完成 G1 前的共享业务层确认
-3. 在共享业务层稳定后进入 G1，并切出 A/B/C 三个 UI 分支
+1. 收口真实前端验收场景与演示数据，完成 G1 前的共享业务层确认
+2. 在共享业务层稳定后进入 G1，并切出 A/B/C 三个 UI 分支
+3. 在胜出方案内继续收口 Compose 单入口部署验收

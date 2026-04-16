@@ -94,7 +94,7 @@ export default function App() {
 		stage1Status,
 		stage2Status,
 		stage3Status,
-		setRestoreInput,
+		setCurrentLinkInput,
 		updateStage1Input,
 		getStage2RowMeta,
 		getStage2RowErrors,
@@ -108,9 +108,9 @@ export default function App() {
 		handlePreferShortUrl,
 	} = useAppWorkflow();
 	const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
-	const [isRestorePanelOpen, setIsRestorePanelOpen] = useState(false);
 	const [manualSocks5Form, setManualSocks5Form] = useState(initialManualSocks5FormState);
 	const [manualSocks5Error, setManualSocks5Error] = useState<string | null>(null);
+	const [forwardRelayDraft, setForwardRelayDraft] = useState("");
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
 
 	useEffect(() => {
@@ -121,9 +121,8 @@ export default function App() {
 		return () => window.clearTimeout(timer);
 	}, [copyState]);
 
-	const activeOutput = state.generatedUrls?.preferShortUrl && state.generatedUrls.shortUrl
-		? state.generatedUrls.shortUrl
-		: state.generatedUrls?.longUrl ?? "尚未生成链接";
+	const currentLinkValue = state.currentLinkInput;
+	const trimmedCurrentLinkValue = currentLinkValue.trim();
 
 	function updateManualSocks5Field(field: keyof ManualSocks5FormState, value: string) {
 		setManualSocks5Form((current) => ({
@@ -149,19 +148,37 @@ export default function App() {
 		}
 	}
 
-	function handleOpenOutput() {
-		if (state.generatedUrls === null) {
+	function handleAddForwardRelayItem() {
+		if (forwardRelayDraft === "") {
 			return;
 		}
-		window.open(activeOutput, "_blank", "noopener,noreferrer");
+		updateStage1Input((current) => ({
+			...current,
+			forwardRelayItems: [...current.forwardRelayItems, forwardRelayDraft],
+		}));
+		setForwardRelayDraft("");
+	}
+
+	function handleRemoveForwardRelayItem(index: number) {
+		updateStage1Input((current) => ({
+			...current,
+			forwardRelayItems: current.forwardRelayItems.filter((_, itemIndex) => itemIndex !== index),
+		}));
+	}
+
+	function handleOpenOutput() {
+		if (trimmedCurrentLinkValue === "") {
+			return;
+		}
+		window.open(trimmedCurrentLinkValue, "_blank", "noopener,noreferrer");
 	}
 
 	async function handleCopyOutput() {
-		if (state.generatedUrls === null) {
+		if (trimmedCurrentLinkValue === "") {
 			return;
 		}
 		try {
-			await navigator.clipboard.writeText(activeOutput);
+			await navigator.clipboard.writeText(trimmedCurrentLinkValue);
 			setCopyState("done");
 		} catch {
 			setCopyState("failed");
@@ -169,11 +186,11 @@ export default function App() {
 	}
 
 	function handleDownloadOutput() {
-		if (state.generatedUrls === null) {
+		if (trimmedCurrentLinkValue === "") {
 			return;
 		}
 		const anchor = document.createElement("a");
-		anchor.href = withDownloadFlag(activeOutput);
+		anchor.href = withDownloadFlag(trimmedCurrentLinkValue);
 		anchor.rel = "noopener noreferrer";
 		document.body.appendChild(anchor);
 		anchor.click();
@@ -264,15 +281,61 @@ export default function App() {
 							<FieldErrorList errors={state.blockingErrors} field="transitRawText" />
 
 							{state.stage1Input.advancedOptions.enablePortForward ? (
-								<TextAreaField
-									label="端口转发服务"
-									helper="每行一条候选 server:port"
-									placeholder="relay.example.com:1080"
-									value={state.stage1Input.forwardRelayRawText}
-									onChange={(value) => updateStage1Input((current) => ({ ...current, forwardRelayRawText: value }))}
-								/>
+								<div className="rounded-[24px] border border-line bg-panel p-4">
+									<div className="flex flex-wrap items-start justify-between gap-3">
+										<div>
+											<p className="text-sm font-semibold text-ink">端口转发服务</p>
+											<p className="mt-1 text-sm leading-6 text-muted">TagInput 逐项录入 server:port。输入顺序会按数组保留，非法项与重复项由后端返回阻断错误。</p>
+										</div>
+										<button
+											type="button"
+											onClick={handleAddForwardRelayItem}
+											className="rounded-[18px] border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+										>
+											添加服务
+										</button>
+									</div>
+									<div className="mt-4 flex flex-wrap gap-2">
+										{state.stage1Input.forwardRelayItems.length === 0 ? (
+											<p className="text-sm leading-7 text-muted">尚未添加端口转发服务。</p>
+										) : state.stage1Input.forwardRelayItems.map((item, index) => (
+											<span key={`${item}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-2 text-sm text-ink">
+												<span className="font-mono">{item}</span>
+												<button
+													type="button"
+													onClick={() => handleRemoveForwardRelayItem(index)}
+													className="text-xs font-semibold text-muted transition hover:text-danger"
+												>
+													移除
+												</button>
+											</span>
+										))}
+									</div>
+									<div className="mt-4 flex flex-col gap-3 md:flex-row">
+										<input
+											className="w-full rounded-[20px] border border-line bg-surface px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accentSoft"
+											placeholder="relay.example.com:1080"
+											value={forwardRelayDraft}
+											onChange={(event) => setForwardRelayDraft(event.target.value)}
+											onKeyDown={(event) => {
+												if (event.key === "Enter") {
+													event.preventDefault();
+													handleAddForwardRelayItem();
+												}
+											}}
+										/>
+										<button
+											type="button"
+											onClick={handleAddForwardRelayItem}
+											disabled={forwardRelayDraft === ""}
+											className="rounded-[20px] bg-ink px-5 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-line disabled:text-muted"
+										>
+											录入 Tag
+										</button>
+									</div>
+								</div>
 							) : null}
-							<FieldErrorList errors={state.blockingErrors} field="forwardRelayRawText" />
+							<FieldErrorList errors={state.blockingErrors} field="forwardRelayItems" />
 
 							<div className="overflow-hidden rounded-[24px] border border-line bg-panel">
 								<button
@@ -340,7 +403,7 @@ export default function App() {
 												onChange={(checked) =>
 													updateStage1Input((current) => ({
 														...current,
-														forwardRelayRawText: checked ? current.forwardRelayRawText : "",
+														forwardRelayItems: checked ? current.forwardRelayItems : [],
 														advancedOptions: {
 															...current.advancedOptions,
 															enablePortForward: checked,
@@ -546,45 +609,26 @@ export default function App() {
 					<DefaultSectionBlock
 						eyebrow="Stage 3"
 						title="输出与恢复"
-						description="Stage 3 负责订阅链接消费、短链切换与恢复入口；恢复能力默认隐藏，由当前方案层决定如何呼出。"
+						description="Stage 3 使用单一当前链接输入框承载展示、手动编辑与反向解析输入；短链切换只改变该输入框的当前值。"
 						aside={<DefaultStatusBadge label={stage3Status.label} tone={stage3Status.tone} />}
 					>
 						<DefaultNoticeList messages={getStageMessages("stage3")} blockingErrors={[]} />
 						<div className="rounded-[24px] border border-line bg-panel p-4">
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
-									<p className="text-sm font-semibold text-ink">恢复已有链接</p>
-									<p className="mt-1 text-sm leading-6 text-muted">从 longUrl 或 shortUrl 恢复阶段 1 与阶段 2。可重放时进入可编辑态，冲突时保留只读快照。</p>
+									<p className="text-sm font-semibold text-ink">当前链接</p>
+									<p className="mt-1 text-sm leading-6 text-muted">同一输入框同时承担展示、手动编辑和反向解析输入。可粘贴 longUrl 或 shortUrl 后直接执行恢复。</p>
 								</div>
-								<div className="flex items-center gap-3">
-									<DefaultStatusBadge label={state.restoreStatus === "idle" ? "Idle" : state.restoreStatus} tone={state.restoreStatus === "idle" ? "neutral" : "warning"} />
-									<button
-										type="button"
-										onClick={() => setIsRestorePanelOpen((current) => !current)}
-										className="rounded-[18px] border border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
-									>
-										{isRestorePanelOpen ? "收起恢复入口" : "打开恢复入口"}
-									</button>
-								</div>
+								<DefaultStatusBadge label={state.restoreStatus === "idle" ? "Idle" : state.restoreStatus} tone={state.restoreStatus === "idle" ? "neutral" : "warning"} />
 							</div>
-							{isRestorePanelOpen ? (
-								<div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
-									<input
-										className="w-full rounded-[20px] border border-line bg-surface px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accentSoft"
-										placeholder="粘贴 longUrl 或 shortUrl"
-										value={state.restoreInput}
-										onChange={(event) => setRestoreInput(event.target.value)}
-									/>
-									<button
-										type="button"
-										onClick={() => void handleRestore()}
-										disabled={isRestoring || state.restoreInput.trim() === ""}
-										className="rounded-[20px] bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-									>
-										{isRestoring ? "恢复中..." : "恢复"}
-									</button>
-								</div>
-							) : null}
+							<div className="mt-4">
+								<input
+									className="w-full rounded-[20px] border border-line bg-surface px-4 py-3 font-mono text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accentSoft"
+									placeholder="尚未生成链接，或粘贴 longUrl / shortUrl 以恢复页面状态"
+									value={currentLinkValue}
+									onChange={(event) => setCurrentLinkInput(event.target.value)}
+								/>
+							</div>
 						</div>
 						{state.generatedUrls !== null ? (
 							<ToggleField
@@ -595,14 +639,11 @@ export default function App() {
 								onChange={(checked) => void handlePreferShortUrl(checked)}
 							/>
 						) : null}
-						<div className="rounded-[24px] border border-line bg-panel p-4">
-							<p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">Current Output</p>
-							<p className="break-all rounded-[18px] bg-surface px-4 py-4 font-mono text-sm leading-7 text-ink">{activeOutput}</p>
-						</div>
 						<div className="flex flex-wrap gap-3">
-							<button type="button" onClick={handleOpenOutput} disabled={state.generatedUrls === null} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">打开</button>
-							<button type="button" onClick={() => void handleCopyOutput()} disabled={state.generatedUrls === null} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">{copyState === "done" ? "已复制" : copyState === "failed" ? "复制失败" : "复制"}</button>
-							<button type="button" onClick={handleDownloadOutput} disabled={state.generatedUrls === null} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">下载</button>
+							<button type="button" onClick={handleOpenOutput} disabled={trimmedCurrentLinkValue === ""} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">打开</button>
+							<button type="button" onClick={() => void handleCopyOutput()} disabled={trimmedCurrentLinkValue === ""} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">{copyState === "done" ? "已复制" : copyState === "failed" ? "复制失败" : "复制"}</button>
+							<button type="button" onClick={handleDownloadOutput} disabled={trimmedCurrentLinkValue === ""} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">下载</button>
+							<button type="button" onClick={() => void handleRestore()} disabled={isRestoring || trimmedCurrentLinkValue === ""} className="rounded-[18px] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{isRestoring ? "恢复中..." : "反向解析"}</button>
 						</div>
 					</DefaultSectionBlock>
 				</main>

@@ -30,7 +30,7 @@ export interface AdvancedOptions {
 export interface Stage1Input {
 	landingRawText: string;
 	transitRawText: string;
-	forwardRelayRawText: string;
+	forwardRelayItems: string[];
 	advancedOptions: AdvancedOptions;
 }
 

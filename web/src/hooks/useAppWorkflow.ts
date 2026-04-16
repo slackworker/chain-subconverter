@@ -129,10 +129,10 @@ export function useAppWorkflow() {
 			? { label: "Short URL Ready", tone: "success" }
 			: { label: "Long URL Ready", tone: "success" };
 
-	function setRestoreInput(value: string) {
+	function setCurrentLinkInput(value: string) {
 		setState((current) => ({
 			...current,
-			restoreInput: value,
+			currentLinkInput: value,
 		}));
 	}
 
@@ -201,7 +201,7 @@ export function useAppWorkflow() {
 	}
 
 	async function handleRestore() {
-		const restoreInput = state.restoreInput.trim();
+		const restoreInput = state.currentLinkInput.trim();
 		if (restoreInput === "") {
 			return;
 		}
@@ -219,7 +219,7 @@ export function useAppWorkflow() {
 			if (restoreResponse.restoreStatus === "conflicted") {
 				setState((current) => ({
 					...current,
-					restoreInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
+					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
 					stage1Input: restoreResponse.stage1Input,
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
@@ -237,7 +237,7 @@ export function useAppWorkflow() {
 				const convertResponse = await postStage1Convert({ stage1Input: restoreResponse.stage1Input });
 				setState((current) => ({
 					...current,
-					restoreInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
+					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
 					stage1Input: restoreResponse.stage1Input,
 					stage2Init: convertResponse.stage2Init,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
@@ -252,7 +252,7 @@ export function useAppWorkflow() {
 				const errorResponse = getErrorResponse(convertError);
 				setState((current) => ({
 					...current,
-					restoreInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
+					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
 					stage1Input: restoreResponse.stage1Input,
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
@@ -322,6 +322,7 @@ export function useAppWorkflow() {
 			setState((current) => ({
 				...current,
 				generatedUrls: buildGeneratedUrls(response.longUrl, null),
+				currentLinkInput: response.longUrl,
 				responseOriginStage: "stage2",
 				messages: response.messages,
 				blockingErrors: response.blockingErrors,
@@ -346,6 +347,7 @@ export function useAppWorkflow() {
 		if (!checked) {
 			setState((current) => current.generatedUrls === null ? current : ({
 				...current,
+				currentLinkInput: current.generatedUrls.longUrl,
 				generatedUrls: {
 					...current.generatedUrls,
 					preferShortUrl: false,
@@ -356,6 +358,7 @@ export function useAppWorkflow() {
 		if (state.generatedUrls.shortUrl) {
 			setState((current) => current.generatedUrls === null ? current : ({
 				...current,
+				currentLinkInput: current.generatedUrls.shortUrl ?? current.generatedUrls.longUrl,
 				generatedUrls: {
 					...current.generatedUrls,
 					preferShortUrl: true,
@@ -377,6 +380,7 @@ export function useAppWorkflow() {
 			setState((current) => ({
 				...current,
 				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl, true),
+				currentLinkInput: response.shortUrl,
 				responseOriginStage: "stage3",
 				messages: response.messages,
 				blockingErrors: response.blockingErrors,
@@ -409,7 +413,7 @@ export function useAppWorkflow() {
 		stage1Status,
 		stage2Status,
 		stage3Status,
-		setRestoreInput,
+		setCurrentLinkInput,
 		updateStage1Input,
 		getStage2RowMeta,
 		getStage2RowErrors,

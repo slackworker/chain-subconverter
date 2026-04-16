@@ -9,7 +9,7 @@ export interface GeneratedUrls {
 }
 
 export interface AppState {
-	restoreInput: string;
+	currentLinkInput: string;
 	stage1Input: Stage1Input;
 	stage2Init: Stage2Init | null;
 	stage2Snapshot: Stage2Snapshot;
@@ -24,7 +24,7 @@ export interface AppState {
 export const initialStage1Input: Stage1Input = {
 	landingRawText: "",
 	transitRawText: "",
-	forwardRelayRawText: "",
+	forwardRelayItems: [],
 	advancedOptions: {
 		emoji: true,
 		udp: true,
@@ -37,7 +37,7 @@ export const initialStage1Input: Stage1Input = {
 };
 
 export const initialAppState: AppState = {
-	restoreInput: "",
+	currentLinkInput: "",
 	stage1Input: initialStage1Input,
 	stage2Init: null,
 	stage2Snapshot: {

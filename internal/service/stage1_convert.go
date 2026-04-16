@@ -24,10 +24,10 @@ type AdvancedOptions struct {
 }
 
 type Stage1Input struct {
-	LandingRawText      string          `json:"landingRawText"`
-	TransitRawText      string          `json:"transitRawText"`
-	ForwardRelayRawText string          `json:"forwardRelayRawText"`
-	AdvancedOptions     AdvancedOptions `json:"advancedOptions"`
+	LandingRawText    string          `json:"landingRawText"`
+	TransitRawText    string          `json:"transitRawText"`
+	ForwardRelayItems []string        `json:"forwardRelayItems"`
+	AdvancedOptions   AdvancedOptions `json:"advancedOptions"`
 }
 
 type Stage1ConvertRequest struct {
@@ -36,7 +36,26 @@ type Stage1ConvertRequest struct {
 
 func NormalizeStage1Input(input Stage1Input) Stage1Input {
 	input.AdvancedOptions = normalizeAdvancedOptions(input.AdvancedOptions)
+	input.ForwardRelayItems = normalizeForwardRelayItems(input.ForwardRelayItems)
 	return input
+}
+
+func normalizeForwardRelayItems(items []string) []string {
+	if len(items) == 0 {
+		return []string{}
+	}
+
+	normalized := make([]string, 0, len(items))
+	for _, item := range items {
+		if item == "" {
+			continue
+		}
+		normalized = append(normalized, item)
+	}
+	if len(normalized) == 0 {
+		return []string{}
+	}
+	return normalized
 }
 
 func normalizeAdvancedOptions(options AdvancedOptions) AdvancedOptions {
@@ -126,9 +145,9 @@ func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stag
 }
 
 func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func(string) ([]regionMatcher, error)) (Stage2Init, error) {
-	if !stage1Input.AdvancedOptions.EnablePortForward && strings.TrimSpace(stage1Input.ForwardRelayRawText) != "" {
-		cause := fmt.Errorf("forwardRelayRawText must be empty when enablePortForward is false")
-		return Stage2Init{}, newStage1FieldInvalidRequestError("forwardRelayRawText must be empty when enablePortForward is false", "forwardRelayRawText", cause)
+	if !stage1Input.AdvancedOptions.EnablePortForward && len(stage1Input.ForwardRelayItems) > 0 {
+		cause := fmt.Errorf("forwardRelayItems must be empty when enablePortForward is false")
+		return Stage2Init{}, newStage1FieldInvalidRequestError("forwardRelayItems must be empty when enablePortForward is false", "forwardRelayItems", cause)
 	}
 
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
@@ -324,20 +343,16 @@ func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
 		return []ForwardRelay{}, nil
 	}
 
-	lines := strings.Split(normalizeInputNewlines(stage1Input.ForwardRelayRawText), "\n")
 	seen := make(map[string]struct{})
-	relays := make([]ForwardRelay, 0, len(lines))
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		relay, err := parseForwardRelayLine(line)
+	relays := make([]ForwardRelay, 0, len(stage1Input.ForwardRelayItems))
+	for _, item := range stage1Input.ForwardRelayItems {
+		relay, err := parseForwardRelayLine(item)
 		if err != nil {
-			return nil, newStage1FieldValidationError("INVALID_FORWARD_RELAY_LINE", "invalid forward relay line", "forwardRelayRawText", err)
+			return nil, newStage1FieldValidationError("INVALID_FORWARD_RELAY_LINE", "invalid forward relay line", "forwardRelayItems", err)
 		}
 		if _, exists := seen[relay.Name]; exists {
 			cause := fmt.Errorf("duplicate forward relay %q", relay.Name)
-			return nil, newStage1FieldValidationError("DUPLICATE_FORWARD_RELAY", "duplicate forward relay", "forwardRelayRawText", cause)
+			return nil, newStage1FieldValidationError("DUPLICATE_FORWARD_RELAY", "duplicate forward relay", "forwardRelayItems", cause)
 		}
 		seen[relay.Name] = struct{}{}
 		relays = append(relays, ForwardRelay{Name: relay.Name})

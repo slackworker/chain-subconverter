@@ -161,9 +161,9 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 	payload := LongURLPayload{
 		V: 1,
 		Stage1Input: Stage1Input{
-			LandingRawText:      "landing",
-			TransitRawText:      "transit",
-			ForwardRelayRawText: "forward",
+			LandingRawText:    "landing",
+			TransitRawText:    "transit",
+			ForwardRelayItems: []string{"forward"},
 			AdvancedOptions: AdvancedOptions{
 				Emoji:             &emoji,
 				UDP:               &udp,
@@ -188,7 +188,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"enablePortForward":true,"exclude":"US","include":"HK","skipCertVerify":true,"udp":false},"forwardRelayRawText":"forward","landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"landingNodeName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":1}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"enablePortForward":true,"exclude":"US","include":"HK","skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"landingNodeName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":1}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

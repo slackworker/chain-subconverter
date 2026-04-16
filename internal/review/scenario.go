@@ -86,7 +86,7 @@ func readStage1Input(directory string) (service.Stage1Input, error) {
 	if err != nil {
 		return service.Stage1Input{}, err
 	}
-	forwardRelayRawText, err := readScenarioTextFile(directory, ForwardRelaysFileName)
+	forwardRelayItems, err := readScenarioListFile(directory, ForwardRelaysFileName)
 	if err != nil {
 		return service.Stage1Input{}, err
 	}
@@ -96,11 +96,24 @@ func readStage1Input(directory string) (service.Stage1Input, error) {
 	}
 
 	return service.Stage1Input{
-		LandingRawText:      landingRawText,
-		TransitRawText:      transitRawText,
-		ForwardRelayRawText: forwardRelayRawText,
-		AdvancedOptions:     advancedOptions,
+		LandingRawText:    landingRawText,
+		TransitRawText:    transitRawText,
+		ForwardRelayItems: forwardRelayItems,
+		AdvancedOptions:   advancedOptions,
 	}, nil
+}
+
+func readScenarioListFile(directory string, fileName string) ([]string, error) {
+	content, err := readScenarioTextFile(directory, fileName)
+	if err != nil {
+		return nil, err
+	}
+	if content == "" {
+		return []string{}, nil
+	}
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	return strings.Split(normalized, "\n"), nil
 }
 
 func readScenarioTextFile(directory string, fileName string) (string, error) {

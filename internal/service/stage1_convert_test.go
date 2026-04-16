@@ -55,7 +55,7 @@ func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t 
 			AdvancedOptions: AdvancedOptions{
 				EnablePortForward: true,
 			},
-			ForwardRelayRawText: "relay.example.com:443",
+			ForwardRelayItems: []string{"relay.example.com:443"},
 		},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: Unknown Landing, type: ss}\n",
@@ -119,7 +119,7 @@ func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T
 			AdvancedOptions: AdvancedOptions{
 				EnablePortForward: true,
 			},
-			ForwardRelayRawText: "relay.example.com:443",
+			ForwardRelayItems: []string{"relay.example.com:443"},
 		},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: Unknown Landing, type: ss}\n",
@@ -234,7 +234,7 @@ func TestParseForwardRelays_NormalizesAndRejectsDuplicates(t *testing.T) {
 		AdvancedOptions: AdvancedOptions{
 			EnablePortForward: true,
 		},
-		ForwardRelayRawText: "Relay.EXAMPLE.com:00080\nrelay.example.com:80",
+		ForwardRelayItems: []string{"Relay.EXAMPLE.com:00080", "relay.example.com:80"},
 	})
 	if err == nil {
 		t.Fatal("parseForwardRelays() error = nil, want duplicate error")
@@ -259,7 +259,7 @@ func TestParseForwardRelays_RejectsInvalidLines(t *testing.T) {
 				AdvancedOptions: AdvancedOptions{
 					EnablePortForward: true,
 				},
-				ForwardRelayRawText: rawLine,
+				ForwardRelayItems: []string{rawLine},
 			})
 			if err == nil {
 				t.Fatal("parseForwardRelays() error = nil, want invalid line error")
@@ -384,7 +384,7 @@ func TestBuildStage2Init_RestrictsVLESSRealityChainAndFallsBackToRelay(t *testin
 			AdvancedOptions: AdvancedOptions{
 				EnablePortForward: true,
 			},
-			ForwardRelayRawText: "Relay.EXAMPLE.com:00080",
+			ForwardRelayItems: []string{"Relay.EXAMPLE.com:00080"},
 		},
 		singleLandingFixture("HK Reality", "vless-reality", "🇭🇰 香港节点"),
 	)

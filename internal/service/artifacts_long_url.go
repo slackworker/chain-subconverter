@@ -21,10 +21,10 @@ type longURLPayloadSchema struct {
 }
 
 type longURLStage1Input struct {
-	AdvancedOptions     longURLAdvancedOptions `json:"advancedOptions"`
-	ForwardRelayRawText string                 `json:"forwardRelayRawText"`
-	LandingRawText      string                 `json:"landingRawText"`
-	TransitRawText      string                 `json:"transitRawText"`
+	AdvancedOptions   longURLAdvancedOptions `json:"advancedOptions"`
+	ForwardRelayItems []string               `json:"forwardRelayItems"`
+	LandingRawText    string                 `json:"landingRawText"`
+	TransitRawText    string                 `json:"transitRawText"`
 }
 
 type longURLAdvancedOptions struct {
@@ -163,9 +163,9 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 	return LongURLPayload{
 		V: schema.V,
 		Stage1Input: Stage1Input{
-			LandingRawText:      schema.Stage1Input.LandingRawText,
-			TransitRawText:      schema.Stage1Input.TransitRawText,
-			ForwardRelayRawText: schema.Stage1Input.ForwardRelayRawText,
+			LandingRawText:    schema.Stage1Input.LandingRawText,
+			TransitRawText:    schema.Stage1Input.TransitRawText,
+			ForwardRelayItems: schema.Stage1Input.ForwardRelayItems,
 			AdvancedOptions: AdvancedOptions{
 				Emoji:             schema.Stage1Input.AdvancedOptions.Emoji,
 				UDP:               schema.Stage1Input.AdvancedOptions.UDP,
@@ -255,9 +255,9 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 				SkipCertVerify:    payload.Stage1Input.AdvancedOptions.SkipCertVerify,
 				UDP:               payload.Stage1Input.AdvancedOptions.UDP,
 			},
-			ForwardRelayRawText: payload.Stage1Input.ForwardRelayRawText,
-			LandingRawText:      payload.Stage1Input.LandingRawText,
-			TransitRawText:      payload.Stage1Input.TransitRawText,
+			ForwardRelayItems: payload.Stage1Input.ForwardRelayItems,
+			LandingRawText:    payload.Stage1Input.LandingRawText,
+			TransitRawText:    payload.Stage1Input.TransitRawText,
 		},
 		Stage2Snapshot: longURLStage2Snapshot{Rows: rows},
 		V:              payload.V,

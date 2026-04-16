@@ -22,8 +22,8 @@ func TestLoadCase_DefaultExample(t *testing.T) {
 	if testCase.Stage1Input.TransitRawText == "" {
 		t.Fatal("TransitRawText should not be empty")
 	}
-	if testCase.Stage1Input.ForwardRelayRawText != "" {
-		t.Fatalf("ForwardRelayRawText = %q, want empty", testCase.Stage1Input.ForwardRelayRawText)
+	if len(testCase.Stage1Input.ForwardRelayItems) != 0 {
+		t.Fatalf("ForwardRelayItems = %v, want empty", testCase.Stage1Input.ForwardRelayItems)
 	}
 	if !hasBoolValue(testCase.Stage1Input.AdvancedOptions.Emoji, true) {
 		t.Fatal("Emoji default should be true")
