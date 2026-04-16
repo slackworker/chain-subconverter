@@ -40,6 +40,7 @@
 - 已从共享层移除 Navbar、stepper 与顶部介绍 header，避免提前冻结 A/B/C 页面结构与交互节奏。
 - 已确认 StageCard、NoticeStack、StatusPill 不再保留共享层或参考实现地位，后续由方案层按需重写或直接删除。
 - 已确认恢复入口归属 Stage 3 输出域，且不再要求共享层固定页面顶部 restore 区或固定 DOM 锚点。
+- 前端入口已改为通过 `UIScheme` 装配方案层组件；当前默认方案与极简占位方案都可挂接到同一共享业务层。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
 - `Phase 4` 当前处于共享主线收口阶段；单一当前链接输入框、`forwardRelayItems` 结构化快照与单一全局阻断错误承载区已落地，当前剩余重点是 G1 共享业务层确认与真实前端验收场景固化。

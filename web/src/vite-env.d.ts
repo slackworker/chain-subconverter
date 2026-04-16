@@ -7,6 +7,7 @@ interface Window {
 interface ImportMetaEnv {
 	readonly VITE_CHAIN_SUBCONVERTER_API_BASE?: string;
 	readonly VITE_CHAIN_SUBCONVERTER_BASE_PATH?: string;
+	readonly VITE_CHAIN_SUBCONVERTER_UI_SCHEME?: string;
 }
 
 interface ImportMeta {
