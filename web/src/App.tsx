@@ -81,9 +81,9 @@ function withDownloadFlag(urlString: string) {
 export default function App() {
 	const {
 		state,
-		globalErrors,
 		stage2Rows,
 		modeOptions,
+		responseOriginStage,
 		isConverting,
 		isRestoring,
 		isGenerating,
@@ -98,6 +98,7 @@ export default function App() {
 		updateStage1Input,
 		getStage2RowMeta,
 		getStage2RowErrors,
+		getStageMessages,
 		getTargetChoices,
 		handleStage1Convert,
 		handleRestore,
@@ -183,13 +184,14 @@ export default function App() {
 		<div className="min-h-screen bg-canvas text-ink">
 			<div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 md:px-8 md:py-10">
 				<main className="space-y-6">
+					<DefaultNoticeList messages={[]} blockingErrors={state.blockingErrors} responseOriginStage={responseOriginStage} />
 					<DefaultSectionBlock
 						eyebrow="Stage 1"
 						title="输入与自动填充"
 						description="按 spec 收集落地与中转输入，修改任一输入后 Stage 2 标记过期，需重新执行转换并自动填充。"
 						aside={<DefaultStatusBadge label={stage1Status.label} tone={stage1Status.tone} />}
 					>
-						<DefaultNoticeList messages={state.messages} blockingErrors={globalErrors} />
+						<DefaultNoticeList messages={getStageMessages("stage1")} blockingErrors={[]} />
 						<div className="grid gap-5">
 							<TextAreaField
 								label="落地信息"
@@ -432,7 +434,7 @@ export default function App() {
 						description="Stage 2 直接消费后端返回的固定行模型；可编辑态使用当前候选列表，只读冲突态保留恢复快照以便核对。"
 						aside={<DefaultStatusBadge label={stage2Status.label} tone={stage2Status.tone} />}
 					>
-						<DefaultNoticeList messages={state.messages} blockingErrors={globalErrors} />
+						<DefaultNoticeList messages={getStageMessages("stage2")} blockingErrors={[]} />
 						<div className="overflow-hidden rounded-[24px] border border-line">
 							<div className="grid grid-cols-[1.2fr_0.8fr_1fr] bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
 								<span>落地节点</span>
@@ -547,7 +549,7 @@ export default function App() {
 						description="Stage 3 负责订阅链接消费、短链切换与恢复入口；恢复能力默认隐藏，由当前方案层决定如何呼出。"
 						aside={<DefaultStatusBadge label={stage3Status.label} tone={stage3Status.tone} />}
 					>
-						<DefaultNoticeList messages={state.messages} blockingErrors={globalErrors} />
+						<DefaultNoticeList messages={getStageMessages("stage3")} blockingErrors={[]} />
 						<div className="rounded-[24px] border border-line bg-panel p-4">
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>

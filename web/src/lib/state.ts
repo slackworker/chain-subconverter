@@ -1,5 +1,7 @@
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Snapshot } from "../types/api";
 
+export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
+
 export interface GeneratedUrls {
 	longUrl: string;
 	shortUrl: string | null;
@@ -14,6 +16,7 @@ export interface AppState {
 	generatedUrls: GeneratedUrls | null;
 	stage2Stale: boolean;
 	restoreStatus: "idle" | "replayable" | "conflicted";
+	responseOriginStage: ResponseOriginStage | null;
 	messages: Message[];
 	blockingErrors: BlockingError[];
 }
@@ -43,6 +46,7 @@ export const initialAppState: AppState = {
 	generatedUrls: null,
 	stage2Stale: true,
 	restoreStatus: "idle",
+	responseOriginStage: null,
 	messages: [],
 	blockingErrors: [],
 };

@@ -1,9 +1,10 @@
 import { useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
-import { getGlobalErrors, getRowErrors } from "../lib/notices";
+import { getRowErrors } from "../lib/notices";
 import { initialAppState } from "../lib/state";
 import type { AppState } from "../lib/state";
+import type { ResponseOriginStage } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 
 export type WorkflowTone = "neutral" | "warning" | "success";
@@ -74,6 +75,10 @@ function getTargetChoices(stage2Init: Stage2Init | null, mode: Stage2Row["mode"]
 	return [];
 }
 
+function matchesResponseOriginStage(currentStage: ResponseOriginStage | null, stage: ResponseOriginStage) {
+	return currentStage === stage;
+}
+
 function pickNextTarget(stage2Init: Stage2Init | null, mode: Stage2Row["mode"], currentTarget: string | null) {
 	if (mode === "none") {
 		return null;
@@ -95,7 +100,6 @@ export function useAppWorkflow() {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
 
-	const globalErrors = getGlobalErrors(state.blockingErrors);
 	const stage2Rows = state.stage2Snapshot.rows;
 	const modeOptions = getModeOptions(state.stage2Init);
 	const isConflictReadonly = state.restoreStatus === "conflicted";
@@ -160,11 +164,16 @@ export function useAppWorkflow() {
 		return getRowErrors(state.blockingErrors, landingNodeName);
 	}
 
+	function getStageMessages(stage: ResponseOriginStage) {
+		return matchesResponseOriginStage(state.responseOriginStage, stage) ? state.messages : [];
+	}
+
 	async function handleStage1Convert() {
 		const stage1Input = state.stage1Input;
 		setIsConverting(true);
 		setState((current) => ({
 			...current,
+			responseOriginStage: "stage1",
 			messages: [],
 			blockingErrors: [],
 		}));
@@ -174,6 +183,7 @@ export function useAppWorkflow() {
 			applyStage2Init(response.stage2Init);
 			setState((current) => ({
 				...current,
+				responseOriginStage: "stage1",
 				messages: response.messages,
 				blockingErrors: response.blockingErrors,
 			}));
@@ -181,6 +191,7 @@ export function useAppWorkflow() {
 			const errorResponse = getErrorResponse(error);
 			setState((current) => ({
 				...current,
+				responseOriginStage: "stage1",
 				messages: errorResponse?.messages ?? [],
 				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
 			}));
@@ -198,6 +209,7 @@ export function useAppWorkflow() {
 		setIsRestoring(true);
 		setState((current) => ({
 			...current,
+			responseOriginStage: "stage3",
 			messages: [],
 			blockingErrors: [],
 		}));
@@ -214,6 +226,7 @@ export function useAppWorkflow() {
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
+					responseOriginStage: "stage3",
 					messages: restoreResponse.messages,
 					blockingErrors: restoreResponse.blockingErrors,
 				}));
@@ -231,6 +244,7 @@ export function useAppWorkflow() {
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
+					responseOriginStage: "stage3",
 					messages: mergeMessages(restoreResponse.messages, convertResponse.messages),
 					blockingErrors: restoreResponse.blockingErrors.length > 0 ? restoreResponse.blockingErrors : convertResponse.blockingErrors,
 				}));
@@ -245,6 +259,7 @@ export function useAppWorkflow() {
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
 					stage2Stale: true,
 					restoreStatus: restoreResponse.restoreStatus,
+					responseOriginStage: "stage3",
 					messages: restoreResponse.messages,
 					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError)],
 				}));
@@ -253,6 +268,7 @@ export function useAppWorkflow() {
 			const errorResponse = getErrorResponse(error);
 			setState((current) => ({
 				...current,
+				responseOriginStage: "stage3",
 				messages: errorResponse?.messages ?? [],
 				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
 			}));
@@ -293,6 +309,7 @@ export function useAppWorkflow() {
 		setIsGenerating(true);
 		setState((current) => ({
 			...current,
+			responseOriginStage: "stage2",
 			messages: [],
 			blockingErrors: [],
 		}));
@@ -305,6 +322,7 @@ export function useAppWorkflow() {
 			setState((current) => ({
 				...current,
 				generatedUrls: buildGeneratedUrls(response.longUrl, null),
+				responseOriginStage: "stage2",
 				messages: response.messages,
 				blockingErrors: response.blockingErrors,
 			}));
@@ -312,6 +330,7 @@ export function useAppWorkflow() {
 			const errorResponse = getErrorResponse(error);
 			setState((current) => ({
 				...current,
+				responseOriginStage: "stage2",
 				messages: errorResponse?.messages ?? [],
 				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
 			}));
@@ -348,6 +367,7 @@ export function useAppWorkflow() {
 		setIsCreatingShortUrl(true);
 		setState((current) => ({
 			...current,
+			responseOriginStage: "stage3",
 			messages: [],
 			blockingErrors: [],
 		}));
@@ -357,6 +377,7 @@ export function useAppWorkflow() {
 			setState((current) => ({
 				...current,
 				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl, true),
+				responseOriginStage: "stage3",
 				messages: response.messages,
 				blockingErrors: response.blockingErrors,
 			}));
@@ -364,6 +385,7 @@ export function useAppWorkflow() {
 			const errorResponse = getErrorResponse(error);
 			setState((current) => ({
 				...current,
+				responseOriginStage: "stage3",
 				messages: errorResponse?.messages ?? [],
 				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
 			}));
@@ -374,9 +396,9 @@ export function useAppWorkflow() {
 
 	return {
 		state,
-		globalErrors,
 		stage2Rows,
 		modeOptions,
+		responseOriginStage: state.responseOriginStage,
 		isConverting,
 		isRestoring,
 		isGenerating,
@@ -391,6 +413,7 @@ export function useAppWorkflow() {
 		updateStage1Input,
 		getStage2RowMeta,
 		getStage2RowErrors,
+		getStageMessages,
 		getTargetChoices: (mode: Stage2Row["mode"]) => getTargetChoices(state.stage2Init, mode),
 		handleStage1Convert,
 		handleRestore,
