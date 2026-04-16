@@ -41,6 +41,7 @@
 | [plan/phase-4-breakdown](plan/phase-4-breakdown.md) | Phase 4 细化计划：前端主线、非目标与建议推进顺序 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已完成范围、已知缺口 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
+| [testing/frontend-g1-shared-boundary](testing/frontend-g1-shared-boundary.md) | G1 前端共享业务层验收：scheme 可替换性、最小构建验证与外部依赖边界 |
 
 ## 临时区规则
 

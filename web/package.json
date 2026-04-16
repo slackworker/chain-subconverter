@@ -5,7 +5,9 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
+		"dev:plain": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=plain vite",
 		"build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+		"build:plain": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=plain tsc --noEmit -p tsconfig.app.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=plain tsc --noEmit -p tsconfig.node.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=plain vite build",
 		"preview": "vite preview"
 	},
 	"dependencies": {

@@ -8,7 +8,9 @@ Phase 4 前端工程目录。
 
 - `npm install`
 - `npm run dev`
+- `npm run dev:plain`
 - `npm run build`
+- `npm run build:plain`
 - `npm run preview`
 
 ## 部署相关环境变量
@@ -25,6 +27,7 @@ Phase 4 前端工程目录。
 - `src/App.tsx` 只消费共享业务层接口，不直接绑定默认方案组件
 - `src/scheme/default` 是当前默认方案实现
 - `src/scheme/plain` 是极简占位方案，用于证明共享业务层与方案层已解耦
+- `npm run build:plain` 是当前最小可执行的 scheme 可替换性验收命令
 
 当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。
 

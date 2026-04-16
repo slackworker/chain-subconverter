@@ -58,6 +58,7 @@
 ## 验证
 
 - `npm run build`：2026-04-16 通过（前端公共基线可完成生产构建，含 Stage 3 单一当前链接输入框与 `forwardRelayItems` 结构化快照迁移）
+- `npm run build:plain`：2026-04-16 通过（用于确认极简占位方案也能消费同一共享业务层）
 - `go test ./...`：2026-04-16 全量通过（含 `POST /api/short-links`、短链订阅、SPA 静态资源托管与 longUrl 载荷回归测试）
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
