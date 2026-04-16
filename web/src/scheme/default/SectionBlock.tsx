@@ -1,13 +1,6 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import type { StageContainerProps } from "../../lib/composition";
 
-interface DefaultSectionBlockProps extends PropsWithChildren {
-	eyebrow: string;
-	title: string;
-	description: string;
-	aside?: ReactNode;
-}
-
-export function DefaultSectionBlock({ eyebrow, title, description, aside, children }: DefaultSectionBlockProps) {
+export function DefaultSectionBlock({ eyebrow, title, description, aside, children }: StageContainerProps) {
 	return (
 		<section className="rounded-[28px] border border-line bg-surface/90 p-6 shadow-panel shadow-black/5 backdrop-blur md:p-8">
 			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

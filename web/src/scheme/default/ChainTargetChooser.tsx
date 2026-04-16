@@ -1,17 +1,12 @@
 import { useMemo, useState } from "react";
 
 import { getChainTargetGroups } from "../../lib/chainTargets";
+import type { TargetChooserProps } from "../../lib/composition";
 import type { ChainTarget } from "../../types/api";
-
-interface DefaultChainTargetChooserProps {
-	targets: ChainTarget[];
-	value: string | null;
-	onChange: (targetName: string | null) => void;
-}
 
 type TargetKind = ChainTarget["kind"];
 
-export function DefaultChainTargetChooser({ targets, value, onChange }: DefaultChainTargetChooserProps) {
+export function DefaultChainTargetChooser({ targets, value, onChange }: TargetChooserProps) {
 	const [expandedGroups, setExpandedGroups] = useState<Record<TargetKind, boolean>>({
 		"proxy-groups": true,
 		proxies: false,

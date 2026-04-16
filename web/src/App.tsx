@@ -5,10 +5,7 @@ import { TextAreaField } from "./components/TextAreaField";
 import { TextField } from "./components/TextField";
 import { ToggleField } from "./components/ToggleField";
 import { useAppWorkflow } from "./hooks/useAppWorkflow";
-import { DefaultChainTargetChooser } from "./scheme/default/ChainTargetChooser";
-import { DefaultNoticeList } from "./scheme/default/NoticeList";
-import { DefaultSectionBlock } from "./scheme/default/SectionBlock";
-import { DefaultStatusBadge } from "./scheme/default/StatusBadge";
+import { useUIScheme } from "./lib/scheme-context";
 import type { Stage2Row } from "./types/api";
 
 interface ManualSocks5FormState {
@@ -79,6 +76,7 @@ function withDownloadFlag(urlString: string) {
 }
 
 export default function App() {
+	const { NoticeRenderer, StageContainer, StatusDisplay, TargetChooser } = useUIScheme();
 	const {
 		state,
 		stage2Rows,
@@ -201,14 +199,14 @@ export default function App() {
 		<div className="min-h-screen bg-canvas text-ink">
 			<div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 md:px-8 md:py-10">
 				<main className="space-y-6">
-					<DefaultNoticeList messages={[]} blockingErrors={state.blockingErrors} responseOriginStage={responseOriginStage} />
-					<DefaultSectionBlock
+					<NoticeRenderer messages={[]} blockingErrors={state.blockingErrors} responseOriginStage={responseOriginStage} />
+					<StageContainer
 						eyebrow="Stage 1"
 						title="输入与自动填充"
 						description="按 spec 收集落地与中转输入，修改任一输入后 Stage 2 标记过期，需重新执行转换并自动填充。"
-						aside={<DefaultStatusBadge label={stage1Status.label} tone={stage1Status.tone} />}
+						aside={<StatusDisplay label={stage1Status.label} tone={stage1Status.tone} />}
 					>
-						<DefaultNoticeList messages={getStageMessages("stage1")} blockingErrors={[]} />
+						<NoticeRenderer messages={getStageMessages("stage1")} blockingErrors={[]} />
 						<div className="grid gap-5">
 							<TextAreaField
 								label="落地信息"
@@ -489,15 +487,15 @@ export default function App() {
 								</button>
 							</div>
 						</div>
-					</DefaultSectionBlock>
+					</StageContainer>
 
-					<DefaultSectionBlock
+					<StageContainer
 						eyebrow="Stage 2"
 						title="配置区"
 						description="Stage 2 直接消费后端返回的固定行模型；可编辑态使用当前候选列表，只读冲突态保留恢复快照以便核对。"
-						aside={<DefaultStatusBadge label={stage2Status.label} tone={stage2Status.tone} />}
+						aside={<StatusDisplay label={stage2Status.label} tone={stage2Status.tone} />}
 					>
-						<DefaultNoticeList messages={getStageMessages("stage2")} blockingErrors={[]} />
+						<NoticeRenderer messages={getStageMessages("stage2")} blockingErrors={[]} />
 						<div className="overflow-hidden rounded-[24px] border border-line">
 							<div className="grid grid-cols-[1.2fr_0.8fr_1fr] bg-panel px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
 								<span>落地节点</span>
@@ -546,7 +544,7 @@ export default function App() {
 									</div>
 									<div>
 										{isStage2Editable && row.mode === "chain" ? (
-											<DefaultChainTargetChooser
+											<TargetChooser
 												targets={state.stage2Init?.chainTargets ?? []}
 												value={row.targetName}
 												onChange={(targetName) => handleTargetChange(row.landingNodeName, targetName ?? "")}
@@ -604,22 +602,22 @@ export default function App() {
 								{isGenerating ? "校验并生成链接..." : "生成链接"}
 							</button>
 						</div>
-					</DefaultSectionBlock>
+					</StageContainer>
 
-					<DefaultSectionBlock
+					<StageContainer
 						eyebrow="Stage 3"
 						title="输出与恢复"
 						description="Stage 3 使用单一当前链接输入框承载展示、手动编辑与反向解析输入；短链切换只改变该输入框的当前值。"
-						aside={<DefaultStatusBadge label={stage3Status.label} tone={stage3Status.tone} />}
+						aside={<StatusDisplay label={stage3Status.label} tone={stage3Status.tone} />}
 					>
-						<DefaultNoticeList messages={getStageMessages("stage3")} blockingErrors={[]} />
+						<NoticeRenderer messages={getStageMessages("stage3")} blockingErrors={[]} />
 						<div className="rounded-[24px] border border-line bg-panel p-4">
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<p className="text-sm font-semibold text-ink">当前链接</p>
 									<p className="mt-1 text-sm leading-6 text-muted">同一输入框同时承担展示、手动编辑和反向解析输入。可粘贴 longUrl 或 shortUrl 后直接执行恢复。</p>
 								</div>
-								<DefaultStatusBadge label={state.restoreStatus === "idle" ? "Idle" : state.restoreStatus} tone={state.restoreStatus === "idle" ? "neutral" : "warning"} />
+								<StatusDisplay label={state.restoreStatus === "idle" ? "Idle" : state.restoreStatus} tone={state.restoreStatus === "idle" ? "neutral" : "warning"} />
 							</div>
 							<div className="mt-4">
 								<input
@@ -645,7 +643,7 @@ export default function App() {
 							<button type="button" onClick={handleDownloadOutput} disabled={trimmedCurrentLinkValue === ""} className="rounded-[18px] border border-line bg-panel px-4 py-3 text-sm font-semibold text-ink transition disabled:cursor-not-allowed disabled:opacity-60">下载</button>
 							<button type="button" onClick={() => void handleRestore()} disabled={isRestoring || trimmedCurrentLinkValue === ""} className="rounded-[18px] bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{isRestoring ? "恢复中..." : "反向解析"}</button>
 						</div>
-					</DefaultSectionBlock>
+					</StageContainer>
 				</main>
 			</div>
 		</div>

@@ -1,15 +1,20 @@
-import type { BlockingError, Message } from "../../types/api";
+import type { NoticeRendererProps } from "../../lib/composition";
 import type { ResponseOriginStage } from "../../lib/state";
-import { getResponseOriginStageLabel } from "../../lib/notices";
 
-interface DefaultNoticeListProps {
-	messages: Message[];
-	blockingErrors: BlockingError[];
-	responseOriginStage?: ResponseOriginStage | null;
+function getResponseOriginStageLabel(stage: ResponseOriginStage | null) {
+	if (stage === "stage1") {
+		return "Stage 1 / 输入区";
+	}
+	if (stage === "stage2") {
+		return "Stage 2 / 配置区";
+	}
+	if (stage === "stage3") {
+		return "Stage 3 / 输出区";
+	}
+	return null;
 }
 
-
-export function DefaultNoticeList({ messages, blockingErrors, responseOriginStage = null }: DefaultNoticeListProps) {
+export function DefaultNoticeList({ messages, blockingErrors, responseOriginStage = null }: NoticeRendererProps) {
 	if (messages.length === 0 && blockingErrors.length === 0) {
 		return null;
 	}

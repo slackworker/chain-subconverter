@@ -42,14 +42,15 @@
 - 已确认恢复入口归属 Stage 3 输出域，且不再要求共享层固定页面顶部 restore 区或固定 DOM 锚点。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
-- `Phase 4` 当前处于共享主线收口阶段；单一当前链接输入框、`forwardRelayItems` 结构化快照与单一全局阻断错误承载区已落地，当前剩余重点是 G1 公共边界确认与真实前端验收场景固化。
+- `Phase 4` 当前处于共享主线收口阶段；单一当前链接输入框、`forwardRelayItems` 结构化快照与单一全局阻断错误承载区已落地，当前剩余重点是 G1 共享业务层确认与真实前端验收场景固化。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `internal/review/testdata/3pass-ss2022-test-subscription/`。
 
 - 当前前端仍未完成 A/B/C 方案分支评审，真实前端验收场景与方案对比材料等仍待收口。
-- 当前虽已完成单一当前链接输入框等共享交互收口，但真实前端验收场景与 G1 明确签收仍未完成。
+- 当前虽已完成单一当前链接输入框等共享交互收口，但共享前端入口与默认方案组件的解耦仍在继续收口，G1 明确签收仍未完成。
+- 当前真实前端验收场景仍依赖外部模板与运行镜像状态，尚未完全固化为可复现签收路径。
 - 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 
