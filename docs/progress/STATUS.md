@@ -41,7 +41,7 @@
 - 已从共享层移除 Navbar、stepper 与顶部介绍 header，避免提前冻结 A/B/C 页面结构与交互节奏。
 - 已确认 StageCard、NoticeStack、StatusPill 不再保留共享层或参考实现地位，后续由方案层按需重写或直接删除。
 - 已确认恢复入口归属 Stage 3 输出域，且不再要求共享层固定页面顶部 restore 区或固定 DOM 锚点。
-- 前端入口已改为通过 `UIScheme` 装配方案层组件；当前默认入口、plain 基线与 A/B/C 入口都已回退到同一 0 UI shared baseline，等待各方案在冻结后的共享契约之上独立实现页面。
+- 前端入口已改为通过 `UIScheme` 装配方案层组件；路由按 `/ui/<scheme>` 隔离，`default`、`plain`、`a`、`b`、`c` 均拥有各自独立的方案层页面入口，当前只继续共享 workflow 与业务契约。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
 - `Phase 4` 当前处于共享主线收口阶段；单一当前链接输入框、`forwardRelayItems` 结构化快照与单一全局阻断错误承载区已落地，当前剩余重点是 G1 共享业务层确认与真实前端验收场景固化。
@@ -59,7 +59,7 @@
 ## 验证
 
 - `npm run build`：2026-04-17 通过（前端公共基线可完成生产构建，含 Stage 3 单一当前链接输入框、`forwardRelayItems` 结构化快照，以及共享 contract 收口后的 0 UI 基线）
-- `npm run build:plain`：2026-04-17 通过（用于确认极简占位方案也能消费同一共享业务层）
+- `npm run build:plain`：2026-04-17 通过（用于确认 plain 极简占位方案仍可单独消费同一共享业务层）
 - `go test ./...`：2026-04-17 全量通过（含 `include/exclude` 数组 contract、短链订阅、SPA 静态资源托管与 longUrl 载荷回归测试）
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
