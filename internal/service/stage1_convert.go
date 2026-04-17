@@ -14,13 +14,13 @@ import (
 )
 
 type AdvancedOptions struct {
-	Emoji             *bool   `json:"emoji"`
-	UDP               *bool   `json:"udp"`
-	SkipCertVerify    *bool   `json:"skipCertVerify"`
-	Config            *string `json:"config"`
-	Include           *string `json:"include"`
-	Exclude           *string `json:"exclude"`
-	EnablePortForward bool    `json:"enablePortForward"`
+	Emoji             *bool    `json:"emoji"`
+	UDP               *bool    `json:"udp"`
+	SkipCertVerify    *bool    `json:"skipCertVerify"`
+	Config            *string  `json:"config"`
+	Include           []string `json:"include"`
+	Exclude           []string `json:"exclude"`
+	EnablePortForward bool     `json:"enablePortForward"`
 }
 
 type Stage1Input struct {
@@ -60,8 +60,8 @@ func normalizeForwardRelayItems(items []string) []string {
 
 func normalizeAdvancedOptions(options AdvancedOptions) AdvancedOptions {
 	options.Config = normalizeOptionalString(options.Config)
-	options.Include = normalizeOptionalString(options.Include)
-	options.Exclude = normalizeOptionalString(options.Exclude)
+	options.Include = normalizeOptionalStringList(options.Include)
+	options.Exclude = normalizeOptionalStringList(options.Exclude)
 	return options
 }
 
@@ -76,6 +76,25 @@ func normalizeOptionalString(value *string) *string {
 	}
 
 	return &trimmed
+}
+
+func normalizeOptionalStringList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		normalized = append(normalized, trimmed)
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	return normalized
 }
 
 type Stage2SnapshotFixture struct {

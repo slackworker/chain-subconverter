@@ -5,8 +5,8 @@ type AdvancedOptions struct {
 	UDP            *bool
 	SkipCertVerify *bool
 	Config         *string
-	Include        *string
-	Exclude        *string
+	Include        []string
+	Exclude        []string
 }
 
 type Request struct {

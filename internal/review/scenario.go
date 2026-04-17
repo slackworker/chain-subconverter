@@ -27,13 +27,41 @@ type Case struct {
 }
 
 type advancedOptionsFile struct {
-	Emoji             *bool   `yaml:"emoji"`
-	UDP               *bool   `yaml:"udp"`
-	SkipCertVerify    *bool   `yaml:"skipCertVerify"`
-	Config            *string `yaml:"config"`
-	Include           *string `yaml:"include"`
-	Exclude           *string `yaml:"exclude"`
-	EnablePortForward *bool   `yaml:"enablePortForward"`
+	Emoji             *bool              `yaml:"emoji"`
+	UDP               *bool              `yaml:"udp"`
+	SkipCertVerify    *bool              `yaml:"skipCertVerify"`
+	Config            *string            `yaml:"config"`
+	Include           optionalStringList `yaml:"include"`
+	Exclude           optionalStringList `yaml:"exclude"`
+	EnablePortForward *bool              `yaml:"enablePortForward"`
+}
+
+type optionalStringList []string
+
+func (list *optionalStringList) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == 0 || node.Tag == "!!null" {
+		*list = nil
+		return nil
+	}
+
+	switch node.Kind {
+	case yaml.ScalarNode:
+		var value string
+		if err := node.Decode(&value); err != nil {
+			return err
+		}
+		*list = []string{value}
+		return nil
+	case yaml.SequenceNode:
+		var values []string
+		if err := node.Decode(&values); err != nil {
+			return err
+		}
+		*list = values
+		return nil
+	default:
+		return fmt.Errorf("expected scalar or string sequence")
+	}
 }
 
 func LoadCase(directory string) (Case, error) {
@@ -158,15 +186,11 @@ func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
 			options.Config = &trimmed
 		}
 	}
-	if fileOptions.Include != nil {
-		if trimmed := strings.TrimSpace(normalizeEditableText(*fileOptions.Include)); trimmed != "" {
-			options.Include = &trimmed
-		}
+	if include := normalizeEditableList(fileOptions.Include); len(include) > 0 {
+		options.Include = include
 	}
-	if fileOptions.Exclude != nil {
-		if trimmed := strings.TrimSpace(normalizeEditableText(*fileOptions.Exclude)); trimmed != "" {
-			options.Exclude = &trimmed
-		}
+	if exclude := normalizeEditableList(fileOptions.Exclude); len(exclude) > 0 {
+		options.Exclude = exclude
 	}
 	if fileOptions.EnablePortForward != nil {
 		options.EnablePortForward = *fileOptions.EnablePortForward
@@ -204,4 +228,23 @@ func normalizeEditableText(text string) string {
 	normalized := strings.ReplaceAll(text, "\r\n", "\n")
 	normalized = strings.ReplaceAll(normalized, "\r", "\n")
 	return strings.TrimSpace(normalized)
+}
+
+func normalizeEditableList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(normalizeEditableText(value))
+		if trimmed == "" {
+			continue
+		}
+		normalized = append(normalized, trimmed)
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	return normalized
 }

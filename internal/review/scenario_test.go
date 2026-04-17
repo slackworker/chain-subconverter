@@ -125,10 +125,10 @@ exclude: "^${BLOCKED}$"
 	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Config, "${CONFIG_PATH}") {
 		t.Fatalf("AdvancedOptions.Config = %v, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Config)
 	}
-	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Include, "(?i)$HK") {
+	if !hasStringListValue(testCase.Stage1Input.AdvancedOptions.Include, []string{"(?i)$HK"}) {
 		t.Fatalf("AdvancedOptions.Include = %v, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Include)
 	}
-	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Exclude, "^${BLOCKED}$") {
+	if !hasStringListValue(testCase.Stage1Input.AdvancedOptions.Exclude, []string{"^${BLOCKED}$"}) {
 		t.Fatalf("AdvancedOptions.Exclude = %v, want literal placeholder", testCase.Stage1Input.AdvancedOptions.Exclude)
 	}
 }
@@ -232,4 +232,16 @@ func hasBoolValue(value *bool, want bool) bool {
 
 func hasStringValue(value *string, want string) bool {
 	return value != nil && *value == want
+}
+
+func hasStringListValue(value []string, want []string) bool {
+	if len(value) != len(want) {
+		return false
+	}
+	for index := range value {
+		if value[index] != want[index] {
+			return false
+		}
+	}
+	return true
 }

@@ -32,15 +32,16 @@
 - 已落地 `POST /api/short-links`、`GET /subscription/<id>.yaml`，并由同一短链索引支持 `resolve-url` 短链接恢复与短链订阅读取。
 - 订阅路由已按 `publicBaseURL` 的路径前缀注册，长链接与短链接在带 base path 的部署形态下都可直接回放。
 - 文档主导航已收敛到 `spec/`、`plan/`、`progress/`、`testing/`；已完成阶段计划与历史材料已移入 `docs/temp/` 待删区。
-- `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、基础输入组件与业务交互状态主线。
+- `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、共享 workflow 状态主线与 0 UI 方案装配基线。
 - 共享页面状态已接通 `POST /api/resolve-url`、`POST /api/stage1/convert`、`POST /api/generate` 与 `POST /api/short-links`。
 - Stage 1 已补上完整高级菜单控件、条件显示的端口转发输入区、`forwardRelayItems` 结构化快照与手动 SOCKS5 追加入口。
-- Stage 2 的 `chainTargets[]` 已具备按 `kind` 区分主路径与补充路径的业务语义，空策略组保留展示但禁止选择。
+- Stage 2 的 `chainTargets[]` 已具备按 `kind` 区分主路径与补充路径的业务语义，空策略组保留展示但禁止选择；`port_forward` 目标已在共享 workflow 中收口为“同一 relay 不可被多个落地节点重复选择”。
+- Stage 1 高级选项中的 `include`、`exclude` 已统一收口为有序字符串数组语义，并已贯通前端类型、后端接口、longUrl 编解码与 `subconverter` query 构造。
 - 全局阻断错误承载区已收敛为单一入口；Stage 内仅保留消息日志与局部定位提示。
 - 已从共享层移除 Navbar、stepper 与顶部介绍 header，避免提前冻结 A/B/C 页面结构与交互节奏。
 - 已确认 StageCard、NoticeStack、StatusPill 不再保留共享层或参考实现地位，后续由方案层按需重写或直接删除。
 - 已确认恢复入口归属 Stage 3 输出域，且不再要求共享层固定页面顶部 restore 区或固定 DOM 锚点。
-- 前端入口已改为通过 `UIScheme` 装配方案层组件；当前默认方案与极简占位方案都可挂接到同一共享业务层。
+- 前端入口已改为通过 `UIScheme` 装配方案层组件；当前默认入口、plain 基线与 A/B/C 入口都已回退到同一 0 UI shared baseline，等待各方案在冻结后的共享契约之上独立实现页面。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
 - `Phase 4` 当前处于共享主线收口阶段；单一当前链接输入框、`forwardRelayItems` 结构化快照与单一全局阻断错误承载区已落地，当前剩余重点是 G1 共享业务层确认与真实前端验收场景固化。
@@ -49,17 +50,17 @@
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `internal/review/testdata/3pass-ss2022-test-subscription/`。
 
-- 当前前端仍未完成 A/B/C 方案分支评审，真实前端验收场景与方案对比材料等仍待收口。
-- 当前虽已完成单一当前链接输入框等共享交互收口，但共享前端入口与默认方案组件的解耦仍在继续收口，G1 明确签收仍未完成。
+- 当前前端仍未完成 A/B/C 方案评审，真实前端验收场景与方案对比材料等仍待收口。
+- 当前虽已完成单一当前链接输入框等共享交互收口，且 shared contract 已继续收口到 `include/exclude` 数组语义与 `port_forward` 互斥选择，但 G1 明确签收仍未完成。
 - 当前真实前端验收场景仍依赖外部模板与运行镜像状态，尚未完全固化为可复现签收路径。
 - 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
 
 ## 验证
 
-- `npm run build`：2026-04-16 通过（前端公共基线可完成生产构建，含 Stage 3 单一当前链接输入框与 `forwardRelayItems` 结构化快照迁移）
-- `npm run build:plain`：2026-04-16 通过（用于确认极简占位方案也能消费同一共享业务层）
-- `go test ./...`：2026-04-16 全量通过（含 `POST /api/short-links`、短链订阅、SPA 静态资源托管与 longUrl 载荷回归测试）
+- `npm run build`：2026-04-17 通过（前端公共基线可完成生产构建，含 Stage 3 单一当前链接输入框、`forwardRelayItems` 结构化快照，以及共享 contract 收口后的 0 UI 基线）
+- `npm run build:plain`：2026-04-17 通过（用于确认极简占位方案也能消费同一共享业务层）
+- `go test ./...`：2026-04-17 全量通过（含 `include/exclude` 数组 contract、短链订阅、SPA 静态资源托管与 longUrl 载荷回归测试）
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
 - 真实容器 smoke：已跑通 `app + subconverter`，并通过本地静态文件服务托管中转订阅样例与模板完成 3 个现有 API 验证

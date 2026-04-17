@@ -69,7 +69,7 @@ func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionStrings(t *testing.T)
 	request := httptest.NewRequest(
 		http.MethodPost,
 		"/api/stage1/convert",
-		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":null,"udp":null,"skipCertVerify":null,"config":"","include":"","exclude":"","enablePortForward":false}}}`),
+		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":null,"udp":null,"skipCertVerify":null,"config":"","include":[],"exclude":[],"enablePortForward":false}}}`),
 	)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -493,7 +493,7 @@ func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 		result: singleLandingResult("HK Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[" relay.example.com:80"],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":"","exclude":"","enablePortForward":true}}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[" relay.example.com:80"],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":[],"exclude":[],"enablePortForward":true}}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -511,7 +511,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":"","exclude":"","enablePortForward":false}},"stage2Snapshot":{"rows":[{"landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":[],"exclude":[],"enablePortForward":false}},"stage2Snapshot":{"rows":[{"landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -548,7 +548,7 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 		result: singleLandingResult("Unknown Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":"","exclude":"","enablePortForward":false}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":[],"exclude":[],"enablePortForward":false}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 

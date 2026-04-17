@@ -28,13 +28,13 @@ type longURLStage1Input struct {
 }
 
 type longURLAdvancedOptions struct {
-	Config            *string `json:"config"`
-	Emoji             *bool   `json:"emoji"`
-	EnablePortForward bool    `json:"enablePortForward"`
-	Exclude           *string `json:"exclude"`
-	Include           *string `json:"include"`
-	SkipCertVerify    *bool   `json:"skipCertVerify"`
-	UDP               *bool   `json:"udp"`
+	Config            *string  `json:"config"`
+	Emoji             *bool    `json:"emoji"`
+	EnablePortForward bool     `json:"enablePortForward"`
+	Exclude           []string `json:"exclude"`
+	Include           []string `json:"include"`
+	SkipCertVerify    *bool    `json:"skipCertVerify"`
+	UDP               *bool    `json:"udp"`
 }
 
 type longURLStage2Snapshot struct {

@@ -2,7 +2,7 @@
 
 Phase 4 前端工程目录。
 
-当前已初始化 `Vite + React + TypeScript + Tailwind CSS` 的前端公共基线，用于承接共享状态模型、共享业务层接口与后续 A/B/C UI 分支方案。
+当前已初始化 `Vite + React + TypeScript + Tailwind CSS` 的前端公共基线，用于承接共享状态模型、共享业务层接口与后续 A/B/C UI 同仓库并行方案。
 
 ## 常用命令
 

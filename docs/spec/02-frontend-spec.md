@@ -72,6 +72,7 @@
 | `password` | text | 否 | 密码 |
 
 - 仅支持手动添加 SOCKS5 类型的节点
+- `username` 与 `password` 必须成对出现
 - 提交后转换为一条标准 `socks5://` URI 追加到落地输入区
 
 #### 1.1.2 落地副本

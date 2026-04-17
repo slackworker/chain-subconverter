@@ -44,6 +44,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	for _, relay := range stage2Init.ForwardRelays {
 		forwardRelayNames[relay.Name] = struct{}{}
 	}
+	forwardRelayUsers := make(map[string]string, len(stage2Init.ForwardRelays))
 
 	for _, landing := range landingProxies {
 		row, exists := rowsByLanding[landing.Name]
@@ -86,6 +87,11 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 				cause := fmt.Errorf("unknown forward relay %q for landing node %q", targetName, landing.Name)
 				return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", landing.Name, "targetName", cause)
 			}
+			if usedBy, exists := forwardRelayUsers[targetName]; exists {
+				cause := fmt.Errorf("forward relay %q for landing node %q is already used by landing node %q", targetName, landing.Name, usedBy)
+				return nil, newStage2RowValidationError("DUPLICATE_FORWARD_RELAY_TARGET", "forward relay target is already used", landing.Name, "targetName", cause)
+			}
+			forwardRelayUsers[targetName] = landing.Name
 		default:
 			cause := fmt.Errorf("unsupported mode %q for landing node %q", row.Mode, landing.Name)
 			return nil, newStage2RowInvalidRequestError("unsupported mode", landing.Name, "mode", cause)

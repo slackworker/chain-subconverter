@@ -101,3 +101,74 @@ func TestValidateGenerateSnapshot_RejectsEmptyChainTarget(t *testing.T) {
 		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "EMPTY_CHAIN_TARGET")
 	}
 }
+
+func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.T) {
+	targetName := "relay.example.com:80"
+	fixtures := dualLandingFixture("HK Landing", "US Landing")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{
+			ForwardRelayItems: []string{targetName},
+			AdvancedOptions: AdvancedOptions{
+				EnablePortForward: true,
+			},
+		},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					LandingNodeName: "HK Landing",
+					Mode:            "port_forward",
+					TargetName:      &targetName,
+				},
+				{
+					LandingNodeName: "US Landing",
+					Mode:            "port_forward",
+					TargetName:      &targetName,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want duplicate forward relay target rejection")
+	}
+	if !strings.Contains(err.Error(), `forward relay "relay.example.com:80"`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "DUPLICATE_FORWARD_RELAY_TARGET" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "DUPLICATE_FORWARD_RELAY_TARGET")
+	}
+}
+
+func dualLandingFixture(firstLandingName string, secondLandingName string) ConversionFixtures {
+	groupLines := []string{"proxy-groups:"}
+	for _, groupName := range []string{"🇭🇰 香港节点", "🇺🇸 美国节点", "🇯🇵 日本节点", "🇸🇬 新加坡节点", "🇼🇸 台湾节点", "🇰🇷 韩国节点"} {
+		groupLines = append(groupLines,
+			"  - name: "+groupName,
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+		)
+	}
+
+	return ConversionFixtures{
+		LandingDiscoveryYAML: strings.Join([]string{
+			"proxies:",
+			inlineLandingFixtureLine(firstLandingName, "ss", false),
+			inlineLandingFixtureLine(secondLandingName, "ss", false),
+			"",
+		}, "\n"),
+		TransitDiscoveryYAML: "proxies:\n",
+		FullBaseYAML: strings.Join(append([]string{
+			"proxies:",
+			inlineLandingFixtureLine(firstLandingName, "ss", true),
+			inlineLandingFixtureLine(secondLandingName, "ss", true),
+		}, append(groupLines, "")...), "\n"),
+		TemplateConfig: defaultRegionConfig,
+	}
+}

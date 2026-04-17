@@ -26,6 +26,9 @@ export interface TargetChoice {
 	disabled: boolean;
 }
 
+type Stage2SnapshotRow = typeof initialAppState.stage2Snapshot.rows[number];
+type Stage2SnapshotRows = typeof initialAppState.stage2Snapshot.rows;
+
 export interface AppWorkflowViewModel {
 	state: typeof initialAppState;
 	stage2Rows: typeof initialAppState.stage2Snapshot.rows;
@@ -46,7 +49,7 @@ export interface AppWorkflowViewModel {
 	getStage2RowMeta: (landingNodeName: string) => Stage2Init["rows"][number] | null;
 	getStage2RowErrors: (landingNodeName: string) => BlockingError[];
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
-	getTargetChoices: (mode: Stage2Row["mode"]) => TargetChoice[];
+	getTargetChoices: (landingNodeName: string, mode: Stage2Row["mode"]) => TargetChoice[];
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
@@ -104,7 +107,18 @@ function getModeOptions(stage2Init: Stage2Init | null) {
 	return stage2Init?.availableModes ?? [];
 }
 
-function getTargetChoices(stage2Init: Stage2Init | null, mode: Stage2Row["mode"]) {
+function getSelectedForwardRelays(rows: Stage2SnapshotRows) {
+	const selected = new Set<string>();
+	for (const row of rows) {
+		if (row.mode !== "port_forward" || row.targetName === null) {
+			continue;
+		}
+		selected.add(row.targetName);
+	}
+	return selected;
+}
+
+function getTargetChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string, mode: Stage2Row["mode"]) {
 	if (stage2Init === null) {
 		return [];
 	}
@@ -116,10 +130,16 @@ function getTargetChoices(stage2Init: Stage2Init | null, mode: Stage2Row["mode"]
 		}));
 	}
 	if (mode === "port_forward") {
+		const currentRow = stage2Rows.find((row: Stage2SnapshotRow) => row.landingNodeName === landingNodeName) ?? null;
+		const selectedRelays = getSelectedForwardRelays(stage2Rows);
+		if (currentRow?.mode === "port_forward" && currentRow.targetName !== null) {
+			selectedRelays.delete(currentRow.targetName);
+		}
+
 		return stage2Init.forwardRelays.map((relay) => ({
 			value: relay.name,
 			label: relay.name,
-			disabled: false,
+			disabled: selectedRelays.has(relay.name),
 		}));
 	}
 	return [];
@@ -129,11 +149,11 @@ function matchesResponseOriginStage(currentStage: ResponseOriginStage | null, st
 	return currentStage === stage;
 }
 
-function pickNextTarget(stage2Init: Stage2Init | null, mode: Stage2Row["mode"], currentTarget: string | null) {
+function pickNextTarget(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string, mode: Stage2Row["mode"], currentTarget: string | null) {
 	if (mode === "none") {
 		return null;
 	}
-	const choices = getTargetChoices(stage2Init, mode).filter((choice) => !choice.disabled);
+	const choices = getTargetChoices(stage2Init, stage2Rows, landingNodeName, mode).filter((choice) => !choice.disabled);
 	if (choices.some((choice) => choice.value === currentTarget)) {
 		return currentTarget;
 	}
@@ -356,7 +376,7 @@ export function useAppWorkflow() {
 		updateStage2Row(landingNodeName, (row) => ({
 			...row,
 			mode,
-			targetName: pickNextTarget(state.stage2Init, mode, row.targetName),
+			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, landingNodeName, mode, row.targetName),
 		}));
 	}
 
@@ -488,7 +508,7 @@ export function useAppWorkflow() {
 		getStage2RowMeta,
 		getStage2RowErrors,
 		getStageMessages,
-		getTargetChoices: (mode: Stage2Row["mode"]) => getTargetChoices(state.stage2Init, mode),
+		getTargetChoices: (landingNodeName: string, mode: Stage2Row["mode"]) => getTargetChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName, mode),
 		handleStage1Convert,
 		handleRestore,
 		handleModeChange,

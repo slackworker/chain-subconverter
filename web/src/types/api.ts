@@ -22,8 +22,8 @@ export interface AdvancedOptions {
 	udp: boolean | null;
 	skipCertVerify: boolean | null;
 	config: string | null;
-	include: string | null;
-	exclude: string | null;
+	include: string[] | null;
+	exclude: string[] | null;
 	enablePortForward: boolean;
 }
 

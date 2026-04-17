@@ -22,12 +22,12 @@ type fixtureStage1Request struct {
 		LandingRawText  string `json:"landingRawText"`
 		TransitRawText  string `json:"transitRawText"`
 		AdvancedOptions struct {
-			Emoji          *bool   `json:"emoji"`
-			UDP            *bool   `json:"udp"`
-			SkipCertVerify *bool   `json:"skipCertVerify"`
-			Config         *string `json:"config"`
-			Include        *string `json:"include"`
-			Exclude        *string `json:"exclude"`
+			Emoji          *bool    `json:"emoji"`
+			UDP            *bool    `json:"udp"`
+			SkipCertVerify *bool    `json:"skipCertVerify"`
+			Config         *string  `json:"config"`
+			Include        []string `json:"include"`
+			Exclude        []string `json:"exclude"`
 		} `json:"advancedOptions"`
 	} `json:"stage1Input"`
 }
@@ -112,8 +112,8 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 			UDP:            boolPtr(true),
 			SkipCertVerify: boolPtr(true),
 			Config:         stringPtr("http://config.example/acl.ini"),
-			Include:        stringPtr("hk|us"),
-			Exclude:        stringPtr("test"),
+			Include:        []string{"hk", "us"},
+			Exclude:        []string{"test"},
 		},
 	})
 	if err != nil {
@@ -231,8 +231,8 @@ func TestConvert_OmitsEmptyOptionalQueryParameters(t *testing.T) {
 			UDP:            boolPtr(true),
 			SkipCertVerify: boolPtr(false),
 			Config:         stringPtr(""),
-			Include:        stringPtr("   "),
-			Exclude:        stringPtr("\n"),
+			Include:        []string{"   "},
+			Exclude:        []string{"\n"},
 		},
 	})
 	if err != nil {

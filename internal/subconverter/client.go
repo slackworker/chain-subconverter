@@ -140,8 +140,8 @@ func (client *Client) buildRawQuery(request Request, rawInput string, list bool)
 		params = append(params, "list=true")
 	}
 	params = appendOptionalStringQuery(params, "config", request.Options.Config)
-	params = appendOptionalStringQuery(params, "include", request.Options.Include)
-	params = appendOptionalStringQuery(params, "exclude", request.Options.Exclude)
+	params = appendOptionalStringListQuery(params, "include", request.Options.Include)
+	params = appendOptionalStringListQuery(params, "exclude", request.Options.Exclude)
 	return strings.Join(params, "&")
 }
 
@@ -168,6 +168,26 @@ func appendOptionalStringQuery(params []string, name string, value *string) []st
 	}
 
 	return append(params, name+"="+url.QueryEscape(trimmed))
+}
+
+func appendOptionalStringListQuery(params []string, name string, values []string) []string {
+	if len(values) == 0 {
+		return params
+	}
+
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		normalized = append(normalized, trimmed)
+	}
+	if len(normalized) == 0 {
+		return params
+	}
+
+	return append(params, name+"="+url.QueryEscape(strings.Join(normalized, "|")))
 }
 
 func normalizeSubconverterURLInput(rawInput string) string {
