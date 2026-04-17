@@ -1,15 +1,9 @@
 # Phase 4 细化计划
 
-本文定义 [ROADMAP](../ROADMAP.md) 中 `Phase 4` 的推进顺序、当前已落地范围、并行 UI 方案策略（同仓库实现）与验收关口。界面结构、接口契约与业务规则仍分别以 [spec/02-frontend-spec](../spec/02-frontend-spec.md)、[spec/03-backend-api](../spec/03-backend-api.md)、[spec/04-business-rules](../spec/04-business-rules.md) 为准。
+本文仅定义 [ROADMAP](../ROADMAP.md) 中 `Phase 4` 的推进顺序、并行 UI 策略、关口与验收口径。  
+实时进度与已完成项统一维护在 [progress/STATUS](../progress/STATUS.md)。
 
-## 当前状态
-
-- `Phase 4` 已开始，当前处于“共享主线收口”阶段
-- 已初始化 `web/` 下的 `Vite + React + TypeScript + Tailwind CSS` 前端工程
-- 已落地统一前端 domain types、字段级交互组件、共享流程主线与静态资源托管接线
-- 已接入真实 `POST /api/stage1/convert -> stage2Init -> POST /api/generate -> longUrl` 主线
-- 共享主线已接通 `resolve-url`、`short-links` 与当前链接输入状态，但 G1 共享边界验收尚未完成
-- 尚未完成 G1 共享业务层收口、A/B/C 方案评审与最终 Compose 单入口验证
+界面结构、接口契约与业务规则分别以 [spec/02-frontend-spec](../spec/02-frontend-spec.md)、[spec/03-backend-api](../spec/03-backend-api.md)、[spec/04-business-rules](../spec/04-business-rules.md) 为准。
 
 ## 主线业务路径
 
@@ -94,26 +88,6 @@ flowchart LR
 - 落地共享状态模型、domain types、字段级交互组件与共享流程编排
 - 接入后端静态资源托管包装器与前端构建链
 
-当前已完成：
-
-- `web/` 工程骨架与生产构建
-- SPA 静态资源托管包装器
-- 0 UI shared baseline 与多 `scheme` 装配入口
-- 已将 Navbar、hero header、stepper 等页面结构从共享层剥离，避免提前冻结 A/B/C 方案
-- 共享页面状态已接通 `resolve-url -> stage1/convert -> generate -> short-links`
-- Stage 1 已补上高级菜单全量控件与手动 SOCKS5 追加入口
-- Stage 1 端口转发输入已切到 `forwardRelayItems` 结构化数组，并按 TagInput 语义逐项录入
-- Stage 1 高级选项中的 `include`、`exclude` 已切到有序字符串数组语义，并与后端、longUrl、`subconverter` query 保持一致
-- Stage 2 已补上按 `chainTargets[].kind` 区分主路径与补充路径的默认方案选择器，空策略组保留展示但禁止选择
-- Stage 2 `port_forward` 目标已在共享 workflow 层收口为互斥选择，避免方案层各自补算
-- 全局阻断错误承载区已收敛为单一入口；Stage 内仅保留消息日志与局部定位提示
-- `go test ./...` 与 `npm run build` 已通过
-
-当前未完成：
-
-- G1 共享业务层完成确认与统一前端验收场景固化
-- A/B/C 方案评审与单入口部署验收
-
 ### G1：共享业务层完成确认
 
 通过条件：
@@ -191,8 +165,8 @@ flowchart LR
 3. 恢复/短链验证：真实跑通 `resolve-url`、`short-links` 与短链订阅读取
 4. 部署验证：Compose 单入口下页面、API、订阅与短链路径全部可访问
 
-## 当前下一步
+## 当前下一步（计划视角）
 
-1. 收口真实前端验收场景与演示数据，完成 G1 前的共享业务层确认
-2. 在共享业务层稳定后进入 G1，并在同一仓库内并行推进 A/B/C 三套 UI 方案
-3. 在胜出方案内继续收口 Compose 单入口部署验收
+1. 基于已确认共享边界，继续在同一仓库并行推进 A/B/C 三套 UI 方案
+2. 以统一演示场景完成 G2 评审选型，并沉淀落选方案可复用结论
+3. 在胜出方案内收口恢复、短链与 Compose 单入口部署验收
