@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-04-13
+> 最近更新：2026-04-17
 
 ## 摘要
 
@@ -8,7 +8,7 @@
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 4` 可以开始。
 - `Phase 3` 已完成：3-A, 3-B, 3-C, 3-D, 3-E 已全部落地，后端扩展业务与 API 契约现已收口。
-- `Phase 4` 已开始：共享主线代码已接通恢复、转换、生成与短链别名流程，当前正在继续收口共享业务边界；G1 共享层验收尚未完成。
+- `Phase 4` 已进入 A/B/C 并行开发准备期：共享主线代码已接通恢复、转换、生成与短链别名流程，G1 共享层验收已完成并签收。
 
 ## Phase 进度
 
@@ -44,14 +44,14 @@
 - 前端入口已改为通过 `UIScheme` 装配方案层组件；路由按 `/ui/<scheme>` 隔离，`default`、`plain`、`a`、`b`、`c` 均拥有各自独立的方案层页面入口，当前只继续共享 workflow 与业务契约。
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
-- `Phase 4` 当前处于共享主线收口阶段；单一当前链接输入框、`forwardRelayItems` 结构化快照与单一全局阻断错误承载区已落地，当前剩余重点是 G1 共享业务层确认与真实前端验收场景固化。
+- 2026-04-17 已完成 G1 共享业务层签收：`npm run build`、`npm run build:plain`、`go test ./...` 全部通过，允许进入 A/B/C 并行方案开发。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `internal/review/testdata/3pass-ss2022-test-subscription/`。
 
 - 当前前端仍未完成 A/B/C 方案评审，真实前端验收场景与方案对比材料等仍待收口。
-- 当前虽已完成单一当前链接输入框等共享交互收口，且 shared contract 已继续收口到 `include/exclude` 数组语义与 `port_forward` 互斥选择，但 G1 明确签收仍未完成。
+- 当前已完成单一当前链接输入框等共享交互收口，且 shared contract 已收口到 `include/exclude` 数组语义与 `port_forward` 互斥选择，G1 已于 2026-04-17 完成签收。
 - 当前真实前端验收场景仍依赖外部模板与运行镜像状态，尚未完全固化为可复现签收路径。
 - 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
