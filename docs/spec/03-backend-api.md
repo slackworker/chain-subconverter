@@ -26,7 +26,7 @@
       "udp": true,
       "skipCertVerify": null,
       "config": null,
-      "include": null,
+      "include": ["TagA", "TagB"],
       "exclude": null,
       "enablePortForward": false
     }
@@ -39,10 +39,11 @@
 - `forwardRelayItems` 始终是字符串数组；`advancedOptions.enablePortForward = false` 时必须为 `[]`，非空视为无效请求
 - `forwardRelayItems[]` 的每个元素对应一个独立端口转发输入项；数组顺序保留用户输入顺序，不使用连续文本序列化
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
-- 接口接受层中，`advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config`、`include`、`exclude` 使用 `非空字符串 | null`
+- 接口接受层中，`advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config` 使用 `非空字符串 | null`；`include`、`exclude` 使用 `非空字符串数组 | null`
 - `advancedOptions.config` 的字段名保留 `config`，用于兼容 `subconverter` 的既有 `config` 查询参数；其业务语义固定为“模板 URL”或“外部配置（模板）URL”，不得理解为最终 Mihomo YAML
-- 三态语义为：复选框 `true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；文本字段 `null` 表示该字段留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
-- `config` 表示用户填写的模板 URL；`include` 与 `exclude` 为透传文本参数。为兼容文本框空输入，服务端可接受 `config = ""`、`include = ""`、`exclude = ""`，但必须在入站归一化为 `null`
+- 三态语义为：复选框 `true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；`config = null` 表示该字段留空；`include = null`、`exclude = null` 表示对应 Tag 列表留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
+- `config` 表示用户填写的模板 URL；`include` 与 `exclude` 为透传 Tag 列表。为兼容空输入，服务端可接受 `config = ""`、`include = []`、`exclude = []`，但必须在入站归一化为 `null`
+- 当前 Web 前端若以 TagInput 承载 `include`、`exclude`，接口接受层收到的必须是按输入顺序排列的字符串数组，不使用连续文本序列化
 - `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`；参数默认值与具体传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
@@ -205,8 +206,8 @@
       "udp": true,
       "skipCertVerify": null,
       "config": null,
-      "include": null,
-      "exclude": null,
+      "include": ["TagA", "TagB"],
+      "exclude": ["TagX"],
       "enablePortForward": true
     }
   }
@@ -488,7 +489,7 @@
       "udp": true,
       "skipCertVerify": null,
       "config": null,
-      "include": null,
+      "include": ["TagA", "TagB"],
       "exclude": null,
       "enablePortForward": true
     }
