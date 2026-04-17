@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 
+import type { AppWorkflowViewModel } from "../hooks/useAppWorkflow";
 import type { ResponseOriginStage } from "./state";
 import type { BlockingError, ChainTarget, Message } from "../types/api";
 
@@ -28,9 +29,23 @@ export interface TargetChooserProps {
 	onChange: (targetName: string | null) => void;
 }
 
+export type CopyState = "idle" | "done" | "failed";
+
+export interface OutputActions {
+	copyState: CopyState;
+	openCurrentLink: () => void;
+	copyCurrentLink: () => Promise<void>;
+	downloadCurrentLink: () => void;
+}
+
+export interface AppPageProps {
+	workflow: AppWorkflowViewModel;
+	outputActions: OutputActions;
+}
+
 export interface UIScheme {
-	NoticeRenderer: ComponentType<NoticeRendererProps>;
-	StageContainer: ComponentType<StageContainerProps>;
-	StatusDisplay: ComponentType<StatusDisplayProps>;
-	TargetChooser: ComponentType<TargetChooserProps>;
+	id: string;
+	label: string;
+	description: string;
+	Page: ComponentType<AppPageProps>;
 }

@@ -1,0 +1,116 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev:prepare",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail; mkdir -p .tmp data; BACKEND_PORT=\"\"; for PORT in 11200 11201 11202 11203; do if ss -ltn | rg -q \":${PORT}\\\\b\"; then continue; fi; BACKEND_PORT=\"${PORT}\"; break; done; if [ -z \"${BACKEND_PORT}\" ]; then echo \"[dev:prepare] no available backend port in 11200-11203\"; exit 1; fi; BACKEND_URL=\"http://localhost:${BACKEND_PORT}\"; echo \"BACKEND_PORT=${BACKEND_PORT}\" > .tmp/dev.env; echo \"BACKEND_URL=${BACKEND_URL}\" >> .tmp/dev.env; echo \"FRONTEND_PORT=5173\" >> .tmp/dev.env; echo \"[dev:prepare] backend -> ${BACKEND_URL}, frontend -> http://localhost:5173\""
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-all"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev:backend",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail; test -f .tmp/dev.env; source .tmp/dev.env; CHAIN_SUBCONVERTER_HTTP_ADDRESS=\":${BACKEND_PORT}\" CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=\"${BACKEND_URL}\" CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=\"${BACKEND_URL}\" go run ./cmd/server"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-all"
+      },
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": "."
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "chain-subconverter listening on"
+          }
+        }
+      ]
+    },
+    {
+      "label": "dev:web",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail; test -f .tmp/dev.env; source .tmp/dev.env; PIDS=\"$(lsof -tiTCP:${FRONTEND_PORT} -sTCP:LISTEN || true)\"; if [ -n \"$PIDS\" ]; then echo \"[dev:web] port ${FRONTEND_PORT} is in use, killing: $PIDS\"; kill $PIDS || true; sleep 1; fi; VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET=\"${BACKEND_URL}\" npm run dev"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev-all"
+      },
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": "."
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Local:"
+          }
+        }
+      ]
+    },
+    {
+      "label": "dev:all",
+      "dependsOn": [
+        "dev:prepare",
+        "dev:backend",
+        "dev:web"
+      ],
+      "dependsOrder": "sequence",
+      "runOptions": {
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "dev:stop",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail; BACKEND_PORT=11200; FRONTEND_PORT=5173; if [ -f .tmp/dev.env ]; then source .tmp/dev.env; fi; for PORT in ${BACKEND_PORT} ${FRONTEND_PORT}; do PIDS=\"$(lsof -tiTCP:${PORT} -sTCP:LISTEN || true)\"; if [ -n \"$PIDS\" ]; then echo \"[dev:stop] stopping port ${PORT}: $PIDS\"; kill $PIDS || true; fi; done"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

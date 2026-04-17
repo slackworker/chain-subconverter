@@ -3,15 +3,56 @@ import { useState } from "react";
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
 import { getRowErrors } from "../lib/notices";
 import { initialAppState } from "../lib/state";
-import type { AppState } from "../lib/state";
 import type { ResponseOriginStage } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { APIRequestError } from "../lib/api";
 
 export type WorkflowTone = "neutral" | "warning" | "success";
 
-interface WorkflowStatus {
+export interface WorkflowStatus {
 	label: string;
 	tone: WorkflowTone;
+}
+
+interface RequestFailureContext {
+	stageLabel: string;
+	actionLabel: string;
+	requestPath: string;
+}
+
+export interface TargetChoice {
+	value: string;
+	label: string;
+	disabled: boolean;
+}
+
+export interface AppWorkflowViewModel {
+	state: typeof initialAppState;
+	stage2Rows: typeof initialAppState.stage2Snapshot.rows;
+	modeOptions: Stage2Init["availableModes"];
+	responseOriginStage: ResponseOriginStage | null;
+	isConverting: boolean;
+	isRestoring: boolean;
+	isGenerating: boolean;
+	isCreatingShortUrl: boolean;
+	isConflictReadonly: boolean;
+	isStage2Editable: boolean;
+	canGenerate: boolean;
+	stage1Status: WorkflowStatus;
+	stage2Status: WorkflowStatus;
+	stage3Status: WorkflowStatus;
+	setCurrentLinkInput: (value: string) => void;
+	updateStage1Input: (updater: (current: Stage1Input) => Stage1Input) => void;
+	getStage2RowMeta: (landingNodeName: string) => Stage2Init["rows"][number] | null;
+	getStage2RowErrors: (landingNodeName: string) => BlockingError[];
+	getStageMessages: (stage: ResponseOriginStage) => Message[];
+	getTargetChoices: (mode: Stage2Row["mode"]) => TargetChoice[];
+	handleStage1Convert: () => Promise<void>;
+	handleRestore: () => Promise<void>;
+	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
+	handleTargetChange: (landingNodeName: string, targetName: string) => void;
+	handleGenerate: () => Promise<void>;
+	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 }
 
 function snapshotRowsFromInit(stage2Init: Stage2Init) {
@@ -22,10 +63,19 @@ function snapshotRowsFromInit(stage2Init: Stage2Init) {
 	}));
 }
 
-function fallbackBlockingError(error: unknown): BlockingError {
+function fallbackBlockingError(error: unknown, context: RequestFailureContext): BlockingError {
+	const requestError = typeof error === "object" && error !== null ? error as APIRequestError : null;
+	const detail = error instanceof Error ? error.message : "请求失败";
+	const requestPath = requestError?.requestPath ?? context.requestPath;
+	const status = requestError?.status;
+	const requestSummary = `${context.stageLabel}「${context.actionLabel}」 请求失败`;
+	const isNetworkFailure = status === undefined && requestError?.errorBody === undefined;
+
 	return {
 		code: "REQUEST_FAILED",
-		message: error instanceof Error ? error.message : "请求失败",
+		message: isNetworkFailure
+			? `${requestSummary}：浏览器未拿到 ${requestPath} 的响应（${detail}）。这通常表示预览页 / API 服务不可达、代理未生效，或请求在到达后端前就已经中断。`
+			: `${requestSummary}：${requestPath} 返回 HTTP ${status ?? "unknown"}${detail ? `（${detail}）` : ""}。`,
 		scope: "global",
 	};
 }
@@ -193,7 +243,11 @@ export function useAppWorkflow() {
 				...current,
 				responseOriginStage: "stage1",
 				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
+				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+					stageLabel: "Stage 1 / 输入区",
+					actionLabel: "转换并自动填充",
+					requestPath: "POST /api/stage1/convert",
+				})],
 			}));
 		} finally {
 			setIsConverting(false);
@@ -261,7 +315,11 @@ export function useAppWorkflow() {
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
 					messages: restoreResponse.messages,
-					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError)],
+					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError, {
+						stageLabel: "Stage 3 / 输出区",
+						actionLabel: "恢复后的转换并自动填充",
+						requestPath: "POST /api/stage1/convert",
+					})],
 				}));
 			}
 		} catch (error) {
@@ -270,7 +328,11 @@ export function useAppWorkflow() {
 				...current,
 				responseOriginStage: "stage3",
 				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
+				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+					stageLabel: "Stage 3 / 输出区",
+					actionLabel: "反向解析",
+					requestPath: "POST /api/resolve-url",
+				})],
 			}));
 		} finally {
 			setIsRestoring(false);
@@ -333,7 +395,11 @@ export function useAppWorkflow() {
 				...current,
 				responseOriginStage: "stage2",
 				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
+				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+					stageLabel: "Stage 2 / 配置区",
+					actionLabel: "生成链接",
+					requestPath: "POST /api/generate",
+				})],
 			}));
 		} finally {
 			setIsGenerating(false);
@@ -391,14 +457,18 @@ export function useAppWorkflow() {
 				...current,
 				responseOriginStage: "stage3",
 				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error)],
+				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+					stageLabel: "Stage 3 / 输出区",
+					actionLabel: "创建短链接",
+					requestPath: "POST /api/short-links",
+				})],
 			}));
 		} finally {
 			setIsCreatingShortUrl(false);
 		}
 	}
 
-	return {
+	const workflow: AppWorkflowViewModel = {
 		state,
 		stage2Rows,
 		modeOptions,
@@ -426,4 +496,6 @@ export function useAppWorkflow() {
 		handleGenerate,
 		handlePreferShortUrl,
 	};
+
+	return workflow;
 }

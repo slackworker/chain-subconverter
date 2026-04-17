@@ -12,6 +12,7 @@ function normalizeBasePath(value: string | undefined): string {
 
 export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, ".", "");
+	const apiProxyTarget = env.VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET?.trim() || "http://localhost:11200";
 
 	return {
 		base: normalizeBasePath(env.VITE_CHAIN_SUBCONVERTER_BASE_PATH),
@@ -19,6 +20,20 @@ export default defineConfig(({ mode }) => {
 		server: {
 			port: 5173,
 			strictPort: true,
+			proxy: {
+				"/api": {
+					target: apiProxyTarget,
+					changeOrigin: true,
+				},
+			},
+		},
+		preview: {
+			proxy: {
+				"/api": {
+					target: apiProxyTarget,
+					changeOrigin: true,
+				},
+			},
 		},
 	};
 });
