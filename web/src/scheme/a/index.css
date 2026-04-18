@@ -113,6 +113,24 @@
 	background: #fff8f8;
 }
 
+/* 全局阻断错误：脱离文档流，避免显隐时推挤主布局（spec 仅要求承载区，不固定形态） */
+.a-blocking-flyout {
+	position: fixed;
+	z-index: 2000;
+	top: max(1rem, env(safe-area-inset-top, 0px));
+	left: 50%;
+	transform: translateX(-50%);
+	width: min(52rem, calc(100vw - 2rem));
+	max-height: min(40vh, 20rem);
+	overflow: auto;
+	pointer-events: auto;
+}
+
+.a-panel--blocking {
+	margin-bottom: 0;
+	box-shadow: 0 8px 32px rgba(28, 25, 21, 0.14), var(--shadow);
+}
+
 .a-panel__title {
 	margin: 0 0 0.35rem;
 	font-size: 1rem;

@@ -37,15 +37,17 @@ function BlockingPanel({
 		return null;
 	}
 	return (
-		<section className="a-panel a-panel--danger" aria-live="polite">
-			<h2 className="a-panel__title">需要处理的问题</h2>
-			{stageLabel ? <p className="a-panel__meta">来源：{stageLabel}</p> : null}
-			<ul className="a-error-list">
-				{globalErrors.map((error) => (
-					<li key={`${error.code}:${error.message}`}>{error.message}</li>
-				))}
-			</ul>
-		</section>
+		<div className="a-blocking-flyout">
+			<section className="a-panel a-panel--danger a-panel--blocking" aria-live="polite">
+				<h2 className="a-panel__title">需要处理的问题</h2>
+				{stageLabel ? <p className="a-panel__meta">来源：{stageLabel}</p> : null}
+				<ul className="a-error-list">
+					{globalErrors.map((error) => (
+						<li key={`${error.code}:${error.message}`}>{error.message}</li>
+					))}
+				</ul>
+			</section>
+		</div>
 	);
 }
 
