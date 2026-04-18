@@ -105,13 +105,17 @@ func (client *Client) executePass(ctx context.Context, op string, rawURL string)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return "", NewUnavailableError(op, fmt.Errorf("unexpected HTTP status %d", resp.StatusCode))
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", NewUnavailableError(op, err)
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		message := fmt.Sprintf("unexpected HTTP status %d", resp.StatusCode)
+		if details := strings.TrimSpace(string(body)); details != "" {
+			message += ": " + details
+		}
+		return "", NewUnavailableError(op, fmt.Errorf("%s", message))
 	}
 
 	if len(strings.TrimSpace(string(body))) == 0 {

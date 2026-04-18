@@ -16,6 +16,8 @@ export const initialManualSocks5FormState: ManualSocks5FormState = {
 	password: "",
 };
 
+const SUPPORTED_SOCKS5_URI_PROTOCOLS = new Set(["socks5:", "socks5h:"]);
+
 function appendMultilineLine(currentValue: string, nextLine: string) {
 	if (currentValue === "") {
 		return nextLine;
@@ -23,15 +25,62 @@ function appendMultilineLine(currentValue: string, nextLine: string) {
 	return currentValue.endsWith("\n") ? `${currentValue}${nextLine}` : `${currentValue}\n${nextLine}`;
 }
 
-function encodeUrlSafeBase64(value: string) {
-	const encodedBytes = new TextEncoder().encode(value);
-	let binary = "";
+function buildTelegramSocksURI(name: string, server: string, port: number, username: string, password: string) {
+	const params = new URLSearchParams({
+		server,
+		port: String(port),
+		remarks: name,
+	});
 
-	for (const byte of encodedBytes) {
-		binary += String.fromCharCode(byte);
+	if (username !== "") {
+		params.set("user", username);
+		params.set("pass", password);
 	}
 
-	return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/u, "");
+	return `tg://socks?${params.toString()}`;
+}
+
+function decodeURLComponentIfNeeded(value: string) {
+	return value === "" ? "" : decodeURIComponent(value);
+}
+
+export function parseSocks5URIToManualSocks5FormState(rawURI: string): ManualSocks5FormState {
+	const trimmedURI = rawURI.trim();
+	if (trimmedURI === "") {
+		throw new Error("SOCKS5 URI 不能为空");
+	}
+
+	let parsedURL: URL;
+	try {
+		parsedURL = new URL(trimmedURI);
+	} catch {
+		throw new Error("SOCKS5 URI 格式不正确");
+	}
+
+	if (!SUPPORTED_SOCKS5_URI_PROTOCOLS.has(parsedURL.protocol)) {
+		throw new Error("仅支持 socks5:// 或 socks5h:// URI");
+	}
+	if (parsedURL.hostname === "") {
+		throw new Error("SOCKS5 URI 缺少服务器地址");
+	}
+	if (parsedURL.port === "") {
+		throw new Error("SOCKS5 URI 缺少端口");
+	}
+	if ((parsedURL.username === "") !== (parsedURL.password === "")) {
+		throw new Error("SOCKS5 URI 中的用户名与密码必须同时存在");
+	}
+	if (parsedURL.pathname !== "" && parsedURL.pathname !== "/") {
+		throw new Error("SOCKS5 URI 不支持附加路径");
+	}
+
+	const name = decodeURLComponentIfNeeded(parsedURL.hash.slice(1)) || `${parsedURL.hostname}:${parsedURL.port}`;
+	return {
+		name,
+		server: parsedURL.hostname,
+		port: parsedURL.port,
+		username: decodeURLComponentIfNeeded(parsedURL.username),
+		password: decodeURLComponentIfNeeded(parsedURL.password),
+	};
 }
 
 export function buildManualSocks5URI(formState: ManualSocks5FormState) {
@@ -59,9 +108,7 @@ export function buildManualSocks5URI(formState: ManualSocks5FormState) {
 		throw new Error("用户名与密码必须同时填写或同时留空");
 	}
 
-	const credentials = username === "" ? "" : `${username}:${password}@`;
-	const payload = encodeUrlSafeBase64(`${credentials}${server}:${port}`);
-	return `socks://${payload}#${encodeURIComponent(name)}`;
+	return buildTelegramSocksURI(name, server, port, username, password);
 }
 
 export function appendManualSocks5ToStage1Input(stage1Input: Stage1Input, formState: ManualSocks5FormState): Stage1Input {

@@ -388,6 +388,23 @@ func TestConvert_RejectsHTTPFailures(t *testing.T) {
 	}
 }
 
+func TestConvert_IncludesHTTPFailureBodyInError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("No nodes were found!"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{LandingRawText: "landing", TransitRawText: "transit"})
+	if !IsUnavailable(err) {
+		t.Fatalf("Convert() error mismatch: got %v", err)
+	}
+	if err == nil || !strings.Contains(err.Error(), "unexpected HTTP status 400: No nodes were found!") {
+		t.Fatalf("Convert() error = %v, want upstream response body in message", err)
+	}
+}
+
 func TestLiveLocalhostSmoke(t *testing.T) {
 	if os.Getenv("CHAIN_SUBCONVERTER_SMOKE") != "1" {
 		t.Skip("set CHAIN_SUBCONVERTER_SMOKE=1 to run against localhost:25500")
