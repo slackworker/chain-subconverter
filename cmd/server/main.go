@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -13,6 +14,8 @@ import (
 	shortlinkstore "github.com/slackworker/chain-subconverter/internal/store"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
+
+const httpListenNetwork = "tcp4"
 
 func main() {
 	subconverterCfg, err := config.LoadSubconverterFromEnv()
@@ -57,21 +60,30 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:              serverCfg.HTTPAddress,
 		Handler:           api.WithFrontendAssets(handler, serverCfg.FrontendDistDir),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
+	listener, err := listenHTTPServer(serverCfg.HTTPAddress)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "listen HTTP server: %v\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Printf(
 		"chain-subconverter listening on %s (public base URL: %s, frontend dist: %s, subconverter: %s)\n",
-		serverCfg.HTTPAddress,
+		listener.Addr().String(),
 		serverCfg.PublicBaseURL,
 		serverCfg.FrontendDistDir,
 		subconverterCfg.BaseURL,
 	)
 
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Fprintf(os.Stderr, "run HTTP server: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func listenHTTPServer(listenAddress string) (net.Listener, error) {
+	return net.Listen(httpListenNetwork, listenAddress)
 }

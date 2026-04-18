@@ -155,7 +155,7 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 	}
 }
 
-func TestBuildStage1Artifacts_PreservesRawArtifactsOnStage1Failure(t *testing.T) {
+func TestBuildStage1Artifacts_KeepsMissingRecognizedRegionGroupVisible(t *testing.T) {
 	source := &fakeConversionSource{
 		result: subconverter.ThreePassResult{
 			LandingDiscovery: subconverter.PassResult{
@@ -190,16 +190,23 @@ func TestBuildStage1Artifacts_PreservesRawArtifactsOnStage1Failure(t *testing.T)
 			TransitRawText: "https://transit.example/sub",
 		},
 	})
-	if err == nil {
-		t.Fatal("BuildStage1Artifacts() error = nil, want failure")
+	if err != nil {
+		t.Fatalf("BuildStage1Artifacts() error = %v", err)
 	}
 
 	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.txt", "landing.example")
 	assertArtifactContains(t, bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
 	assertArtifactContains(t, bundle.Files, "stage1/output/full-base.yaml", "Missing HK Group")
-	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "missing recognized region proxy-group")
-	if _, ok := findArtifactOK(bundle.Files, "stage1/output/stage1-convert.response.json"); ok {
-		t.Fatal("stage1/output/stage1-convert.response.json should be absent when stage1 build fails")
+	assertArtifactContains(t, bundle.Files, "stage1/output/chain-targets.txt", "🇭🇰 香港节点")
+	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.response.json", "\"isEmpty\": true")
+	if _, ok := findArtifactOK(bundle.Files, "stage1/output/stage1-convert.error.txt"); ok {
+		t.Fatal("stage1/output/stage1-convert.error.txt should be absent when missing recognized region groups degrade to empty targets")
+	}
+	if len(bundle.Rows) != 1 {
+		t.Fatalf("len(bundle.Rows) = %d, want 1", len(bundle.Rows))
+	}
+	if bundle.Rows[0].Mode != "none" {
+		t.Fatalf("bundle.Rows[0].Mode = %q, want %q", bundle.Rows[0].Mode, "none")
 	}
 }
 

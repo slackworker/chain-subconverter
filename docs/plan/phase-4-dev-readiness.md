@@ -57,6 +57,7 @@
 - 固定本地 `scheme` 访问方式：`/ui/a`、`/ui/b`、`/ui/c`
 - 固定 `VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET=http://localhost:11200`
 - 固定 backend env 最小集合：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`、`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`、`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`、`CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR`、`CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH`
+- 本地 dev path 中，`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 必须使用 `subconverter` 容器可回连的地址；当前 `WSL + Docker Desktop` 基线固定为 `http://host.docker.internal:<backend-port>`，不得直接复用对浏览器公开的 `localhost` URL
 - 把上述约定写入开发文档与任务配置
 
 完成口径：
@@ -79,6 +80,7 @@
 - 启动 Compose preview
 - 加入 readiness checks：`subconverter` 用 `GET /version`，`app` 用 `GET /healthz`
 - 视需要增加 `managed-templates` 拉取 smoke，避免只检查进程存活
+- 本地 Go backend 在 WSL 开发路径必须显式使用 IPv4 listener，避免 Docker Desktop 只能看到 `*:port` 时无法从容器回连托管模板 URL
 - 启动结果需打印可直接打开的 URL：frontend dev `http://localhost:5173/ui/<scheme>`，compose preview `http://localhost:11200/ui/<scheme>`
 - 明确 `subconverter` 允许直接复用已运行容器，不强制每次重建
 

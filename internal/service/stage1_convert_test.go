@@ -229,6 +229,49 @@ func TestBuildStage2Init_DoesNotCountLandingNodeAsRegionMember(t *testing.T) {
 	}
 }
 
+func TestBuildStage2Init_MissingRecognizedRegionGroupDegradesToEmptyTarget(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		ConversionFixtures{
+			LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
+			TransitDiscoveryYAML: "proxies:\n- {name: transit-hk, type: ss}\n",
+			FullBaseYAML: strings.Join([]string{
+				"proxies:",
+				"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+				"- {name: transit-hk, type: ss, server: transit.example.com, port: 443}",
+				"proxy-groups:",
+				"  - name: Missing HK Group",
+				"    type: url-test",
+				"    proxies:",
+				"      - transit-hk",
+				"",
+			}, "\n"),
+			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`url-test`HK\n",
+		},
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	if got, want := stage2Init.AvailableModes, []string{"none", "chain"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
+	}
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇭🇰 香港节点", "proxy-groups"); !ok || !target.IsEmpty {
+		t.Fatalf("expected missing recognized chain target %q to remain visible and empty, got %v", "🇭🇰 香港节点", stage2Init.ChainTargets)
+	}
+	if !hasChainTarget(stage2Init.ChainTargets, "transit-hk", "proxies") {
+		t.Fatalf("expected transit proxy chain target to remain available, got %v", stage2Init.ChainTargets)
+	}
+
+	row := stage2Init.Rows[0]
+	if row.Mode != "none" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "none")
+	}
+	if row.TargetName != nil {
+		t.Fatalf("row targetName mismatch: got %v want nil", row.TargetName)
+	}
+}
+
 func TestParseForwardRelays_NormalizesAndRejectsDuplicates(t *testing.T) {
 	_, err := parseForwardRelays(Stage1Input{
 		AdvancedOptions: AdvancedOptions{

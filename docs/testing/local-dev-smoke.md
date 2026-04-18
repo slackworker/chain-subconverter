@@ -33,10 +33,11 @@
 约束：
 
 - 已运行且健康的 `subconverter` 会被直接复用，不强制重建
-- 已运行且健康的 backend 会被直接复用，不重复拉起第二份
+- 已运行且健康的 backend 只有在 `dev-up.sh` 约定的 env 契约匹配、且 `subconverter` 容器能回连其托管模板地址时才会被复用；不兼容的旧 backend 会被跳过
 - frontend dev server 默认不复用旧进程，而是寻找当前端口池内的可用端口
 - 若当前任务终端关闭，脚本本次拉起的本地 frontend / backend 会一起退出
 - `subconverter` 容器默认保留，便于下一次开发直接复用
+- 本地 backend 运行路径固定使用 IPv4 listener，并把 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向 `http://host.docker.internal:<backend-port>`，供 Docker 内的 `subconverter` 回取托管模板
 
 ## 为什么不单独提供 stop 脚本
 
@@ -55,6 +56,7 @@
 脚本会输出并写入：
 
 - `BACKEND_URL`
+- `MANAGED_TEMPLATE_BASE_URL`
 - `FRONTEND_URL`
 - `SCHEME_URL`
 - `SUBCONVERTER_BASE_URL`
@@ -115,8 +117,10 @@ go run ./cmd/frontend-review \
 
 - `subconverter` 检查失败：先看 Docker Desktop、镜像拉取与 `GET /version`
 - backend 检查失败：先看 `.tmp/dev-up/backend.log`
+- `dev-up.sh` 报 `backend-from-subconverter did not become ready`：优先确认 backend 当前是否以 IPv4 暴露，并确认 `.tmp/dev-up/runtime.env` 中的 `MANAGED_TEMPLATE_BASE_URL` 是否仍为 `http://host.docker.internal:<backend-port>`
 - frontend 端口池耗尽：关闭旧的 Vite 终端，或清理 `5173-5176` 内的占用进程
 - live 输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移，不直接判定为共享层回退
+- 浏览器调试路径若出现 `SUBCONVERTER_UNAVAILABLE` 且正文包含 `missing recognized region proxy-group`：先不要只看前端；优先确认当前 Vite 正在代理哪一份 backend，以及该 backend 是否真的把托管模板 URL 注入成了容器可回连的地址，而不是回落到 `localhost`
 - 若 live review 产物里 `template-managed.url.txt` 使用 `host.docker.internal` 但 `template-server-access.log` 为 `(no requests)`：优先确认当前代码已包含 `frontend-review` 临时模板服务的 IPv4 监听修复；这通常不是 Docker Desktop 的 `2375` 或 `*.docker.internal` 选项未开启导致
 
 ## Compose 预览

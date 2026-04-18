@@ -235,14 +235,15 @@
 1. 对区域策略组，读取 `baseCompleteConfig` 中本次有效模板识别出的全部地域策略组当前结果
 2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 与所有落地节点都不计入成员数
 3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 与所有落地节点后成员数为 `0`，该区域策略组仍必须进入 `chainTargets[]`，但必须标记 `isEmpty = true`
-4. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
-5. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
-6. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
-7. 有效模板识别出的地域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
-8. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
-9. `kind` 仅用于前端分组展示
-10. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
-11. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+4. 若有效模板识别出的某地域策略组在 `baseCompleteConfig` 当前结果中完全不存在，该地域策略组仍必须进入 `chainTargets[]`，并视为 `isEmpty = true`；不得因此返回 `SUBCONVERTER_UNAVAILABLE`
+5. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
+6. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
+7. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
+8. 有效模板识别出的地域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
+9. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
+10. `kind` 仅用于前端分组展示
+11. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
+12. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
 
 ### 2.4 收集端口转发候选
 

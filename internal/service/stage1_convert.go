@@ -10,7 +10,6 @@ import (
 
 	"github.com/dlclark/regexp2"
 	"github.com/slackworker/chain-subconverter/internal/inpututil"
-	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
 type AdvancedOptions struct {
@@ -276,10 +275,13 @@ func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]s
 		groupName := matcher.TargetName
 		group, ok := fullBaseGroups[groupName]
 		if !ok {
-			return nil, subconverter.NewUnavailableError(
-				"validate full-base proxy-groups",
-				fmt.Errorf("missing recognized region proxy-group %q in full-base fixture", groupName),
-			)
+			chainTargets = append(chainTargets, ChainTarget{
+				Name:    groupName,
+				Kind:    "proxy-groups",
+				IsEmpty: true,
+			})
+			seen[groupName] = struct{}{}
+			continue
 		}
 
 		memberCount := 0

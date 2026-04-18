@@ -48,6 +48,7 @@
 - 2026-04-17 已完成 G1 共享业务层签收：`npm run build`、`npm run build:b`、`go test ./...` 全部通过，允许进入 A/B/C 并行方案开发。
 - 2026-04-18 已再次确认 `go test ./...`、`npm run build`、`npm run build:b` 与 Compose 配置解析均通过，可作为 Phase 4 后续收口的自动化基线。
 - 2026-04-18 已落地本地 UI 联调启动入口：`scripts/dev-up.sh` 与 VS Code `dev: up` 任务现可复用 `subconverter` / backend、自动处理 frontend 端口占用，并把运行结果写入 `.tmp/dev-up/runtime.env`。
+- 2026-04-18 已修复本地 UI 调试链路中的托管模板回取问题：`cmd/server` 现显式使用 IPv4 listener，`scripts/dev-up.sh` 只复用 env 契约匹配且容器可回连的 backend，并把本地 `MANAGED_TEMPLATE_BASE_URL` 固定为 `http://host.docker.internal:<backend-port>`。
 - 2026-04-18 已落地 live review 入口：`go run ./cmd/frontend-review` 与 VS Code `review: live subscriptions` 任务可针对真实订阅 URL 生成 `stage1/stage2` 中间产物目录，便于人工核对模板调用、参数传递与最终 YAML。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
@@ -69,8 +70,10 @@
 - `go test ./...`：2026-04-17 全量通过（含 `include/exclude` 数组 contract、短链订阅、SPA 静态资源托管与 longUrl 载荷回归测试）
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
 - `docker compose -f deploy/docker-compose.yml config`：2026-04-18 通过（Compose 配置可解析；不代表本次已重新完成容器级 smoke）
-- `./scripts/dev-up.sh a`：2026-04-18 通过（复用 `subconverter`/backend，前端监听 `5173`）
-- 重复执行 `./scripts/dev-up.sh b`：2026-04-18 通过（复用 `subconverter`/backend，前端端口自动回退到 `5174`）
+- `./scripts/dev-up.sh a`：2026-04-18 通过（复用 `subconverter` 与修复后的 `11203` backend；在已有旧前端占用下自动回退到 `5175`，`.tmp/dev-up/runtime.env` 指向 `http://localhost:5175/ui/a`）
+- `./scripts/dev-up.sh b`：2026-04-18 通过（跳过不兼容旧 backend，在 `11203` 启动可被容器回连的 IPv4 backend，前端监听 `5174`，`.tmp/dev-up/runtime.env` 写入 `MANAGED_TEMPLATE_BASE_URL=http://host.docker.internal:11203`）
+- `curl -X POST http://127.0.0.1:11203/api/stage1/convert ...Landing-Subscription ...Airport-Subscription`：2026-04-18 通过（返回 `blockingErrors = []`，首行默认目标为 `🇭🇰 香港节点`）
+- `curl -X POST http://127.0.0.1:5174/api/stage1/convert ...Landing-Subscription ...Airport-Subscription`：2026-04-18 通过（Vite 代理路径与 backend 直连返回一致，不再出现 `SUBCONVERTER_UNAVAILABLE`）
 - `go run ./cmd/frontend-review -h`：2026-04-18 通过（live review CLI 可用）
 - `go run ./cmd/frontend-review -name live-review-check -landing-url ...Landing-Subscription -transit-url ...Airport-Subscription`：2026-04-18 已验证可导出 `stage1` 原始产物与错误文件；当前 live case 在 Stage 1 自动填充阶段失败，原因是 full-base 缺少已识别目标组 `🇭🇰 香港节点`
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
