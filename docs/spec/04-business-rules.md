@@ -24,6 +24,7 @@
 - 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的 URL 数量上限都必须可配置，默认每个字段最多 `20` 条
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
 - `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
+- 若本次有效模板已识别出某地域策略组，但该地域策略组在同一条转换管线的 `full-base pass` 产物（经 `1.3` 后处理后的 `baseCompleteConfig`）中完全不存在，必须视为 `full-base pass` 失败；不得按空组静默降级
 
 ### 0.2 `subconverter` 调用契约
 
@@ -235,7 +236,7 @@
 1. 对区域策略组，读取 `baseCompleteConfig` 中本次有效模板识别出的全部地域策略组当前结果
 2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 与所有落地节点都不计入成员数
 3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 与所有落地节点后成员数为 `0`，该区域策略组仍必须进入 `chainTargets[]`，但必须标记 `isEmpty = true`
-4. 若有效模板识别出的某地域策略组在 `baseCompleteConfig` 当前结果中完全不存在，该地域策略组仍必须进入 `chainTargets[]`，并视为 `isEmpty = true`；不得因此返回 `SUBCONVERTER_UNAVAILABLE`
+4. 若有效模板识别出的某地域策略组在 `baseCompleteConfig` 当前结果中完全不存在，必须直接以 `SUBCONVERTER_UNAVAILABLE` 阻断当前请求；错误文案必须明确为 `subconverter` 未成功获取或应用后端托管模板，或等价表达
 5. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
 6. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
 7. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`

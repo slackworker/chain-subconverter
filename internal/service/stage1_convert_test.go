@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
 func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
@@ -229,8 +231,8 @@ func TestBuildStage2Init_DoesNotCountLandingNodeAsRegionMember(t *testing.T) {
 	}
 }
 
-func TestBuildStage2Init_MissingRecognizedRegionGroupDegradesToEmptyTarget(t *testing.T) {
-	stage2Init, err := BuildStage2Init(
+func TestBuildStage2Init_MissingRecognizedRegionGroupReturnsUnavailable(t *testing.T) {
+	_, err := BuildStage2Init(
 		Stage1Input{},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
@@ -249,26 +251,17 @@ func TestBuildStage2Init_MissingRecognizedRegionGroupDegradesToEmptyTarget(t *te
 			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`url-test`HK\n",
 		},
 	)
-	if err != nil {
-		t.Fatalf("BuildStage2Init() error = %v", err)
+	if err == nil {
+		t.Fatal("BuildStage2Init() error = nil, want unavailable error")
 	}
-
-	if got, want := stage2Init.AvailableModes, []string{"none", "chain"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
+	if !subconverter.IsUnavailable(err) {
+		t.Fatalf("BuildStage2Init() error = %v, want subconverter unavailable", err)
 	}
-	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇭🇰 香港节点", "proxy-groups"); !ok || !target.IsEmpty {
-		t.Fatalf("expected missing recognized chain target %q to remain visible and empty, got %v", "🇭🇰 香港节点", stage2Init.ChainTargets)
+	if !strings.Contains(err.Error(), `missing recognized region proxy-group "🇭🇰 香港节点"`) {
+		t.Fatalf("BuildStage2Init() error = %v, want missing region proxy-group detail", err)
 	}
-	if !hasChainTarget(stage2Init.ChainTargets, "transit-hk", "proxies") {
-		t.Fatalf("expected transit proxy chain target to remain available, got %v", stage2Init.ChainTargets)
-	}
-
-	row := stage2Init.Rows[0]
-	if row.Mode != "none" {
-		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "none")
-	}
-	if row.TargetName != nil {
-		t.Fatalf("row targetName mismatch: got %v want nil", row.TargetName)
+	if !strings.Contains(err.Error(), "managed template") {
+		t.Fatalf("BuildStage2Init() error = %v, want managed template hint", err)
 	}
 }
 
