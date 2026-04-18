@@ -23,6 +23,17 @@ function appendMultilineLine(currentValue: string, nextLine: string) {
 	return currentValue.endsWith("\n") ? `${currentValue}${nextLine}` : `${currentValue}\n${nextLine}`;
 }
 
+function encodeUrlSafeBase64(value: string) {
+	const encodedBytes = new TextEncoder().encode(value);
+	let binary = "";
+
+	for (const byte of encodedBytes) {
+		binary += String.fromCharCode(byte);
+	}
+
+	return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/u, "");
+}
+
 export function buildManualSocks5URI(formState: ManualSocks5FormState) {
 	const name = formState.name.trim();
 	const server = formState.server.trim();
@@ -48,8 +59,9 @@ export function buildManualSocks5URI(formState: ManualSocks5FormState) {
 		throw new Error("用户名与密码必须同时填写或同时留空");
 	}
 
-	const credentials = username === "" ? "" : `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`;
-	return `socks5://${credentials}${server}:${port}#${encodeURIComponent(name)}`;
+	const credentials = username === "" ? "" : `${username}:${password}@`;
+	const payload = encodeUrlSafeBase64(`${credentials}${server}:${port}`);
+	return `socks://${payload}#${encodeURIComponent(name)}`;
 }
 
 export function appendManualSocks5ToStage1Input(stage1Input: Stage1Input, formState: ManualSocks5FormState): Stage1Input {
