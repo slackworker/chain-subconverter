@@ -18,12 +18,9 @@ export default {
 				success: "var(--color-success)",
 			},
 			fontFamily: {
-				display: ["Fraunces", "Georgia", "serif"],
-				body: ["Space Grotesk", "Segoe UI", "sans-serif"],
-				mono: ["IBM Plex Mono", "ui-monospace", "monospace"],
-			},
-			boxShadow: {
-				panel: "0 18px 40px rgba(22, 35, 42, 0.12)",
+				display: ["system-ui", "sans-serif"],
+				body: ["system-ui", "sans-serif"],
+				mono: ["ui-monospace", "monospace"],
 			},
 		},
 	},

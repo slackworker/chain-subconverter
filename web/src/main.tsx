@@ -28,11 +28,9 @@ function SchemeRoot() {
 	}, [route.canonicalPath]);
 
 	return (
-		<div className="min-h-screen bg-canvas text-ink">
-			<UISchemeProvider value={route.scheme}>
-				<App />
-			</UISchemeProvider>
-		</div>
+		<UISchemeProvider value={route.scheme}>
+			<App />
+		</UISchemeProvider>
 	);
 }
 
