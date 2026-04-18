@@ -117,6 +117,7 @@ go run ./cmd/frontend-review \
 - backend 检查失败：先看 `.tmp/dev-up/backend.log`
 - frontend 端口池耗尽：关闭旧的 Vite 终端，或清理 `5173-5176` 内的占用进程
 - live 输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移，不直接判定为共享层回退
+- 若 live review 产物里 `template-managed.url.txt` 使用 `host.docker.internal` 但 `template-server-access.log` 为 `(no requests)`：优先确认当前代码已包含 `frontend-review` 临时模板服务的 IPv4 监听修复；这通常不是 Docker Desktop 的 `2375` 或 `*.docker.internal` 选项未开启导致
 
 ## Compose 预览
 

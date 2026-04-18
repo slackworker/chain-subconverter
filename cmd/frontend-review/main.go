@@ -41,6 +41,8 @@ type templateAccessRecorder struct {
 	entries []string
 }
 
+const managedTemplateListenNetwork = "tcp4"
+
 var managedTemplateServerPorts = []int{37950, 37951, 37952, 37953, 37954, 37955, 37956, 37957, 37958, 37959}
 
 func (recorder *templateAccessRecorder) record(status int, request *http.Request, templateID string, found bool) {
@@ -329,14 +331,14 @@ func listenManagedTemplateServer(listenAddress string) (net.Listener, error) {
 	if strings.HasSuffix(listenAddress, ":0") {
 		host := strings.TrimSuffix(listenAddress, ":0")
 		for _, port := range managedTemplateServerPorts {
-			listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
+			listener, err := net.Listen(managedTemplateListenNetwork, fmt.Sprintf("%s:%d", host, port))
 			if err == nil {
 				return listener, nil
 			}
 		}
 	}
 
-	return net.Listen("tcp", listenAddress)
+	return net.Listen(managedTemplateListenNetwork, listenAddress)
 }
 
 func writeInputs(outputDir string, stage1Input service.Stage1Input) error {

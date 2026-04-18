@@ -39,6 +39,7 @@ go run ./cmd/frontend-review \
 - `stage1/output/full-base.yaml`
 - `stage1/output/template-source.url.txt`
 - `stage1/output/template-managed.url.txt`
+- `stage1/output/template-server-access.log`
 - `stage1/output/template-config.ini`
 - `stage1/output/template-diagnostics.json`
 - `stage1/output/stage1-convert.request.json`
@@ -115,8 +116,12 @@ go run ./cmd/frontend-review \
 若 Stage 1 自动填充失败：
 
 - 改看 `stage1/output/stage1-convert.error.txt`
-- 再看 `stage1/output/template-source.url.txt`、`stage1/output/template-managed.url.txt`、`stage1/output/template-config.ini`、`stage1/output/template-diagnostics.json`
+- 再看 `stage1/output/template-source.url.txt`、`stage1/output/template-managed.url.txt`、`stage1/output/template-server-access.log`、`stage1/output/template-config.ini`、`stage1/output/template-diagnostics.json`
 - 同时结合 `stage1/output/full-base.yaml` 和 `stage1/output/full-base.url.txt` 判断失败是模板目标组缺失、节点命名不匹配，还是 `subconverter` 输出异常
+
+WSL 排障补充：
+
+- 若 `template-managed.url.txt` 指向 `host.docker.internal` 且 `template-server-access.log` 为 `(no requests)`，优先确认当前分支已包含 `frontend-review` 临时模板服务的 IPv4 监听修复；这通常不是 Docker Desktop 的 `Expose daemon on tcp://localhost:2375 without TLS` 或 `Add the *.docker.internal names to the host's /etc/hosts file` 开关问题
 
 要确认：
 
