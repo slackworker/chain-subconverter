@@ -13,6 +13,19 @@ Phase 4 前端工程目录。
 - `npm run build:plain`
 - `npm run preview`
 
+## 本地 UI 开发入口
+
+- 推荐入口：在仓库根目录执行 `./scripts/dev-up.sh <scheme>`，或直接运行 VS Code 任务 `dev: up`
+- `<scheme>` 当前支持 `a`、`b`、`c`、`default`、`plain`
+- 该脚本会处理：
+	- `subconverter` 容器复用或拉起
+	- backend 端口池选择与健康检查
+	- frontend dev server 端口池选择
+	- `.tmp/dev-up/runtime.env` 运行时地址输出
+- 关闭当前任务终端即可结束本次启动脚本拉起的本地 frontend / backend；`subconverter` 容器默认保留以便下次复用
+
+完整 smoke 顺序见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
+
 ## 部署相关环境变量
 
 - `VITE_CHAIN_SUBCONVERTER_BASE_PATH`: 配置构建产物的静态资源基础路径，例如 `/chain-subconverter/`

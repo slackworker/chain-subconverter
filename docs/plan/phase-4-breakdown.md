@@ -3,6 +3,8 @@
 本文仅定义 [ROADMAP](../ROADMAP.md) 中 `Phase 4` 的推进顺序、并行 UI 策略、关口与验收口径。  
 实时进度与已完成项统一维护在 [progress/STATUS](../progress/STATUS.md)。
 
+在把 A/B/C 方案开发视为真正解阻前，先完成 [phase-4-dev-readiness](phase-4-dev-readiness.md) 中的本地预览、联调、连通性检测与 smoke 收口；本文继续只定义 UI 并行策略与关口。
+
 界面结构、接口契约与业务规则分别以 [spec/02-frontend-spec](../spec/02-frontend-spec.md)、[spec/03-backend-api](../spec/03-backend-api.md)、[spec/04-business-rules](../spec/04-business-rules.md) 为准。
 
 ## 主线业务路径
@@ -167,6 +169,7 @@ flowchart LR
 
 ## 当前下一步（计划视角）
 
-1. 基于已确认共享边界，继续在同一仓库并行推进 A/B/C 三套 UI 方案
-2. 以统一演示场景完成 G2 评审选型，并沉淀落选方案可复用结论
-3. 在胜出方案内收口恢复、短链与 Compose 单入口部署验收
+1. 先按 [phase-4-dev-readiness](phase-4-dev-readiness.md) 收口本地预览、联调、连通性检测与 smoke 基线
+2. 基于已确认共享边界，继续在同一仓库并行推进 A/B/C 三套 UI 方案
+3. 以统一演示场景和手动 smoke 矩阵完成 G2 评审选型，并沉淀落选方案可复用结论
+4. 在胜出方案内收口恢复、短链与 Compose 单入口部署验收

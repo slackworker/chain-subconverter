@@ -1,4 +1,37 @@
 {
   "version": "2.0.0",
-  "tasks": []
+  "tasks": [
+    {
+      "label": "dev: up",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/dev-up.sh",
+      "args": [
+        "${input:uiScheme}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "uiScheme",
+      "type": "pickString",
+      "description": "Select the UI scheme to open in the local dev flow",
+      "options": [
+        "a",
+        "b",
+        "c",
+        "default",
+        "plain"
+      ],
+      "default": "a"
+    }
+  ]
 }

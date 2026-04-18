@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-04-17
+> 最近更新：2026-04-18
 
 ## 摘要
 
@@ -8,7 +8,8 @@
 - `Phase 2` 已完成最小闭环：固定测试数据与默认值下，已打通 `stage2Init`、`longUrl` 与最终订阅 YAML。
 - `Phase 2.5` 已完成：文档、命名与职责边界收口已固化，`Phase 4` 可以开始。
 - `Phase 3` 已完成：3-A, 3-B, 3-C, 3-D, 3-E 已全部落地，后端扩展业务与 API 契约现已收口。
-- `Phase 4` 已进入 A/B/C 并行开发准备期：共享主线代码已接通恢复、转换、生成与短链别名流程，G1 共享层验收已完成并签收。
+- `Phase 4` 已完成 G1 共享业务层签收：共享主线代码已接通恢复、转换、生成与短链别名流程。
+- 2026-04-18 已复核 `go test ./...`、`npm run build`、`npm run build:plain` 与 `docker compose -f deploy/docker-compose.yml config`；但正式本地预览 / 联调 / smoke 收口尚未完成，新增执行计划见 [plan/phase-4-dev-readiness](../plan/phase-4-dev-readiness.md)。
 
 ## Phase 进度
 
@@ -45,13 +46,17 @@
 - 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
 - 2026-04-17 已完成 G1 共享业务层签收：`npm run build`、`npm run build:plain`、`go test ./...` 全部通过，允许进入 A/B/C 并行方案开发。
+- 2026-04-18 已再次确认 `go test ./...`、`npm run build`、`npm run build:plain` 与 Compose 配置解析均通过，可作为 Phase 4 后续收口的自动化基线。
+- 2026-04-18 已落地本地 UI 联调启动入口：`scripts/dev-up.sh` 与 VS Code `dev: up` 任务现可复用 `subconverter` / backend、自动处理 frontend 端口占用，并把运行结果写入 `.tmp/dev-up/runtime.env`。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
 最小验收基线与固定样例见 [testing/3pass-ss2022-test-subscription.md](../testing/3pass-ss2022-test-subscription.md) 与 `internal/review/testdata/3pass-ss2022-test-subscription/`。
 
-- 当前前端仍未完成 A/B/C 方案评审，真实前端验收场景与方案对比材料等仍待收口。
+- 当前前端仍未完成 A/B/C 方案评审，且在 [plan/phase-4-dev-readiness](../plan/phase-4-dev-readiness.md) 收口前，不把 ABC 分支开发视为已完全解阻。
 - 当前已完成单一当前链接输入框等共享交互收口，且 shared contract 已收口到 `include/exclude` 数组语义与 `port_forward` 互斥选择，G1 已于 2026-04-17 完成签收。
+- 当前已补齐最小本地 dev 任务编排与单脚本启动文档，但 live smoke 的人工签收矩阵和 Compose 单入口最终验收仍待继续收口。
+- 当前 live `subconverter` / 模板 / API 全流程 smoke 仍未固化为“自动化基线 + 人工签收矩阵”的分层验收路径。
 - 当前真实前端验收场景仍依赖外部模板与运行镜像状态，尚未完全固化为可复现签收路径。
 - 当前 Compose 仍主要用于 API 与基础静态托管验证，不代表完整单入口部署验收已完成 (属于 Phase 4 后续预期)。
 - SSRF 等安全口径仍只在 `ROADMAP/STATUS` 跟踪，尚未并入权威 spec。
@@ -62,5 +67,8 @@
 - `npm run build:plain`：2026-04-17 通过（用于确认 plain 极简占位方案仍可单独消费同一共享业务层）
 - `go test ./...`：2026-04-17 全量通过（含 `include/exclude` 数组 contract、短链订阅、SPA 静态资源托管与 longUrl 载荷回归测试）
 - `internal/subconverter`、`internal/service`、`internal/api` 的测试均包含在上述全量测试中
+- `docker compose -f deploy/docker-compose.yml config`：2026-04-18 通过（Compose 配置可解析；不代表本次已重新完成容器级 smoke）
+- `./scripts/dev-up.sh a`：2026-04-18 通过（复用 `subconverter`/backend，前端监听 `5173`）
+- 重复执行 `./scripts/dev-up.sh b`：2026-04-18 通过（复用 `subconverter`/backend，前端端口自动回退到 `5174`）
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
 - 真实容器 smoke：已跑通 `app + subconverter`，并通过本地静态文件服务托管中转订阅样例与模板完成 3 个现有 API 验证

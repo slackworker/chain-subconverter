@@ -39,9 +39,11 @@
 |------|------|
 | [ROADMAP](ROADMAP.md) | 推进路线图：Phase 划分、依赖关系与推荐下一步 |
 | [plan/phase-4-breakdown](plan/phase-4-breakdown.md) | Phase 4 细化计划：前端主线、非目标与建议推进顺序 |
+| [plan/phase-4-dev-readiness](plan/phase-4-dev-readiness.md) | Phase 4 本地预览与联调就绪计划：ABC UI 开发前的运行、测试与 smoke 收口 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已完成范围、已知缺口 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 | [testing/frontend-g1-shared-boundary](testing/frontend-g1-shared-boundary.md) | G1 前端共享业务层验收：scheme 可替换性、最小构建验证与外部依赖边界 |
+| [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 开发 / 联调 / smoke 入口：单脚本启动、端口复用与 live 验收顺序 |
 
 ## 临时区规则
 

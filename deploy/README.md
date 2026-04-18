@@ -24,6 +24,8 @@ docker compose -f deploy/docker-compose.yml ps
 curl http://localhost:11200/healthz
 ```
 
+若只是日常前端开发与热更新联调，优先使用仓库根目录的 `./scripts/dev-up.sh <scheme>` 或 VS Code 任务 `dev: up`；Compose 路径继续保留为正式预览 / 集成验证主路径。
+
 ## 环境变量
 
 `docker-compose.yml` 当前涉及两类配置：
@@ -48,4 +50,5 @@ curl http://localhost:11200/healthz
 
 - 稳定自动化 fixture 位于 `internal/review/testdata/`
 - 真实人工验证统一走 Compose 启动后的前端页面、`/api/*` 与订阅路径
+- 本地 UI 热更新联调与端口复用策略见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)
 - 本 README 只说明 Compose 启动与环境变量；不重复维护阶段状态说明
