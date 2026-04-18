@@ -19,8 +19,6 @@
 - `a`
 - `b`
 - `c`
-- `default`
-- `plain`
 
 ## 脚本行为
 
@@ -72,7 +70,7 @@
 
 ```bash
 go test ./...
-cd web && npm run build && npm run build:plain
+cd web && npm run build && npm run build:b && npm run build:c
 ```
 
 ### 2. 本地 UI 联调
@@ -93,6 +91,17 @@ cd web && npm run build && npm run build:plain
 - `Airport-Subscription`: `http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription`
 
 这些输入只作为当前开发机 live smoke，不替代固定 fixture。
+
+若要把这两条 live 输入导出为可 review 的中间产物目录，执行：
+
+```bash
+go run ./cmd/frontend-review \
+	-name live-review \
+	-landing-url http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Landing-Subscription \
+	-transit-url http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription
+```
+
+详细审查顺序见 [live-review-artifacts](live-review-artifacts.md)。
 
 ### 4. 手动确认项
 

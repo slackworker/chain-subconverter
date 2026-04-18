@@ -176,10 +176,10 @@ EOF
 }
 
 case "$SCHEME" in
-  a|b|c|default|plain)
+  a|b|c)
     ;;
   *)
-    fail "unsupported scheme '$SCHEME' (expected one of: a, b, c, default, plain)"
+    fail "unsupported scheme '$SCHEME' (expected one of: a, b, c)"
     ;;
 esac
 

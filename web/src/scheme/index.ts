@@ -2,10 +2,9 @@ import type { UIScheme } from "../lib/composition";
 import { aUIScheme } from "./a";
 import { bUIScheme } from "./b";
 import { cUIScheme } from "./c";
-import { defaultUIScheme } from "./default";
-import { plainUIScheme } from "./plain";
 
-const orderedSchemes = [defaultUIScheme, plainUIScheme, aUIScheme, bUIScheme, cUIScheme];
+const fallbackUIScheme = aUIScheme;
+const orderedSchemes = [aUIScheme, bUIScheme, cUIScheme];
 const schemes: Record<string, UIScheme> = Object.fromEntries(orderedSchemes.map((scheme) => [scheme.id, scheme]));
 
 function normalizeBasePath(basePath: string | undefined) {
@@ -31,10 +30,10 @@ export function getUISchemes() {
 
 export function resolveUIScheme(name: string | undefined): UIScheme {
 	if (name === undefined) {
-		return defaultUIScheme;
+		return fallbackUIScheme;
 	}
 
-	return schemes[name] ?? defaultUIScheme;
+	return schemes[name] ?? fallbackUIScheme;
 }
 
 export function getUISchemePath(name: string, basePath: string | undefined) {

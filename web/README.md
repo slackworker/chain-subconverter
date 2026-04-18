@@ -2,21 +2,25 @@
 
 Phase 4 前端工程目录。
 
-当前已初始化 `Vite + React + TypeScript + Tailwind CSS` 的前端公共基线，用于承接共享状态模型、共享业务层接口与后续 A/B/C UI 同仓库并行方案。
+当前已初始化 `Vite + React + TypeScript + Tailwind CSS` 的共享业务入口，用于承接共享状态模型、共享业务层接口与后续 A/B/C UI 同仓库并行方案。
 
 ## 常用命令
 
 - `npm install`
 - `npm run dev`
-- `npm run dev:plain`
+- `npm run dev:a`
+- `npm run dev:b`
+- `npm run dev:c`
 - `npm run build`
-- `npm run build:plain`
+- `npm run build:a`
+- `npm run build:b`
+- `npm run build:c`
 - `npm run preview`
 
 ## 本地 UI 开发入口
 
 - 推荐入口：在仓库根目录执行 `./scripts/dev-up.sh <scheme>`，或直接运行 VS Code 任务 `dev: up`
-- `<scheme>` 当前支持 `a`、`b`、`c`、`default`、`plain`
+- `<scheme>` 当前支持 `a`、`b`、`c`
 - 该脚本会处理：
 	- `subconverter` 容器复用或拉起
 	- backend 端口池选择与健康检查
@@ -30,7 +34,7 @@ Phase 4 前端工程目录。
 
 - `VITE_CHAIN_SUBCONVERTER_BASE_PATH`: 配置构建产物的静态资源基础路径，例如 `/chain-subconverter/`
 - `VITE_CHAIN_SUBCONVERTER_API_BASE`: 配置前端调用 API 的基础前缀，例如 `/chain-subconverter` 或 `https://example.com/chain-subconverter`
-- `VITE_CHAIN_SUBCONVERTER_UI_SCHEME`: 当访问路径未显式指定 scheme 时的默认方案；当前可用 `default`、`plain`、`a`、`b`、`c`
+- `VITE_CHAIN_SUBCONVERTER_UI_SCHEME`: 当访问路径未显式指定 scheme 时的默认方案；当前可用 `a`、`b`、`c`
 
 若运行时需要覆盖 API 前缀，可在页面加载前注入 `window.__CHAIN_SUBCONVERTER_API_BASE__`。
 
@@ -41,20 +45,18 @@ Phase 4 前端工程目录。
 ## 方案路由
 
 - 当前方案入口统一为 `/ui/<scheme>`
-- 现有内建方案：`/ui/default`、`/ui/plain`、`/ui/a`、`/ui/b`、`/ui/c`
-- `default` 与 `a` 都已清空并回退到 `0 UI` 基线
-- `b` / `c` 已拆成独立目录入口，当前仍复用 `plain` 方案承接共享 workflow
+- 现有内建方案：`/ui/a`、`/ui/b`、`/ui/c`
+- 未显式指定方案时，入口默认回落到 `a`
 
 ## 方案层装配
 
 - 当前提交是 **0 UI 起点里程碑**：仅保留共享 workflow 装配能力与可替换 scheme 骨架，不提供任何业务 UI 完整实现
 - A/B/C 方案后续页面实现必须从 `docs/spec/02-frontend-spec.md` 推导，不以本次占位页面作为行为依据
-- `src/main.tsx` 只负责按当前路由解析并装配 active scheme，不再提供公共 UI 壳
+- `src/main.tsx` 只负责按当前路由解析并装配 active scheme，不再注入共享全局样式
 - `src/App.tsx` 只负责共享 workflow 与浏览器动作桥接，不再持有默认方案页面结构
-- `src/scheme/plain` 是当前 `0 UI` 基线页面
-- `src/scheme/default` 与 `src/scheme/a` 现在都直接复用 `plain`，避免旧方案内容继续干扰 ABC 开发
-- `src/scheme/a`、`src/scheme/b`、`src/scheme/c` 分别承载三个方案自己的页面入口
-- `npm run build:plain` 是当前最小可执行的 scheme 可替换性验收命令
+- `src/scheme/a`、`src/scheme/b`、`src/scheme/c` 分别承载三个方案自己的页面与样式入口
+- 共享层不再提供 `index.css` 这类全局 UI baseline；每个方案从自己的 `index.css` 起步
+- `npm run build:a`、`npm run build:b`、`npm run build:c` 可用于验证不同方案在同一共享业务层上的可构建性
 
 当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。
 

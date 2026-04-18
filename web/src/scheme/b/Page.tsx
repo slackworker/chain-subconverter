@@ -1,4 +1,5 @@
 import type { AppPageProps } from "../../lib/composition";
+import "./index.css";
 
 export function BAppPage({ workflow, outputActions }: AppPageProps) {
 	void workflow;

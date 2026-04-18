@@ -17,6 +17,30 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "review: live subscriptions",
+      "type": "shell",
+      "command": "go",
+      "args": [
+        "run",
+        "./cmd/frontend-review",
+        "-name",
+        "${input:reviewCaseName}",
+        "-landing-url",
+        "${input:landingSubscriptionURL}",
+        "-transit-url",
+        "${input:transitSubscriptionURL}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ],
   "inputs": [
@@ -27,11 +51,27 @@
       "options": [
         "a",
         "b",
-        "c",
-        "default",
-        "plain"
+        "c"
       ],
       "default": "a"
+    },
+    {
+      "id": "reviewCaseName",
+      "type": "promptString",
+      "description": "Name of the live review case directory",
+      "default": "live-review"
+    },
+    {
+      "id": "landingSubscriptionURL",
+      "type": "promptString",
+      "description": "Landing subscription URL",
+      "default": "http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Landing-Subscription"
+    },
+    {
+      "id": "transitSubscriptionURL",
+      "type": "promptString",
+      "description": "Transit or airport subscription URL",
+      "default": "http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription"
     }
   ]
 }

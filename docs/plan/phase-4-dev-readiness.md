@@ -15,10 +15,10 @@
 
 - `go test ./...`：2026-04-18 通过
 - `npm run build`：2026-04-18 通过
-- `npm run build:plain`：2026-04-18 通过
+- `npm run build:b`：2026-04-18 通过
 - `docker compose -f deploy/docker-compose.yml config`：2026-04-18 通过
 - `deploy/docker-compose.yml` 已对 `subconverter` 与 `app` 配置健康检查
-- `web/` 已具备 `/ui/default`、`/ui/plain`、`/ui/a`、`/ui/b`、`/ui/c` 方案入口骨架
+- `web/` 已具备 `/ui/a`、`/ui/b`、`/ui/c` 方案入口骨架
 
 ## 当前缺口
 
@@ -96,7 +96,7 @@
 
 任务：
 
-- 维持稳定自动化基线：`go test ./...`、`npm run build`、`npm run build:plain`
+- 维持稳定自动化基线：`go test ./...`、`npm run build`、`npm run build:b`
 - 增加或整理 live smoke 分层：`CHAIN_SUBCONVERTER_SMOKE=1 go test ./internal/subconverter/...` 与基于真实 `subconverter` + 模板服务的端到端 smoke
 - 针对以下主题逐项跑通并补用例：模板调用与托管模板回取、Stage 1 参数传递到 `subconverter` query、`stage1/convert` / `generate` / `resolve-url` / `short-links` 行为、`subscription` 下载链路
 - 记录每一类失败属于：共享业务层回退、外部模板漂移、live `subconverter` 镜像漂移、本地网络或 Docker 问题

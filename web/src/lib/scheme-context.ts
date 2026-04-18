@@ -1,9 +1,9 @@
 import { createContext, useContext } from "react";
 
 import type { UIScheme } from "./composition";
-import { defaultUIScheme } from "../scheme/default";
+import { aUIScheme } from "../scheme/a";
 
-const UISchemeContext = createContext<UIScheme>(defaultUIScheme);
+const UISchemeContext = createContext<UIScheme>(aUIScheme);
 
 export const UISchemeProvider = UISchemeContext.Provider;
 
