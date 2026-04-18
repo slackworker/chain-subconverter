@@ -61,7 +61,8 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 	if err != nil {
 		return PreparedConversion{}, err
 	}
-	if _, err := parseRegionMatchers(templateConfig); err != nil {
+	regionMatchers, err := parseRegionMatchers(templateConfig)
+	if err != nil {
 		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
 	}
 
@@ -77,10 +78,17 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 
 	request := toSubconverterRequest(stage1Input)
 	request.Options.Config = stringPtr(managedTemplateURL)
+	recognizedRegionGroupNames := make([]string, 0, len(regionMatchers))
+	for _, matcher := range regionMatchers {
+		recognizedRegionGroupNames = append(recognizedRegionGroupNames, matcher.TargetName)
+	}
 
 	return PreparedConversion{
-		Request:        request,
-		TemplateConfig: templateConfig,
+		Request:                    request,
+		TemplateConfig:             templateConfig,
+		EffectiveTemplateURL:       effectiveTemplateURL,
+		ManagedTemplateURL:         managedTemplateURL,
+		RecognizedRegionGroupNames: recognizedRegionGroupNames,
 		Cleanup: func() {
 			source.templateStore.Delete(id)
 		},

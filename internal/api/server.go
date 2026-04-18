@@ -67,7 +67,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
 	mux.HandleFunc("POST /api/short-links", handler.handleShortLinks)
 	mux.HandleFunc("POST /api/resolve-url", handler.handleResolveURL)
-	mux.HandleFunc("GET "+managedTemplatePath, handler.handleManagedTemplate)
+	mux.HandleFunc(managedTemplatePath, handler.handleManagedTemplate)
 	mux.HandleFunc("GET "+shortSubscriptionPath, handler.handleShortSubscription)
 	mux.HandleFunc("GET "+subscriptionPath, handler.handleSubscription)
 	mux.HandleFunc("GET /healthz", handler.handleHealthz)
@@ -163,6 +163,11 @@ func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *ht
 }
 
 func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodGet && request.Method != http.MethodHead {
+		http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	id := strings.TrimPrefix(request.URL.Path, handler.managedTemplatePath)
 	id = strings.TrimSuffix(id, ".ini")
 	id = strings.TrimSpace(id)
@@ -180,6 +185,9 @@ func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, reques
 	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	writer.Header().Set("Cache-Control", noStoreHeader)
 	writer.WriteHeader(http.StatusOK)
+	if request.Method == http.MethodHead {
+		return
+	}
 	_, _ = writer.Write([]byte(content))
 }
 

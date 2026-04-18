@@ -44,6 +44,7 @@
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 | [testing/frontend-g1-shared-boundary](testing/frontend-g1-shared-boundary.md) | G1 前端共享业务层验收：scheme 可替换性、最小构建验证与外部依赖边界 |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 开发 / 联调 / smoke 入口：单脚本启动、端口复用与 live 验收顺序 |
+| [testing/live-review-artifacts](testing/live-review-artifacts.md) | live 订阅 review 产物说明：如何生成 `stage1/stage2` 中间文件并逐项审查 |
 
 ## 临时区规则
 

@@ -1,6 +1,9 @@
 package service
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 type Message struct {
 	Level   string         `json:"level"`
@@ -38,6 +41,14 @@ type LongURLPayload struct {
 	V              int            `json:"v"`
 	Stage1Input    Stage1Input    `json:"stage1Input"`
 	Stage2Snapshot Stage2Snapshot `json:"stage2Snapshot"`
+}
+
+type TemplateDiagnostics struct {
+	EffectiveTemplateURL    string   `json:"effectiveTemplateURL,omitempty"`
+	ManagedTemplateURL      string   `json:"managedTemplateURL,omitempty"`
+	RecognizedRegionGroups  []string `json:"recognizedRegionGroups"`
+	FullBaseProxyGroups     []string `json:"fullBaseProxyGroups"`
+	MissingRecognizedGroups []string `json:"missingRecognizedGroups"`
 }
 
 func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage1ConvertResponse, error) {
@@ -107,4 +118,47 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	}
 
 	return rendered, nil
+}
+
+func BuildTemplateDiagnostics(fixtures ConversionFixtures) (TemplateDiagnostics, error) {
+	diagnostics := TemplateDiagnostics{
+		EffectiveTemplateURL: fixtures.EffectiveTemplateURL,
+		ManagedTemplateURL:   fixtures.ManagedTemplateURL,
+	}
+
+	recognizedGroups := append([]string(nil), fixtures.RecognizedRegionGroupNames...)
+	if len(recognizedGroups) == 0 {
+		regionMatchers, err := loadRegionMatchers(fixtures.TemplateConfig)
+		if err != nil {
+			return TemplateDiagnostics{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
+		}
+		recognizedGroups = make([]string, 0, len(regionMatchers))
+		for _, matcher := range regionMatchers {
+			recognizedGroups = append(recognizedGroups, matcher.TargetName)
+		}
+	}
+	diagnostics.RecognizedRegionGroups = recognizedGroups
+
+	fullBaseGroups, err := parseProxyGroups(fixtures.FullBaseYAML)
+	if err != nil {
+		return TemplateDiagnostics{}, newInternalResponseError("failed to parse full-base proxy-groups", fmt.Errorf("parse full-base proxy-groups: %w", err))
+	}
+
+	fullBaseProxyGroups := make([]string, 0, len(fullBaseGroups))
+	for name := range fullBaseGroups {
+		fullBaseProxyGroups = append(fullBaseProxyGroups, name)
+	}
+	sort.Strings(fullBaseProxyGroups)
+	diagnostics.FullBaseProxyGroups = fullBaseProxyGroups
+
+	missingGroups := make([]string, 0)
+	for _, name := range recognizedGroups {
+		if _, ok := fullBaseGroups[name]; ok {
+			continue
+		}
+		missingGroups = append(missingGroups, name)
+	}
+	diagnostics.MissingRecognizedGroups = missingGroups
+
+	return diagnostics, nil
 }

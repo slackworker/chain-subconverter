@@ -30,8 +30,11 @@ type fakeTemplatePreparingSource struct {
 
 func (source *fakeTemplatePreparingSource) PrepareConversion(_ context.Context, _ service.Stage1Input) (service.PreparedConversion, error) {
 	return service.PreparedConversion{
-		Request:        source.request,
-		TemplateConfig: source.templateConfig,
+		Request:                    source.request,
+		TemplateConfig:             source.templateConfig,
+		EffectiveTemplateURL:       "https://template-source.example/config.ini",
+		ManagedTemplateURL:         "http://127.0.0.1:38123/internal/templates/abc123.ini",
+		RecognizedRegionGroupNames: []string{"🇩🇪 德国节点"},
 	}, nil
 }
 
@@ -55,6 +58,8 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	}
 
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "🇺🇸 SS2022-Test-256-US => chain => 🇺🇸 美国节点")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/full-base.url.raw.txt", "http://localhost:25500/sub?")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/template-diagnostics.json", "recognizedRegionGroups")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/autofill-pairs.txt", "🇺🇸 SS2022-Test-256-US => chain => 🇺🇸 美国节点")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/chain-targets.txt", "[proxy-groups]")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/chain-targets.txt", "🇺🇸 美国节点")
@@ -137,11 +142,64 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 
 	assertArtifactContains(t, bundle.Files, "stage1/output/review-summary.md", "DE Landing => chain => 🇩🇪 德国节点")
 	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.txt", url.QueryEscape(managedTemplateArtifactURLPlaceholder))
+	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.raw.txt", "abc123.ini")
+	assertArtifactContains(t, bundle.Files, "stage1/output/template-source.url.txt", "https://template-source.example/config.ini")
+	assertArtifactContains(t, bundle.Files, "stage1/output/template-managed.url.txt", "abc123.ini")
+	assertArtifactContains(t, bundle.Files, "stage1/output/template-config.ini", "custom_proxy_group=🇩🇪 德国节点")
+	assertArtifactContains(t, bundle.Files, "stage1/output/template-diagnostics.json", "missingRecognizedGroups")
 	if strings.Contains(findArtifact(bundle.Files, "stage1/output/landing-discovery.url.txt").Content, "abc123.ini") {
 		t.Fatalf("landing-discovery url should not expose raw managed template ID: %q", findArtifact(bundle.Files, "stage1/output/landing-discovery.url.txt").Content)
 	}
 	if len(bundle.Rows) != 1 || bundle.Rows[0].TargetName == nil || *bundle.Rows[0].TargetName != "🇩🇪 德国节点" {
 		t.Fatalf("bundle.Rows = %#v, want default chain target 🇩🇪 德国节点", bundle.Rows)
+	}
+}
+
+func TestBuildStage1Artifacts_PreservesRawArtifactsOnStage1Failure(t *testing.T) {
+	source := &fakeConversionSource{
+		result: subconverter.ThreePassResult{
+			LandingDiscovery: subconverter.PassResult{
+				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub&list=true",
+				YAML:       "proxies:\n- {name: HK Landing, type: ss}\n",
+			},
+			TransitDiscovery: subconverter.PassResult{
+				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true",
+				YAML:       "proxies:\n- {name: transit-hk, type: ss}\n",
+			},
+			FullBase: subconverter.PassResult{
+				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub%7Chttps%3A%2F%2Ftransit.example%2Fsub",
+				YAML: strings.Join([]string{
+					"proxies:",
+					"- {name: HK Landing, type: ss, server: hk.example.com, port: 443}",
+					"- {name: transit-hk, type: ss, server: transit.example.com, port: 443}",
+					"proxy-groups:",
+					"  - name: Missing HK Group",
+					"    type: fallback",
+					"    proxies:",
+					"      - transit-hk",
+					"",
+				}, "\n"),
+			},
+		},
+	}
+
+	bundle, err := BuildStage1Artifacts(context.Background(), source, Case{
+		Name: "missing-region-group",
+		Stage1Input: service.Stage1Input{
+			LandingRawText: "https://landing.example/sub",
+			TransitRawText: "https://transit.example/sub",
+		},
+	})
+	if err == nil {
+		t.Fatal("BuildStage1Artifacts() error = nil, want failure")
+	}
+
+	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.txt", "landing.example")
+	assertArtifactContains(t, bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
+	assertArtifactContains(t, bundle.Files, "stage1/output/full-base.yaml", "Missing HK Group")
+	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "missing recognized region proxy-group")
+	if _, ok := findArtifactOK(bundle.Files, "stage1/output/stage1-convert.response.json"); ok {
+		t.Fatal("stage1/output/stage1-convert.response.json should be absent when stage1 build fails")
 	}
 }
 

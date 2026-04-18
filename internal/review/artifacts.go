@@ -31,27 +31,46 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 		return ArtifactBundle{}, err
 	}
 
-	stage1Response, err := service.BuildStage1ConvertResponse(testCase.Stage1Input, fixtures)
-	if err != nil {
-		return ArtifactBundle{}, err
-	}
-	defaultSnapshot := service.Stage2Snapshot{Rows: cloneRows(stage1Response.Stage2Init.Rows)}
-
 	files := []FileArtifact{
+		{RelativePath: "stage1/output/landing-discovery.url.raw.txt", Content: ensureTrailingNewline(result.LandingDiscovery.RequestURL)},
 		{RelativePath: "stage1/output/landing-discovery.url.txt", Content: ensureTrailingNewline(normalizeManagedTemplateRequestURL(result.LandingDiscovery.RequestURL))},
 		{RelativePath: "stage1/output/landing-discovery.yaml", Content: ensureTrailingNewline(result.LandingDiscovery.YAML)},
+		{RelativePath: "stage1/output/transit-discovery.url.raw.txt", Content: ensureTrailingNewline(result.TransitDiscovery.RequestURL)},
 		{RelativePath: "stage1/output/transit-discovery.url.txt", Content: ensureTrailingNewline(normalizeManagedTemplateRequestURL(result.TransitDiscovery.RequestURL))},
 		{RelativePath: "stage1/output/transit-discovery.yaml", Content: ensureTrailingNewline(result.TransitDiscovery.YAML)},
+		{RelativePath: "stage1/output/full-base.url.raw.txt", Content: ensureTrailingNewline(result.FullBase.RequestURL)},
 		{RelativePath: "stage1/output/full-base.url.txt", Content: ensureTrailingNewline(normalizeManagedTemplateRequestURL(result.FullBase.RequestURL))},
 		{RelativePath: "stage1/output/full-base.yaml", Content: ensureTrailingNewline(result.FullBase.YAML)},
 		{RelativePath: "stage1/output/stage1-convert.request.json", Content: mustMarshalJSON(service.Stage1ConvertRequest{Stage1Input: testCase.Stage1Input})},
-		{RelativePath: "stage1/output/stage1-convert.response.json", Content: mustMarshalJSON(stage1Response)},
-		{RelativePath: filepath.Join("stage2", "input", Stage2SnapshotFileName), Content: mustMarshalJSON(service.Stage2SnapshotFixture{Stage2Snapshot: defaultSnapshot})},
-		{RelativePath: "stage1/output/review-summary.md", Content: buildSummaryMarkdown(testCase.Name, stage1Response.Stage2Init)},
-		{RelativePath: "stage1/output/autofill-pairs.txt", Content: buildAutofillPairsText(stage1Response.Stage2Init.Rows)},
-		{RelativePath: "stage1/output/chain-targets.txt", Content: buildChainTargetsText(stage1Response.Stage2Init.ChainTargets)},
-		{RelativePath: "stage1/output/forward-relays.txt", Content: buildForwardRelaysText(stage1Response.Stage2Init.ForwardRelays)},
 	}
+	if strings.TrimSpace(fixtures.EffectiveTemplateURL) != "" {
+		files = append(files, FileArtifact{RelativePath: "stage1/output/template-source.url.txt", Content: ensureTrailingNewline(fixtures.EffectiveTemplateURL)})
+	}
+	if strings.TrimSpace(fixtures.ManagedTemplateURL) != "" {
+		files = append(files, FileArtifact{RelativePath: "stage1/output/template-managed.url.txt", Content: ensureTrailingNewline(fixtures.ManagedTemplateURL)})
+	}
+	if strings.TrimSpace(fixtures.TemplateConfig) != "" {
+		files = append(files, FileArtifact{RelativePath: "stage1/output/template-config.ini", Content: ensureTrailingNewline(fixtures.TemplateConfig)})
+	}
+	if templateDiagnostics, err := service.BuildTemplateDiagnostics(fixtures); err == nil {
+		files = append(files, FileArtifact{RelativePath: "stage1/output/template-diagnostics.json", Content: mustMarshalJSON(templateDiagnostics)})
+	}
+
+	stage1Response, err := service.BuildStage1ConvertResponse(testCase.Stage1Input, fixtures)
+	if err != nil {
+		files = append(files, FileArtifact{RelativePath: "stage1/output/stage1-convert.error.txt", Content: ensureTrailingNewline(err.Error())})
+		return ArtifactBundle{Files: files}, err
+	}
+	defaultSnapshot := service.Stage2Snapshot{Rows: cloneRows(stage1Response.Stage2Init.Rows)}
+
+	files = append(files,
+		FileArtifact{RelativePath: "stage1/output/stage1-convert.response.json", Content: mustMarshalJSON(stage1Response)},
+		FileArtifact{RelativePath: filepath.Join("stage2", "input", Stage2SnapshotFileName), Content: mustMarshalJSON(service.Stage2SnapshotFixture{Stage2Snapshot: defaultSnapshot})},
+		FileArtifact{RelativePath: "stage1/output/review-summary.md", Content: buildSummaryMarkdown(testCase.Name, stage1Response.Stage2Init)},
+		FileArtifact{RelativePath: "stage1/output/autofill-pairs.txt", Content: buildAutofillPairsText(stage1Response.Stage2Init.Rows)},
+		FileArtifact{RelativePath: "stage1/output/chain-targets.txt", Content: buildChainTargetsText(stage1Response.Stage2Init.ChainTargets)},
+		FileArtifact{RelativePath: "stage1/output/forward-relays.txt", Content: buildForwardRelaysText(stage1Response.Stage2Init.ForwardRelays)},
+	)
 
 	return ArtifactBundle{Files: files, Rows: cloneRows(stage1Response.Stage2Init.Rows)}, nil
 }

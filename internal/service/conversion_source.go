@@ -12,9 +12,12 @@ type ConversionSource interface {
 }
 
 type PreparedConversion struct {
-	Request        subconverter.Request
-	TemplateConfig string
-	Cleanup        func()
+	Request                    subconverter.Request
+	TemplateConfig             string
+	EffectiveTemplateURL       string
+	ManagedTemplateURL         string
+	RecognizedRegionGroupNames []string
+	Cleanup                    func()
 }
 
 type TemplatePreparingSource interface {
@@ -77,6 +80,9 @@ func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input
 		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
 	}
 	fixtures.TemplateConfig = prepared.TemplateConfig
+	fixtures.EffectiveTemplateURL = prepared.EffectiveTemplateURL
+	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
+	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
 	return result, fixtures, nil
 }
 
