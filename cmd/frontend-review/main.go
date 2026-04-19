@@ -31,6 +31,9 @@ type reviewOptions struct {
 }
 
 type advancedOptionsFile struct {
+	Emoji             *bool    `yaml:"emoji,omitempty"`
+	UDP               *bool    `yaml:"udp,omitempty"`
+	SkipCertVerify    *bool    `yaml:"skipCertVerify,omitempty"`
 	Config            *string  `yaml:"config,omitempty"`
 	Include           []string `yaml:"include,omitempty"`
 	Exclude           []string `yaml:"exclude,omitempty"`
@@ -402,6 +405,9 @@ func writeInputs(outputDir string, stage1Input service.Stage1Input) error {
 
 func marshalAdvancedOptions(options service.AdvancedOptions) (string, error) {
 	fileOptions := advancedOptionsFile{
+		Emoji:             options.Emoji,
+		UDP:               options.UDP,
+		SkipCertVerify:    options.SkipCertVerify,
 		Config:            options.Config,
 		Include:           options.Include,
 		Exclude:           options.Exclude,
