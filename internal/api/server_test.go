@@ -137,7 +137,7 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	}, shortLinks)
 
-	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/subscription/7NpK2mQx9a.yaml"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/sub/7NpK2mQx9a"}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -162,6 +162,9 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 	if response.LongURL != wantLongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, wantLongURL)
 	}
+	if response.ShortURL != "http://localhost:11200/sub/7NpK2mQx9a" {
+		t.Fatalf("shortUrl mismatch: got %q want %q", response.ShortURL, "http://localhost:11200/sub/7NpK2mQx9a")
+	}
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
 	}
@@ -173,7 +176,7 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 func TestResolveURLHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) {
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
 
-	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/subscription/missing.yaml"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/sub/missing"}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -187,7 +190,7 @@ func TestResolveURLHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) {
 func TestResolveURLHandler_MapsShortLinkStoreUnavailableToSpecModel(t *testing.T) {
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, failingShortLinkStore{err: errors.New("store unavailable")})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/subscription/7NpK2mQx9a.yaml"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"https://example.com/sub/7NpK2mQx9a"}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -271,7 +274,7 @@ func TestShortLinksHandler_HappyPath(t *testing.T) {
 func TestShortLinksHandler_MapsInvalidLongURLToSpecModel(t *testing.T) {
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
 
-	request := httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"https://example.com/subscription/7NpK2mQx9a.yaml"}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"https://example.com/sub/7NpK2mQx9a"}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -359,6 +362,51 @@ func TestSubscriptionHandler_DownloadDisposition(t *testing.T) {
 	}
 }
 
+func TestSubscriptionHandler_CompatibleOuterQueryOverridesDecodedPayload(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	source := &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}
+	handler := mustNewTestHandler(t, source)
+
+	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL+"&emoji=false", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if source.gotRequest.Options.Emoji == nil || *source.gotRequest.Options.Emoji {
+		t.Fatalf("expected emoji override to propagate as false, got %+v", source.gotRequest.Options.Emoji)
+	}
+}
+
+func TestSubscriptionHandler_PassesThroughExtraQueryToSubconverter(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	source := &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}
+	handler := mustNewTestHandler(t, source)
+
+	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL+"&tfo=true", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if got := source.gotRequest.ExtraQuery.Get("tfo"); got != "true" {
+		t.Fatalf("expected passthrough query tfo=true, got %q", got)
+	}
+	if source.gotRequest.ExtraQuery.Get("download") != "" {
+		t.Fatalf("download query must not passthrough, got %+v", source.gotRequest.ExtraQuery)
+	}
+}
+
 func TestShortSubscriptionHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
@@ -381,7 +429,7 @@ func TestShortSubscriptionHandler_HappyPath(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	}, shortLinks)
 
-	request := httptest.NewRequest(http.MethodGet, "/subscription/7NpK2mQx9a.yaml", nil)
+	request := httptest.NewRequest(http.MethodGet, "/sub/7NpK2mQx9a", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -402,7 +450,7 @@ func TestShortSubscriptionHandler_HappyPath(t *testing.T) {
 func TestShortSubscriptionHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) {
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
 
-	request := httptest.NewRequest(http.MethodGet, "/subscription/missing.yaml", nil)
+	request := httptest.NewRequest(http.MethodGet, "/sub/missing", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -416,7 +464,7 @@ func TestShortSubscriptionHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) 
 func TestShortSubscriptionHandler_MapsShortLinkStoreUnavailableToSpecModel(t *testing.T) {
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, failingShortLinkStore{err: errors.New("store unavailable")})
 
-	request := httptest.NewRequest(http.MethodGet, "/subscription/7NpK2mQx9a.yaml", nil)
+	request := httptest.NewRequest(http.MethodGet, "/sub/7NpK2mQx9a", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 

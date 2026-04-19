@@ -10,6 +10,11 @@ func NormalizeNewlines(value string) string {
 
 // NormalizeURLText trims each line, drops blank entries, and joins the result with '|'.
 func NormalizeURLText(raw string) string {
+	return strings.Join(SplitURLText(raw), "|")
+}
+
+// SplitURLText trims each line, drops blank entries, and preserves input order.
+func SplitURLText(raw string) []string {
 	lines := strings.Split(NormalizeNewlines(raw), "\n")
 	parts := make([]string, 0, len(lines))
 	for _, line := range lines {
@@ -19,5 +24,5 @@ func NormalizeURLText(raw string) string {
 		}
 		parts = append(parts, trimmed)
 	}
-	return strings.Join(parts, "|")
+	return parts
 }

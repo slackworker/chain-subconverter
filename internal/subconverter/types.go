@@ -1,5 +1,7 @@
 package subconverter
 
+import "net/url"
+
 type AdvancedOptions struct {
 	Emoji          *bool
 	UDP            *bool
@@ -13,6 +15,7 @@ type Request struct {
 	LandingRawText string
 	TransitRawText string
 	Options        AdvancedOptions
+	ExtraQuery     url.Values
 }
 
 type PassResult struct {

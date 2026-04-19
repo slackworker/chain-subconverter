@@ -115,9 +115,9 @@ func BuildShortURL(publicBaseURL string, shortID string) (string, error) {
 
 	basePath := strings.TrimRight(parsedURL.EscapedPath(), "/")
 	if basePath == "" {
-		parsedURL.Path = "/subscription/" + url.PathEscape(shortID) + ".yaml"
+		parsedURL.Path = longURLPath + "/" + url.PathEscape(shortID)
 	} else {
-		parsedURL.Path = path.Clean(basePath) + "/subscription/" + url.PathEscape(shortID) + ".yaml"
+		parsedURL.Path = path.Clean(basePath) + longURLPath + "/" + url.PathEscape(shortID)
 	}
 	parsedURL.RawQuery = ""
 	parsedURL.Fragment = ""

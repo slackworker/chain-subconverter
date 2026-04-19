@@ -88,7 +88,7 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildStage2Artifacts() error = %v", err)
 	}
-	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/generate.response.json", "http://localhost:11200/subscription?data=")
+	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/generate.response.json", "http://localhost:11200/sub?data=")
 	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "dialer-proxy: 🇺🇸 美国节点")
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml")))
 }

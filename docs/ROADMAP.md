@@ -32,7 +32,7 @@ flowchart LR
 | 固定 `3-pass` happy path | 复用同一条转换管线，校验落地 / 中转 / full-base 三个 pass |
 | 默认 `stage2Init` | 对固定测试输入产出默认 `rows`、`availableModes`、`chainTargets[]` |
 | 规范 `longUrl` | 基于固定 `stage1Input + stage2Snapshot` 生成确定性长链接 |
-| 最终订阅 YAML 渲染 | 通过 `GET /subscription?data=...` 或等价入口回放最终订阅 YAML |
+| 最终订阅 YAML 渲染 | 通过 `GET /sub?...` 或等价入口回放最终订阅 YAML |
 | Golden 验收 | 对齐测试样例中的 request / response / payload / YAML 固定产物 |
 
 明确不纳入本阶段：
@@ -70,7 +70,7 @@ flowchart LR
 
 | 任务 | 说明 |
 |------|------|
-| `internal/api/` | `stage1/convert`、`generate`、`resolve-url`、`short-links`、`subscription` 端点 |
+| `internal/api/` | `stage1/convert`、`generate`、`resolve-url`、`short-links`、订阅读取（`GET /sub?...` / `GET /sub/<id>`） |
 | 失败语义收口 | `messages[]`、`blockingErrors[]`、HTTP 状态码与字段级错误映射 |
 | `resolve-url` | 恢复可重放判定与 `restoreStatus` 冲突语义 |
 | `internal/store/` | SQLite 短链接索引（幂等 + LRU 淘汰） |

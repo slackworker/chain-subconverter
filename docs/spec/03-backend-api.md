@@ -8,8 +8,8 @@
 
 - 当前 spec 定义的所有对外 HTTP 端点都不需要鉴权
 - 服务端按匿名请求处理，不校验登录态、`Authorization` 头、API Key、签名或其他认证凭据
-- `POST /api/*`、`GET /subscription/<id>.yaml` 与 `GET /subscription?data=...` 都按匿名请求处理
-- 可额外暴露 `GET /healthz` 作为部署侧健康检查端点；该端点只用于存活/就绪探测，不承载业务契约，也不改变本文对 `/api/*` 与 `/subscription*` 的定义范围
+- `POST /api/*`、`GET /sub/<id>` 与 `GET /sub?...` 都按匿名请求处理
+- 可额外暴露 `GET /healthz` 作为部署侧健康检查端点；该端点只用于存活/就绪探测，不承载业务契约，也不改变本文对 `/api/*` 与 `/sub*` 的定义范围
 
 ## 通用数据模型
 
@@ -291,7 +291,7 @@
 
 ```json
 {
-  "longUrl": "https://example.com/subscription?data=...",
+  "longUrl": "https://example.com/sub?data=...",
   "messages": [],
   "blockingErrors": []
 }
@@ -347,7 +347,7 @@
 
 ```json
 {
-  "longUrl": "https://example.com/subscription?data=..."
+  "longUrl": "https://example.com/sub?data=..."
 }
 ```
 
@@ -355,8 +355,8 @@
 
 ```json
 {
-  "longUrl": "https://example.com/subscription?data=...",
-  "shortUrl": "https://example.com/subscription/7NpK2mQx9a.yaml",
+  "longUrl": "https://example.com/sub?data=...",
+  "shortUrl": "https://example.com/sub/7NpK2mQx9a",
   "messages": [],
   "blockingErrors": []
 }
@@ -382,6 +382,7 @@
 - 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
 - 对同一 `longUrl` 的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；并发下不得出现同一 `longUrl` 对应多条可解析的不同短链（「一长多短」）。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
+- 若输入 `longUrl` 带有额外兼容 query，后端必须先按本文“长链接编码规范”完成解码与规范化；成功响应中的 `longUrl` 只保留规范状态载荷，不保留仅用于本次订阅读取的额外透传参数
 - 成功响应的 `messages[]` 可包含短链接存储淘汰相关 warning
 
 最小失败语义：
@@ -399,7 +400,7 @@
 
 ```json
 {
-  "url": "https://example.com/subscription/7NpK2mQx9a.yaml"
+  "url": "https://example.com/sub/7NpK2mQx9a"
 }
 ```
 
@@ -407,7 +408,8 @@
 
 ```json
 {
-  "longUrl": "https://example.com/subscription?data=...",
+  "longUrl": "https://example.com/sub?data=...",
+  "shortUrl": "https://example.com/sub/7NpK2mQx9a",
   "restoreStatus": "replayable",
   "stage1Input": { "...": "结构同 POST /api/stage1/convert 请求中的 stage1Input" },
   "stage2Snapshot": { "...": "结构同本文“2. 阶段 2 配置快照”" },
@@ -421,6 +423,8 @@
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
 - 传入短链接时，先解析为长链接，再解码同一份快照
+- 传入短链接且解析成功时，成功响应必须额外返回规范化 `shortUrl`；传入长链接时不返回该字段
+- 若传入长链接带有额外兼容 query，成功响应中的 `longUrl` 必须是折叠共享状态覆写后的规范长链接，不保留仅用于本次订阅读取的额外透传参数
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
@@ -435,7 +439,7 @@
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 5. `GET /subscription/<id>.yaml`
+### 5. `GET /sub/<id>`
 
 用途：供 Mihomo 客户端拉取 YAML。
 
@@ -444,22 +448,25 @@
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
+- 除 `download=1` 外，本入口额外 query 的兼容覆写与透传规则与长链接入口一致；统一见下文“长链接编码规范”
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
 - 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
 
-### 6. `GET /subscription?data=...`
+### 6. `GET /sub?...`
 
 用途：长链接对应的订阅资源地址；访问时返回 YAML。
 
 规则：
 
+- 路径固定为 `GET /sub`
 - `data` 必须可逆编码 `stage1Input` 与 `stage2Snapshot`
-- `data` 编码必须 URL-safe 且具确定性；编码规范见下文“长链接编码规范”
+- 长链接编码必须 URL-safe 且具确定性；编码规范见下文“长链接编码规范”
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
+- 除 `data` 与 `download=1` 外，解析端允许接受额外 query；额外 query 的兼容覆写与透传规则统一见下文“长链接编码规范”
 - HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`
-- 增量失败语义（下表以「解码管线」指 `base64url → gunzip → JSON parse → version check → schema 结构校验 → 输入上限校验`）：
+- 增量失败语义（下表以「解码管线」指 `query parse → data(base64url → gunzip → JSON parse) → 兼容参数解析 / 覆写 → schema 结构校验 → 输入上限校验`）：
   - `400` `INVALID_REQUEST`：`data` 参数缺失
   - `422` `INVALID_LONG_URL`：解码管线任一步骤失败；`scope = global`
   - `500` `RENDER_FAILED`：解码成功、依赖可用，但 YAML 渲染管线因内部原因失败；`scope = global`
@@ -470,9 +477,12 @@
 
 ### 1. 权威边界
 
+- 规范长链接路径固定为 `GET /sub`
+- 规范短链接路径固定为 `GET /sub/<id>`
+- 当前公开契约不保留 `/subscription*` 兼容路径
 - 规范长链接只能由后端生成；前端不得自行构造、重写或“规范化” `longUrl`
 - 前端只提交 `stage1Input` 与 `stage2Snapshot`，并消费后端返回的 `longUrl`
-- 后端是唯一权威编码器，也是 `resolve-url` 与 `GET /subscription?data=...` 的唯一权威解码器
+- 后端是唯一权威编码器，也是 `resolve-url` 与 `GET /sub?...` 的唯一权威解码器
 
 ### 2. 规范载荷
 
@@ -513,7 +523,19 @@
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
-### 3. 规范编码算法
+### 3. 额外 query 兼容层
+
+规范长链接由后端生成时，查询参数只包含 `data`；解析端在订阅读取、`resolve-url` 与 `short-links` 校验时可额外接受 `data` 之外的 query，规则如下：
+
+- `download=1` 仅是订阅消费时的辅助查询参数，不属于状态载荷；解码与规范化时必须忽略，并在重编码时移除
+- 外层 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 视为兼容覆写参数；若出现，则必须先覆盖 `data` 内恢复出的对应阶段 1 值，再参与后续恢复、校验与订阅渲染
+- 外层 `include`、`exclude` 的值沿用上游 query 语义：多项按输入顺序用 `|` 拼接；解析端需按该规则还原为数组
+- 若外层与 `data` 内同时存在同名兼容覆写参数，必须以外层显式值为准
+- 除 `data`、`download`、兼容覆写参数与后端固定管理的上游参数外，解析端可接受额外 query；这类参数不进入共享状态快照，只在本次订阅读取请求中透传给上游 `subconverter`
+- `url`、`target`、`list`、`expand`、`classic` 等由后端固定管理的上游参数不得被外层 query 覆写；这些键不进入共享状态，也不得作为透传参数转发
+- `POST /api/resolve-url` 与 `POST /api/short-links` 的规范化重编码结果，不得保留仅用于本次订阅读取的额外透传参数
+
+### 4. 规范编码算法
 
 编码步骤固定为：
 
@@ -521,7 +543,7 @@
 2. 将该对象序列化为 UTF-8 的规范化 JSON
 3. 将规范化 JSON 字节做 gzip 压缩
 4. 将压缩结果做 base64url 编码，且不带 `=` padding
-5. 作为 `data` 查询参数拼接到 `GET /subscription?data=...`
+5. 作为 `data` 查询参数拼接到 `GET /sub?data=...`
 
 规范化 JSON 规则：
 
@@ -536,17 +558,17 @@ gzip 规则：
 - 必须使用 gzip 格式
 - 为保证同一份快照得到完全相同的 `longUrl`，gzip header 中会影响字节稳定性的时间戳字段必须固定为 `0`
 
-### 4. 解码与错误处理
+### 5. 解码与错误处理
 
-- 后端解码长链接时，必须执行 `base64url -> gunzip -> JSON parse -> version check`
-- 解码管线包含以下步骤：`base64url` 解码、`gunzip` 解压、JSON parse、version check、schema 结构校验、输入上限校验；任一步骤失败都必须返回 `INVALID_LONG_URL`
+- 后端解码长链接时，必须执行 `query parse -> data(base64url -> gunzip -> JSON parse) -> 兼容参数解析 / 覆写 -> schema 结构校验 -> 输入上限校验`
+- 解码管线包含以下步骤：query 解析、`data` 的 `base64url` 解码、`gunzip` 解压、JSON parse、兼容参数解析 / 覆写、schema 结构校验、输入上限校验；任一步骤失败都必须返回 `INVALID_LONG_URL`
 - `INVALID_LONG_URL` 的覆盖范围严格限定于解码管线失败；解码成功后的业务处理（包括 subconverter 调用、YAML 渲染）不属于 `INVALID_LONG_URL` 语义范畴
 - `POST /api/resolve-url` 与 `POST /api/short-links` 对解码管线失败须一致返回 `INVALID_LONG_URL`
 
-### 5. 长度约束
+### 6. 长度约束
 
 - 单条规范化 `longUrl` 的总长度必须受限
-- 早期原型默认上限为 `2048` bytes
+- 当前默认上限为 `8192` bytes
 - 阶段 1 输入总大小上限与 `longUrl` 总长度上限都必须可配置；两者可以分别调节
 - 当前 `v = 1` 编码下，早期原型默认将阶段 1 的 `landingRawText` 与 `transitRawText` 规范化后总大小上限设为 `2048` bytes
 - `POST /api/generate` 若生成结果超过上限，必须返回阻断错误；结果按原请求语义终止，不截断、不自动切换为短链接
@@ -561,11 +583,15 @@ gzip 规则：
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份快照必须生成相同的长链接
-- 长链接编码版本必须显式包含在载荷中；当前版本固定为 `v = 1`
+- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 1`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
+- 长链接公开路径固定为 `/sub?...`
+- 后端生成的规范长链接查询参数只包含 `data`
+- 订阅读取时可额外附加兼容 query；其中共享状态覆写会被折叠回规范长链接，非共享状态的透传参数不进入规范长链接
 - 长链接是唯一规范化状态源
 - 短链接是长链接的不透明别名，不单独承载状态源语义
+- 短链接公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
 - 短链接 ID 必须由规范化 `longUrl` 通过确定性算法生成；同一个 `longUrl` 必须得到同一个 `shortUrl`
 - 当前默认短链接 ID 生成算法为：对规范化 `longUrl` 计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
 - 短链接索引在逻辑上是 `longUrl ↔ shortId` 的双射子集：除淘汰导致的失效外，同一 `longUrl` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`longUrl`（或与其一一对应的规范化键）唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立
@@ -574,7 +600,7 @@ gzip 规则：
 - 短链接索引的默认持久化实现使用本地 SQLite 文件
 - 短链接索引记录至少包含 `shortId`、`longUrl` 与 `lastAccessedAt`
 - 短链接索引容量必须可配置；早期原型默认上限为 `1000` 条记录
-- 单条 `longUrl` 存储长度必须可配置；早期原型默认上限为 `2048` bytes
+- 单条 `longUrl` 存储长度必须可配置；当前默认上限为 `8192` bytes
 - 设计目标支持约 `100` 到 `100000` 条记录、约 `100KB` 到 `100MB` 存储规模
 - `POST /api/short-links` 命中既有 `longUrl` 时，必须返回既有 `shortUrl`，并刷新其 `lastAccessedAt`
 - 短链接被后端成功解析时，必须刷新其 `lastAccessedAt`

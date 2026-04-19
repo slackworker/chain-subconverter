@@ -6,7 +6,7 @@ import (
 )
 
 func TestDeterministicShortID_IsBase62Encoded64BitValue(t *testing.T) {
-	shortID := DeterministicShortID("https://example.com/subscription?data=payload")
+	shortID := DeterministicShortID("https://example.com/sub?data=payload")
 	if shortID == "" {
 		t.Fatal("DeterministicShortID() returned empty string")
 	}
@@ -23,7 +23,7 @@ func TestDeterministicShortID_IsBase62Encoded64BitValue(t *testing.T) {
 }
 
 func TestDeterministicShortID_IsStable(t *testing.T) {
-	longURL := "https://example.com/subscription?data=payload"
+	longURL := "https://example.com/sub?data=payload"
 	first := DeterministicShortID(longURL)
 	second := DeterministicShortID(longURL)
 	if first != second {

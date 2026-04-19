@@ -21,15 +21,16 @@ const (
 )
 
 type Handler struct {
-	source                service.ConversionSource
-	templateStore         service.TemplateContentReader
-	shortLinkStore        service.ShortLinkStore
-	publicBaseURL         string
-	maxLongURLLength      int
-	inputLimits           service.InputLimits
-	managedTemplatePath   string
-	shortSubscriptionPath string
-	mux                   *http.ServeMux
+	source              service.ConversionSource
+	templateStore       service.TemplateContentReader
+	shortLinkStore      service.ShortLinkStore
+	publicBaseURL       string
+	maxLongURLLength    int
+	inputLimits         service.InputLimits
+	managedTemplatePath string
+	shortSubPath        string
+	subPath             string
+	mux                 *http.ServeMux
 }
 
 func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits) (*Handler, error) {
@@ -46,20 +47,21 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	if err != nil {
 		return nil, err
 	}
-	subscriptionPath, shortSubscriptionPath, err := subscriptionRoutePaths(publicBaseURL)
+	subPath, shortSubPath, err := subRoutePaths(publicBaseURL)
 	if err != nil {
 		return nil, err
 	}
 
 	handler := &Handler{
-		source:                source,
-		templateStore:         templateStore,
-		shortLinkStore:        shortLinkStore,
-		publicBaseURL:         publicBaseURL,
-		maxLongURLLength:      maxLongURLLength,
-		inputLimits:           inputLimits,
-		managedTemplatePath:   managedTemplatePath,
-		shortSubscriptionPath: shortSubscriptionPath,
+		source:              source,
+		templateStore:       templateStore,
+		shortLinkStore:      shortLinkStore,
+		publicBaseURL:       publicBaseURL,
+		maxLongURLLength:    maxLongURLLength,
+		inputLimits:         inputLimits,
+		managedTemplatePath: managedTemplatePath,
+		shortSubPath:        shortSubPath,
+		subPath:             subPath,
 	}
 
 	mux := http.NewServeMux()
@@ -68,8 +70,8 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	mux.HandleFunc("POST /api/short-links", handler.handleShortLinks)
 	mux.HandleFunc("POST /api/resolve-url", handler.handleResolveURL)
 	mux.HandleFunc(managedTemplatePath, handler.handleManagedTemplate)
-	mux.HandleFunc("GET "+shortSubscriptionPath, handler.handleShortSubscription)
-	mux.HandleFunc("GET "+subscriptionPath, handler.handleSubscription)
+	mux.HandleFunc("GET "+shortSubPath, handler.handleShortSubscription)
+	mux.HandleFunc("GET "+subPath, handler.handleSubscription)
 	mux.HandleFunc("GET /healthz", handler.handleHealthz)
 	handler.mux = mux
 
@@ -191,7 +193,7 @@ func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, reques
 	_, _ = writer.Write([]byte(content))
 }
 
-func subscriptionRoutePaths(publicBaseURL string) (string, string, error) {
+func subRoutePaths(publicBaseURL string) (string, string, error) {
 	parsedURL, err := url.Parse(strings.TrimSpace(publicBaseURL))
 	if err != nil {
 		return "", "", fmt.Errorf("parse public base URL: %w", err)
@@ -202,10 +204,10 @@ func subscriptionRoutePaths(publicBaseURL string) (string, string, error) {
 
 	basePath := strings.TrimRight(parsedURL.EscapedPath(), "/")
 	if basePath == "" {
-		return "/subscription", "/subscription/", nil
+		return "/sub", "/sub/", nil
 	}
 	cleanBasePath := path.Clean(basePath)
-	return cleanBasePath + "/subscription", cleanBasePath + "/subscription/", nil
+	return cleanBasePath + "/sub", cleanBasePath + "/sub/", nil
 }
 
 func managedTemplateRoutePath(managedTemplateBaseURL string) (string, error) {
@@ -224,8 +226,8 @@ func managedTemplateRoutePath(managedTemplateBaseURL string) (string, error) {
 }
 
 func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *http.Request) {
-	data := strings.TrimSpace(request.URL.Query().Get("data"))
-	if data == "" {
+	dataValue := strings.TrimSpace(request.URL.Query().Get("data"))
+	if dataValue == "" {
 		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "missing data query parameter", "global", nil, nil)
 		return
 	}
@@ -240,14 +242,13 @@ func (handler *Handler) handleShortSubscription(writer http.ResponseWriter, requ
 	}
 
 	requestPath := request.URL.Path
-	if !strings.HasPrefix(requestPath, handler.shortSubscriptionPath) {
+	if !strings.HasPrefix(requestPath, handler.shortSubPath) {
 		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "short URL path is invalid", "global", nil, nil)
 		return
 	}
 
-	shortID := strings.TrimPrefix(requestPath, handler.shortSubscriptionPath)
-	shortID = strings.TrimSpace(strings.TrimSuffix(shortID, ".yaml"))
-	if shortID == "" || strings.Contains(shortID, "/") || !strings.HasSuffix(requestPath, ".yaml") {
+	shortID := strings.TrimSpace(strings.TrimPrefix(requestPath, handler.shortSubPath))
+	if shortID == "" || strings.Contains(shortID, "/") {
 		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "short URL path is invalid", "global", nil, nil)
 		return
 	}
@@ -273,13 +274,19 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
 	}
+	payload.Stage1Input, err = service.ApplyLongURLCompatibleQueryOverrides(payload.Stage1Input, request.URL.Query())
+	if err != nil {
+		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
+		return
+	}
 
-	renderedConfig, err := service.RenderCompleteConfigFromSource(
+	renderedConfig, err := service.RenderCompleteConfigFromSourceWithExtraQuery(
 		request.Context(),
 		handler.source,
 		payload.Stage1Input,
 		payload.Stage2Snapshot,
 		handler.inputLimits,
+		service.ExtractSubscriptionPassthroughQuery(request.URL.Query()),
 	)
 	if err != nil {
 		if subconverter.IsUnavailable(err) {

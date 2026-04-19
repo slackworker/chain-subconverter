@@ -146,6 +146,7 @@ func (client *Client) buildRawQuery(request Request, rawInput string, list bool)
 	params = appendOptionalStringQuery(params, "config", request.Options.Config)
 	params = appendOptionalStringListQuery(params, "include", request.Options.Include)
 	params = appendOptionalStringListQuery(params, "exclude", request.Options.Exclude)
+	params = appendExtraQuery(params, request.ExtraQuery)
 	return strings.Join(params, "&")
 }
 
@@ -192,6 +193,28 @@ func appendOptionalStringListQuery(params []string, name string, values []string
 	}
 
 	return append(params, name+"="+url.QueryEscape(strings.Join(normalized, "|")))
+}
+
+func appendExtraQuery(params []string, extraQuery url.Values) []string {
+	if len(extraQuery) == 0 {
+		return params
+	}
+
+	for name, values := range extraQuery {
+		trimmedName := strings.TrimSpace(name)
+		if trimmedName == "" {
+			continue
+		}
+		for _, value := range values {
+			trimmedValue := strings.TrimSpace(value)
+			if trimmedValue == "" {
+				continue
+			}
+			params = append(params, trimmedName+"="+url.QueryEscape(trimmedValue))
+		}
+	}
+
+	return params
 }
 
 func normalizeSubconverterURLInput(rawInput string) string {

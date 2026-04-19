@@ -27,22 +27,22 @@ func TestCreateAndResolve(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	entry, err := store.CreateOrGet(ctx, "7NpK2mQx9a", "http://example.com/subscription?data=payload1")
+	entry, err := store.CreateOrGet(ctx, "7NpK2mQx9a", "http://example.com/sub?data=payload1")
 	if err != nil {
 		t.Fatalf("CreateOrGet() error = %v", err)
 	}
 	if entry.ShortID != "7NpK2mQx9a" {
 		t.Fatalf("shortID mismatch: got %q want %q", entry.ShortID, "7NpK2mQx9a")
 	}
-	if entry.LongURL != "http://example.com/subscription?data=payload1" {
-		t.Fatalf("longURL mismatch: got %q want %q", entry.LongURL, "http://example.com/subscription?data=payload1")
+	if entry.LongURL != "http://example.com/sub?data=payload1" {
+		t.Fatalf("longURL mismatch: got %q want %q", entry.LongURL, "http://example.com/sub?data=payload1")
 	}
 
 	longURL, err := store.ResolveShortID(ctx, "7NpK2mQx9a")
 	if err != nil {
 		t.Fatalf("ResolveShortID() error = %v", err)
 	}
-	if longURL != "http://example.com/subscription?data=payload1" {
+	if longURL != "http://example.com/sub?data=payload1" {
 		t.Fatalf("resolved longURL mismatch: got %q", longURL)
 	}
 }
@@ -61,7 +61,7 @@ func TestCreateOrGet_Idempotent(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	longURL := "http://example.com/subscription?data=same-payload"
+	longURL := "http://example.com/sub?data=same-payload"
 
 	entry1, err := store.CreateOrGet(ctx, "id1", longURL)
 	if err != nil {
@@ -86,7 +86,7 @@ func TestCreateOrGet_ExistingRecordRefreshesLastAccessedAt(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	entry, err := store.CreateOrGet(ctx, "id1", "http://example.com/subscription?data=same-payload")
+	entry, err := store.CreateOrGet(ctx, "id1", "http://example.com/sub?data=same-payload")
 	if err != nil {
 		t.Fatalf("first CreateOrGet() error = %v", err)
 	}
@@ -107,11 +107,11 @@ func TestCreateOrGet_ShortIDCollision(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	if _, err := store.CreateOrGet(ctx, "sameid", "http://example.com/subscription?data=payload1"); err != nil {
+	if _, err := store.CreateOrGet(ctx, "sameid", "http://example.com/sub?data=payload1"); err != nil {
 		t.Fatalf("first CreateOrGet() error = %v", err)
 	}
 
-	_, err := store.CreateOrGet(ctx, "sameid", "http://example.com/subscription?data=payload2")
+	_, err := store.CreateOrGet(ctx, "sameid", "http://example.com/sub?data=payload2")
 	if !errors.Is(err, service.ErrShortIDCollision) {
 		t.Fatalf("CreateOrGet() error = %v, want ErrShortIDCollision", err)
 	}
@@ -121,7 +121,7 @@ func TestCreateOrGet_ConcurrentIdempotent(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 	const workers = 12
-	longURL := "http://example.com/subscription?data=concurrent"
+	longURL := "http://example.com/sub?data=concurrent"
 
 	type result struct {
 		entry ShortLinkEntry

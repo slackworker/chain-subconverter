@@ -173,7 +173,7 @@ func TestResolveURLFromSource_InvalidLongURL(t *testing.T) {
 		"http://localhost:11200",
 		source,
 		nil,
-		"http://localhost:11200/subscription?data=invalid-payload",
+		"http://localhost:11200/sub?data=invalid-payload",
 		0,
 		InputLimits{},
 	)
@@ -256,7 +256,7 @@ func TestResolveURLFromSource_ResolvesShortURL(t *testing.T) {
 		"http://localhost:11200",
 		source,
 		resolver,
-		"https://example.com/subscription/7NpK2mQx9a.yaml",
+		"https://example.com/sub/7NpK2mQx9a",
 		0,
 		InputLimits{},
 	)
@@ -272,6 +272,9 @@ func TestResolveURLFromSource_ResolvesShortURL(t *testing.T) {
 	if response.LongURL != wantLongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, wantLongURL)
 	}
+	if response.ShortURL != "http://localhost:11200/sub/7NpK2mQx9a" {
+		t.Fatalf("shortUrl mismatch: got %q want %q", response.ShortURL, "http://localhost:11200/sub/7NpK2mQx9a")
+	}
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
 	}
@@ -286,7 +289,7 @@ func TestResolveURLFromSource_ShortURLNotFound(t *testing.T) {
 		"http://localhost:11200",
 		&fakeConversionSource{},
 		&fakeShortLinkResolver{},
-		"https://example.com/subscription/missing.yaml",
+		"https://example.com/sub/missing",
 		0,
 		InputLimits{},
 	)
@@ -312,7 +315,7 @@ func TestResolveURLFromSource_ShortLinkStoreUnavailable(t *testing.T) {
 		"http://localhost:11200",
 		&fakeConversionSource{},
 		&fakeShortLinkResolver{err: errors.New("store unavailable")},
-		"https://example.com/subscription/7NpK2mQx9a.yaml",
+		"https://example.com/sub/7NpK2mQx9a",
 		0,
 		InputLimits{},
 	)
@@ -343,13 +346,13 @@ func TestParseResolveURLInput(t *testing.T) {
 		want      resolveURLInput
 		wantError bool
 	}{
-		{name: "valid long url", url: "http://localhost:11200/subscription?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/subscription?data=abc", IsLong: true}},
-		{name: "valid long url with base path", url: "http://localhost:11200/base/subscription?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/base/subscription?data=abc", IsLong: true}},
-		{name: "valid short url", url: "http://localhost:11200/subscription/7NpK2mQx9a.yaml", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
-		{name: "valid short url with base path", url: "http://localhost:11200/base/subscription/7NpK2mQx9a.yaml", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
+		{name: "valid long url", url: "http://localhost:11200/sub?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/sub?data=abc", IsLong: true}},
+		{name: "valid long url with base path", url: "http://localhost:11200/base/sub?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/base/sub?data=abc", IsLong: true}},
+		{name: "valid short url", url: "http://localhost:11200/sub/7NpK2mQx9a", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
+		{name: "valid short url with base path", url: "http://localhost:11200/base/sub/7NpK2mQx9a", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
 		{name: "some random url", url: "https://example.com/page", wantError: true},
-		{name: "subscription without data", url: "http://localhost:11200/subscription", wantError: true},
-		{name: "relative url", url: "/subscription/7NpK2mQx9a.yaml", wantError: true},
+		{name: "sub without data", url: "http://localhost:11200/sub", wantError: true},
+		{name: "relative url", url: "/sub/7NpK2mQx9a", wantError: true},
 	}
 
 	for _, tt := range tests {

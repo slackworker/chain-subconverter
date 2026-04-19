@@ -131,7 +131,7 @@
 - 手动验证 Stage 2 默认 `target` 与 `mode` 可生成 `longUrl`
 - 手动验证 Stage 3 打开、复制、下载围绕单一当前链接输入框工作正常
 - 手动验证 `resolve-url` 恢复与 `short-links` 生成 / 回放
-- 手动验证长链接订阅读取与 `/subscription/<id>.yaml` 结果
+- 手动验证长链接订阅读取与 `/sub/<id>` 结果
 
 完成口径：
 

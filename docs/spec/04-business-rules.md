@@ -46,7 +46,7 @@
 
 ### 0.2.2 `subconverter` 参数表
 
-本表是 `GET /sub` 查询参数的唯一权威定义位置。前端展示只见 [02-frontend-spec](02-frontend-spec.md)，接口快照字段只见 [03-backend-api](03-backend-api.md)。
+本表是后端调用上游 `subconverter GET /sub` 时查询参数的唯一权威定义位置。前端展示只见 [02-frontend-spec](02-frontend-spec.md)，接口快照字段只见 [03-backend-api](03-backend-api.md)。
 
 术语约束：
 

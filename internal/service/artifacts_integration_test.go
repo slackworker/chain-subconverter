@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -149,6 +150,44 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_AppliesCompatibleOuterQueryOverride(t *testing.T) {
+	emoji := true
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			Stage1Input{AdvancedOptions: AdvancedOptions{Emoji: &emoji}},
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	payload, err := DecodeLongURLPayload(longURL+"&emoji=false", InputLimits{})
+	if err != nil {
+		t.Fatalf("DecodeLongURLPayload() error = %v", err)
+	}
+	if payload.Stage1Input.AdvancedOptions.Emoji == nil || *payload.Stage1Input.AdvancedOptions.Emoji {
+		t.Fatalf("expected outer emoji=false to override payload, got %+v", payload.Stage1Input.AdvancedOptions.Emoji)
+	}
+}
+
+func TestExtractSubscriptionPassthroughQuery_StripsReservedNames(t *testing.T) {
+	query := mustParseQuery(t, "data=payload&emoji=false&download=1&tfo=true&foo=bar&classic=false")
+	passthrough := ExtractSubscriptionPassthroughQuery(query)
+
+	if got := passthrough.Get("tfo"); got != "true" {
+		t.Fatalf("tfo mismatch: got %q", got)
+	}
+	if got := passthrough.Get("foo"); got != "bar" {
+		t.Fatalf("foo mismatch: got %q", got)
+	}
+	if passthrough.Get("emoji") != "" || passthrough.Get("data") != "" || passthrough.Get("download") != "" || passthrough.Get("classic") != "" {
+		t.Fatalf("reserved params leaked into passthrough: %+v", passthrough)
+	}
+}
+
 func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 	emoji := true
 	udp := false
@@ -203,4 +242,14 @@ func mustMarshalIndented(t *testing.T, value any) string {
 	}
 
 	return string(data)
+}
+
+func mustParseQuery(t *testing.T, rawQuery string) url.Values {
+	t.Helper()
+
+	values, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		t.Fatalf("url.ParseQuery() error = %v", err)
+	}
+	return values
 }

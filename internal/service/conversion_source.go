@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
@@ -43,8 +44,12 @@ func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, 
 }
 
 func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (string, error) {
+	return RenderCompleteConfigFromSourceWithExtraQuery(ctx, source, stage1Input, stage2Snapshot, limits, nil)
+}
+
+func RenderCompleteConfigFromSourceWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits, extraQuery url.Values) (string, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input, limits)
+	fixtures, err := LoadConversionFixturesWithExtraQuery(ctx, source, stage1Input, limits, extraQuery)
 	if err != nil {
 		return "", err
 	}
@@ -52,11 +57,19 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {
-	_, fixtures, err := ExecuteConversion(ctx, source, stage1Input, limits)
+	return LoadConversionFixturesWithExtraQuery(ctx, source, stage1Input, limits, nil)
+}
+
+func LoadConversionFixturesWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits, extraQuery url.Values) (ConversionFixtures, error) {
+	_, fixtures, err := ExecuteConversionWithExtraQuery(ctx, source, stage1Input, limits, extraQuery)
 	return fixtures, err
 }
 
 func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (subconverter.ThreePassResult, ConversionFixtures, error) {
+	return ExecuteConversionWithExtraQuery(ctx, source, stage1Input, limits, nil)
+}
+
+func ExecuteConversionWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits, extraQuery url.Values) (subconverter.ThreePassResult, ConversionFixtures, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
 
 	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
@@ -70,6 +83,7 @@ func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input
 	if prepared.Cleanup != nil {
 		defer prepared.Cleanup()
 	}
+	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
 
 	result, err := source.Convert(ctx, prepared.Request)
 	if err != nil {
@@ -148,6 +162,27 @@ func prepareConversion(ctx context.Context, source ConversionSource, stage1Input
 	return PreparedConversion{
 		Request: toSubconverterRequest(stage1Input),
 	}, nil
+}
+
+func mergeExtraQuery(base url.Values, overlay url.Values) url.Values {
+	if len(base) == 0 && len(overlay) == 0 {
+		return nil
+	}
+
+	merged := make(url.Values)
+	for name, values := range base {
+		copied := append([]string(nil), values...)
+		merged[name] = copied
+	}
+	for name, values := range overlay {
+		for _, value := range values {
+			merged.Add(name, value)
+		}
+	}
+	if len(merged) == 0 {
+		return nil
+	}
+	return merged
 }
 
 func toSubconverterRequest(stage1Input Stage1Input) subconverter.Request {

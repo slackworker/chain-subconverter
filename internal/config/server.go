@@ -12,7 +12,7 @@ const (
 	DefaultPublicBaseURL          = "http://localhost:11200"
 	DefaultManagedTemplateBaseURL = DefaultPublicBaseURL
 	DefaultFrontendDistDir        = "web/dist"
-	DefaultMaxLongURLLength       = 2048
+	DefaultMaxLongURLLength       = 8192
 	DefaultMaxInputSize           = 2048
 	DefaultMaxURLsPerField        = 20
 	DefaultShortLinkDBPath        = "data/short-links.sqlite3"

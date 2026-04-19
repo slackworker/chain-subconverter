@@ -18,6 +18,7 @@ type ResolveURLRequest struct {
 // ResolveURLResponse is the response payload for POST /api/resolve-url.
 type ResolveURLResponse struct {
 	LongURL        string          `json:"longUrl"`
+	ShortURL       string          `json:"shortUrl,omitempty"`
 	RestoreStatus  string          `json:"restoreStatus"`
 	Stage1Input    Stage1Input     `json:"stage1Input"`
 	Stage2Snapshot Stage2Snapshot  `json:"stage2Snapshot"`
@@ -41,7 +42,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		)
 	}
 
-	resolved, payload, err := resolveLongURLPayload(ctx, publicBaseURL, shortLinkResolver, rawURL, maxLongURLLength, limits)
+	resolved, shortURL, payload, err := resolveLongURLPayload(ctx, publicBaseURL, shortLinkResolver, rawURL, maxLongURLLength, limits)
 	if err != nil {
 		return ResolveURLResponse{}, err
 	}
@@ -60,6 +61,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 
 	return ResolveURLResponse{
 		LongURL:        resolved,
+		ShortURL:       shortURL,
 		RestoreStatus:  restoreStatus,
 		Stage1Input:    payload.Stage1Input,
 		Stage2Snapshot: payload.Stage2Snapshot,
@@ -68,19 +70,20 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	}, nil
 }
 
-func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, LongURLPayload, error) {
+func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, error) {
 	input, err := parseResolveURLInput(rawURL)
 	if err != nil {
-		return "", LongURLPayload{}, newResponseError(
+		return "", "", LongURLPayload{}, newResponseError(
 			http.StatusBadRequest, "INVALID_URL", "unsupported URL format", "global", nil, nil, err,
 		)
 	}
 
 	longURL := input.LongURL
+	shortURL := ""
 	if !input.IsLong {
 		if shortLinkResolver == nil {
 			retryable := true
-			return "", LongURLPayload{}, newResponseError(
+			return "", "", LongURLPayload{}, newResponseError(
 				http.StatusServiceUnavailable,
 				"SHORT_LINK_STORE_UNAVAILABLE",
 				"short link store is unavailable",
@@ -94,7 +97,7 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 		resolvedLongURL, err := shortLinkResolver.ResolveShortID(ctx, input.ShortID)
 		if err != nil {
 			if errors.Is(err, ErrShortURLNotFound) {
-				return "", LongURLPayload{}, newResponseError(
+				return "", "", LongURLPayload{}, newResponseError(
 					http.StatusUnprocessableEntity,
 					"SHORT_URL_NOT_FOUND",
 					"short URL not found",
@@ -105,7 +108,7 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 				)
 			}
 			retryable := true
-			return "", LongURLPayload{}, newResponseError(
+			return "", "", LongURLPayload{}, newResponseError(
 				http.StatusServiceUnavailable,
 				"SHORT_LINK_STORE_UNAVAILABLE",
 				"short link store is unavailable",
@@ -116,21 +119,25 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 			)
 		}
 		longURL = resolvedLongURL
+		shortURL, err = BuildShortURL(publicBaseURL, input.ShortID)
+		if err != nil {
+			return "", "", LongURLPayload{}, newInternalResponseError("failed to build short URL", err)
+		}
 	}
 
 	payload, err := DecodeLongURLPayload(longURL, limits)
 	if err != nil {
-		return "", LongURLPayload{}, newResponseError(
+		return "", "", LongURLPayload{}, newResponseError(
 			http.StatusUnprocessableEntity, "INVALID_LONG_URL", "long URL payload is invalid", "global", nil, nil, err,
 		)
 	}
 
 	canonicalLongURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot), maxLongURLLength)
 	if err != nil {
-		return "", LongURLPayload{}, err
+		return "", "", LongURLPayload{}, err
 	}
 
-	return canonicalLongURL, payload, nil
+	return canonicalLongURL, shortURL, payload, nil
 }
 
 // determineRestoreStatus runs the generate-phase validation against the
@@ -201,18 +208,18 @@ func parseResolveURLInput(rawURL string) (resolveURLInput, error) {
 	segments := strings.Split(trimmedPath, "/")
 	lastSegment := segments[len(segments)-1]
 
-	if lastSegment == "subscription" {
-		if parsedURL.Query().Get("data") == "" {
-			return resolveURLInput{}, fmt.Errorf("subscription URL is missing data query parameter")
+	if lastSegment == "sub" {
+		if parsedURL.Query().Get(longURLParamData) == "" {
+			return resolveURLInput{}, fmt.Errorf("sub URL is missing data query parameter")
 		}
 		return resolveURLInput{LongURL: rawURL, IsLong: true}, nil
 	}
 
-	if len(segments) < 2 || segments[len(segments)-2] != "subscription" || !strings.HasSuffix(lastSegment, ".yaml") {
+	if len(segments) < 2 || segments[len(segments)-2] != "sub" {
 		return resolveURLInput{}, fmt.Errorf("url path %q is not supported", cleanPath)
 	}
 
-	shortID := strings.TrimSuffix(lastSegment, ".yaml")
+	shortID := strings.TrimSpace(lastSegment)
 	if shortID == "" {
 		return resolveURLInput{}, fmt.Errorf("short URL path %q is invalid", cleanPath)
 	}

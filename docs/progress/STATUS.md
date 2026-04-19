@@ -30,7 +30,7 @@
 - `docs/README`、`ROADMAP`、`testing` 等文档已对齐。
 - `internal/api`、`internal/service` 职责边界已固化。
 - `Phase 3` 已完成失败语义收口 (3-A)、输入应用层配置化 (3-B)、`POST /api/resolve-url` (3-C)、短链索引落地 (3-D) 与短链对外端点 (3-E)。
-- 已落地 `POST /api/short-links`、`GET /subscription/<id>.yaml`，并由同一短链索引支持 `resolve-url` 短链接恢复与短链订阅读取。
+- 已落地 `POST /api/short-links`、`GET /sub/<id>`，并由同一短链索引支持 `resolve-url` 短链接恢复与短链订阅读取。
 - 订阅路由已按 `publicBaseURL` 的路径前缀注册，长链接与短链接在带 base path 的部署形态下都可直接回放。
 - 文档主导航已收敛到 `spec/`、`plan/`、`progress/`、`testing/`；已完成阶段计划与历史材料已移入 `docs/temp/` 待删区。
 - `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、共享 workflow 状态主线与可替换方案装配入口。
@@ -43,7 +43,7 @@
 - 已确认 StageCard、NoticeStack、StatusPill 不再保留共享层或参考实现地位，后续由方案层按需重写或直接删除。
 - 已确认恢复入口归属 Stage 3 输出域，且不再要求共享层固定页面顶部 restore 区或固定 DOM 锚点。
 - 前端入口已改为通过 `UIScheme` 装配方案层组件；路由按 `/ui/<scheme>` 隔离，当前仅保留 `a`、`b`、`c` 三套方案入口，并只继续共享 workflow 与业务契约。
-- 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/subscription*`、`/healthz` 语义。
+- 后端已接入 SPA 静态资源托管包装器；非 API 路径现在可托管前端构建产物，同时保留现有 `/api/*`、`/sub*`、`/healthz` 语义。
 - Docker 镜像已接入前端构建流程，可将 `web/dist` 一并打包进最终 `app` 镜像。
 - 2026-04-17 已完成 G1 共享业务层签收：`npm run build`、`npm run build:b`、`go test ./...` 全部通过，允许进入 A/B/C 并行方案开发。
 - 2026-04-18 已再次确认 `go test ./...`、`npm run build`、`npm run build:b` 与 Compose 配置解析均通过，可作为 Phase 4 后续收口的自动化基线。
