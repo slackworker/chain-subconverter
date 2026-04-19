@@ -31,12 +31,12 @@
 - 本项目当前只定义一种内部转换入口：`GET /sub`
 - 三个 pass 都必须复用同一组固定参数与阶段 1 高级选项映射结果
 - 三个 pass 必须属于同一条转换管线；`full-base pass` 必须与同一管线中的两个 discovery pass 保持输入快照一致
-- 实现必须核对 discovery pass 返回的每个 `proxy.name`，都能在同一管线的 `full-base pass` 完整代理集合中按同名定位；若不能定位，视为 pass 失败
+- 实现必须核对 discovery pass 返回的每个落地/中转身份，都能在同一管线的 `full-base pass` 完整代理集合中完成唯一定位；`landing-discovery pass` 在 `append_type=true` 时允许先去除名称前缀中的 `[类型] ` 再做定位；若不能唯一定位，视为 pass 失败
 
 ### 0.2.1 pass 级参数约束
 
 - 三个 pass 的 `target` 都必须传 `clash`
-- `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true`
+- `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true` 与 `append_type=true`
 - `transit-discovery pass`：`url` 只传中转节点信息，传 `list=true`
 - `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不传 `list`
 - 当同一字段存在多条订阅 URL、节点 URI 或 `data:text/plain,<base64文本>` 时，传给 `subconverter` 的单个 `url` 查询参数前必须先用 `|` 拼接，再整体 URL 编码
@@ -61,6 +61,7 @@
 | `udp` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `scv` | 展示 | 不勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
+| `append_type` | 隐藏 | 无 | 仅 `landing-discovery pass` 传 `true`；其余 pass 不传 |
 | `config` | 展示 | 见下方补充 | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
 | `exclude` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
@@ -185,20 +186,24 @@
 
 - 必须从 `landing-discovery pass` 的结果中收集所有落地节点
 - 收集口径固定为：读取 `list=true` 返回的 Clash YAML `proxies[]`，按每个 `proxy.name` 提取落地身份
+- 当前 `landing-discovery pass` 固定请求 `append_type=true`；当 `proxy.name` 形如 `"[<类型>] <名称>"` 时，后端必须将 `[]` 中的内容提取为 `landingNodeType`，并将剩余 `<名称>` 视为候选 `landingNodeName`
+- 提取出的候选 `landingNodeName` 必须与同一条转换管线的 `full-base pass` 代理集合做唯一对应校验；只有能唯一定位到 1 个同名代理时，才允许固化为最终 `landingNodeName`
+- 若 `proxy.name` 未带 `append_type` 前缀，则 `landingNodeType` 回退为该落地节点的协议类型展示值，`landingNodeName` 候选保持原始 `proxy.name`
 - 按“每个落地节点一行”生成 `stage2Init.rows[]`
-- 阶段 2 第一列只展示这些落地节点，不允许在阶段 2 重新选择或新增
+- 阶段 2 第一列展示 `landingNodeName`，第二列展示 `landingNodeType`
 
 ### 2.1.1 落地节点命名与身份边界
 
 - 在当前规格中，`landingNodeName` 是阶段 2 快照、生成改写与恢复重放的唯一定位键
-- `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合
+- `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合，但必须经过与同一条转换管线 `full-base pass` 的唯一同名校验后才能固化
+- `landingNodeType` 来源于 `landing-discovery pass` 的 `append_type=true` 名称前缀；当前只承担阶段 2 展示语义，不进入阶段 2 快照、生成改写或恢复定位键
 - 落地节点名称的产出、重名处理与相关实现细节由 `subconverter` 服务负责；本规格不规定具体命名或消歧算法
 - 前端只消费 `stage2Init` 中返回的 `landingNodeName`，不得自行重命名、去重或补算映射
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
 
 ### 2.2 判断全局可用模式与行级限制
 
-阶段 2 第二列的候选模式分为两层：
+阶段 2 第三列的候选模式分为两层：
 
 - `stage2Init.availableModes`：本次阶段 2 的全局模式基线
 - `rows[].restrictedModes`：某一行额外禁用的模式与原因；仅在该行存在额外限制时返回
@@ -253,9 +258,9 @@
 - 保留用户输入顺序
 - 当端口转发功能未开启时，`forwardRelays[]` 为空
 
-### 2.5 自动填写 `mode` 与第三列
+### 2.5 自动填写 `mode` 与第四列
 
-阶段 2 初始化时，后端必须直接为每行产出默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
+阶段 2 初始化时，后端必须直接为每行产出 `landingNodeType`、默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
 
 #### 初始化决策顺序
 
@@ -318,8 +323,8 @@
 每个落地节点对应一行配置：
 
 - `mode = none`：保持原样
-- `mode = chain`：第三列表示要写入的 `dialer-proxy`
-- `mode = port_forward`：第三列表示要应用的端口转发服务
+- `mode = chain`：第四列表示要写入的 `dialer-proxy`
+- `mode = port_forward`：第四列表示要应用的端口转发服务
 - `stage2Snapshot.rows` 的数组顺序不参与生成语义；生成校验、恢复判定与最终改写都只按 `landingNodeName` 匹配对应落地节点
 
 ### 3.2 生成前校验

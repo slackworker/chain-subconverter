@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) ([]inlineProxy, error) {
+func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) ([]resolvedLandingProxy, error) {
 	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
 	if err != nil {
 		return nil, err
@@ -15,9 +15,17 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	if err != nil {
 		return nil, fmt.Errorf("parse landing discovery fixture: %w", err)
 	}
+	fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
+	if err != nil {
+		return nil, fmt.Errorf("parse full-base fixture proxies: %w", err)
+	}
+	resolvedLandingProxies, err := resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
+	if err != nil {
+		return nil, err
+	}
 
-	landingByName := make(map[string]inlineProxy, len(landingProxies))
-	for _, landing := range landingProxies {
+	landingByName := make(map[string]resolvedLandingProxy, len(resolvedLandingProxies))
+	for _, landing := range resolvedLandingProxies {
 		landingByName[landing.Name] = landing
 	}
 
@@ -30,8 +38,8 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		rowsByLanding[row.LandingNodeName] = row
 	}
 
-	if len(rowsByLanding) != len(landingProxies) {
-		cause := fmt.Errorf("stage2 rowset size mismatch: got %d rows want %d", len(rowsByLanding), len(landingProxies))
+	if len(rowsByLanding) != len(resolvedLandingProxies) {
+		cause := fmt.Errorf("stage2 rowset size mismatch: got %d rows want %d", len(rowsByLanding), len(resolvedLandingProxies))
 		return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
 	}
 
@@ -46,7 +54,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	}
 	forwardRelayUsers := make(map[string]string, len(stage2Init.ForwardRelays))
 
-	for _, landing := range landingProxies {
+	for _, landing := range resolvedLandingProxies {
 		row, exists := rowsByLanding[landing.Name]
 		if !exists {
 			cause := fmt.Errorf("missing stage2 row for landing node %q", landing.Name)
@@ -65,7 +73,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			if err != nil {
 				return nil, err
 			}
-			if landing.Type == "vless-reality" {
+			if landing.ProtocolType == "vless-reality" {
 				cause := fmt.Errorf("landing node %q does not allow chain mode", landing.Name)
 				return nil, newStage2RowValidationError("CHAIN_MODE_NOT_ALLOWED", "chain mode is not allowed for this landing node", landing.Name, "mode", cause)
 			}
@@ -105,7 +113,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		}
 	}
 
-	return landingProxies, nil
+	return resolvedLandingProxies, nil
 }
 
 func requireTargetName(row Stage2Row) (string, error) {

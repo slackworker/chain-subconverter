@@ -61,7 +61,7 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 		files = append(files, FileArtifact{RelativePath: "stage1/output/stage1-convert.error.txt", Content: ensureTrailingNewline(err.Error())})
 		return ArtifactBundle{Files: files}, err
 	}
-	defaultSnapshot := service.Stage2Snapshot{Rows: cloneRows(stage1Response.Stage2Init.Rows)}
+	defaultSnapshot := service.Stage2Snapshot{Rows: snapshotRowsFromInit(stage1Response.Stage2Init.Rows)}
 
 	files = append(files,
 		FileArtifact{RelativePath: "stage1/output/stage1-convert.response.json", Content: mustMarshalJSON(stage1Response)},
@@ -72,7 +72,7 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 		FileArtifact{RelativePath: "stage1/output/forward-relays.txt", Content: buildForwardRelaysText(stage1Response.Stage2Init.ForwardRelays)},
 	)
 
-	return ArtifactBundle{Files: files, Rows: cloneRows(stage1Response.Stage2Init.Rows)}, nil
+	return ArtifactBundle{Files: files, Rows: snapshotRowsFromInit(stage1Response.Stage2Init.Rows)}, nil
 }
 
 func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, testCase Case, publicBaseURL string, maxLongURLLength int) (ArtifactBundle, error) {
@@ -112,6 +112,18 @@ func cloneRows(rows []service.Stage2Row) []service.Stage2Row {
 	return cloned
 }
 
+func snapshotRowsFromInit(rows []service.Stage2InitRow) []service.Stage2Row {
+	snapshotRows := make([]service.Stage2Row, 0, len(rows))
+	for _, row := range rows {
+		snapshotRows = append(snapshotRows, service.Stage2Row{
+			LandingNodeName: row.LandingNodeName,
+			Mode:            row.Mode,
+			TargetName:      row.TargetName,
+		})
+	}
+	return snapshotRows
+}
+
 func loadConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
 	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
 }
@@ -146,30 +158,36 @@ func buildSummaryMarkdown(scenarioName string, stage2Init service.Stage2Init) st
 		builder.WriteString("\n")
 	}
 	builder.WriteString("\n## Default Autofill\n\n")
+	builder.WriteString("| Landing Node | Type | Mode | Target |\n")
+	builder.WriteString("| --- | --- | --- | --- |\n")
 	for _, row := range stage2Init.Rows {
-		builder.WriteString("- ")
-		builder.WriteString(row.LandingNodeName)
-		builder.WriteString(" => ")
-		builder.WriteString(row.Mode)
+		targetName := ""
 		if row.TargetName != nil {
-			builder.WriteString(" => ")
-			builder.WriteString(*row.TargetName)
+			targetName = *row.TargetName
 		}
-		builder.WriteString("\n")
+		builder.WriteString("| ")
+		builder.WriteString(row.LandingNodeName)
+		builder.WriteString(" | ")
+		builder.WriteString(row.LandingNodeType)
+		builder.WriteString(" | ")
+		builder.WriteString(row.Mode)
+		builder.WriteString(" | ")
+		builder.WriteString(targetName)
+		builder.WriteString(" |\n")
 	}
 	return builder.String()
 }
 
-func buildAutofillPairsText(rows []service.Stage2Row) string {
+func buildAutofillPairsText(rows []service.Stage2InitRow) string {
 	if len(rows) == 0 {
 		return "(none)\n"
 	}
 
 	lines := make([]string, 0, len(rows))
 	for _, row := range rows {
-		line := row.LandingNodeName + " => " + row.Mode
+		line := row.LandingNodeName + " | " + row.LandingNodeType + " | " + row.Mode
 		if row.TargetName != nil {
-			line += " => " + *row.TargetName
+			line += " | " + *row.TargetName
 		}
 		lines = append(lines, line)
 	}

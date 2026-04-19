@@ -145,7 +145,7 @@ func ConversionFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 		)
 	}
 
-	if err := ensureDiscoveryNamesResolvable(landingProxies, fullBaseProxies, "landing"); err != nil {
+	if _, err := resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies); err != nil {
 		return ConversionFixtures{}, err
 	}
 	if err := ensureDiscoveryNamesResolvable(transitProxies, fullBaseProxies, "transit"); err != nil {

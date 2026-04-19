@@ -37,6 +37,27 @@ func TestConversionFixturesFromResult_RejectsUnresolvableDiscoveryNames(t *testi
 	}
 }
 
+func TestConversionFixturesFromResult_AcceptsAppendTypeLandingDiscoveryNames(t *testing.T) {
+	_, err := ConversionFixturesFromResult(subconverter.ThreePassResult{
+		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: \"[SS] landing-a\", type: ss}\n"},
+		TransitDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: transit-a, type: ss}\n"},
+		FullBase: subconverter.PassResult{YAML: strings.Join([]string{
+			"proxies:",
+			"- {name: landing-a, type: ss}",
+			"- {name: transit-a, type: ss}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - transit-a",
+			"",
+		}, "\n")},
+	})
+	if err != nil {
+		t.Fatalf("ConversionFixturesFromResult() error = %v", err)
+	}
+}
+
 func TestConversionFixturesFromResult_RejectsInvalidDiscoveryPasses(t *testing.T) {
 	testCases := []struct {
 		name   string
@@ -250,6 +271,9 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
 	}
 	row := response.Stage2Init.Rows[0]
+	if row.LandingNodeType != "SS" {
+		t.Fatalf("row landingNodeType mismatch: got %q want %q", row.LandingNodeType, "SS")
+	}
 	if row.Mode != "chain" {
 		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
 	}

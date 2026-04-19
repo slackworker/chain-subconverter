@@ -51,6 +51,48 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 	}
 }
 
+func TestBuildStage2Init_ExtractsLandingNodeTypeFromAppendTypePrefix(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		ConversionFixtures{
+			LandingDiscoveryYAML: "proxies:\n- {name: \"[SOCKS5] HK Landing\", type: socks5}\n",
+			TransitDiscoveryYAML: "proxies:\n- {name: transit-hk, type: ss}\n",
+			FullBaseYAML: strings.Join([]string{
+				"proxies:",
+				"- {name: HK Landing, type: socks5, server: landing.example.com, port: 443}",
+				"- {name: transit-hk, type: ss, server: transit.example.com, port: 443}",
+				"proxy-groups:",
+				"  - name: 🇭🇰 香港节点",
+				"    type: url-test",
+				"    proxies:",
+				"      - transit-hk",
+				"",
+			}, "\n"),
+			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`url-test`HK\n",
+		},
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+	if len(stage2Init.Rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
+	}
+
+	row := stage2Init.Rows[0]
+	if row.LandingNodeName != "HK Landing" {
+		t.Fatalf("LandingNodeName mismatch: got %q want %q", row.LandingNodeName, "HK Landing")
+	}
+	if row.LandingNodeType != "SOCKS5" {
+		t.Fatalf("LandingNodeType mismatch: got %q want %q", row.LandingNodeType, "SOCKS5")
+	}
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
+	}
+	if row.TargetName == nil || *row.TargetName != "🇭🇰 香港节点" {
+		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇭🇰 香港节点")
+	}
+}
+
 func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
@@ -459,6 +501,20 @@ func TestParseInlineProxyList_ClassifiesVLESSRealityFromRealityOpts(t *testing.T
 	}
 	if proxies[0].Type != "vless-reality" {
 		t.Fatalf("proxy type mismatch: got %q want %q", proxies[0].Type, "vless-reality")
+	}
+}
+
+func TestParseInlineProxyList_UnquotesQuotedName(t *testing.T) {
+	proxies, err := parseInlineProxyList("proxies:\n- {name: \"[SS] HK Landing\", type: ss, server: landing.example.com, port: 443}\n")
+	if err != nil {
+		t.Fatalf("parseInlineProxyList() error = %v", err)
+	}
+
+	if len(proxies) != 1 {
+		t.Fatalf("expected 1 proxy, got %d", len(proxies))
+	}
+	if proxies[0].Name != "[SS] HK Landing" {
+		t.Fatalf("proxy name mismatch: got %q want %q", proxies[0].Name, "[SS] HK Landing")
 	}
 }
 

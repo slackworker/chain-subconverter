@@ -106,14 +106,22 @@ type Stage2Snapshot struct {
 }
 
 type Stage2Init struct {
-	AvailableModes []string       `json:"availableModes"`
-	ChainTargets   []ChainTarget  `json:"chainTargets"`
-	ForwardRelays  []ForwardRelay `json:"forwardRelays"`
-	Rows           []Stage2Row    `json:"rows"`
+	AvailableModes []string        `json:"availableModes"`
+	ChainTargets   []ChainTarget   `json:"chainTargets"`
+	ForwardRelays  []ForwardRelay  `json:"forwardRelays"`
+	Rows           []Stage2InitRow `json:"rows"`
 }
 
 type Stage2Row struct {
 	LandingNodeName string                     `json:"landingNodeName"`
+	Mode            string                     `json:"mode"`
+	TargetName      *string                    `json:"targetName"`
+	RestrictedModes map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+}
+
+type Stage2InitRow struct {
+	LandingNodeName string                     `json:"landingNodeName"`
+	LandingNodeType string                     `json:"landingNodeType"`
 	Mode            string                     `json:"mode"`
 	TargetName      *string                    `json:"targetName"`
 	RestrictedModes map[string]ModeRestriction `json:"restrictedModes,omitempty"`
@@ -148,6 +156,12 @@ type inlineProxy struct {
 	Name string
 	Type string
 	Raw  string
+}
+
+type resolvedLandingProxy struct {
+	Name         string
+	TypeLabel    string
+	ProtocolType string
 }
 
 type proxyGroup struct {
@@ -186,9 +200,18 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	if err != nil {
 		return Stage2Init{}, fmt.Errorf("parse full-base fixture: %w", err)
 	}
+	fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
+	if err != nil {
+		return Stage2Init{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
+	}
 
-	landingNames := make(map[string]struct{}, len(landingProxies))
-	for _, proxy := range landingProxies {
+	resolvedLandingProxies, err := resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
+	if err != nil {
+		return Stage2Init{}, err
+	}
+
+	landingNames := make(map[string]struct{}, len(resolvedLandingProxies))
+	for _, proxy := range resolvedLandingProxies {
 		landingNames[proxy.Name] = struct{}{}
 	}
 
@@ -225,14 +248,15 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		}
 		chainTargetNames[target.Name] = struct{}{}
 	}
-	rows := make([]Stage2Row, 0, len(landingProxies))
-	for _, landing := range landingProxies {
-		row := Stage2Row{
+	rows := make([]Stage2InitRow, 0, len(resolvedLandingProxies))
+	for _, landing := range resolvedLandingProxies {
+		row := Stage2InitRow{
 			LandingNodeName: landing.Name,
+			LandingNodeType: landing.TypeLabel,
 			Mode:            "none",
 			TargetName:      nil,
 		}
-		restrictedModes := buildRestrictedModes(landing, availableModes)
+		restrictedModes := buildRestrictedModes(landing.ProtocolType, availableModes)
 		if len(restrictedModes) > 0 {
 			row.RestrictedModes = restrictedModes
 		}
@@ -386,11 +410,11 @@ func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
 	return relays, nil
 }
 
-func buildRestrictedModes(landing inlineProxy, availableModes []string) map[string]ModeRestriction {
+func buildRestrictedModes(landingProtocolType string, availableModes []string) map[string]ModeRestriction {
 	if !containsString(availableModes, "chain") {
 		return nil
 	}
-	if landing.Type != "vless-reality" {
+	if landingProtocolType != "vless-reality" {
 		return nil
 	}
 	return map[string]ModeRestriction{
@@ -399,6 +423,154 @@ func buildRestrictedModes(landing inlineProxy, availableModes []string) map[stri
 			ReasonText: "该落地节点当前不支持链式代理",
 		},
 	}
+}
+
+func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxies []inlineProxy) ([]resolvedLandingProxy, error) {
+	fullBaseNameCounts := make(map[string]int, len(fullBaseProxies))
+	for _, proxy := range fullBaseProxies {
+		fullBaseNameCounts[proxy.Name]++
+	}
+
+	resolved := make([]resolvedLandingProxy, 0, len(landingProxies))
+	for _, proxy := range landingProxies {
+		resolvedName, typeLabel, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts)
+		if err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, resolvedLandingProxy{
+			Name:         resolvedName,
+			TypeLabel:    typeLabel,
+			ProtocolType: proxy.Type,
+		})
+	}
+
+	return resolved, nil
+}
+
+func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int) (string, string, error) {
+	fallbackTypeLabel := formatLandingNodeTypeLabel(proxy.Type)
+	originalName := proxy.Name
+	originalCount := fullBaseNameCounts[originalName]
+	prefixTypeLabel, strippedName, hasPrefix := splitLandingTypePrefix(originalName)
+	strippedCount := 0
+	if hasPrefix {
+		strippedCount = fullBaseNameCounts[strippedName]
+	}
+
+	if originalCount == 1 {
+		if strippedCount == 1 && landingTypePrefixMatchesProtocol(prefixTypeLabel, proxy.Type) {
+			return strippedName, prefixTypeLabel, nil
+		}
+		return originalName, fallbackTypeLabel, nil
+	}
+
+	if strippedCount == 1 {
+		typeLabel := prefixTypeLabel
+		if strings.TrimSpace(typeLabel) == "" {
+			typeLabel = fallbackTypeLabel
+		}
+		return strippedName, typeLabel, nil
+	}
+
+	if originalCount > 1 {
+		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", originalName, originalCount)
+		return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
+	}
+	if strippedCount > 1 {
+		cause := fmt.Errorf("landing discovery proxy %q resolves to %q but matches %d full-base proxies", originalName, strippedName, strippedCount)
+		return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
+	}
+
+	resolvedHint := originalName
+	if hasPrefix {
+		resolvedHint = strippedName
+	}
+	cause := fmt.Errorf("landing discovery proxy %q resolves to %q but is missing from full-base result", originalName, resolvedHint)
+	return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
+}
+
+func splitLandingTypePrefix(name string) (string, string, bool) {
+	if !strings.HasPrefix(name, "[") {
+		return "", "", false
+	}
+	closeIndex := strings.Index(name, "]")
+	if closeIndex <= 1 || closeIndex+1 >= len(name) {
+		return "", "", false
+	}
+	suffix := name[closeIndex+1:]
+	if strings.TrimLeft(suffix, " \t") == suffix {
+		return "", "", false
+	}
+	remainder := strings.TrimSpace(suffix)
+	if remainder == "" {
+		return "", "", false
+	}
+	return strings.TrimSpace(name[1:closeIndex]), remainder, true
+}
+
+func landingTypePrefixMatchesProtocol(prefixLabel string, protocolType string) bool {
+	canonicalPrefix := canonicalizeLandingNodeTypeLabel(prefixLabel)
+	if canonicalPrefix == "" {
+		return false
+	}
+	for _, candidate := range landingNodeTypeAliases(protocolType) {
+		if canonicalPrefix == canonicalizeLandingNodeTypeLabel(candidate) {
+			return true
+		}
+	}
+	return false
+}
+
+func landingNodeTypeAliases(protocolType string) []string {
+	switch protocolType {
+	case "socks5":
+		return []string{"SOCKS5", "SOCKS"}
+	case "vless-reality":
+		return []string{"VLESS", "VLESS-REALITY", "REALITY"}
+	case "hysteria2":
+		return []string{"HYSTERIA2", "HY2"}
+	default:
+		return []string{formatLandingNodeTypeLabel(protocolType)}
+	}
+}
+
+func formatLandingNodeTypeLabel(protocolType string) string {
+	switch protocolType {
+	case "ss":
+		return "SS"
+	case "ssr":
+		return "SSR"
+	case "socks5":
+		return "SOCKS5"
+	case "http":
+		return "HTTP"
+	case "vmess":
+		return "VMESS"
+	case "vless", "vless-reality":
+		return "VLESS"
+	case "trojan":
+		return "TROJAN"
+	case "hysteria":
+		return "HYSTERIA"
+	case "hysteria2":
+		return "HYSTERIA2"
+	case "tuic":
+		return "TUIC"
+	case "wireguard":
+		return "WIREGUARD"
+	case "snell":
+		return "SNELL"
+	default:
+		return strings.ToUpper(strings.TrimSpace(protocolType))
+	}
+}
+
+func canonicalizeLandingNodeTypeLabel(label string) string {
+	value := strings.ToUpper(strings.TrimSpace(label))
+	value = strings.ReplaceAll(value, "-", "")
+	value = strings.ReplaceAll(value, "_", "")
+	value = strings.ReplaceAll(value, " ", "")
+	return value
 }
 
 func filterRestrictedModes(availableModes []string, restrictedModes map[string]ModeRestriction) []string {
@@ -751,19 +923,71 @@ func extractInlineField(line string, field string) (string, error) {
 	}
 
 	rest := line[start+len(needle):]
-	end := len(rest)
-	for _, separator := range []string{", ", "}"} {
-		if idx := strings.Index(rest, separator); idx >= 0 && idx < end {
-			end = idx
+	value := ""
+	if strings.HasPrefix(rest, "\"") || strings.HasPrefix(rest, "'") {
+		quotedValue, _, err := extractQuotedInlineValue(rest)
+		if err != nil {
+			return "", fmt.Errorf("invalid %q field in inline proxy line %q: %w", field, line, err)
 		}
+		value = strings.TrimSpace(quotedValue)
+	} else {
+		end := len(rest)
+		for _, separator := range []string{", ", "}"} {
+			if idx := strings.Index(rest, separator); idx >= 0 && idx < end {
+				end = idx
+			}
+		}
+		value = strings.TrimSpace(rest[:end])
 	}
-
-	value := strings.TrimSpace(rest[:end])
 	if value == "" {
 		return "", fmt.Errorf("empty %q field in inline proxy line %q", field, line)
 	}
 
 	return value, nil
+}
+
+func extractQuotedInlineValue(value string) (string, int, error) {
+	if value == "" {
+		return "", 0, fmt.Errorf("empty quoted value")
+	}
+
+	quote := value[0]
+	switch quote {
+	case '"':
+		escaped := false
+		for index := 1; index < len(value); index++ {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if value[index] == '\\' {
+				escaped = true
+				continue
+			}
+			if value[index] != '"' {
+				continue
+			}
+			parsed, err := strconv.Unquote(value[:index+1])
+			if err != nil {
+				return "", 0, err
+			}
+			return parsed, index + 1, nil
+		}
+	case '\'':
+		for index := 1; index < len(value); index++ {
+			if value[index] != '\'' {
+				continue
+			}
+			if index+1 < len(value) && value[index+1] == '\'' {
+				index++
+				continue
+			}
+			parsed := strings.ReplaceAll(value[1:index], "''", "'")
+			return parsed, index + 1, nil
+		}
+	}
+
+	return "", 0, fmt.Errorf("unterminated quoted value")
 }
 
 func containsString(values []string, want string) bool {

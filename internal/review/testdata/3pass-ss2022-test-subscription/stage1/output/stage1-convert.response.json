@@ -274,6 +274,7 @@
     "rows": [
       {
         "landingNodeName": "🇺🇸 SS2022-Test-256-US",
+        "landingNodeType": "SS",
         "mode": "chain",
         "targetName": "🇺🇸 美国节点"
       }

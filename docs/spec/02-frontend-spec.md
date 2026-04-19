@@ -146,18 +146,20 @@
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `availableModes` | `mode[]` | 阶段 2 第二列的全局模式基线 |
+| `availableModes` | `mode[]` | 阶段 2 第三列的全局模式基线 |
 | `chainTargets[]` | object[] | 链式候选列表；每项包含 `name`、`kind`，空策略组额外返回 `isEmpty = true` |
 | `rows[].landingNodeName` | string | 本行对应的落地节点名称 |
+| `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
-| `rows[].targetName` | `string \| null` | 第三列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
+| `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 
 ### 2.2 共享业务槽位
 
 | 槽位 | 内容 | 交互 |
 |------|------|------|
 | 落地节点展示 | `landingNodeName` | 只读 |
+| 节点类型展示 | `landingNodeType` | 只读 |
 | 配置方式选择 | `mode` | 按后端返回的模式结果渲染；禁用项展示对应原因 |
 | 目标选择 | `targetName` | 由 `mode` 决定数据源与控件状态 |
 
@@ -166,26 +168,31 @@
 - 数据来源：`stage2Init.rows[]`
 - 展示语义：只展示，不允许替换或新增
 
-### 2.4 第二列：配置方式
+### 2.4 第二列：节点类型
+
+- 数据来源：`stage2Init.rows[].landingNodeType`
+- 展示语义：只展示，不允许编辑
+
+### 2.5 第三列：配置方式
 
 - `none`：不修改该落地节点
-- `chain`：第三列从 `stage2Init.chainTargets[]` 中选择
-- `port_forward`：第三列从 `stage2Init.forwardRelays[]` 中选择
+- `chain`：第四列从 `stage2Init.chainTargets[]` 中选择
+- `port_forward`：第四列从 `stage2Init.forwardRelays[]` 中选择
 - 模式可用性、行级限制与禁用原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes` 与 `reasonText`
 - 前端按后端返回结果渲染可选项与禁用态，不自行补算额外规则
 
-### 2.5 第三列：目标（单项选择器）
+### 2.6 第四列：目标（单项选择器）
 
-- 当 `mode = none` 时，第三列清空并禁用
-- 当 `mode = chain` 时，第三列展示链式候选列表
+- 当 `mode = none` 时，第四列清空并禁用
+- 当 `mode = chain` 时，第四列展示链式候选列表
 - 链式候选按 `chainTargets[].kind` 区分常用选项与折叠/隐藏选项：`proxy-groups` 中的区域策略组是默认展示的常用选项的来源，`proxies` 中的节点式折叠隐藏选项的来源
 - 方案层可用展开、折叠、二级列表或其他交互方式承载该语义
 - 前端使用后端返回的 `chainTargets[].name` 作为选项值
 - `chainTargets[].isEmpty = true` 的 `proxy-groups` 候选保留展示、禁止选择，并提示“策略组为空，不允许作为中转策略组”
-- 当 `mode = port_forward` 时，第三列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`；提示用户端口转发服务必须在中转机上完成与落地节点一一对应的配置；不可多个落地节点选择同一个端口转化服务，当一个端口转发服务已被其他落地节点选择时保留展示、禁止选择
+- 当 `mode = port_forward` 时，第四列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`；提示用户端口转发服务必须在中转机上完成与落地节点一一对应的配置；不可多个落地节点选择同一个端口转化服务，当一个端口转发服务已被其他落地节点选择时保留展示、禁止选择
 - 前端直接使用后端返回的候选列表与默认值
 
-### 2.6 生成动作
+### 2.7 生成动作
 
 - 功能：提交阶段 1 输入快照与阶段 2 配置快照，调用 `POST /api/generate`，获取可消费的长链接
 - 成功后：进入阶段 3

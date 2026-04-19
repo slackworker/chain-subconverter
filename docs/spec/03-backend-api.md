@@ -91,11 +91,13 @@
     "rows": [
       {
         "landingNodeName": "HK 01",
+        "landingNodeType": "SS",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
       {
         "landingNodeName": "Reality 01",
+        "landingNodeType": "VLESS",
         "restrictedModes": {
           "chain": {
             "reasonCode": "UNSUPPORTED_BY_LANDING_PROTOCOL",
@@ -112,14 +114,15 @@
 
 字段说明：
 
-- `availableModes[]`：阶段 2 第二列的模式列表；出现条件与顺序见 [04-business-rules](04-business-rules.md)
-- `chainTargets[]`：阶段 2 第三列在 `mode = chain` 时的候选列表
+- `availableModes[]`：阶段 2 第三列的模式列表；出现条件与顺序见 [04-business-rules](04-business-rules.md)
+- `chainTargets[]`：阶段 2 第四列在 `mode = chain` 时的候选列表
 - `chainTargets[].name`：链式候选名称；同时作为 `stage2Snapshot.rows[].targetName` 的可选值
 - `chainTargets[].kind`：链式候选类别；当前只允许 `proxy-groups` 或 `proxies`
 - `chainTargets[].isEmpty`：可选布尔值；仅 `kind = proxy-groups` 时有语义。空策略组写 `true`；非空策略组留空
-- `forwardRelays[]`：阶段 2 第三列在 `mode = port_forward` 时的候选列表
+- `forwardRelays[]`：阶段 2 第四列在 `mode = port_forward` 时的候选列表
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
+- `rows[].landingNodeType`：落地节点类型展示值
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
 - `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案

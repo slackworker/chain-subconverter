@@ -43,6 +43,10 @@ export interface Stage2Row {
 	landingNodeName: string;
 	mode: "none" | "chain" | "port_forward";
 	targetName: string | null;
+}
+
+export interface Stage2InitRow extends Stage2Row {
+	landingNodeType: string;
 	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
 }
 
@@ -60,11 +64,11 @@ export interface Stage2Init {
 	availableModes: Array<"none" | "chain" | "port_forward">;
 	chainTargets: ChainTarget[];
 	forwardRelays: ForwardRelay[];
-	rows: Stage2Row[];
+	rows: Stage2InitRow[];
 }
 
 export interface Stage2Snapshot {
-	rows: Array<Pick<Stage2Row, "landingNodeName" | "mode" | "targetName">>;
+	rows: Stage2Row[];
 }
 
 export interface Stage1ConvertRequest {

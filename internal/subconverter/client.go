@@ -42,7 +42,10 @@ func NewClient(cfg config.Subconverter) (*Client, error) {
 }
 
 func (client *Client) Convert(ctx context.Context, request Request) (ThreePassResult, error) {
-	landingURL, err := client.buildPassURL(request, request.LandingRawText, true)
+	landingExtraQuery := cloneExtraQuery(request.ExtraQuery)
+	landingExtraQuery.Set("append_type", "true")
+
+	landingURL, err := client.buildPassURL(request, request.LandingRawText, true, landingExtraQuery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
@@ -51,7 +54,7 @@ func (client *Client) Convert(ctx context.Context, request Request) (ThreePassRe
 		return ThreePassResult{}, err
 	}
 
-	transitURL, err := client.buildPassURL(request, request.TransitRawText, true)
+	transitURL, err := client.buildPassURL(request, request.TransitRawText, true, request.ExtraQuery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
@@ -60,7 +63,7 @@ func (client *Client) Convert(ctx context.Context, request Request) (ThreePassRe
 		return ThreePassResult{}, err
 	}
 
-	fullBaseURL, err := client.buildPassURL(request, joinURLs(request.LandingRawText, request.TransitRawText), false)
+	fullBaseURL, err := client.buildPassURL(request, joinURLs(request.LandingRawText, request.TransitRawText), false, request.ExtraQuery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
@@ -125,13 +128,13 @@ func (client *Client) executePass(ctx context.Context, op string, rawURL string)
 	return string(body), nil
 }
 
-func (client *Client) buildPassURL(request Request, rawInput string, list bool) (string, error) {
+func (client *Client) buildPassURL(request Request, rawInput string, list bool, extraQuery url.Values) (string, error) {
 	baseURL := *client.baseURL
-	baseURL.RawQuery = client.buildRawQuery(request, rawInput, list)
+	baseURL.RawQuery = client.buildRawQuery(request, rawInput, list, extraQuery)
 	return baseURL.String(), nil
 }
 
-func (client *Client) buildRawQuery(request Request, rawInput string, list bool) string {
+func (client *Client) buildRawQuery(request Request, rawInput string, list bool, extraQuery url.Values) string {
 	params := make([]string, 0, 9)
 	params = append(params, "target=clash")
 	params = appendOptionalBoolQuery(params, "emoji", request.Options.Emoji)
@@ -146,8 +149,19 @@ func (client *Client) buildRawQuery(request Request, rawInput string, list bool)
 	params = appendOptionalStringQuery(params, "config", request.Options.Config)
 	params = appendOptionalStringListQuery(params, "include", request.Options.Include)
 	params = appendOptionalStringListQuery(params, "exclude", request.Options.Exclude)
-	params = appendExtraQuery(params, request.ExtraQuery)
+	params = appendExtraQuery(params, extraQuery)
 	return strings.Join(params, "&")
+}
+
+func cloneExtraQuery(values url.Values) url.Values {
+	if len(values) == 0 {
+		return url.Values{}
+	}
+	cloned := make(url.Values, len(values))
+	for name, entries := range values {
+		cloned[name] = append([]string(nil), entries...)
+	}
+	return cloned
 }
 
 func appendOptionalBoolQuery(params []string, name string, value *bool) []string {
