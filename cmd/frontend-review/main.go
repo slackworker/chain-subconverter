@@ -22,6 +22,7 @@ import (
 
 type reviewOptions struct {
 	CaseName      string
+	CaseDir       string
 	LandingURL    string
 	TransitURL    string
 	TemplateURL   string
@@ -80,23 +81,29 @@ func parseFlags() reviewOptions {
 
 	options := reviewOptions{}
 	flag.StringVar(&options.CaseName, "name", timestampName, "review case name")
+	flag.StringVar(&options.CaseDir, "case-dir", "", "review case directory containing stage1/input files")
 	flag.StringVar(&options.LandingURL, "landing-url", "", "landing subscription URL")
 	flag.StringVar(&options.TransitURL, "transit-url", "", "transit or airport subscription URL")
 	flag.StringVar(&options.TemplateURL, "template-url", "", "optional template URL override")
 	flag.StringVar(&options.PublicBaseURL, "public-base-url", config.DefaultPublicBaseURL, "public base URL used when generating longUrl")
-	flag.StringVar(&options.OutputDir, "output-dir", "", "optional output directory; defaults to .tmp/review/live/<name>")
+	flag.StringVar(&options.OutputDir, "output-dir", "", "optional output directory; defaults to case-dir when set, otherwise .tmp/review/live/<name>")
 	flag.Parse()
 	return options
 }
 
 func run(options reviewOptions) error {
-	stage1Input, err := buildStage1Input(options)
+	reviewCase, err := resolveReviewCase(options)
 	if err != nil {
 		return err
 	}
 
 	outputDir, err := resolveOutputDirectory(options)
 	if err != nil {
+		return err
+	}
+	reviewCase.Directory = outputDir
+
+	if err := clearReviewArtifacts(outputDir); err != nil {
 		return err
 	}
 
@@ -120,12 +127,6 @@ func run(options reviewOptions) error {
 	source, err := service.NewManagedConversionSource(client, templateStore, managedTemplateBaseURL, subconverterCfg.Timeout)
 	if err != nil {
 		return fmt.Errorf("init managed conversion source: %w", err)
-	}
-
-	reviewCase := review.Case{
-		Name:        options.CaseName,
-		Directory:   outputDir,
-		Stage1Input: stage1Input,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), subconverterCfg.Timeout*4)
@@ -169,6 +170,10 @@ func run(options reviewOptions) error {
 }
 
 func buildStage1Input(options reviewOptions) (service.Stage1Input, error) {
+	if strings.TrimSpace(options.CaseDir) != "" {
+		return service.Stage1Input{}, fmt.Errorf("case-dir cannot be combined with landing-url/transit-url input")
+	}
+
 	landingURL := strings.TrimSpace(options.LandingURL)
 	transitURL := strings.TrimSpace(options.TransitURL)
 
@@ -195,9 +200,37 @@ func buildStage1Input(options reviewOptions) (service.Stage1Input, error) {
 	return stage1Input, nil
 }
 
+func resolveReviewCase(options reviewOptions) (review.Case, error) {
+	if trimmedCaseDir := strings.TrimSpace(options.CaseDir); trimmedCaseDir != "" {
+		reviewCase, err := review.LoadStage1Case(trimmedCaseDir)
+		if err != nil {
+			return review.Case{}, fmt.Errorf("load case dir: %w", err)
+		}
+		if trimmedName := strings.TrimSpace(options.CaseName); trimmedName != "" {
+			reviewCase.Name = sanitizeName(trimmedName)
+		} else {
+			reviewCase.Name = sanitizeName(reviewCase.Name)
+		}
+		return reviewCase, nil
+	}
+
+	stage1Input, err := buildStage1Input(options)
+	if err != nil {
+		return review.Case{}, err
+	}
+
+	return review.Case{
+		Name:        sanitizeName(options.CaseName),
+		Stage1Input: stage1Input,
+	}, nil
+}
+
 func resolveOutputDirectory(options reviewOptions) (string, error) {
 	if trimmedOutputDir := strings.TrimSpace(options.OutputDir); trimmedOutputDir != "" {
 		return filepath.Abs(trimmedOutputDir)
+	}
+	if trimmedCaseDir := strings.TrimSpace(options.CaseDir); trimmedCaseDir != "" {
+		return filepath.Abs(trimmedCaseDir)
 	}
 
 	baseDir := filepath.Join(".tmp", "review", "live", sanitizeName(options.CaseName))
@@ -205,7 +238,7 @@ func resolveOutputDirectory(options reviewOptions) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve output dir: %w", err)
 	}
-	return nextAvailableDirectory(absBaseDir)
+	return absBaseDir, nil
 }
 
 func sanitizeName(value string) string {
@@ -222,23 +255,19 @@ func sanitizeName(value string) string {
 	return sanitized
 }
 
-func nextAvailableDirectory(baseDir string) (string, error) {
-	for index := 0; index < 1000; index++ {
-		candidate := baseDir
-		if index > 0 {
-			candidate = fmt.Sprintf("%s-%d", baseDir, index+1)
-		}
+func clearReviewArtifacts(outputDir string) error {
+	paths := []string{
+		filepath.Join(outputDir, "stage1", "output"),
+		filepath.Join(outputDir, "stage2"),
+	}
 
-		_, err := os.Stat(candidate)
-		if os.IsNotExist(err) {
-			return candidate, nil
-		}
-		if err != nil {
-			return "", fmt.Errorf("stat output dir: %w", err)
+	for _, path := range paths {
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("clear %s: %w", path, err)
 		}
 	}
 
-	return "", fmt.Errorf("could not find available output dir for %s", baseDir)
+	return nil
 }
 
 func startTemplateServer(subconverterCfg config.Subconverter, templateStore service.TemplateContentReader) (string, *templateAccessRecorder, func(), error) {

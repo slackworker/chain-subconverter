@@ -1,6 +1,6 @@
 # Live 订阅中间产物审查
 
-本文定义如何针对真实订阅 URL 生成 `stage1/stage2` 中间产物，并按业务意图逐项 review。
+本文定义如何针对真实订阅输入文件生成 `stage1/stage2` 中间产物，并按业务意图逐项 review。
 
 ## 生成方式
 
@@ -11,14 +11,28 @@
 
 ```bash
 go run ./cmd/frontend-review \
-  -name live-review \
-  -landing-url http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Landing-Subscription \
-  -transit-url http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription
+  -case-dir .tmp/review/manual
 ```
 
-默认输出目录位于：`.tmp/review/live/<case-name>/`
+VS Code 任务默认读取并回写同一个固定目录：`.tmp/review/manual/`
 
-若同名目录已存在，CLI 会自动追加数字后缀，避免覆盖旧 review 结果。
+推荐工作流：
+
+1. 先编辑 `.tmp/review/manual/stage1/input/landing.txt`
+2. 再编辑 `.tmp/review/manual/stage1/input/transit.txt`
+3. 按需编辑 `.tmp/review/manual/stage1/input/forward-relays.txt`
+4. 按需编辑 `.tmp/review/manual/stage1/input/advanced-options.yaml`
+5. 运行 `review: live subscriptions`
+6. 直接查看同目录下新生成的 `stage1/output/*` 与 `stage2/output/*`
+
+每次运行前，CLI 会清空该 case 目录中的旧 `stage1/output` 与整个 `stage2` 目录，只保留 `stage1/input/*`，避免旧 review 结果残留干扰判断。
+
+若要使用别的输入目录，可显式传入：
+
+```bash
+go run ./cmd/frontend-review \
+  -case-dir /absolute/path/to/another-live-case
+```
 
 ## 目录结构
 
@@ -177,7 +191,7 @@ WSL 排障补充：
 
 每次 live review 建议至少记录：
 
-- 使用的 landing / transit URL
+- 使用的输入文件路径
 - 产物目录路径
 - 是否符合预期
 - 若不符合，是哪一层出问题：输入、模板、`subconverter`、Stage 1 自动填充、Stage 2 生成、最终 YAML

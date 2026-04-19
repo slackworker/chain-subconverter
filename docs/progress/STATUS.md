@@ -49,7 +49,7 @@
 - 2026-04-18 已再次确认 `go test ./...`、`npm run build`、`npm run build:b` 与 Compose 配置解析均通过，可作为 Phase 4 后续收口的自动化基线。
 - 2026-04-18 已落地本地 UI 联调启动入口：`scripts/dev-up.sh` 与 VS Code `dev: up` 任务现可复用 `subconverter` / backend、自动处理 frontend 端口占用，并把运行结果写入 `.tmp/dev-up/runtime.env`。
 - 2026-04-18 已修复本地 UI 调试链路中的托管模板回取问题：`cmd/server` 现显式使用 IPv4 listener，`scripts/dev-up.sh` 只复用 env 契约匹配且容器可回连的 backend，并把本地 `MANAGED_TEMPLATE_BASE_URL` 固定为 `http://host.docker.internal:<backend-port>`。
-- 2026-04-18 已落地 live review 入口：`go run ./cmd/frontend-review` 与 VS Code `review: live subscriptions` 任务可针对真实订阅 URL 生成 `stage1/stage2` 中间产物目录，便于人工核对模板调用、参数传递与最终 YAML。
+- 2026-04-18 已落地 live review 入口：`go run ./cmd/frontend-review` 与 VS Code `review: live subscriptions` 任务可针对真实订阅输入文件生成 `stage1/stage2` 中间产物目录，便于人工核对模板调用、参数传递与最终 YAML；当前任务已回到固定 case 目录复用模式，不再要求每次通过 shell prompt 输入 URL。
 
 详细任务项与阶段定义见 [ROADMAP](../ROADMAP.md)。
 
@@ -75,6 +75,6 @@
 - `curl -X POST http://127.0.0.1:11203/api/stage1/convert ...Landing-Subscription ...Airport-Subscription`：2026-04-18 通过（返回 `blockingErrors = []`，首行默认目标为 `🇭🇰 香港节点`）
 - `curl -X POST http://127.0.0.1:5174/api/stage1/convert ...Landing-Subscription ...Airport-Subscription`：2026-04-18 通过（Vite 代理路径与 backend 直连返回一致，不再出现 `SUBCONVERTER_UNAVAILABLE`）
 - `go run ./cmd/frontend-review -h`：2026-04-18 通过（live review CLI 可用）
-- `go run ./cmd/frontend-review -name live-review-check -landing-url ...Landing-Subscription -transit-url ...Airport-Subscription`：2026-04-18 已验证可导出 `stage1` 原始产物与错误文件；当前 live case 在 Stage 1 自动填充阶段失败，原因是 full-base 缺少已识别目标组 `🇭🇰 香港节点`
+- `go run ./cmd/frontend-review -case-dir .tmp/review/manual`：2026-04-19 已切回固定输入目录工作流；运行前手动编辑 `stage1/input/*`，运行时覆盖旧 `stage1/output` 与 `stage2/*`，便于持续人工 review
 - `docker compose -f deploy/docker-compose.yml up --build -d`：2026-04-02 本地验证通过
 - 真实容器 smoke：已跑通 `app + subconverter`，并通过本地静态文件服务托管中转订阅样例与模板完成 3 个现有 API 验证

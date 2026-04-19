@@ -25,12 +25,8 @@
       "args": [
         "run",
         "./cmd/frontend-review",
-        "-name",
-        "${input:reviewCaseName}",
-        "-landing-url",
-        "${input:landingSubscriptionURL}",
-        "-transit-url",
-        "${input:transitSubscriptionURL}"
+        "-case-dir",
+        ".tmp/review/manual"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -54,24 +50,6 @@
         "c"
       ],
       "default": "a"
-    },
-    {
-      "id": "reviewCaseName",
-      "type": "promptString",
-      "description": "Name of the live review case directory",
-      "default": "live-review"
-    },
-    {
-      "id": "landingSubscriptionURL",
-      "type": "promptString",
-      "description": "Landing subscription URL",
-      "default": "http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Landing-Subscription"
-    },
-    {
-      "id": "transitSubscriptionURL",
-      "type": "promptString",
-      "description": "Transit or airport subscription URL",
-      "default": "http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription"
     }
   ]
 }

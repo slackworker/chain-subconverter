@@ -98,10 +98,13 @@ cd web && npm run build && npm run build:b && npm run build:c
 
 ```bash
 go run ./cmd/frontend-review \
-	-name live-review \
-	-landing-url http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Landing-Subscription \
-	-transit-url http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription
+	-case-dir .tmp/review/manual
 ```
+
+运行前先把 live URL 写入：
+
+- `.tmp/review/manual/stage1/input/landing.txt`
+- `.tmp/review/manual/stage1/input/transit.txt`
 
 详细审查顺序见 [live-review-artifacts](live-review-artifacts.md)。
 
