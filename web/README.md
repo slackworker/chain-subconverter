@@ -22,11 +22,14 @@ Phase 4 前端工程目录。
 - 推荐入口：在仓库根目录执行 `./scripts/dev-up.sh <scheme>`，或直接运行 VS Code 任务 `dev: up`
 - `<scheme>` 当前支持 `a`、`b`、`c`
 - 该脚本会处理：
-	- `subconverter` 容器复用或拉起
-	- backend 端口池选择与健康检查
-	- frontend dev server 端口池选择
+	- 固定端口 `25500 / 11200 / 5173` 上的 `subconverter`、backend、frontend 复用或拉起
+	- 清理当前工作区遗留的旧 frontend / backend 开发实例
+	- 固定端口冲突检查；若被非当前工作区进程占用则直接报错，不再自动跳到相邻端口
 	- `.tmp/dev-up/runtime.env` 运行时地址输出
+- 若 `5173` 上已有当前工作区的 Vite dev server，脚本会直接复用它，不再额外启动 `5174` / `5175` 等新端口
 - 关闭当前任务终端即可结束本次启动脚本拉起的本地 frontend / backend；`subconverter` 容器默认保留以便下次复用
+
+默认从 Windows 宿主机浏览器访问时，也只应打开脚本打印出的固定 `SCHEME_URL`，即 `http://localhost:5173/ui/<scheme>`；不要手工改成相邻端口试探，否则通常只是在访问旧实例。
 
 完整 smoke 顺序见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
 

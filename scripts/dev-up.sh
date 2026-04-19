@@ -9,9 +9,12 @@ BACKEND_LOG="$TMP_DIR/backend.log"
 SCHEME=${1:-a}
 
 SUBCONVERTER_IMAGE=${CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE:-ghcr.io/slackworker/subconverter:integration-chain-subconverter}
-SUBCONVERTER_PORTS=(25500 25501 25502 25503)
-BACKEND_PORTS=(11200 11201 11202 11203)
-FRONTEND_PORTS=(5173 5174 5175 5176)
+SUBCONVERTER_PORT=${CHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_PORT:-25500}
+BACKEND_PORT=${CHAIN_SUBCONVERTER_DEV_UP_BACKEND_PORT:-11200}
+FRONTEND_PORT=${CHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT:-5173}
+STALE_SUBCONVERTER_PORTS=(25501 25502 25503)
+STALE_BACKEND_PORTS=(11201 11202 11203)
+STALE_FRONTEND_PORTS=(5174 5175 5176)
 
 BACKEND_PID=""
 DEV_UP_BACKEND_MARKER=1
@@ -125,6 +128,167 @@ backend_subconverter_base_url() {
 listener_pid_for_port() {
   local port=$1
   ss -ltnpH "sport = :${port}" | sed -n 's/.*pid=\([0-9]\+\).*/\1/p' | head -n 1
+}
+
+process_cmdline() {
+  local pid=$1
+
+  if [[ ! -r "/proc/${pid}/cmdline" ]]; then
+    return 1
+  fi
+
+  tr '\0' ' ' <"/proc/${pid}/cmdline" | sed 's/[[:space:]]\+$//'
+}
+
+process_cwd() {
+  local pid=$1
+
+  if [[ ! -L "/proc/${pid}/cwd" ]]; then
+    return 1
+  fi
+
+  readlink -f "/proc/${pid}/cwd"
+}
+
+describe_listener_for_port() {
+  local port=$1
+  local pid
+  local cmdline=""
+  local cwd=""
+
+  pid=$(listener_pid_for_port "$port")
+  if [[ -z "$pid" ]]; then
+    printf 'port %s is busy' "$port"
+    return 0
+  fi
+
+  cmdline=$(process_cmdline "$pid" 2>/dev/null || true)
+  cwd=$(process_cwd "$pid" 2>/dev/null || true)
+
+  if [[ -n "$cwd" ]]; then
+    printf 'pid=%s cmd=%q cwd=%q' "$pid" "${cmdline:-unknown}" "$cwd"
+    return 0
+  fi
+
+  printf 'pid=%s cmd=%q' "$pid" "${cmdline:-unknown}"
+}
+
+stop_listener_for_port() {
+  local port=$1
+  local label=$2
+  local pid
+  local attempt=1
+
+  pid=$(listener_pid_for_port "$port")
+  if [[ -z "$pid" ]]; then
+    return 0
+  fi
+
+  log "stopping ${label} on port ${port} ($(describe_listener_for_port "$port"))"
+  kill "$pid" 2>/dev/null || true
+
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( attempt >= 10 )); then
+      kill -9 "$pid" 2>/dev/null || true
+      break
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+
+  if is_port_busy "$port"; then
+    fail "could not free ${label} port ${port}; still occupied by $(describe_listener_for_port "$port")"
+  fi
+}
+
+frontend_process_belongs_to_workspace() {
+  local pid=$1
+  local cwd=""
+  local cmdline=""
+
+  cwd=$(process_cwd "$pid" 2>/dev/null || true)
+  cmdline=$(process_cmdline "$pid" 2>/dev/null || true)
+
+  [[ "$cwd" == "$ROOT_DIR/web" ]] && [[ "$cmdline" == *vite* || "$cmdline" == *node* ]]
+}
+
+frontend_process_matches_runtime() {
+  local pid=$1
+
+  frontend_process_belongs_to_workspace "$pid" &&
+    process_env_matches "$pid" VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET "http://127.0.0.1:${BACKEND_PORT}"
+}
+
+backend_process_matches_dev_up() {
+  local pid=$1
+  process_env_matches "$pid" CHAIN_SUBCONVERTER_DEV_UP "$DEV_UP_BACKEND_MARKER"
+}
+
+backend_process_matches_workspace() {
+  local pid=$1
+  local cwd=""
+  local cmdline=""
+
+  cwd=$(process_cwd "$pid" 2>/dev/null || true)
+  cmdline=$(process_cmdline "$pid" 2>/dev/null || true)
+
+  [[ "$cwd" == "$ROOT_DIR" ]] && [[ "$cmdline" == *server* || "$cmdline" == *go-build* ]]
+}
+
+fail_fixed_port_conflict() {
+  local label=$1
+  local port=$2
+
+  fail "${label} requires fixed port ${port}, but it is occupied by $(describe_listener_for_port "$port"). Close the conflicting process or task and rerun; this script no longer falls back to adjacent ports."
+}
+
+cleanup_stale_frontends() {
+  local port
+  local pid
+
+  for port in "${STALE_FRONTEND_PORTS[@]}"; do
+    if ! is_port_busy "$port"; then
+      continue
+    fi
+
+    pid=$(listener_pid_for_port "$port")
+    if [[ -n "$pid" ]] && frontend_process_belongs_to_workspace "$pid"; then
+      stop_listener_for_port "$port" "stale workspace frontend"
+    fi
+  done
+}
+
+cleanup_stale_backends() {
+  local port
+  local pid
+
+  for port in "${STALE_BACKEND_PORTS[@]}"; do
+    if ! is_port_busy "$port"; then
+      continue
+    fi
+
+    pid=$(listener_pid_for_port "$port")
+    if [[ -n "$pid" ]] && { backend_process_matches_dev_up "$pid" || backend_process_matches_workspace "$pid"; }; then
+      stop_listener_for_port "$port" "stale dev-up backend"
+    fi
+  done
+}
+
+cleanup_stale_subconverter_containers() {
+  local port
+  local container_name
+
+  for port in "${STALE_SUBCONVERTER_PORTS[@]}"; do
+    container_name=$(find_subconverter_container_name "$port")
+    if [[ -z "$container_name" ]]; then
+      continue
+    fi
+
+    if [[ "$container_name" == chain-subconverter-dev-subconverter-* ]]; then
+      log "removing stale subconverter container ${container_name} on port ${port}"
+      docker rm -f "$container_name" >/dev/null 2>&1 || true
+    fi
+  done
 }
 
 process_env_matches() {
@@ -320,14 +484,16 @@ require_command ss
 
 log "preparing local UI dev flow for scheme '$SCHEME'"
 
-if ! read -r SUBCONVERTER_PORT SUBCONVERTER_STATE < <(select_reusable_or_free_port "/version" "${SUBCONVERTER_PORTS[@]}"); then
-  fail "no reusable or free subconverter port found in pool 25500-25503"
-fi
+cleanup_stale_frontends
+cleanup_stale_backends
+cleanup_stale_subconverter_containers
 
-if [[ "$SUBCONVERTER_STATE" == "reused" ]]; then
+if http_ready "http://127.0.0.1:${SUBCONVERTER_PORT}/version"; then
   log "reusing subconverter on port $SUBCONVERTER_PORT"
-else
+elif ! is_port_busy "$SUBCONVERTER_PORT"; then
   start_subconverter_container "$SUBCONVERTER_PORT"
+else
+  fail_fixed_port_conflict "subconverter" "$SUBCONVERTER_PORT"
 fi
 
 SUBCONVERTER_CONTAINER_NAME=$(find_subconverter_container_name "$SUBCONVERTER_PORT")
@@ -335,18 +501,33 @@ if [[ -z "$SUBCONVERTER_CONTAINER_NAME" ]]; then
   fail "could not resolve subconverter container for port $SUBCONVERTER_PORT"
 fi
 
-if ! read -r BACKEND_PORT BACKEND_STATE < <(select_reusable_or_free_backend_port "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"); then
-  fail "no reusable or free backend port found in pool 11200-11203"
-fi
-
-if [[ "$BACKEND_STATE" == "reused" ]]; then
+BACKEND_STATE="new"
+if reusable_backend_ready "$BACKEND_PORT" "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"; then
+  BACKEND_STATE="reused"
   log "reusing backend on port $BACKEND_PORT"
-else
+elif ! is_port_busy "$BACKEND_PORT"; then
   start_backend "$BACKEND_PORT" "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"
+else
+  EXISTING_BACKEND_PID=$(listener_pid_for_port "$BACKEND_PORT")
+  if [[ -n "$EXISTING_BACKEND_PID" ]] && { backend_process_matches_dev_up "$EXISTING_BACKEND_PID" || backend_process_matches_workspace "$EXISTING_BACKEND_PID"; }; then
+    stop_listener_for_port "$BACKEND_PORT" "stale workspace backend"
+    start_backend "$BACKEND_PORT" "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"
+  else
+    fail_fixed_port_conflict "backend" "$BACKEND_PORT"
+  fi
 fi
 
-if ! FRONTEND_PORT=$(select_free_port "${FRONTEND_PORTS[@]}"); then
-  fail "no free frontend port found in pool 5173-5176"
+FRONTEND_STATE="new"
+if is_port_busy "$FRONTEND_PORT"; then
+  EXISTING_FRONTEND_PID=$(listener_pid_for_port "$FRONTEND_PORT")
+  if [[ -n "$EXISTING_FRONTEND_PID" ]] && frontend_process_matches_runtime "$EXISTING_FRONTEND_PID"; then
+    FRONTEND_STATE="reused"
+    log "reusing frontend on port $FRONTEND_PORT"
+  elif [[ -n "$EXISTING_FRONTEND_PID" ]] && frontend_process_belongs_to_workspace "$EXISTING_FRONTEND_PID"; then
+    stop_listener_for_port "$FRONTEND_PORT" "stale workspace frontend"
+  else
+    fail_fixed_port_conflict "frontend" "$FRONTEND_PORT"
+  fi
 fi
 
 write_runtime_file "$SCHEME" "$SUBCONVERTER_PORT" "$BACKEND_PORT" "$FRONTEND_PORT"
@@ -358,6 +539,15 @@ log "scheme:   http://localhost:${FRONTEND_PORT}/ui/${SCHEME}"
 log "subconv:  http://127.0.0.1:${SUBCONVERTER_PORT}/sub?"
 log "template: http://host.docker.internal:${BACKEND_PORT}"
 log "backend log: $BACKEND_LOG"
+if [[ "$FRONTEND_STATE" == "reused" ]]; then
+  if [[ -n "$BACKEND_PID" ]]; then
+    log "frontend already running on the fixed port; keeping this task open only to manage the backend lifecycle"
+    tail -f /dev/null
+  fi
+  log "frontend already running on the fixed port; no new Vite process was started"
+  exit 0
+fi
+
 log "close this terminal or stop the VS Code task to stop the local frontend/backend for this run"
 
 cd "$ROOT_DIR/web"

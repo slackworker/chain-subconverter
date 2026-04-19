@@ -8,6 +8,9 @@
       "args": [
         "${input:uiScheme}"
       ],
+      "runOptions": {
+        "instanceLimit": 1
+      },
       "options": {
         "cwd": "${workspaceFolder}"
       },
