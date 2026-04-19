@@ -329,6 +329,13 @@ func resolvesOnHost(host string) bool {
 
 func listenManagedTemplateServer(listenAddress string) (net.Listener, error) {
 	if strings.HasSuffix(listenAddress, ":0") {
+		// Prefer a fresh OS-assigned IPv4 port so WSL/Docker Desktop does not
+		// repeatedly reuse a stale forwarded port from a previous live review run.
+		listener, err := net.Listen(managedTemplateListenNetwork, listenAddress)
+		if err == nil {
+			return listener, nil
+		}
+
 		host := strings.TrimSuffix(listenAddress, ":0")
 		for _, port := range managedTemplateServerPorts {
 			listener, err := net.Listen(managedTemplateListenNetwork, fmt.Sprintf("%s:%d", host, port))
