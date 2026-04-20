@@ -429,7 +429,7 @@ func buildModeWarnings(landingProtocolType string, availableModes []string) map[
 	return map[string]ModeRestriction{
 		"chain": {
 			ReasonCode: "DISCOURAGED_BY_LANDING_PROTOCOL",
-			ReasonText: "该落地节点作为链式代理落地节点时不推荐使用，可能导致订阅节点无法正常通过该协议",
+			ReasonText: "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess",
 		},
 	}
 }
