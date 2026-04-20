@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
 import { getFieldErrors } from "../../lib/notices";
@@ -52,24 +52,79 @@ function BlockingPanel({
 }
 
 function MessagesPanel({ messages }: { messages: { level: string; message: string; code: string }[] }) {
-	if (messages.length === 0) {
-		return null;
-	}
-	const latest = messages[messages.length - 1];
+	const [open, setOpen] = useState(false);
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const latest = messages.length > 0 ? messages[messages.length - 1] : null;
+	const panelId = "a-log-drawer";
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		function handlePointerDown(event: PointerEvent) {
+			const target = event.target;
+			if (!(target instanceof Node)) {
+				return;
+			}
+			if (!containerRef.current?.contains(target)) {
+				setOpen(false);
+			}
+		}
+
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") {
+				setOpen(false);
+			}
+		}
+
+		document.addEventListener("pointerdown", handlePointerDown, true);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("pointerdown", handlePointerDown, true);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [open]);
+
 	return (
-		<details className="a-messages">
-			<summary className="a-messages__summary">
-				<span className={`a-messages__badge a-messages__badge--${latest.level}`}>{latest.level}</span>
-				<span className="a-messages__preview">{latest.message}</span>
-			</summary>
-			<ul className="a-messages__list">
-				{messages.map((message) => (
-					<li key={`${message.code}:${message.message}:${message.level}`} className={`a-messages__item a-messages__item--${message.level}`}>
-						{message.message}
-					</li>
-				))}
-			</ul>
-		</details>
+		<div className="a-log-hub" ref={containerRef}>
+			<button
+				type="button"
+				className="a-log-hub__toggle"
+				aria-expanded={open}
+				aria-controls={panelId}
+				onClick={() => setOpen((current) => !current)}
+			>
+				<span className="a-log-hub__label">日志</span>
+				<span className="a-log-hub__count">{messages.length}</span>
+				{latest ? (
+					<span className={`a-messages__badge a-messages__badge--${latest.level}`}>{latest.level}</span>
+				) : (
+					<span className="a-messages__badge a-messages__badge--empty">none</span>
+				)}
+			</button>
+
+			<section
+				id={panelId}
+				className={`a-messages a-log-hub__panel ${open ? "a-log-hub__panel--open" : ""}`}
+				aria-label="消息日志"
+				aria-hidden={!open}
+			>
+				<p className="a-log-hub__panel-title">消息日志</p>
+				{latest ? <p className="a-messages__preview">{latest.message}</p> : <p className="a-messages__preview a-messages__preview--muted">暂无日志</p>}
+				{messages.length > 0 ? (
+					<ul className="a-messages__list">
+						{messages.map((message) => (
+							<li key={`${message.code}:${message.message}:${message.level}`} className={`a-messages__item a-messages__item--${message.level}`}>
+								{message.message}
+							</li>
+						))}
+					</ul>
+				) : (
+					<p className="a-messages__empty">当前阶段后端未返回 messages（这通常是正常情况）</p>
+				)}
+			</section>
+		</div>
 	);
 }
 

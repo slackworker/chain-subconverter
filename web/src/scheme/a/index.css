@@ -159,6 +159,78 @@
 	background: var(--color-surface);
 }
 
+.a-log-hub {
+	position: fixed;
+	right: 1rem;
+	bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+	z-index: 1200;
+}
+
+.a-log-hub__toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--color-line);
+	border-radius: 999px;
+	background: var(--color-panel);
+	color: var(--color-ink);
+	font: inherit;
+	font-size: 0.86rem;
+	font-weight: 700;
+	cursor: pointer;
+	box-shadow: 0 10px 28px rgba(28, 25, 21, 0.18), var(--shadow);
+}
+
+.a-log-hub__toggle:hover {
+	filter: brightness(0.98);
+}
+
+.a-log-hub__label {
+	letter-spacing: 0.02em;
+}
+
+.a-log-hub__count {
+	min-width: 1.35rem;
+	padding: 0 0.35rem;
+	border-radius: 999px;
+	background: #eceae6;
+	color: var(--color-muted);
+	font-size: 0.75rem;
+	line-height: 1.35rem;
+	text-align: center;
+}
+
+.a-log-hub__panel {
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + 0.6rem);
+	margin-bottom: 0;
+	width: min(28rem, calc(100vw - 2rem));
+	max-height: min(70vh, 30rem);
+	overflow: auto;
+	box-shadow: 0 10px 28px rgba(28, 25, 21, 0.18), var(--shadow);
+	transform: translateX(calc(100% + 1rem));
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.a-log-hub__panel--open {
+	transform: translateX(0);
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+}
+
+.a-log-hub__panel-title {
+	margin: 0 0 0.3rem;
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--color-muted);
+}
+
 .a-messages__summary {
 	cursor: pointer;
 	list-style: none;
@@ -191,8 +263,18 @@
 	color: #8a4b10;
 }
 
+.a-messages__badge--empty {
+	background: #eceae6;
+	color: var(--color-muted);
+}
+
 .a-messages__preview {
+	margin: 0;
 	color: var(--color-ink);
+}
+
+.a-messages__preview--muted {
+	color: var(--color-muted);
 }
 
 .a-messages__list {
@@ -204,6 +286,12 @@
 
 .a-messages__item--warning {
 	color: #8a4b10;
+}
+
+.a-messages__empty {
+	margin: 0.65rem 0 0;
+	font-size: 0.88rem;
+	color: var(--color-muted);
 }
 
 .a-main {
