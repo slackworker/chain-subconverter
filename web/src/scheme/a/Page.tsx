@@ -6,6 +6,7 @@ import {
 	addForwardRelayItem,
 	appendManualSocks5ToStage1Input,
 	initialManualSocks5FormState,
+	parseSocks5URIToManualSocks5FormState,
 	type ManualSocks5FormState,
 	removeForwardRelayItem,
 	setPortForwardEnabled,
@@ -106,6 +107,7 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 	const stage1Id = useId();
 	const [socksOpen, setSocksOpen] = useState(false);
 	const [socksForm, setSocksForm] = useState<ManualSocks5FormState>(initialManualSocks5FormState);
+	const [socksURI, setSocksURI] = useState("");
 	const [socksError, setSocksError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [relayDraft, setRelayDraft] = useState("");
@@ -144,10 +146,27 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 		try {
 			updateStage1Input((current) => appendManualSocks5ToStage1Input(current, socksForm));
 			setSocksForm(initialManualSocks5FormState);
+			setSocksURI("");
 			setSocksError(null);
 			setSocksOpen(false);
 		} catch (error) {
 			setSocksError(error instanceof Error ? error.message : "表单校验失败");
+		}
+	}
+
+	function parseSocks5URIOnBlur() {
+		const trimmedURI = socksURI.trim();
+		if (trimmedURI === "") {
+			setSocksError(null);
+			return;
+		}
+
+		try {
+			const parsed = parseSocks5URIToManualSocks5FormState(trimmedURI);
+			setSocksForm(parsed);
+			setSocksError(null);
+		} catch (error) {
+			setSocksError(error instanceof Error ? error.message : "SOCKS5 URI 解析失败");
 		}
 	}
 
@@ -778,23 +797,64 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 						<div className="a-modal__grid">
 							<label className="a-field">
 								<span className="a-field-label">名称</span>
-								<input className="a-input" value={socksForm.name} onChange={(event) => setSocksForm((form) => ({ ...form, name: event.target.value }))} />
+								<input
+									className="a-input"
+									value={socksForm.name}
+									onChange={(event) => setSocksForm((form) => ({ ...form, name: event.target.value }))}
+								/>
 							</label>
+							<div className="a-modal__row-two">
+								<label className="a-field">
+									<span className="a-field-label">服务器</span>
+									<input
+										className="a-input"
+										value={socksForm.server}
+										onChange={(event) => setSocksForm((form) => ({ ...form, server: event.target.value }))}
+									/>
+								</label>
+								<label className="a-field">
+									<span className="a-field-label">端口</span>
+									<input
+										className="a-input"
+										value={socksForm.port}
+										onChange={(event) => setSocksForm((form) => ({ ...form, port: event.target.value }))}
+									/>
+								</label>
+							</div>
+							<div className="a-modal__row-two">
+								<label className="a-field">
+									<span className="a-field-label">用户名（可选）</span>
+									<input
+										className="a-input"
+										value={socksForm.username}
+										onChange={(event) => setSocksForm((form) => ({ ...form, username: event.target.value }))}
+									/>
+								</label>
+								<label className="a-field">
+									<span className="a-field-label">密码（可选）</span>
+									<input
+										className="a-input"
+										type="password"
+										value={socksForm.password}
+										onChange={(event) => setSocksForm((form) => ({ ...form, password: event.target.value }))}
+									/>
+								</label>
+							</div>
 							<label className="a-field">
-								<span className="a-field-label">服务器</span>
-								<input className="a-input" value={socksForm.server} onChange={(event) => setSocksForm((form) => ({ ...form, server: event.target.value }))} />
-							</label>
-							<label className="a-field">
-								<span className="a-field-label">端口</span>
-								<input className="a-input" value={socksForm.port} onChange={(event) => setSocksForm((form) => ({ ...form, port: event.target.value }))} />
-							</label>
-							<label className="a-field">
-								<span className="a-field-label">用户名（可选）</span>
-								<input className="a-input" value={socksForm.username} onChange={(event) => setSocksForm((form) => ({ ...form, username: event.target.value }))} />
-							</label>
-							<label className="a-field">
-								<span className="a-field-label">密码（可选）</span>
-								<input className="a-input" type="password" value={socksForm.password} onChange={(event) => setSocksForm((form) => ({ ...form, password: event.target.value }))} />
+								<span className="a-field-label">SOCKS5 URI（可选）</span>
+								<input
+									className="a-input"
+									value={socksURI}
+									onChange={(event) => {
+										setSocksURI(event.target.value);
+										if (socksError) {
+											setSocksError(null);
+										}
+									}}
+									onBlur={parseSocks5URIOnBlur}
+									placeholder="socks5://user:pass@host:1080#name"
+									autoComplete="off"
+								/>
 							</label>
 						</div>
 						{socksError ? <p className="a-field-error">{socksError}</p> : null}
