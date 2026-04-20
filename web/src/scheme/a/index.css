@@ -568,6 +568,22 @@
 	color: var(--color-muted);
 }
 
+.a-cell-type {
+	font-variant-numeric: tabular-nums;
+	color: var(--color-text, #1a1a1a);
+}
+
+.a-mode-warning {
+	margin: 0.4rem 0 0;
+	padding: 0.4rem 0.5rem;
+	border-radius: 6px;
+	border-left: 3px solid #c9a227;
+	background: #fffbf0;
+	font-size: 0.78rem;
+	color: #6b5410;
+	line-height: 1.35;
+}
+
 .a-row-errors {
 	margin: 0.35rem 0 0;
 	padding-left: 1rem;

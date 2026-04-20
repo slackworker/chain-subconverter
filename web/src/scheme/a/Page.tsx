@@ -423,6 +423,7 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 							<thead>
 								<tr>
 									<th scope="col">落地节点</th>
+									<th scope="col">节点类型</th>
 									<th scope="col">配置方式</th>
 									<th scope="col">目标</th>
 								</tr>
@@ -430,16 +431,18 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 							<tbody>
 								{stage2Rows.length === 0 ? (
 									<tr>
-										<td colSpan={3} className="a-table__empty">
+										<td colSpan={4} className="a-table__empty">
 											完成阶段 1 转换后，将在此列出各行配置。
 										</td>
 									</tr>
 								) : (
-									stage2Rows.map((row) => {
+									stage2Rows.map((row, rowIndex) => {
 										const meta = getStage2RowMeta(row.landingNodeName);
 										const rowErrors = getStage2RowErrors(row.landingNodeName);
 										const choices = getTargetChoices(row.landingNodeName, row.mode);
 										const editable = isStage2Editable;
+										const activeModeWarning = meta?.modeWarnings?.[row.mode];
+										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
 
 										return (
 											<tr key={row.landingNodeName}>
@@ -457,10 +460,14 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 													) : null}
 												</td>
 												<td>
+													<div className="a-cell-type">{meta?.landingNodeType ?? "—"}</div>
+												</td>
+												<td>
 													<select
 														className="a-select"
 														value={row.mode}
 														disabled={!editable}
+														aria-describedby={activeModeWarning ? modeWarnId : undefined}
 														onChange={(event) =>
 															handleModeChange(
 																row.landingNodeName,
@@ -470,13 +477,24 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 													>
 														{modeOptions.map((mode) => {
 															const restriction = meta?.restrictedModes?.[mode];
+															const modeWarn = meta?.modeWarnings?.[mode];
 															return (
-																<option key={mode} value={mode} disabled={Boolean(restriction)}>
+																<option
+																	key={mode}
+																	value={mode}
+																	disabled={Boolean(restriction)}
+																	title={modeWarn && !restriction ? modeWarn.reasonText : undefined}
+																>
 																	{restriction ? `${mode}（${restriction.reasonText}）` : mode}
 																</option>
 															);
 														})}
 													</select>
+													{activeModeWarning ? (
+														<p id={modeWarnId} className="a-mode-warning" role="status">
+															{activeModeWarning.reasonText}
+														</p>
+													) : null}
 												</td>
 												<td>
 													<select
