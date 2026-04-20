@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
 import { getFieldErrors } from "../../lib/notices";
@@ -93,7 +93,8 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 		getStage2RowMeta,
 		getStage2RowErrors,
 		getStageMessages,
-		getTargetChoices,
+		getChainTargetChoiceGroups,
+		getForwardRelayChoices,
 		handleStage1Convert,
 		handleRestore,
 		handleModeChange,
@@ -108,6 +109,9 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 	const [socksError, setSocksError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [relayDraft, setRelayDraft] = useState("");
+	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
+	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
+	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
 
 	const globalErrors = useMemo(() => state.blockingErrors.filter((error) => error.scope === "global"), [state.blockingErrors]);
 
@@ -155,6 +159,40 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 		updateStage1Input((current) => addForwardRelayItem(current, trimmed));
 		setRelayDraft("");
 	}
+
+	function setSupplementOpen(landingNodeName: string, open: boolean) {
+		setSupplementOpenByRow((current) => ({
+			...current,
+			[landingNodeName]: open,
+		}));
+	}
+
+	function setPrimaryOpen(landingNodeName: string, open: boolean) {
+		setPrimaryOpenByRow((current) => ({
+			...current,
+			[landingNodeName]: open,
+		}));
+	}
+
+	useEffect(() => {
+		function handlePointerDown(event: PointerEvent) {
+			const target = event.target;
+			if (!(target instanceof Node)) {
+				setOpenTargetMenuRow(null);
+				return;
+			}
+			const element = target instanceof Element ? target : target.parentElement;
+			if (element?.closest(".a-target-menu")) {
+				return;
+			}
+			setOpenTargetMenuRow(null);
+		}
+
+		document.addEventListener("pointerdown", handlePointerDown, true);
+		return () => {
+			document.removeEventListener("pointerdown", handlePointerDown, true);
+		};
+	}, []);
 
 	return (
 		<div className="a-shell">
@@ -439,7 +477,19 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 									stage2Rows.map((row, rowIndex) => {
 										const meta = getStage2RowMeta(row.landingNodeName);
 										const rowErrors = getStage2RowErrors(row.landingNodeName);
-										const choices = getTargetChoices(row.landingNodeName, row.mode);
+										const chainTargetGroups = getChainTargetChoiceGroups();
+										const primaryGroup = chainTargetGroups.find((group) => group.kind === "proxy-groups") ?? null;
+										const supplementGroup = chainTargetGroups.find((group) => group.kind === "proxies") ?? null;
+										const forwardRelayChoices = getForwardRelayChoices(row.landingNodeName);
+										const selectedInSupplement = Boolean(
+											supplementGroup?.choices.some((choice) => choice.value === row.targetName),
+										);
+										const primaryOpen = primaryOpenByRow[row.landingNodeName] !== false;
+										const supplementOpen = supplementOpenByRow[row.landingNodeName] ?? selectedInSupplement;
+										const selectedTargetLabel =
+											primaryGroup?.choices.find((choice) => choice.value === row.targetName)?.label ??
+											supplementGroup?.choices.find((choice) => choice.value === row.targetName)?.label ??
+											"请选择";
 										const editable = isStage2Editable;
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
@@ -531,24 +581,114 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 													</div>
 												</td>
 												<td>
-													<select
-														className="a-select"
-														value={row.targetName ?? ""}
-														disabled={!editable || row.mode === "none"}
-														onChange={(event) =>
-															handleTargetChange(
-																row.landingNodeName,
-																event.target.value === "" ? "" : event.target.value,
-															)
-														}
-													>
-														<option value="">{row.mode === "none" ? "—" : "请选择"}</option>
-														{choices.map((choice) => (
-															<option key={choice.value} value={choice.value} disabled={choice.disabled}>
-																{choice.label}
-															</option>
-														))}
-													</select>
+													{row.mode === "chain" ? (
+														<div className="a-target-picker">
+															<div className="a-target-menu">
+																<button
+																	type="button"
+																	className={`a-select a-target-menu__trigger ${editable ? "" : "a-target-menu__summary--disabled"}`}
+																	disabled={!editable}
+																	aria-expanded={openTargetMenuRow === row.landingNodeName}
+																	onClick={() =>
+																		setOpenTargetMenuRow((current) =>
+																			current === row.landingNodeName ? null : row.landingNodeName,
+																		)
+																	}
+																>
+																	{selectedTargetLabel}
+																</button>
+																{openTargetMenuRow === row.landingNodeName ? (
+																	<div className="a-target-menu__panel">
+																		<div className="a-target-menu__section">
+																			<button
+																				type="button"
+																				className="a-target-menu__group-toggle"
+																				disabled={!editable}
+																				aria-expanded={primaryOpen}
+																				onClick={() => setPrimaryOpen(row.landingNodeName, !primaryOpen)}
+																			>
+																				{primaryOpen ? "收起区域策略组" : "展开区域策略组"}
+																			</button>
+																			{primaryOpen ? (
+																				primaryGroup?.choices.length ? (
+																					<ul className="a-target-menu__list">
+																						{primaryGroup.choices.map((choice) => (
+																							<li key={choice.value}>
+																								<button
+																									type="button"
+																									className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
+																									disabled={!editable || choice.disabled}
+																									onClick={() => {
+																										handleTargetChange(row.landingNodeName, choice.value);
+																										setOpenTargetMenuRow(null);
+																									}}
+																								>
+																									{choice.label}
+																								</button>
+																							</li>
+																						))}
+																					</ul>
+																				) : (
+																					<p className="a-picker-help">{primaryGroup?.emptyText ?? "暂无常用候选"}</p>
+																				)
+																			) : null}
+																		</div>
+																		{supplementGroup ? (
+																			<div className="a-target-menu__section">
+																				<button
+																					type="button"
+																					className="a-target-menu__group-toggle"
+																					disabled={!editable}
+																					aria-expanded={supplementOpen}
+																					onClick={() => setSupplementOpen(row.landingNodeName, !supplementOpen)}
+																				>
+																					{supplementOpen ? "收起节点" : "展开节点"}
+																				</button>
+																				{supplementOpen ? (
+																					<ul className="a-target-menu__list">
+																						{supplementGroup.choices.map((choice) => (
+																							<li key={choice.value}>
+																								<button
+																									type="button"
+																									className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
+																									disabled={!editable || choice.disabled}
+																									onClick={() => {
+																										handleTargetChange(row.landingNodeName, choice.value);
+																										setOpenTargetMenuRow(null);
+																									}}
+																								>
+																									{choice.label}
+																								</button>
+																							</li>
+																						))}
+																					</ul>
+																				) : null}
+																			</div>
+																		) : null}
+																	</div>
+																) : null}
+															</div>
+														</div>
+													) : (
+														<select
+															className="a-select"
+															value={row.targetName ?? ""}
+															disabled={!editable || row.mode === "none"}
+															onChange={(event) =>
+																handleTargetChange(
+																	row.landingNodeName,
+																	event.target.value === "" ? "" : event.target.value,
+																)
+															}
+														>
+															<option value="">{row.mode === "none" ? "—" : "请选择"}</option>
+															{forwardRelayChoices.map((choice) => (
+																<option key={choice.value} value={choice.value} disabled={choice.disabled}>
+																	{choice.label}
+																</option>
+															))}
+														</select>
+													)}
 												</td>
 											</tr>
 										);
