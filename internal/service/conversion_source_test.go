@@ -37,9 +37,9 @@ func TestConversionFixturesFromResult_RejectsUnresolvableDiscoveryNames(t *testi
 	}
 }
 
-func TestConversionFixturesFromResult_AcceptsAppendTypeLandingDiscoveryNames(t *testing.T) {
+func TestConversionFixturesFromResult_AcceptsStructuredLandingDiscoveryNames(t *testing.T) {
 	_, err := ConversionFixturesFromResult(subconverter.ThreePassResult{
-		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: \"[SS] landing-a\", type: ss}\n"},
+		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: landing-a, type: ss}\n"},
 		TransitDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: transit-a, type: ss}\n"},
 		FullBase: subconverter.PassResult{YAML: strings.Join([]string{
 			"proxies:",

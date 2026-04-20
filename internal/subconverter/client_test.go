@@ -139,17 +139,8 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	if firstQuery.Get("list") != "true" {
 		t.Fatalf("landing list mismatch: got %q", firstQuery.Get("list"))
 	}
-	if firstQuery.Get("append_type") != "true" {
-		t.Fatalf("landing append_type mismatch: got %q", firstQuery.Get("append_type"))
-	}
-	if got[1].Query().Get("append_type") != "" {
-		t.Fatalf("transit append_type should be absent, got %q", got[1].Query().Get("append_type"))
-	}
 	if got[2].Query().Get("list") != "" {
 		t.Fatalf("full-base list should be absent, got %q", got[2].Query().Get("list"))
-	}
-	if got[2].Query().Get("append_type") != "" {
-		t.Fatalf("full-base append_type should be absent, got %q", got[2].Query().Get("append_type"))
 	}
 }
 

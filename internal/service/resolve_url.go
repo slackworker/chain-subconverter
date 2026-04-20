@@ -181,7 +181,7 @@ func isRestoreConflictError(err error) bool {
 	}
 
 	switch responseErr.BlockingError().Code {
-	case "STAGE2_ROWSET_MISMATCH", "CHAIN_MODE_NOT_ALLOWED", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND":
+	case "STAGE2_ROWSET_MISMATCH", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND":
 		return true
 	default:
 		return false

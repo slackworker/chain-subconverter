@@ -151,6 +151,7 @@
 | `rows[].landingNodeName` | string | 本行对应的落地节点名称 |
 | `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
+| `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 
@@ -178,8 +179,10 @@
 - `none`：不修改该落地节点
 - `chain`：第四列从 `stage2Init.chainTargets[]` 中选择
 - `port_forward`：第四列从 `stage2Init.forwardRelays[]` 中选择
-- 模式可用性、行级限制与禁用原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes` 与 `reasonText`
-- 前端按后端返回结果渲染可选项与禁用态，不自行补算额外规则
+- 模式可用性、行级限制、warning 与对应原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes`、`modeWarnings` 与 `reasonText`
+- 前端按后端返回结果渲染可选项、禁用态与 warning，不自行补算额外规则
+- `restrictedModes` 表示该模式不可选；`modeWarnings` 表示该模式仍可选，但必须展示 warning 提示
+- 当某行的 `chain` 同时存在于 `availableModes` 且 `modeWarnings.chain` 已返回时，前端不得禁用该模式，也不得阻止用户提交；只允许以 Tooltip、辅助文案或等价方式提示“不推荐”原因
 
 ### 2.6 第四列：目标（单项选择器）
 

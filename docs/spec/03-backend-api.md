@@ -97,15 +97,15 @@
       },
       {
         "landingNodeName": "Reality 01",
-        "landingNodeType": "VLESS",
-        "restrictedModes": {
+        "landingNodeType": "Reality",
+        "modeWarnings": {
           "chain": {
-            "reasonCode": "UNSUPPORTED_BY_LANDING_PROTOCOL",
-            "reasonText": "该落地节点当前不支持链式代理"
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonText": "该落地节点作为链式代理落地节点时不推荐使用，可能导致订阅节点无法正常通过该协议"
           }
         },
-        "mode": "port_forward",
-        "targetName": "relay.example.com:1080"
+        "mode": "chain",
+        "targetName": "relay-group-hk"
       }
     ]
   }
@@ -126,6 +126,9 @@
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
 - `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案
+- `rows[].modeWarnings`：当前行的模式 warning 映射；出现条件见 [04-business-rules](04-business-rules.md)
+- `rows[].modeWarnings.<mode>.reasonCode`：warning 原因码
+- `rows[].modeWarnings.<mode>.reasonText`：warning 文案
 
 ### 4. 消息与错误模型
 
@@ -327,14 +330,13 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
-- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`CHAIN_MODE_NOT_ALLOWED`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`LONG_URL_TOO_LONG`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
 - `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.landingNodeName`
 - `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
-- `CHAIN_MODE_NOT_ALLOWED`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = mode`
 - `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `DUPLICATE_FORWARD_RELAY_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `EMPTY_CHAIN_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`

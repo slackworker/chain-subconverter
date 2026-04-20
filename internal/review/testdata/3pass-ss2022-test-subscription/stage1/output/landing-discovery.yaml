@@ -1,2 +1,2 @@
 proxies:
-  - {name: "[SS] 🇺🇸 SS2022-Test-256-US", server: 198.51.100.10, port: 8888, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}
+  - {name: "🇺🇸 SS2022-Test-256-US", server: 198.51.100.10, port: 8888, type: ss, cipher: 2022-blake3-aes-256-gcm, password: 0123456789abcdef0123456789abcdef}

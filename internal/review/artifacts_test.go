@@ -64,7 +64,6 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/chain-targets.txt", "[proxy-groups]")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/chain-targets.txt", "🇺🇸 美国节点")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/landing-discovery.yaml", "SS2022-Test-256-US")
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/landing-discovery.url.txt", "append_type=true")
 	assertArtifactContains(t, stage1Bundle.Files, filepath.Join("stage2", "input", Stage2SnapshotFileName), "stage2Snapshot")
 	if len(stage1Bundle.Rows) != 1 {
 		t.Fatalf("len(stage1Bundle.Rows) = %d, want 1", len(stage1Bundle.Rows))
@@ -106,8 +105,8 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 		templateConfig: "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n",
 		result: subconverter.ThreePassResult{
 			LandingDiscovery: subconverter.PassResult{
-				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini&append_type=true",
-				YAML:       "proxies:\n- {name: \"[SS] DE Landing\", type: ss}\n",
+				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
+				YAML:       "proxies:\n- {name: DE Landing, type: ss}\n",
 			},
 			TransitDiscovery: subconverter.PassResult{
 				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
@@ -144,7 +143,6 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 	assertArtifactContains(t, bundle.Files, "stage1/output/review-summary.md", "| DE Landing | SS | chain | 🇩🇪 德国节点 |")
 	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.txt", url.QueryEscape(managedTemplateArtifactURLPlaceholder))
 	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.raw.txt", "abc123.ini")
-	assertArtifactContains(t, bundle.Files, "stage1/output/landing-discovery.url.txt", "append_type=true")
 	assertArtifactContains(t, bundle.Files, "stage1/output/template-source.url.txt", "https://template-source.example/config.ini")
 	assertArtifactContains(t, bundle.Files, "stage1/output/template-managed.url.txt", "abc123.ini")
 	assertArtifactContains(t, bundle.Files, "stage1/output/template-config.ini", "custom_proxy_group=🇩🇪 德国节点")
@@ -161,8 +159,8 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 	source := &fakeConversionSource{
 		result: subconverter.ThreePassResult{
 			LandingDiscovery: subconverter.PassResult{
-				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub&list=true&append_type=true",
-				YAML:       "proxies:\n- {name: \"[SS] HK Landing\", type: ss}\n",
+				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub&list=true",
+				YAML:       "proxies:\n- {name: HK Landing, type: ss}\n",
 			},
 			TransitDiscovery: subconverter.PassResult{
 				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true",

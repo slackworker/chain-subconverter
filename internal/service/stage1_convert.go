@@ -125,6 +125,7 @@ type Stage2InitRow struct {
 	Mode            string                     `json:"mode"`
 	TargetName      *string                    `json:"targetName"`
 	RestrictedModes map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	ModeWarnings    map[string]ModeRestriction `json:"modeWarnings,omitempty"`
 }
 
 type ModeRestriction struct {
@@ -259,6 +260,10 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		restrictedModes := buildRestrictedModes(landing.ProtocolType, availableModes)
 		if len(restrictedModes) > 0 {
 			row.RestrictedModes = restrictedModes
+		}
+		modeWarnings := buildModeWarnings(landing.ProtocolType, availableModes)
+		if len(modeWarnings) > 0 {
+			row.ModeWarnings = modeWarnings
 		}
 
 		finalAvailableModes := filterRestrictedModes(availableModes, restrictedModes)
@@ -410,17 +415,21 @@ func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
 	return relays, nil
 }
 
-func buildRestrictedModes(landingProtocolType string, availableModes []string) map[string]ModeRestriction {
+func buildRestrictedModes(_ string, _ []string) map[string]ModeRestriction {
+	return nil
+}
+
+func buildModeWarnings(landingProtocolType string, availableModes []string) map[string]ModeRestriction {
 	if !containsString(availableModes, "chain") {
 		return nil
 	}
-	if landingProtocolType != "vless-reality" {
+	if !isDiscouragedChainLandingProtocol(landingProtocolType) {
 		return nil
 	}
 	return map[string]ModeRestriction{
 		"chain": {
-			ReasonCode: "UNSUPPORTED_BY_LANDING_PROTOCOL",
-			ReasonText: "该落地节点当前不支持链式代理",
+			ReasonCode: "DISCOURAGED_BY_LANDING_PROTOCOL",
+			ReasonText: "该落地节点作为链式代理落地节点时不推荐使用，可能导致订阅节点无法正常通过该协议",
 		},
 	}
 }
@@ -448,90 +457,17 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 }
 
 func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int) (string, string, error) {
-	fallbackTypeLabel := formatLandingNodeTypeLabel(proxy.Type)
-	originalName := proxy.Name
-	originalCount := fullBaseNameCounts[originalName]
-	prefixTypeLabel, strippedName, hasPrefix := splitLandingTypePrefix(originalName)
-	strippedCount := 0
-	if hasPrefix {
-		strippedCount = fullBaseNameCounts[strippedName]
+	resolvedName := proxy.Name
+	count := fullBaseNameCounts[resolvedName]
+	if count == 1 {
+		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), nil
 	}
-
-	if originalCount == 1 {
-		if strippedCount == 1 && landingTypePrefixMatchesProtocol(prefixTypeLabel, proxy.Type) {
-			return strippedName, prefixTypeLabel, nil
-		}
-		return originalName, fallbackTypeLabel, nil
-	}
-
-	if strippedCount == 1 {
-		typeLabel := prefixTypeLabel
-		if strings.TrimSpace(typeLabel) == "" {
-			typeLabel = fallbackTypeLabel
-		}
-		return strippedName, typeLabel, nil
-	}
-
-	if originalCount > 1 {
-		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", originalName, originalCount)
+	if count > 1 {
+		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", resolvedName, count)
 		return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
 	}
-	if strippedCount > 1 {
-		cause := fmt.Errorf("landing discovery proxy %q resolves to %q but matches %d full-base proxies", originalName, strippedName, strippedCount)
-		return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
-	}
-
-	resolvedHint := originalName
-	if hasPrefix {
-		resolvedHint = strippedName
-	}
-	cause := fmt.Errorf("landing discovery proxy %q resolves to %q but is missing from full-base result", originalName, resolvedHint)
+	cause := fmt.Errorf("landing discovery proxy %q is missing from full-base result", resolvedName)
 	return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
-}
-
-func splitLandingTypePrefix(name string) (string, string, bool) {
-	if !strings.HasPrefix(name, "[") {
-		return "", "", false
-	}
-	closeIndex := strings.Index(name, "]")
-	if closeIndex <= 1 || closeIndex+1 >= len(name) {
-		return "", "", false
-	}
-	suffix := name[closeIndex+1:]
-	if strings.TrimLeft(suffix, " \t") == suffix {
-		return "", "", false
-	}
-	remainder := strings.TrimSpace(suffix)
-	if remainder == "" {
-		return "", "", false
-	}
-	return strings.TrimSpace(name[1:closeIndex]), remainder, true
-}
-
-func landingTypePrefixMatchesProtocol(prefixLabel string, protocolType string) bool {
-	canonicalPrefix := canonicalizeLandingNodeTypeLabel(prefixLabel)
-	if canonicalPrefix == "" {
-		return false
-	}
-	for _, candidate := range landingNodeTypeAliases(protocolType) {
-		if canonicalPrefix == canonicalizeLandingNodeTypeLabel(candidate) {
-			return true
-		}
-	}
-	return false
-}
-
-func landingNodeTypeAliases(protocolType string) []string {
-	switch protocolType {
-	case "socks5":
-		return []string{"SOCKS5", "SOCKS"}
-	case "vless-reality":
-		return []string{"VLESS", "VLESS-REALITY", "REALITY"}
-	case "hysteria2":
-		return []string{"HYSTERIA2", "HY2"}
-	default:
-		return []string{formatLandingNodeTypeLabel(protocolType)}
-	}
 }
 
 func formatLandingNodeTypeLabel(protocolType string) string {
@@ -544,33 +480,42 @@ func formatLandingNodeTypeLabel(protocolType string) string {
 		return "SOCKS5"
 	case "http":
 		return "HTTP"
+	case "https":
+		return "HTTPS"
 	case "vmess":
-		return "VMESS"
-	case "vless", "vless-reality":
+		return "VMess"
+	case "vless":
 		return "VLESS"
+	case "vless-reality":
+		return "Reality"
 	case "trojan":
-		return "TROJAN"
+		return "Trojan"
 	case "hysteria":
-		return "HYSTERIA"
+		return "Hysteria"
 	case "hysteria2":
-		return "HYSTERIA2"
+		return "Hysteria2"
 	case "tuic":
 		return "TUIC"
 	case "wireguard":
-		return "WIREGUARD"
+		return "WireGuard"
 	case "snell":
-		return "SNELL"
+		return "Snell"
+	case "anytls":
+		return "AnyTLS"
+	case "shadowtls":
+		return "ShadowTLS"
 	default:
-		return strings.ToUpper(strings.TrimSpace(protocolType))
+		return strings.TrimSpace(protocolType)
 	}
 }
 
-func canonicalizeLandingNodeTypeLabel(label string) string {
-	value := strings.ToUpper(strings.TrimSpace(label))
-	value = strings.ReplaceAll(value, "-", "")
-	value = strings.ReplaceAll(value, "_", "")
-	value = strings.ReplaceAll(value, " ", "")
-	return value
+func isDiscouragedChainLandingProtocol(protocolType string) bool {
+	switch protocolType {
+	case "hysteria", "hysteria2", "tuic", "wireguard", "anytls", "vless-reality", "shadowtls":
+		return true
+	default:
+		return false
+	}
 }
 
 func filterRestrictedModes(availableModes []string, restrictedModes map[string]ModeRestriction) []string {
@@ -845,7 +790,28 @@ func classifyInlineProxyType(proxyType string, rawLine string) string {
 	if proxyType == "vless" && strings.Contains(rawLine, "reality-opts:") {
 		return "vless-reality"
 	}
+	if proxyType == "ss" && containsShadowTLSMarker(rawLine) {
+		return "shadowtls"
+	}
 	return proxyType
+}
+
+func containsShadowTLSMarker(rawLine string) bool {
+	markers := []string{
+		"plugin=shadow-tls",
+		"plugin: shadow-tls",
+		"plugin:shadow-tls",
+		"plugin-opts: {mode: shadow-tls",
+		"plugin-opts:{mode:shadow-tls",
+		"shadow-tls:",
+		"shadow-tls",
+	}
+	for _, marker := range markers {
+		if strings.Contains(rawLine, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseProxyGroups(raw string) (map[string]proxyGroup, error) {

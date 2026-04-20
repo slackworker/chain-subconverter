@@ -73,10 +73,6 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			if err != nil {
 				return nil, err
 			}
-			if landing.ProtocolType == "vless-reality" {
-				cause := fmt.Errorf("landing node %q does not allow chain mode", landing.Name)
-				return nil, newStage2RowValidationError("CHAIN_MODE_NOT_ALLOWED", "chain mode is not allowed for this landing node", landing.Name, "mode", cause)
-			}
 			target, exists := chainTargetsByName[targetName]
 			if !exists {
 				cause := fmt.Errorf("unknown chain target %q for landing node %q", targetName, landing.Name)

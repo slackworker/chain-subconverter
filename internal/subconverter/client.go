@@ -42,10 +42,7 @@ func NewClient(cfg config.Subconverter) (*Client, error) {
 }
 
 func (client *Client) Convert(ctx context.Context, request Request) (ThreePassResult, error) {
-	landingExtraQuery := cloneExtraQuery(request.ExtraQuery)
-	landingExtraQuery.Set("append_type", "true")
-
-	landingURL, err := client.buildPassURL(request, request.LandingRawText, true, landingExtraQuery)
+	landingURL, err := client.buildPassURL(request, request.LandingRawText, true, request.ExtraQuery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}

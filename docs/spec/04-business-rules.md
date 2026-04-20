@@ -31,12 +31,12 @@
 - 本项目当前只定义一种内部转换入口：`GET /sub`
 - 三个 pass 都必须复用同一组固定参数与阶段 1 高级选项映射结果
 - 三个 pass 必须属于同一条转换管线；`full-base pass` 必须与同一管线中的两个 discovery pass 保持输入快照一致
-- 实现必须核对 discovery pass 返回的每个落地/中转身份，都能在同一管线的 `full-base pass` 完整代理集合中完成唯一定位；`landing-discovery pass` 在 `append_type=true` 时允许先去除名称前缀中的 `[类型] ` 再做定位；若不能唯一定位，视为 pass 失败
+- 实现必须核对 discovery pass 返回的每个落地/中转身份，都能在同一管线的 `full-base pass` 完整代理集合中完成唯一定位；若不能唯一定位，视为 pass 失败
 
 ### 0.2.1 pass 级参数约束
 
 - 三个 pass 的 `target` 都必须传 `clash`
-- `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true` 与 `append_type=true`
+- `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true`
 - `transit-discovery pass`：`url` 只传中转节点信息，传 `list=true`
 - `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不传 `list`
 - 当同一字段存在多条订阅 URL、节点 URI 或 `data:text/plain,<base64文本>` 时，传给 `subconverter` 的单个 `url` 查询参数前必须先用 `|` 拼接，再整体 URL 编码
@@ -61,7 +61,6 @@
 | `udp` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `scv` | 展示 | 不勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
-| `append_type` | 隐藏 | 无 | 仅 `landing-discovery pass` 传 `true`；其余 pass 不传 |
 | `config` | 展示 | 见下方补充 | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
 | `exclude` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
@@ -186,9 +185,10 @@
 
 - 必须从 `landing-discovery pass` 的结果中收集所有落地节点
 - 收集口径固定为：读取 `list=true` 返回的 Clash YAML `proxies[]`，按每个 `proxy.name` 提取落地身份
-- 当前 `landing-discovery pass` 固定请求 `append_type=true`；当 `proxy.name` 形如 `"[<类型>] <名称>"` 时，后端必须将 `[]` 中的内容提取为 `landingNodeType`，并将剩余 `<名称>` 视为候选 `landingNodeName`
-- 提取出的候选 `landingNodeName` 必须与同一条转换管线的 `full-base pass` 代理集合做唯一对应校验；只有能唯一定位到 1 个同名代理时，才允许固化为最终 `landingNodeName`
-- 若 `proxy.name` 未带 `append_type` 前缀，则 `landingNodeType` 回退为该落地节点的协议类型展示值，`landingNodeName` 候选保持原始 `proxy.name`
+- `landingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
+- `landingNodeName` 必须与同一条转换管线的 `full-base pass` 代理集合做唯一对应校验；只有能唯一定位到 `1` 个同名代理时，才允许固化为最终 `landingNodeName`
+- `landingNodeType` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.type`，并允许结合该节点内的附加字段做展示分类
+- 当前展示分类补充规则为：`type = vless` 且存在 `reality-opts` 时，展示类型记为 `Reality`；`type = ss` 且存在 `plugin=shadow-tls`、`plugin: shadow-tls`、`shadow-tls` 或等价 `plugin-opts` 标记时，展示类型记为 `ShadowTLS`
 - 按“每个落地节点一行”生成 `stage2Init.rows[]`
 - 阶段 2 第一列展示 `landingNodeName`，第二列展示 `landingNodeType`
 
@@ -196,7 +196,7 @@
 
 - 在当前规格中，`landingNodeName` 是阶段 2 快照、生成改写与恢复重放的唯一定位键
 - `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合，但必须经过与同一条转换管线 `full-base pass` 的唯一同名校验后才能固化
-- `landingNodeType` 来源于 `landing-discovery pass` 的 `append_type=true` 名称前缀；当前只承担阶段 2 展示语义，不进入阶段 2 快照、生成改写或恢复定位键
+- `landingNodeType` 来源于 `landing-discovery pass` 的结构化 `proxy.type` 与展示分类规则；当前只承担阶段 2 展示语义，不进入阶段 2 快照、生成改写或恢复定位键
 - 落地节点名称的产出、重名处理与相关实现细节由 `subconverter` 服务负责；本规格不规定具体命名或消歧算法
 - 前端只消费 `stage2Init` 中返回的 `landingNodeName`，不得自行重命名、去重或补算映射
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
@@ -207,6 +207,7 @@
 
 - `stage2Init.availableModes`：本次阶段 2 的全局模式基线
 - `rows[].restrictedModes`：某一行额外禁用的模式与原因；仅在该行存在额外限制时返回
+- `rows[].modeWarnings`：某一行模式仍可选择、但需要提示“不推荐”的 warning；仅在该行存在附加提示时返回
 
 #### 全局规则
 
@@ -224,8 +225,12 @@
 - `rows[].restrictedModes` 为可选字段；缺失表示该行无额外模式限制
 - `rows[].restrictedModes` 中的模式键必须属于 `stage2Init.availableModes`
 - `rows[].restrictedModes.<mode>.reasonCode` 与 `reasonText` 都必须返回；`reasonText` 面向用户展示
-- 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点协议不支持链式代理，则该行必须返回 `restrictedModes.chain`
-- 当前明确规则为：`vless-reality` 落地节点不支持链式代理；当 `chain` 已出现在 `stage2Init.availableModes` 中时，该行的 `restrictedModes.chain.reasonCode` 必须为 `UNSUPPORTED_BY_LANDING_PROTOCOL`
+- `rows[].modeWarnings` 为可选字段；缺失表示该行无额外 warning
+- `rows[].modeWarnings` 中的模式键必须属于 `stage2Init.availableModes`
+- `rows[].modeWarnings.<mode>.reasonCode` 与 `reasonText` 都必须返回；`reasonText` 面向用户展示
+- 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点协议属于“链式代理不推荐”集合，则该行必须返回 `modeWarnings.chain`
+- 当前链式代理不推荐集合为：`hysteria`、`hysteria2`、`tuic`、`wireguard`、`anytls`、`vless-reality`、`shadowtls`
+- 上述协议在当前规格中仍允许手动选择 `chain`、允许自动填充 `chain`、允许进入生成与恢复链路；warning 仅承担前端提示语义，不改变可选性
 
 ### 2.3 收集链式候选
 
@@ -266,10 +271,11 @@
 
 1. 先按 `2.2` 确定 `stage2Init.availableModes`
 2. 再为该行计算 `restrictedModes`
-3. 用 `stage2Init.availableModes` 扣除该行 `restrictedModes`，得到该行最终可选模式
-4. 若 `chain` 在该行最终可选模式中，则优先按“当链式代理可用”规则尝试自动识别
-5. 若 `chain` 不在该行最终可选模式中、但 `port_forward` 在该行最终可选模式中，则该行默认 `mode = port_forward`，并按“当 `mode = port_forward`”规则填写 `targetName`
-6. 若该行最终可选模式只有 `none`，则该行默认 `mode = none`，且 `targetName = null`
+3. 再为该行计算 `modeWarnings`
+4. 用 `stage2Init.availableModes` 扣除该行 `restrictedModes`，得到该行最终可选模式
+5. 若 `chain` 在该行最终可选模式中，则优先按“当链式代理可用”规则尝试自动识别
+6. 若 `chain` 不在该行最终可选模式中、但 `port_forward` 在该行最终可选模式中，则该行默认 `mode = port_forward`，并按“当 `mode = port_forward`”规则填写 `targetName`
+7. 若该行最终可选模式只有 `none`，则该行默认 `mode = none`，且 `targetName = null`
 
 #### 当链式代理可用
 
@@ -278,7 +284,7 @@
 处理步骤：
 
 1. 使用本次有效模板识别出的地域策略组正则，在完整 `landingNodeName` 上逐一匹配
-2. 若唯一命中且命中的地域策略组在本次 `chainTargets[]` 中存在，且 `isEmpty` 留空，则该行默认 `mode = chain`，`targetName` 自动填写为对应地域策略组名称
+2. 若唯一命中且命中的地域策略组在本次 `chainTargets[]` 中存在，且 `isEmpty` 留空，则该行默认 `mode = chain`，`targetName` 自动填写为对应地域策略组名称；即使该行同时存在 `modeWarnings.chain` 也不改变这一默认行为
 3. 其他情况一律按“未唯一命中”处理：`mode = none`，`targetName = null`
 
 #### 当 `mode = port_forward`
@@ -334,7 +340,6 @@
 - `stage2Snapshot.rows` 必须与当前落地节点集合一一对应：每个落地节点恰好出现一次，不允许缺行、重复行或额外行；不满足时必须以 `STAGE2_ROWSET_MISMATCH` 阻断生成
 - 任一行若无法在本次 `baseCompleteConfig` 中按 `landingNodeName` 定位到对应落地节点，必须阻断生成
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
-- 若某行选择 `chain` 但该落地节点协议不支持链式代理，必须阻断生成
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
 - 若多个落地节点同时选择同一个 `forwardRelays[].name` 作为 `port_forward` 目标，必须以 `DUPLICATE_FORWARD_RELAY_TARGET` 阻断生成
 - 若某行选择的 `chain` 目标在当前 `chainTargets[]` 中 `isEmpty = true`，必须以 `EMPTY_CHAIN_TARGET` 阻断生成
@@ -379,9 +384,9 @@
 
 ### 3.5 协议限制
 
-- `vless-reality` 不支持链式代理
-- `vless-reality` 允许端口转发
-- 端口转发对 `vless-reality` 仍只替换 `server` 与 `port`
+- 链式代理不推荐集合为：`hysteria`、`hysteria2`、`tuic`、`wireguard`、`anytls`、`vless-reality`、`shadowtls`
+- 上述协议在阶段 2 中仍允许选择 `chain`，但必须通过 `modeWarnings.chain` 向前端返回提示文案
+- 端口转发对上述协议仍只替换 `server` 与 `port`
 
 ### 3.6 最终配置交付时机
 

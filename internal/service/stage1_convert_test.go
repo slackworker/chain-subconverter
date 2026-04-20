@@ -51,11 +51,11 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 	}
 }
 
-func TestBuildStage2Init_ExtractsLandingNodeTypeFromAppendTypePrefix(t *testing.T) {
+func TestBuildStage2Init_UsesStructuredLandingTypeField(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{},
 		ConversionFixtures{
-			LandingDiscoveryYAML: "proxies:\n- {name: \"[SOCKS5] HK Landing\", type: socks5}\n",
+			LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: socks5}\n",
 			TransitDiscoveryYAML: "proxies:\n- {name: transit-hk, type: ss}\n",
 			FullBaseYAML: strings.Join([]string{
 				"proxies:",
@@ -456,7 +456,7 @@ func TestBuildStage2Init_UsesTemplateConfigForDynamicRegionAutoDetect(t *testing
 	}
 }
 
-func TestBuildStage2Init_RestrictsVLESSRealityChainAndFallsBackToRelay(t *testing.T) {
+func TestBuildStage2Init_WarnsForRealityButKeepsDefaultChain(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
 			AdvancedOptions: AdvancedOptions{
@@ -475,18 +475,24 @@ func TestBuildStage2Init_RestrictsVLESSRealityChainAndFallsBackToRelay(t *testin
 	}
 
 	row := stage2Init.Rows[0]
-	if row.Mode != "port_forward" {
-		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "port_forward")
+	if row.LandingNodeType != "Reality" {
+		t.Fatalf("LandingNodeType mismatch: got %q want %q", row.LandingNodeType, "Reality")
 	}
-	if row.TargetName == nil || *row.TargetName != "relay.example.com:80" {
-		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "relay.example.com:80")
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
 	}
-	restriction, ok := row.RestrictedModes["chain"]
+	if row.TargetName == nil || *row.TargetName != "🇭🇰 香港节点" {
+		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇭🇰 香港节点")
+	}
+	if row.RestrictedModes != nil {
+		t.Fatalf("expected restrictedModes to be empty, got %v", row.RestrictedModes)
+	}
+	warning, ok := row.ModeWarnings["chain"]
 	if !ok {
-		t.Fatalf("expected restrictedModes.chain, got %v", row.RestrictedModes)
+		t.Fatalf("expected modeWarnings.chain, got %v", row.ModeWarnings)
 	}
-	if restriction.ReasonCode != "UNSUPPORTED_BY_LANDING_PROTOCOL" {
-		t.Fatalf("ReasonCode mismatch: got %q", restriction.ReasonCode)
+	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PROTOCOL" {
+		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
 	}
 }
 
@@ -501,6 +507,40 @@ func TestParseInlineProxyList_ClassifiesVLESSRealityFromRealityOpts(t *testing.T
 	}
 	if proxies[0].Type != "vless-reality" {
 		t.Fatalf("proxy type mismatch: got %q want %q", proxies[0].Type, "vless-reality")
+	}
+}
+
+func TestParseInlineProxyList_ClassifiesShadowTLSFromPluginField(t *testing.T) {
+	proxies, err := parseInlineProxyList("proxies:\n- {name: HK ShadowTLS, type: ss, server: landing.example.com, port: 443, plugin: shadow-tls, password: secret}\n")
+	if err != nil {
+		t.Fatalf("parseInlineProxyList() error = %v", err)
+	}
+
+	if len(proxies) != 1 {
+		t.Fatalf("expected 1 proxy, got %d", len(proxies))
+	}
+	if proxies[0].Type != "shadowtls" {
+		t.Fatalf("proxy type mismatch: got %q want %q", proxies[0].Type, "shadowtls")
+	}
+}
+
+func TestFormatLandingNodeTypeLabel_UsesConfiguredDisplayNames(t *testing.T) {
+	testCases := map[string]string{
+		"vmess":         "VMess",
+		"trojan":        "Trojan",
+		"snell":         "Snell",
+		"wireguard":     "WireGuard",
+		"hysteria":      "Hysteria",
+		"hysteria2":     "Hysteria2",
+		"anytls":        "AnyTLS",
+		"vless-reality": "Reality",
+		"shadowtls":     "ShadowTLS",
+	}
+
+	for protocolType, want := range testCases {
+		if got := formatLandingNodeTypeLabel(protocolType); got != want {
+			t.Fatalf("formatLandingNodeTypeLabel(%q) = %q, want %q", protocolType, got, want)
+		}
 	}
 }
 

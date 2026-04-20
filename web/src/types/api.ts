@@ -48,6 +48,7 @@ export interface Stage2Row {
 export interface Stage2InitRow extends Stage2Row {
 	landingNodeType: string;
 	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
+	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
 }
 
 export interface ChainTarget {

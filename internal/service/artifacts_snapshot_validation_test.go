@@ -44,11 +44,11 @@ func TestValidateGenerateSnapshot_RejectsTargetForNoneMode(t *testing.T) {
 	}
 }
 
-func TestValidateGenerateSnapshot_RejectsChainForVLESSReality(t *testing.T) {
+func TestValidateGenerateSnapshot_AllowsChainForReality(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Reality", "vless-reality", "🇭🇰 香港节点")
 
-	_, err := validateGenerateSnapshot(
+	resolved, err := validateGenerateSnapshot(
 		Stage1Input{},
 		Stage2Snapshot{
 			Rows: []Stage2Row{
@@ -61,11 +61,11 @@ func TestValidateGenerateSnapshot_RejectsChainForVLESSReality(t *testing.T) {
 		},
 		fixtures,
 	)
-	if err == nil {
-		t.Fatal("validateGenerateSnapshot() error = nil, want chain restriction")
-	}
-	if !strings.Contains(err.Error(), "does not allow chain mode") {
+	if err != nil {
 		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].ProtocolType != "vless-reality" {
+		t.Fatalf("resolved landing proxies = %#v, want one vless-reality entry", resolved)
 	}
 }
 
