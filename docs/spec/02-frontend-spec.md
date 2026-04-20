@@ -74,6 +74,8 @@
 - 仅支持手动添加 SOCKS5 类型的节点
 - `username` 与 `password` 必须成对出现
 - 表单应提供可选 `socks5://` URI 粘贴输入框；当前端收到该 URI 时，必须先解析为 `name/server/port/username/password`，再允许用户确认或补充后提交
+- 弹窗字段布局固定为四行：第一行 `name`；第二行左 `server` / 右 `port`；第三行左 `username` / 右 `password`；第四行 `socks5://` URI（可选）
+- `socks5://` URI 输入框不单独提供提交按钮，与分字段输入共用同一个提交动作
 - 提交后必须转换为一条 `subconverter` 可解析的 SOCKS URI 追加到落地输入区
 - 提交时必须统一编码为 `tg://socks?server=<server>&port=<port>&remarks=<name>`；若存在认证信息，则继续追加 `&user=<username>&pass=<password>`
 - 统一使用 `tg://socks` 是权威口径，不再区分 `IPv4` / 主机名，也不再生成 `socks://<base64>`；原因是 `subconverter` 已正式支持 Telegram 风格 SOCKS 源，且该格式可以规避当前 `socks://<base64>` 在“域名 + 认证”等组合上的解析局限
