@@ -463,38 +463,72 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 													<div className="a-cell-type">{meta?.landingNodeType ?? "—"}</div>
 												</td>
 												<td>
-													<select
-														className="a-select"
-														value={row.mode}
-														disabled={!editable}
-														aria-describedby={activeModeWarning ? modeWarnId : undefined}
-														onChange={(event) =>
-															handleModeChange(
-																row.landingNodeName,
-																event.target.value as typeof row.mode,
-															)
-														}
-													>
-														{modeOptions.map((mode) => {
-															const restriction = meta?.restrictedModes?.[mode];
-															const modeWarn = meta?.modeWarnings?.[mode];
-															return (
-																<option
-																	key={mode}
-																	value={mode}
-																	disabled={Boolean(restriction)}
-																	title={modeWarn && !restriction ? modeWarn.reasonText : undefined}
-																>
-																	{restriction ? `${mode}（${restriction.reasonText}）` : mode}
-																</option>
-															);
-														})}
-													</select>
-													{activeModeWarning ? (
-														<p id={modeWarnId} className="a-mode-warning" role="status">
-															{activeModeWarning.reasonText}
-														</p>
-													) : null}
+													<div className="a-mode-cell">
+														<select
+															className="a-select"
+															value={row.mode}
+															disabled={!editable}
+															aria-describedby={activeModeWarning ? modeWarnId : undefined}
+															onChange={(event) =>
+																handleModeChange(
+																	row.landingNodeName,
+																	event.target.value as typeof row.mode,
+																)
+															}
+														>
+															{modeOptions.map((mode) => {
+																const restriction = meta?.restrictedModes?.[mode];
+																const modeWarn = meta?.modeWarnings?.[mode];
+																return (
+																	<option
+																		key={mode}
+																		value={mode}
+																		disabled={Boolean(restriction)}
+																		title={modeWarn && !restriction ? modeWarn.reasonText : undefined}
+																	>
+																		{restriction ? `${mode}（${restriction.reasonText}）` : mode}
+																	</option>
+																);
+															})}
+														</select>
+														<span className="a-mode-warning-slot">
+															{activeModeWarning ? (
+																<>
+																	<span id={modeWarnId} className="a-sr-only">
+																		{activeModeWarning.reasonText}
+																	</span>
+																	<span
+																		className="a-mode-warning-hint"
+																		title={activeModeWarning.reasonText}
+																		aria-hidden="true"
+																	>
+																		<svg
+																			xmlns="http://www.w3.org/2000/svg"
+																			viewBox="0 0 24 24"
+																			width="18"
+																			height="18"
+																			fill="none"
+																			aria-hidden="true"
+																		>
+																			<circle
+																				cx="12"
+																				cy="12"
+																				r="10"
+																				stroke="var(--color-line)"
+																				strokeWidth="2"
+																			/>
+																			<path
+																				d="M12 8v4M12 16h.01"
+																				stroke="currentColor"
+																				strokeWidth="2"
+																				strokeLinecap="round"
+																			/>
+																		</svg>
+																	</span>
+																</>
+															) : null}
+														</span>
+													</div>
 												</td>
 												<td>
 													<select
