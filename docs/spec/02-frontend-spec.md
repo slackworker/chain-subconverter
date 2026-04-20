@@ -60,6 +60,7 @@
 - 用途：输入落地节点或落地订阅信息
 - 输入方式：通过多行文本框输入订阅 URL、节点 URI；通过按钮弹出表单手动添加 SOCKS5 节点
 - 展示规则：每条一行，显示行号，不自动换行，允许横向滚动
+- 手动添加 SOCKS5 节点按钮位置：位于“落地节点”输入区的右上角
 
 #### 1.1.1 手动添加 SOCKS5 节点
 
@@ -74,7 +75,7 @@
 - 仅支持手动添加 SOCKS5 类型的节点
 - `username` 与 `password` 必须成对出现
 - 表单应提供可选 `socks5://` URI 粘贴输入框；当前端收到该 URI 时，必须先解析为 `name/server/port/username/password`，再允许用户确认或补充后提交
-- 弹窗字段布局固定为四行：第一行 `name`；第二行左 `server` / 右 `port`；第三行左 `username` / 右 `password`；第四行 `socks5://` URI（可选）
+- 弹窗字段布局建议为四行：第一行 `name`；第二行左 `server` / 右 `port`；第三行左 `username` / 右 `password`；第四行 `socks5://` URI（可选）
 - `socks5://` URI 输入框不单独提供提交按钮，与分字段输入共用同一个提交动作
 - 提交后必须转换为一条 `subconverter` 可解析的 SOCKS URI 追加到落地输入区
 - 提交时必须统一编码为 `tg://socks?server=<server>&port=<port>&remarks=<name>`；若存在认证信息，则继续追加 `&user=<username>&pass=<password>`
