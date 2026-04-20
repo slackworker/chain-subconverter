@@ -36,7 +36,7 @@
 - `web/` 已初始化 `Vite + React + TypeScript + Tailwind CSS` 前端工程，并已落地共享 domain types、共享 workflow 状态主线与可替换方案装配入口。
 - 共享页面状态已接通 `POST /api/resolve-url`、`POST /api/stage1/convert`、`POST /api/generate` 与 `POST /api/short-links`。
 - Stage 1 已补上完整高级菜单控件、条件显示的端口转发输入区、`forwardRelayItems` 结构化快照与手动 SOCKS5 追加入口。
-- Stage 2 的 `chainTargets[]` 已具备按 `kind` 区分主路径与补充路径的业务语义，空策略组保留展示但禁止选择；`port_forward` 目标已在共享 workflow 中收口为“同一 relay 不可被多个落地节点重复选择”。
+- Stage 2 的 `chainTargets[]` 已具备按 `kind` 区分主路径与补充路径的业务语义，空策略组保留展示但禁止选择；共享 workflow 现已把 `chain` 目标出口收口为保留 `kind/priority` 语义的分组结构，供方案层承载“常用 vs 补充”；`port_forward` 目标已在共享 workflow 中收口为“同一 relay 不可被多个落地节点重复选择”。
 - Stage 1 高级选项中的 `include`、`exclude` 已统一收口为有序字符串数组语义，并已贯通前端类型、后端接口、longUrl 编解码与 `subconverter` query 构造。
 - 全局阻断错误承载区已收敛为单一入口；Stage 内仅保留消息日志与局部定位提示。
 - 已从共享层移除 Navbar、stepper 与顶部介绍 header，避免提前冻结 A/B/C 页面结构与交互节奏。
