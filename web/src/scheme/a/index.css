@@ -292,6 +292,24 @@
 	color: var(--color-ink);
 }
 
+.a-field-label-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	min-height: 2rem;
+}
+
+.a-field-label-action {
+	flex: 0 0 auto;
+}
+
+.a-lined-input-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+}
+
 .a-hint {
 	display: inline-flex;
 	align-items: center;
@@ -315,6 +333,10 @@
 	overflow: hidden;
 	background: #fff;
 	min-height: 9rem;
+}
+
+.a-lined-input__bottom-left {
+	padding-left: 0.2rem;
 }
 
 .a-lined-input__gutter {
@@ -828,6 +850,13 @@
 
 .a-btn--secondary:hover:not(:disabled) {
 	border-color: #c9c2b8;
+}
+
+.a-btn--compact {
+	padding: 0.3rem 0.7rem;
+	font-size: 0.82rem;
+	border-radius: 8px;
+	line-height: 1.25;
 }
 
 .a-toast {

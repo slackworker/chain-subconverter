@@ -9,7 +9,6 @@ import {
 	parseSocks5URIToManualSocks5FormState,
 	type ManualSocks5FormState,
 	removeForwardRelayItem,
-	setPortForwardEnabled,
 } from "../../lib/stage1";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
@@ -109,8 +108,9 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 	const [socksForm, setSocksForm] = useState<ManualSocks5FormState>(initialManualSocks5FormState);
 	const [socksURI, setSocksURI] = useState("");
 	const [socksError, setSocksError] = useState<string | null>(null);
+	const [portForwardOpen, setPortForwardOpen] = useState(false);
+	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>([]);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
-	const [relayDraft, setRelayDraft] = useState("");
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
@@ -170,13 +170,25 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 		}
 	}
 
-	function appendRelayTag() {
-		const trimmed = relayDraft.trim();
-		if (trimmed === "") {
-			return;
-		}
-		updateStage1Input((current) => addForwardRelayItem(current, trimmed));
-		setRelayDraft("");
+	function openPortForwardModal() {
+		setPortForwardDraftTags([]);
+		setPortForwardOpen(true);
+	}
+
+	function submitPortForwardTags() {
+		const nextTags = (portForwardDraftTags ?? []).map((tag) => tag.trim()).filter((tag) => tag !== "");
+		updateStage1Input((current) => {
+			const withAppendedTags = nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), current);
+			return {
+				...withAppendedTags,
+				advancedOptions: {
+					...withAppendedTags.advancedOptions,
+					enablePortForward: true,
+				},
+			};
+		});
+		setPortForwardDraftTags([]);
+		setPortForwardOpen(false);
 	}
 
 	function setSupplementOpen(landingNodeName: string, open: boolean) {
@@ -253,6 +265,11 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 						<LineNumberTextarea
 							id={`${stage1Id}-landing`}
 							label="落地节点信息（每行一条，横向滚动）"
+							labelAction={
+								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={() => setSocksOpen(true)}>
+									+SOCKS5
+								</button>
+							}
 							value={state.stage1Input.landingRawText}
 							onChange={(next) =>
 								updateStage1Input((current) => ({
@@ -265,6 +282,11 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 						<LineNumberTextarea
 							id={`${stage1Id}-transit`}
 							label="中转信息（每行一条）"
+							labelAction={
+								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openPortForwardModal}>
+									+端口转发
+								</button>
+							}
 							value={state.stage1Input.transitRawText}
 							onChange={(next) =>
 								updateStage1Input((current) => ({
@@ -273,13 +295,28 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 								}))
 							}
 							placeholder="中转订阅、节点 URI 或 data:text/plain,..."
+							bottomLeftContent={
+								state.stage1Input.forwardRelayItems.length > 0 ? (
+									<ul className="a-tag-list" aria-label="端口转发标签">
+										{state.stage1Input.forwardRelayItems.map((item, index) => (
+											<li key={`${item}-${index}`} className="a-tag-chip">
+												<span className="a-tag-chip__text">{item}</span>
+												<button
+													type="button"
+													className="a-tag-chip__remove"
+													onClick={() =>
+														updateStage1Input((current) => removeForwardRelayItem(current, index))
+													}
+													aria-label={`移除 ${item}`}
+												>
+													×
+												</button>
+											</li>
+										))}
+									</ul>
+								) : null
+							}
 						/>
-					</div>
-
-					<div className="a-inline-actions">
-						<button type="button" className="a-btn a-btn--secondary" onClick={() => setSocksOpen(true)}>
-							手动添加 SOCKS5 节点
-						</button>
 					</div>
 
 					{getFieldErrors(state.blockingErrors, "landingRawText").length > 0 ? (
@@ -287,6 +324,9 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 					) : null}
 					{getFieldErrors(state.blockingErrors, "transitRawText").length > 0 ? (
 						<p className="a-field-error">{getFieldErrors(state.blockingErrors, "transitRawText").map((error) => error.message).join(" ")}</p>
+					) : null}
+					{getFieldErrors(state.blockingErrors, "forwardRelayItems").length > 0 ? (
+						<p className="a-field-error">{getFieldErrors(state.blockingErrors, "forwardRelayItems").map((error) => error.message).join(" ")}</p>
 					) : null}
 
 					<div className="a-advanced">
@@ -393,57 +433,7 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 										/>
 										跳过证书校验（scv）
 									</label>
-									<label className="a-check a-check--switch">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.enablePortForward}
-											onChange={(event) =>
-												updateStage1Input((current) => setPortForwardEnabled(current, event.target.checked))
-											}
-										/>
-										启用端口转发（实验性）
-									</label>
 								</div>
-
-								{state.stage1Input.advancedOptions.enablePortForward ? (
-									<div className="a-relay-block">
-										<span className="a-field-label">端口转发服务（server:port，逐项添加）</span>
-										<ul className="a-tag-list">
-											{state.stage1Input.forwardRelayItems.map((item, index) => (
-												<li key={`${item}-${index}`} className="a-tag-chip">
-													<span className="a-tag-chip__text">{item}</span>
-													<button
-														type="button"
-														className="a-tag-chip__remove"
-														onClick={() =>
-															updateStage1Input((current) => removeForwardRelayItem(current, index))
-														}
-														aria-label={`移除 ${item}`}
-													>
-														×
-													</button>
-												</li>
-											))}
-										</ul>
-										<div className="a-relay-input-row">
-											<input
-												className="a-input"
-												value={relayDraft}
-												onChange={(event) => setRelayDraft(event.target.value)}
-												onKeyDown={(event) => {
-													if (event.key === "Enter") {
-														event.preventDefault();
-														appendRelayTag();
-													}
-												}}
-												placeholder="例如10.0.0.1:8388"
-											/>
-											<button type="button" className="a-btn a-btn--secondary" onClick={appendRelayTag}>
-												添加
-											</button>
-										</div>
-									</div>
-								) : null}
 							</div>
 						) : null}
 					</div>
@@ -834,7 +824,7 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 									<span className="a-field-label">密码（可选）</span>
 									<input
 										className="a-input"
-										type="password"
+										type="text"
 										value={socksForm.password}
 										onChange={(event) => setSocksForm((form) => ({ ...form, password: event.target.value }))}
 									/>
@@ -864,6 +854,35 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 							</button>
 							<button type="button" className="a-btn a-btn--primary" onClick={submitSocks5}>
 								追加到落地输入区
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
+			{portForwardOpen ? (
+				<div className="a-modal-backdrop" role="presentation" onClick={() => setPortForwardOpen(false)}>
+					<div
+						className="a-modal"
+						role="dialog"
+						aria-modal
+						aria-labelledby="a-port-forward-title"
+						onClick={(event) => event.stopPropagation()}
+					>
+						<h2 id="a-port-forward-title" className="a-modal__title">
+							添加端口转发标签
+						</h2>
+						<TagField
+							label="端口转发（支持多个 tag）"
+							values={portForwardDraftTags}
+							onChange={setPortForwardDraftTags}
+							placeholder="输入 server:port 后按 Enter 添加"
+						/>
+						<div className="a-modal__actions">
+							<button type="button" className="a-btn a-btn--secondary" onClick={() => setPortForwardOpen(false)}>
+								取消
+							</button>
+							<button type="button" className="a-btn a-btn--primary" onClick={submitPortForwardTags}>
+								确认
 							</button>
 						</div>
 					</div>
