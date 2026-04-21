@@ -7,7 +7,7 @@ import {
 } from "../../lib/notices";
 import {
 	addForwardRelayItem,
-	appendManualSocks5ToStage1Input,
+	buildManualSocks5URI,
 	initialManualSocks5FormState,
 	parseSocks5URIToManualSocks5FormState,
 	type ManualSocks5FormState,
@@ -21,9 +21,11 @@ const DEFAULT_TEMPLATE_HINT =
 	"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
 const LOCAL_ERROR_ARIA_HINT = "该位置存在错误，请查看当前阶段反馈条。";
 
-function schemeHref(schemeId: string) {
-	const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-	return base === "" ? `/ui/${schemeId}` : `${base}/ui/${schemeId}`;
+function appendMultilineLine(currentValue: string, nextLine: string) {
+	if (currentValue === "") {
+		return nextLine;
+	}
+	return currentValue.endsWith("\n") ? `${currentValue}${nextLine}` : `${currentValue}\n${nextLine}`;
 }
 
 function StatusPill({ label, tone }: { label: string; tone: "neutral" | "warning" | "success" }) {
@@ -231,11 +233,15 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 	function submitSocks5() {
 		try {
-			updateStage1Input((current) => appendManualSocks5ToStage1Input(current, socksForm));
+			const socksURIToAppend = buildManualSocks5URI(socksForm);
+			updateStage1Input((current) => ({
+				...current,
+				landingRawText: appendMultilineLine(current.landingRawText, socksURIToAppend),
+			}));
 			setSocksForm(initialManualSocks5FormState);
 			setSocksURI("");
 			setSocksError(null);
-			setSocksOpen(false);
+			closeSocksModal();
 		} catch (error) {
 			setSocksError(error instanceof Error ? error.message : "表单校验失败");
 		}
@@ -260,6 +266,16 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	function openPortForwardModal() {
 		setPortForwardDraftTags([]);
 		setPortForwardOpen(true);
+	}
+
+	function openSocksModal() {
+		setSocksError(null);
+		setSocksOpen(true);
+	}
+
+	function closeSocksModal() {
+		setSocksError(null);
+		setSocksOpen(false);
 	}
 
 	function submitPortForwardTags() {
@@ -317,18 +333,59 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			<header className="a-header">
 				<div className="a-header__brand">
 					<p className="a-eyebrow">Chain Subconverter</p>
-					<h1 className="a-title">方案 A · 工作流</h1>
-					<p className="a-lede">三阶段自上而下：输入与转换、落地配置、链接产出与恢复。以下为方案层独立壳层与样式基线。</p>
+					<h1 className="a-title">链式代理 · 订阅转换</h1>
+					<p className="a-lede">一站式 链式代理 · 订阅转换工具 for Mihomo</p>
 				</div>
-				<nav className="a-scheme-nav" aria-label="UI 方案切换">
-					<a className="a-scheme-nav__link a-scheme-nav__link--active" href={schemeHref("a")}>
-						A
-					</a>
-					<a className="a-scheme-nav__link" href={schemeHref("b")}>
-						B
-					</a>
-					<a className="a-scheme-nav__link" href={schemeHref("c")}>
-						C
+				<nav className="a-scheme-nav" aria-label="快捷操作">
+					<button
+						type="button"
+						className="a-scheme-nav__link a-scheme-nav__link--icon"
+						aria-label="切换语言（预留）"
+						title="切换语言（预留）"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+							<path
+								d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M4.8 7.5h14.4M4.8 16.5h14.4M12 3a9 9 0 1 1 0 18a9 9 0 0 1 0-18Z"
+								stroke="currentColor"
+								strokeWidth="1.8"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+					</button>
+					<button
+						type="button"
+						className="a-scheme-nav__link a-scheme-nav__link--icon"
+						aria-label="切换亮暗主题（预留）"
+						title="切换亮暗主题（预留）"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+							<path
+								d="M21 12.8A8.8 8.8 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
+								stroke="currentColor"
+								strokeWidth="1.8"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+					</button>
+					<a
+						className="a-scheme-nav__link a-scheme-nav__link--icon"
+						aria-label="打开 GitHub 仓库"
+						title="打开 GitHub 仓库"
+						href="https://github.com/slackworker/chain-subconverter"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+							<path
+								d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 6v-3.5c0-1 .1-1.4-.5-2c2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0c-2.4-1.6-3.5-1.3-3.5-1.3a4.2 4.2 0 0 0-.1 3.2 4.6 4.6 0 0 0-1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6.6-.6 1.2-.5 2V22"
+								stroke="currentColor"
+								strokeWidth="1.8"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
 					</a>
 				</nav>
 			</header>
@@ -345,7 +402,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							<h2 id={`${stage1Id}-h`} className="a-stage__title">
 								阶段 1 · 输入
 							</h2>
-							<p className="a-stage__desc">落地与中转原文、高级选项与端口转发；完成后执行转换以生成阶段 2 基底。</p>
+							<p className="a-stage__desc">输入落地与中转信息，执行转换以生成阶段 2 配置基底。</p>
 						</div>
 						<StatusPill label={stage1Status.label} tone={stage1Status.tone} />
 					</div>
@@ -353,9 +410,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					<div className="a-stage1-grid">
 						<LineNumberTextarea
 							id={`${stage1Id}-landing`}
-							label="落地节点信息（每行一条，横向滚动）"
+							label="落地信息"
 							labelAction={
-								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={() => setSocksOpen(true)}>
+								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openSocksModal}>
 									+SOCKS5
 								</button>
 							}
@@ -373,7 +430,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						/>
 						<LineNumberTextarea
 							id={`${stage1Id}-transit`}
-							label="中转信息（每行一条）"
+							label="中转信息"
 							labelAction={
 								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openPortForwardModal}>
 									+端口转发
@@ -414,12 +471,13 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						/>
 					</div>
 
-					<div className="a-advanced">
+					<div className="a-stage1-actions-wrap">
 						<button type="button" className="a-advanced__toggle" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
-							高级选项 {advancedOpen ? "\u25BC" : "\u25B6"}
+							高级选项
 						</button>
 						{advancedOpen ? (
-							<div className="a-advanced__body">
+							<div className="a-advanced">
+								<div className="a-advanced__body">
 								<label className="a-field a-field--inline">
 									<span className="a-field-label">
 										模板 URL（config）{" "}
@@ -526,27 +584,28 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 										跳过证书校验（scv）
 									</label>
 								</div>
+								</div>
 							</div>
 						) : null}
-					</div>
 
-					<div className="a-stage-actions">
-						<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
-							{isConverting ? "转换中…" : "转换并自动填充"}
-						</button>
-						{(stage1PrimaryBlockingErrors.length > 0 || shouldShowStage2StaleNotice) ? (
-							<div className="a-stage-actions__feedback">
-								{stage1PrimaryBlockingErrors.length > 0 ? (
-									<OriginAnchoredBlockingStrip errors={stage1PrimaryBlockingErrors} stageLabel={originStageLabel} />
-								) : null}
-								{shouldShowStage2StaleNotice ? (
-									<div className="a-stage-feedback-strip a-stage-feedback-strip--warning" role="status">
-										<span className="a-stage-feedback-strip__stage">{getOriginStageLabel("stage1")}</span>
-										<span className="a-stage-feedback-strip__msg">已变更：请重新执行转换后再生成链接。</span>
-									</div>
-								) : null}
-							</div>
-						) : null}
+						<div className="a-stage-actions a-stage-actions--stage1">
+							<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
+								{isConverting ? "转换中…" : "转换并自动填充"}
+							</button>
+							{(stage1PrimaryBlockingErrors.length > 0 || shouldShowStage2StaleNotice) ? (
+								<div className="a-stage-actions__feedback">
+									{stage1PrimaryBlockingErrors.length > 0 ? (
+										<OriginAnchoredBlockingStrip errors={stage1PrimaryBlockingErrors} stageLabel={originStageLabel} />
+									) : null}
+									{shouldShowStage2StaleNotice ? (
+										<div className="a-stage-feedback-strip a-stage-feedback-strip--warning" role="status">
+											<span className="a-stage-feedback-strip__stage">{getOriginStageLabel("stage1")}</span>
+											<span className="a-stage-feedback-strip__msg">已变更：请重新执行转换后再生成链接。</span>
+										</div>
+									) : null}
+								</div>
+							) : null}
+						</div>
 					</div>
 				</section>
 
@@ -718,7 +777,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																				aria-expanded={primaryOpen}
 																				onClick={() => setPrimaryOpen(row.landingNodeName, !primaryOpen)}
 																			>
-																				{primaryOpen ? "收起区域策略组" : "展开区域策略组"}
+																				<span className="a-target-menu__group-label">区域策略组</span>
+																				<span className={`a-target-menu__group-icon ${primaryOpen ? "is-open" : ""}`} aria-hidden="true">
+																					▾
+																				</span>
 																			</button>
 																			{primaryOpen ? (
 																				primaryGroup?.choices.length ? (
@@ -753,7 +815,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																					aria-expanded={supplementOpen}
 																					onClick={() => setSupplementOpen(row.landingNodeName, !supplementOpen)}
 																				>
-																					{supplementOpen ? "收起节点" : "展开节点"}
+																					<span className="a-target-menu__group-label">固定节点</span>
+																					<span className={`a-target-menu__group-icon ${supplementOpen ? "is-open" : ""}`} aria-hidden="true">
+																						▾
+																					</span>
 																				</button>
 																				{supplementOpen ? (
 																					<ul className="a-target-menu__list">
@@ -904,7 +969,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			</main>
 
 			{socksOpen ? (
-				<div className="a-modal-backdrop" role="presentation" onClick={() => setSocksOpen(false)}>
+				<div className="a-modal-backdrop" role="presentation" onClick={closeSocksModal}>
 					<div
 						className="a-modal"
 						role="dialog"
@@ -913,7 +978,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						onClick={(event) => event.stopPropagation()}
 					>
 						<h2 id="a-socks-title" className="a-modal__title">
-							手动添加 SOCKS5
+							手动添加 SOCKS5 节点
 						</h2>
 						<div className="a-modal__grid">
 							<label className="a-field">
@@ -980,11 +1045,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						</div>
 						{socksError ? <p className="a-field-error">{socksError}</p> : null}
 						<div className="a-modal__actions">
-							<button type="button" className="a-btn a-btn--secondary" onClick={() => setSocksOpen(false)}>
+							<button type="button" className="a-btn a-btn--secondary" onClick={closeSocksModal}>
 								取消
 							</button>
 							<button type="button" className="a-btn a-btn--primary" onClick={submitSocks5}>
-								追加到落地输入区
+								追加
 							</button>
 						</div>
 					</div>
