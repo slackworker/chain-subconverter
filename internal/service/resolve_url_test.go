@@ -138,6 +138,9 @@ func TestResolveURLFromSource_InvalidURL(t *testing.T) {
 	if respErr.BlockingError().Code != "INVALID_URL" {
 		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "INVALID_URL")
 	}
+	if respErr.BlockingError().Scope != "stage3_field" {
+		t.Fatalf("scope mismatch: got %q want %q", respErr.BlockingError().Scope, "stage3_field")
+	}
 }
 
 func TestResolveURLFromSource_EmptyURL(t *testing.T) {
@@ -163,6 +166,9 @@ func TestResolveURLFromSource_EmptyURL(t *testing.T) {
 	if respErr.BlockingError().Code != "INVALID_REQUEST" {
 		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "INVALID_REQUEST")
 	}
+	if respErr.BlockingError().Scope != "stage3_field" {
+		t.Fatalf("scope mismatch: got %q want %q", respErr.BlockingError().Scope, "stage3_field")
+	}
 }
 
 func TestResolveURLFromSource_InvalidLongURL(t *testing.T) {
@@ -187,6 +193,9 @@ func TestResolveURLFromSource_InvalidLongURL(t *testing.T) {
 	}
 	if respErr.BlockingError().Code != "INVALID_LONG_URL" {
 		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "INVALID_LONG_URL")
+	}
+	if respErr.BlockingError().Scope != "stage3_field" {
+		t.Fatalf("scope mismatch: got %q want %q", respErr.BlockingError().Scope, "stage3_field")
 	}
 }
 
@@ -230,6 +239,9 @@ func TestResolveURLFromSource_RejectsSchemaInvalidLongURLPayload(t *testing.T) {
 	}
 	if respErr.BlockingError().Code != "INVALID_LONG_URL" {
 		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "INVALID_LONG_URL")
+	}
+	if respErr.BlockingError().Scope != "stage3_field" {
+		t.Fatalf("scope mismatch: got %q want %q", respErr.BlockingError().Scope, "stage3_field")
 	}
 }
 
@@ -306,6 +318,9 @@ func TestResolveURLFromSource_ShortURLNotFound(t *testing.T) {
 	}
 	if respErr.BlockingError().Code != "SHORT_URL_NOT_FOUND" {
 		t.Fatalf("error code mismatch: got %q want %q", respErr.BlockingError().Code, "SHORT_URL_NOT_FOUND")
+	}
+	if respErr.BlockingError().Scope != "stage3_field" {
+		t.Fatalf("scope mismatch: got %q want %q", respErr.BlockingError().Scope, "stage3_field")
 	}
 }
 

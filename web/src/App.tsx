@@ -15,7 +15,7 @@ function withDownloadFlag(urlString: string) {
 }
 
 export default function App() {
-	const { Page } = useUIScheme();
+	const { Page, primaryBlockingFeedbackPlacement } = useUIScheme();
 	const workflow = useAppWorkflow();
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
 
@@ -68,5 +68,5 @@ export default function App() {
 		downloadCurrentLink,
 	};
 
-	return <Page workflow={workflow} outputActions={outputActions} />;
+	return <Page workflow={workflow} outputActions={outputActions} primaryBlockingFeedbackPlacement={primaryBlockingFeedbackPlacement} />;
 }

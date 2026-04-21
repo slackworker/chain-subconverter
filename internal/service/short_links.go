@@ -28,7 +28,7 @@ type ShortLinkResponse struct {
 func BuildShortLinkResponse(ctx context.Context, publicBaseURL string, shortLinkStore ShortLinkStore, rawLongURL string, maxLongURLLength int, limits InputLimits) (ShortLinkResponse, error) {
 	rawLongURL = strings.TrimSpace(rawLongURL)
 	if rawLongURL == "" {
-		return ShortLinkResponse{}, newInvalidRequestError("longUrl must not be empty", nil)
+		return ShortLinkResponse{}, newStage3FieldInvalidRequestError("longUrl must not be empty", "currentLinkInput", nil)
 	}
 	if shortLinkStore == nil {
 		retryable := true
@@ -48,7 +48,7 @@ func BuildShortLinkResponse(ctx context.Context, publicBaseURL string, shortLink
 		if _, ok := AsResponseError(err); ok {
 			return ShortLinkResponse{}, err
 		}
-		return ShortLinkResponse{}, newGlobalValidationError("INVALID_LONG_URL", "long URL payload is invalid", err)
+		return ShortLinkResponse{}, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
 	}
 
 	entry, err := shortLinkStore.CreateOrGet(ctx, DeterministicShortID(canonicalLongURL), canonicalLongURL)

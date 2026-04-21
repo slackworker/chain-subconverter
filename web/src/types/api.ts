@@ -7,7 +7,7 @@ export interface Message {
 	context?: Record<string, unknown>;
 }
 
-export type BlockingErrorScope = "global" | "stage1_field" | "stage2_row";
+export type BlockingErrorScope = "global" | "stage1_field" | "stage2_row" | "stage3_field" | "stage3_action";
 
 export interface BlockingError {
 	code: string;

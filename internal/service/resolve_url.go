@@ -37,9 +37,7 @@ type resolveURLInput struct {
 func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (ResolveURLResponse, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
-		return ResolveURLResponse{}, newResponseError(
-			http.StatusBadRequest, "INVALID_REQUEST", "url must not be empty", "global", nil, nil, nil,
-		)
+		return ResolveURLResponse{}, newStage3FieldInvalidRequestError("url must not be empty", "currentLinkInput", nil)
 	}
 
 	resolved, shortURL, payload, err := resolveLongURLPayload(ctx, publicBaseURL, shortLinkResolver, rawURL, maxLongURLLength, limits)
@@ -74,7 +72,7 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 	input, err := parseResolveURLInput(rawURL)
 	if err != nil {
 		return "", "", LongURLPayload{}, newResponseError(
-			http.StatusBadRequest, "INVALID_URL", "unsupported URL format", "global", nil, nil, err,
+			http.StatusBadRequest, "INVALID_URL", "unsupported URL format", "stage3_field", map[string]any{"field": "currentLinkInput"}, nil, err,
 		)
 	}
 
@@ -97,15 +95,7 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 		resolvedLongURL, err := shortLinkResolver.ResolveShortID(ctx, input.ShortID)
 		if err != nil {
 			if errors.Is(err, ErrShortURLNotFound) {
-				return "", "", LongURLPayload{}, newResponseError(
-					http.StatusUnprocessableEntity,
-					"SHORT_URL_NOT_FOUND",
-					"short URL not found",
-					"global",
-					nil,
-					nil,
-					err,
-				)
+				return "", "", LongURLPayload{}, newStage3FieldValidationError("SHORT_URL_NOT_FOUND", "short URL not found", "currentLinkInput", err)
 			}
 			retryable := true
 			return "", "", LongURLPayload{}, newResponseError(
@@ -127,9 +117,7 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 
 	payload, err := DecodeLongURLPayload(longURL, limits)
 	if err != nil {
-		return "", "", LongURLPayload{}, newResponseError(
-			http.StatusUnprocessableEntity, "INVALID_LONG_URL", "long URL payload is invalid", "global", nil, nil, err,
-		)
+		return "", "", LongURLPayload{}, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
 	}
 
 	canonicalLongURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot), maxLongURLLength)
@@ -154,15 +142,7 @@ func determineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapsh
 
 	if !isRestoreConflictError(err) {
 		if responseErr, ok := AsResponseError(err); ok && responseErr.StatusCode() < http.StatusInternalServerError {
-			return "", nil, newResponseError(
-				http.StatusUnprocessableEntity,
-				"INVALID_LONG_URL",
-				"long URL payload is invalid",
-				"global",
-				nil,
-				nil,
-				err,
-			)
+			return "", nil, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
 		}
 		return "", nil, err
 	}

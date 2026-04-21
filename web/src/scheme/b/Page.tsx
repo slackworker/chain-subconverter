@@ -1,9 +1,10 @@
 import type { AppPageProps } from "../../lib/composition";
 import "./index.css";
 
-export function BAppPage({ workflow, outputActions }: AppPageProps) {
+export function BAppPage({ workflow, outputActions, primaryBlockingFeedbackPlacement }: AppPageProps) {
 	void workflow;
 	void outputActions;
+	void primaryBlockingFeedbackPlacement;
 
 	return (
 		<main>

@@ -170,14 +170,17 @@
 - `blockingErrors[]` 只承载阻断当前请求的错误
 - `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`
 - `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
-- `scope` 只能是 `global`、`stage1_field` 或 `stage2_row`
+- `scope` 只能是 `global`、`stage1_field`、`stage2_row`、`stage3_field` 或 `stage3_action`
 - `scope` 只定义共享层必须稳定的业务定位语义，不规定前端的具体布局、视觉样式或组件形态
 - `scope` 不是 Stage 枚举；前端若需要展示 Stage 1 / 2 / 3 标签，必须按请求入口或工作流上下文派生，不得把 `scope` 当成阶段编号使用
-- 当前 `scope` 覆盖范围固定为现阶段三段业务模型：`global` 表示请求级阻断，`stage1_field` 表示阶段 1 字段定位，`stage2_row` 表示阶段 2 行级定位
-- `POST /api/resolve-url` 的失败响应当前不单独引入 `stage3_*` scope；其阻断错误统一按现有 `scope` 模型表达
-- 前端可把 `POST /api/resolve-url`、`POST /api/short-links` 或 Stage 3 触发的后续恢复链路失败统一标记为 Stage 3 展示语义，但该展示语义不进入后端响应结构
+- 前端可在展示层派生 `originStage` 一类的请求来源语义，用于决定本次反馈属于哪个阶段动作；该语义不进入后端响应结构，也不替代 `scope`
+- 当前 `scope` 覆盖范围固定为现阶段三段业务模型：`global` 表示系统级或请求级阻断，`stage1_field` 表示阶段 1 字段定位，`stage2_row` 表示阶段 2 行级定位，`stage3_field` 与 `stage3_action` 表示阶段 3 的输入定位与动作定位
+- `POST /api/resolve-url` 与 `POST /api/short-links` 的失败响应允许使用 `stage3_field` 或 `stage3_action`；仅当错误属于存储、依赖或未知内部异常时使用 `scope = global`
+- 前端仍可在展示层派生 Stage 3 来源标签，但该标签不替代 `stage3_*` 的局部定位职责
 - `scope = stage1_field` 时，`context.field` 必填
 - `scope = stage2_row` 时，`context.landingNodeName` 必填；若错误落在具体列上，`context.field` 必填
+- `scope = stage3_field` 时，`context.field` 必填；当前前端默认使用 `currentLinkInput` 作为 Stage 3 当前链接输入框的稳定字段键
+- `scope = stage3_action` 时，`context.action` 为可选字段；若返回，则其值必须只承担动作来源说明，不得替代 `originStage`
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
@@ -376,7 +379,8 @@
     {
       "code": "INVALID_LONG_URL",
       "message": "longUrl 不是可识别的规范长链接",
-      "scope": "global"
+      "scope": "stage3_field",
+      "context": { "field": "currentLinkInput" }
     }
   ]
 }
@@ -392,8 +396,8 @@
 
 最小失败语义：
 
-- `400`：`INVALID_REQUEST`，`scope = global`
-- `422`：`INVALID_LONG_URL`、`LONG_URL_TOO_LONG`；必须返回 `scope = global`
+- `400`：`INVALID_REQUEST`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
+- `422`：`INVALID_LONG_URL`、`LONG_URL_TOO_LONG`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -439,8 +443,8 @@
 
 最小失败语义：
 
-- `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = global`
-- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`、`LONG_URL_TOO_LONG`；三者都必须返回 `scope = global`
+- `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
+- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`、`LONG_URL_TOO_LONG`；三者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 

@@ -96,6 +96,22 @@ func newStage2RowInvalidRequestError(message string, landingNodeName string, fie
 	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage2_row", context, nil, cause)
 }
 
+func newStage3FieldValidationError(code string, message string, field string, cause error) error {
+	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage3_field", map[string]any{"field": field}, nil, cause)
+}
+
+func newStage3FieldInvalidRequestError(message string, field string, cause error) error {
+	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage3_field", map[string]any{"field": field}, nil, cause)
+}
+
+func newStage3ActionValidationError(code string, message string, action string, cause error) error {
+	context := map[string]any{}
+	if action != "" {
+		context["action"] = action
+	}
+	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage3_action", context, nil, cause)
+}
+
 func newInternalResponseError(message string, cause error) error {
 	return newResponseError(http.StatusInternalServerError, "INTERNAL_ERROR", message, "global", nil, nil, cause)
 }

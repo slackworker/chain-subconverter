@@ -122,7 +122,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *http.Request) {
 	var payload service.ShortLinkRequest
 	if err := decodeJSONBody(request, &payload); err != nil {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		writeStage3DecodeError(writer, err)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *ht
 func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *http.Request) {
 	var payload service.ResolveURLRequest
 	if err := decodeJSONBody(request, &payload); err != nil {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		writeStage3DecodeError(writer, err)
 		return
 	}
 
@@ -327,6 +327,18 @@ func decodeJSONBody(request *http.Request, target any) error {
 		return fmt.Errorf("decode JSON body: unexpected extra data")
 	}
 	return nil
+}
+
+func writeStage3DecodeError(writer http.ResponseWriter, err error) {
+	writeBlockingError(
+		writer,
+		http.StatusBadRequest,
+		"INVALID_REQUEST",
+		err.Error(),
+		"stage3_field",
+		map[string]any{"field": "currentLinkInput"},
+		nil,
+	)
 }
 
 func writeJSON(writer http.ResponseWriter, statusCode int, value any) {

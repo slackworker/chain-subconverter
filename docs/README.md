@@ -6,7 +6,7 @@
 
 1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
 2. 按主题进入前端、API、业务规则、技术约束。
-3. 需要看阶段顺序时读 [ROADMAP](ROADMAP.md)；需要看当前进度时读 [progress/STATUS](progress/STATUS.md)。
+3. 只有在需要了解推进顺序、当前缺口或本地联调流程时，再读 [ROADMAP](ROADMAP.md)、[progress/STATUS](progress/STATUS.md) 与 `testing/` 文档。
 
 ## 目录约定
 
@@ -42,8 +42,7 @@
 | [plan/phase-4-dev-readiness](plan/phase-4-dev-readiness.md) | Phase 4 本地预览与联调就绪计划：ABC UI 开发前的运行、测试与 smoke 收口 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已完成范围、已知缺口 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
-| [testing/frontend-g1-shared-boundary](testing/frontend-g1-shared-boundary.md) | G1 前端共享业务层验收：scheme 可替换性、最小构建验证与外部依赖边界 |
-| [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 开发 / 联调 / smoke 入口：单脚本启动、端口复用与 live 验收顺序 |
+| [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 启动与 smoke runbook：固定入口、最小检查项与常见排障 |
 | [testing/live-review-artifacts](testing/live-review-artifacts.md) | live 订阅 review 产物说明：如何生成 `stage1/stage2` 中间文件并逐项审查 |
 
 ## 临时区规则

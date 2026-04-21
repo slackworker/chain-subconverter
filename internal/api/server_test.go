@@ -183,8 +183,50 @@ func TestResolveURLHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) {
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "SHORT_URL_NOT_FOUND",
 		Message: "short URL not found",
-		Scope:   "global",
+		Scope:   "stage3_field",
+		Context: map[string]any{"field": "currentLinkInput"},
 	})
+}
+
+func TestResolveURLHandler_MapsDecodeFailuresToStage3FieldScope(t *testing.T) {
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
+
+	testCases := []struct {
+		name    string
+		body    string
+		message string
+	}{
+		{
+			name:    "malformed json",
+			body:    `{"url":`,
+			message: "decode JSON body: unexpected EOF",
+		},
+		{
+			name:    "wrong field type",
+			body:    `{"url":123}`,
+			message: "decode JSON body: json: cannot unmarshal number into Go struct field ResolveURLRequest.url of type string",
+		},
+		{
+			name:    "unknown field",
+			body:    `{"unexpected":"value"}`,
+			message: "decode JSON body: json: unknown field \"unexpected\"",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(testCase.body))
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+
+			assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
+				Code:    "INVALID_REQUEST",
+				Message: testCase.message,
+				Scope:   "stage3_field",
+				Context: map[string]any{"field": "currentLinkInput"},
+			})
+		})
+	}
 }
 
 func TestResolveURLHandler_MapsShortLinkStoreUnavailableToSpecModel(t *testing.T) {
@@ -281,8 +323,50 @@ func TestShortLinksHandler_MapsInvalidLongURLToSpecModel(t *testing.T) {
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "INVALID_LONG_URL",
 		Message: "long URL payload is invalid",
-		Scope:   "global",
+		Scope:   "stage3_field",
+		Context: map[string]any{"field": "currentLinkInput"},
 	})
+}
+
+func TestShortLinksHandler_MapsDecodeFailuresToStage3FieldScope(t *testing.T) {
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
+
+	testCases := []struct {
+		name    string
+		body    string
+		message string
+	}{
+		{
+			name:    "malformed json",
+			body:    `{"longUrl":`,
+			message: "decode JSON body: unexpected EOF",
+		},
+		{
+			name:    "wrong field type",
+			body:    `{"longUrl":123}`,
+			message: "decode JSON body: json: cannot unmarshal number into Go struct field ShortLinkRequest.longUrl of type string",
+		},
+		{
+			name:    "unknown field",
+			body:    `{"unexpected":"value"}`,
+			message: "decode JSON body: json: unknown field \"unexpected\"",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(testCase.body))
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, request)
+
+			assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
+				Code:    "INVALID_REQUEST",
+				Message: testCase.message,
+				Scope:   "stage3_field",
+				Context: map[string]any{"field": "currentLinkInput"},
+			})
+		})
+	}
 }
 
 func TestShortLinksHandler_MapsShortLinkStoreUnavailableToSpecModel(t *testing.T) {
@@ -745,7 +829,8 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "INVALID_LONG_URL",
 		Message: "long URL payload is invalid",
-		Scope:   "global",
+		Scope:   "stage3_field",
+		Context: map[string]any{"field": "currentLinkInput"},
 	})
 }
 

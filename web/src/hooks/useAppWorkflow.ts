@@ -2,7 +2,20 @@ import { useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
 import { getChainTargetGroups } from "../lib/chainTargets";
-import { getRowErrors } from "../lib/notices";
+import {
+	clearBlockingErrorsSupersededByStage2Stale,
+	clearStage1FieldErrors,
+	clearStage2RowErrors,
+	clearStage3ActionErrors,
+	clearStage3FieldErrors,
+	getFieldErrors,
+	getOriginStageLabel,
+	getPrimaryBlockingErrorsForStage,
+	getRowErrors,
+	getStage3FieldErrors,
+	getVisibleMessages,
+	shouldPromoteStage2StaleNotice,
+} from "../lib/notices";
 import { initialAppState } from "../lib/state";
 import type { ResponseOriginStage } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
@@ -40,6 +53,9 @@ export interface AppWorkflowViewModel {
 	stage2Rows: typeof initialAppState.stage2Snapshot.rows;
 	modeOptions: Stage2Init["availableModes"];
 	responseOriginStage: ResponseOriginStage | null;
+	originStageLabel?: string;
+	visibleMessages: Message[];
+	shouldShowStage2StaleNotice: boolean;
 	isConverting: boolean;
 	isRestoring: boolean;
 	isGenerating: boolean;
@@ -52,8 +68,11 @@ export interface AppWorkflowViewModel {
 	stage3Status: WorkflowStatus;
 	setCurrentLinkInput: (value: string) => void;
 	updateStage1Input: (updater: (current: Stage1Input) => Stage1Input) => void;
+	getStage1FieldErrors: (field: string) => BlockingError[];
+	getStage3FieldErrors: (field: string) => BlockingError[];
 	getStage2RowMeta: (landingNodeName: string) => Stage2Init["rows"][number] | null;
 	getStage2RowErrors: (landingNodeName: string) => BlockingError[];
+	getPrimaryBlockingErrorsForStage: (stage: ResponseOriginStage) => BlockingError[];
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
 	getChainTargetChoiceGroups: () => ChainTargetChoiceGroup[];
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
@@ -178,8 +197,60 @@ function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2S
 	return [];
 }
 
-function matchesResponseOriginStage(currentStage: ResponseOriginStage | null, stage: ResponseOriginStage) {
-	return currentStage === stage;
+function sameStringArray(current: string[] | null | undefined, next: string[] | null | undefined) {
+	if (current === next) {
+		return true;
+	}
+	if ((current?.length ?? 0) !== (next?.length ?? 0)) {
+		return false;
+	}
+	for (let index = 0; index < (current?.length ?? 0); index += 1) {
+		if (current?.[index] !== next?.[index]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function sameNullableBoolean(current: boolean | null | undefined, next: boolean | null | undefined) {
+	return (current ?? null) === (next ?? null);
+}
+
+function getChangedStage1Fields(current: Stage1Input, next: Stage1Input) {
+	const changedFields = new Set<string>();
+
+	if (current.landingRawText !== next.landingRawText) {
+		changedFields.add("landingRawText");
+	}
+	if (current.transitRawText !== next.transitRawText) {
+		changedFields.add("transitRawText");
+	}
+	if (!sameStringArray(current.forwardRelayItems, next.forwardRelayItems)) {
+		changedFields.add("forwardRelayItems");
+	}
+	if (current.advancedOptions.config !== next.advancedOptions.config) {
+		changedFields.add("config");
+	}
+	if (!sameStringArray(current.advancedOptions.include, next.advancedOptions.include)) {
+		changedFields.add("include");
+	}
+	if (!sameStringArray(current.advancedOptions.exclude, next.advancedOptions.exclude)) {
+		changedFields.add("exclude");
+	}
+	if (!sameNullableBoolean(current.advancedOptions.emoji, next.advancedOptions.emoji)) {
+		changedFields.add("emoji");
+	}
+	if (!sameNullableBoolean(current.advancedOptions.udp, next.advancedOptions.udp)) {
+		changedFields.add("udp");
+	}
+	if (!sameNullableBoolean(current.advancedOptions.skipCertVerify, next.advancedOptions.skipCertVerify)) {
+		changedFields.add("skipCertVerify");
+	}
+	if (current.advancedOptions.enablePortForward !== next.advancedOptions.enablePortForward) {
+		changedFields.add("enablePortForward");
+	}
+
+	return Array.from(changedFields);
 }
 
 function pickNextTarget(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string, mode: Stage2Row["mode"], currentTarget: string | null) {
@@ -208,6 +279,15 @@ export function useAppWorkflow() {
 	const isConflictReadonly = state.restoreStatus === "conflicted";
 	const isStage2Editable = state.stage2Init !== null && !state.stage2Stale && !isConflictReadonly;
 	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating;
+	const originStageLabel = getOriginStageLabel(state.responseOriginStage);
+	const visibleMessages = getVisibleMessages(state.messages, state.responseOriginStage);
+	const shouldShowStage2StaleNotice = shouldPromoteStage2StaleNotice({
+		stage2Stale: state.stage2Stale,
+		hasStage2Rows: stage2Rows.length > 0,
+		hasBlockingErrors: state.blockingErrors.length > 0,
+		isRequestInFlight: isConverting,
+		isConflictReadonly,
+	});
 
 	const stage1Status: WorkflowStatus =
 		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === ""
@@ -236,16 +316,28 @@ export function useAppWorkflow() {
 		setState((current) => ({
 			...current,
 			currentLinkInput: value,
+			blockingErrors: clearStage3ActionErrors(clearStage3FieldErrors(current.blockingErrors, "currentLinkInput")),
 		}));
 	}
 
 	function updateStage1Input(updater: (current: Stage1Input) => Stage1Input) {
-		setState((current) => ({
-			...current,
-			stage1Input: updater(current.stage1Input),
-			generatedUrls: null,
-			stage2Stale: current.stage2Snapshot.rows.length > 0 ? true : current.stage2Stale,
-		}));
+		setState((current) => {
+			const nextStage1Input = updater(current.stage1Input);
+			const changedFields = getChangedStage1Fields(current.stage1Input, nextStage1Input);
+			const becomesStale = current.stage2Snapshot.rows.length > 0;
+			let blockingErrors = clearStage1FieldErrors(current.blockingErrors, changedFields);
+			if (becomesStale) {
+				blockingErrors = clearBlockingErrorsSupersededByStage2Stale(blockingErrors, current.responseOriginStage);
+			}
+
+			return {
+				...current,
+				stage1Input: nextStage1Input,
+				generatedUrls: null,
+				stage2Stale: becomesStale ? true : current.stage2Stale,
+				blockingErrors,
+			};
+		});
 	}
 
 	function applyStage2Init(stage2Init: Stage2Init) {
@@ -259,16 +351,28 @@ export function useAppWorkflow() {
 		}));
 	}
 
+	function getStage1FieldErrors(field: string) {
+		return getFieldErrors(state.blockingErrors, field);
+	}
+
+	function getStage3FieldErrorsForField(field: string) {
+		return getStage3FieldErrors(state.blockingErrors, field);
+	}
+
 	function getStage2RowMeta(landingNodeName: string) {
 		return state.stage2Init?.rows.find((row) => row.landingNodeName === landingNodeName) ?? null;
 	}
 
 	function getStage2RowErrors(landingNodeName: string) {
-		return getRowErrors(state.blockingErrors, landingNodeName);
+		return isStage2Editable ? getRowErrors(state.blockingErrors, landingNodeName) : [];
+	}
+
+	function getPrimaryBlockingErrors(stage: ResponseOriginStage) {
+		return getPrimaryBlockingErrorsForStage(state.blockingErrors, state.responseOriginStage, stage);
 	}
 
 	function getStageMessages(stage: ResponseOriginStage) {
-		return matchesResponseOriginStage(state.responseOriginStage, stage) ? state.messages : [];
+		return getVisibleMessages(state.messages, state.responseOriginStage, stage);
 	}
 
 	async function handleStage1Convert() {
@@ -335,7 +439,7 @@ export function useAppWorkflow() {
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
 					messages: restoreResponse.messages,
-					blockingErrors: restoreResponse.blockingErrors,
+					blockingErrors: restoreResponse.blockingErrors.filter((error) => error.scope !== "stage2_row"),
 				}));
 				return;
 			}
@@ -396,9 +500,7 @@ export function useAppWorkflow() {
 		setState((current) => ({
 			...current,
 			generatedUrls: null,
-			blockingErrors: current.blockingErrors.filter(
-				(error) => !(error.scope === "stage2_row" && error.context?.landingNodeName === landingNodeName),
-			),
+			blockingErrors: clearStage2RowErrors(current.blockingErrors, landingNodeName),
 			stage2Snapshot: {
 				rows: current.stage2Snapshot.rows.map((row) => (row.landingNodeName === landingNodeName ? updater(row) : row)),
 			},
@@ -526,6 +628,9 @@ export function useAppWorkflow() {
 		stage2Rows,
 		modeOptions,
 		responseOriginStage: state.responseOriginStage,
+		originStageLabel,
+		visibleMessages,
+		shouldShowStage2StaleNotice,
 		isConverting,
 		isRestoring,
 		isGenerating,
@@ -538,8 +643,11 @@ export function useAppWorkflow() {
 		stage3Status,
 		setCurrentLinkInput,
 		updateStage1Input,
+		getStage1FieldErrors,
+		getStage3FieldErrors: getStage3FieldErrorsForField,
 		getStage2RowMeta,
 		getStage2RowErrors,
+		getPrimaryBlockingErrorsForStage: getPrimaryBlockingErrors,
 		getStageMessages,
 		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Init),
 		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),

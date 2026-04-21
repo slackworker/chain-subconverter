@@ -4,6 +4,8 @@ import type { AppWorkflowViewModel } from "../hooks/useAppWorkflow";
 import type { ResponseOriginStage } from "./state";
 import type { BlockingError, ChainTarget, Message } from "../types/api";
 
+export type PrimaryBlockingFeedbackPlacement = "global" | "stage-local";
+
 export interface NoticeRendererProps {
 	messages: Message[];
 	blockingErrors: BlockingError[];
@@ -41,11 +43,13 @@ export interface OutputActions {
 export interface AppPageProps {
 	workflow: AppWorkflowViewModel;
 	outputActions: OutputActions;
+	primaryBlockingFeedbackPlacement: PrimaryBlockingFeedbackPlacement;
 }
 
 export interface UIScheme {
 	id: string;
 	label: string;
 	description: string;
+	primaryBlockingFeedbackPlacement: PrimaryBlockingFeedbackPlacement;
 	Page: ComponentType<AppPageProps>;
 }
