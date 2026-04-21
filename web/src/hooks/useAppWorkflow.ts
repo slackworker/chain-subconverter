@@ -121,12 +121,24 @@ function mergeMessages(...messageGroups: Message[][]): Message[] {
 	});
 }
 
-function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined, preferShortUrl = false) {
+function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined) {
 	return {
 		longUrl,
 		shortUrl: shortUrl ?? null,
-		preferShortUrl: preferShortUrl && Boolean(shortUrl),
 	};
+}
+
+function getDisplayedGeneratedUrl(
+	generatedUrls: typeof initialAppState.generatedUrls,
+	preferShortUrl: boolean,
+) {
+	if (generatedUrls === null) {
+		return "";
+	}
+	if (preferShortUrl && generatedUrls.shortUrl) {
+		return generatedUrls.shortUrl;
+	}
+	return generatedUrls.longUrl;
 }
 
 function getModeOptions(stage2Init: Stage2Init | null) {
@@ -431,10 +443,11 @@ export function useAppWorkflow() {
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
+					preferShortUrl: Boolean(restoreResponse.shortUrl),
 					stage1Input: restoreResponse.stage1Input,
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
+					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
@@ -449,10 +462,11 @@ export function useAppWorkflow() {
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
+					preferShortUrl: Boolean(restoreResponse.shortUrl),
 					stage1Input: restoreResponse.stage1Input,
 					stage2Init: convertResponse.stage2Init,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
+					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
@@ -464,10 +478,11 @@ export function useAppWorkflow() {
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
+					preferShortUrl: Boolean(restoreResponse.shortUrl),
 					stage1Input: restoreResponse.stage1Input,
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl, Boolean(restoreResponse.shortUrl)),
+					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
 					stage2Stale: true,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
@@ -523,6 +538,10 @@ export function useAppWorkflow() {
 	}
 
 	async function handleGenerate() {
+		const stage1Input = state.stage1Input;
+		const stage2Snapshot = state.stage2Snapshot;
+		const preferShortUrl = state.preferShortUrl;
+
 		setIsGenerating(true);
 		setState((current) => ({
 			...current,
@@ -533,17 +552,50 @@ export function useAppWorkflow() {
 
 		try {
 			const response = await postGenerate({
-				stage1Input: state.stage1Input,
-				stage2Snapshot: state.stage2Snapshot,
+				stage1Input,
+				stage2Snapshot,
 			});
-			setState((current) => ({
-				...current,
-				generatedUrls: buildGeneratedUrls(response.longUrl, null),
-				currentLinkInput: response.longUrl,
-				responseOriginStage: "stage2",
-				messages: response.messages,
-				blockingErrors: response.blockingErrors,
-			}));
+			if (!preferShortUrl) {
+				setState((current) => ({
+					...current,
+					generatedUrls: buildGeneratedUrls(response.longUrl, null),
+					currentLinkInput: response.longUrl,
+					responseOriginStage: "stage2",
+					messages: response.messages,
+					blockingErrors: response.blockingErrors,
+				}));
+				return;
+			}
+
+			setIsCreatingShortUrl(true);
+			try {
+				const shortLinkResponse = await postShortLink(response.longUrl);
+				setState((current) => ({
+					...current,
+					generatedUrls: buildGeneratedUrls(shortLinkResponse.longUrl, shortLinkResponse.shortUrl),
+					currentLinkInput: shortLinkResponse.shortUrl,
+					responseOriginStage: "stage2",
+					messages: mergeMessages(response.messages, shortLinkResponse.messages),
+					blockingErrors: shortLinkResponse.blockingErrors,
+				}));
+			} catch (error) {
+				const errorResponse = getErrorResponse(error);
+				setState((current) => ({
+					...current,
+					preferShortUrl: false,
+					generatedUrls: buildGeneratedUrls(response.longUrl, null),
+					currentLinkInput: response.longUrl,
+					responseOriginStage: "stage3",
+					messages: mergeMessages(response.messages, errorResponse?.messages ?? []),
+					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+						stageLabel: "Stage 3 / 输出区",
+						actionLabel: "创建短链接",
+						requestPath: "POST /api/short-links",
+					})],
+				}));
+			} finally {
+				setIsCreatingShortUrl(false);
+			}
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
 			setState((current) => ({
@@ -562,28 +614,26 @@ export function useAppWorkflow() {
 	}
 
 	async function handlePreferShortUrl(checked: boolean) {
-		if (state.generatedUrls === null) {
+		if (!checked) {
+			setState((current) => ({
+				...current,
+				preferShortUrl: false,
+				currentLinkInput: getDisplayedGeneratedUrl(current.generatedUrls, false) || current.currentLinkInput,
+			}));
 			return;
 		}
-		if (!checked) {
-			setState((current) => current.generatedUrls === null ? current : ({
+		if (state.generatedUrls === null) {
+			setState((current) => ({
 				...current,
-				currentLinkInput: current.generatedUrls.longUrl,
-				generatedUrls: {
-					...current.generatedUrls,
-					preferShortUrl: false,
-				},
+				preferShortUrl: true,
 			}));
 			return;
 		}
 		if (state.generatedUrls.shortUrl) {
-			setState((current) => current.generatedUrls === null ? current : ({
+			setState((current) => ({
 				...current,
-				currentLinkInput: current.generatedUrls.shortUrl ?? current.generatedUrls.longUrl,
-				generatedUrls: {
-					...current.generatedUrls,
-					preferShortUrl: true,
-				},
+				preferShortUrl: true,
+				currentLinkInput: getDisplayedGeneratedUrl(current.generatedUrls, true) || current.currentLinkInput,
 			}));
 			return;
 		}
@@ -591,6 +641,7 @@ export function useAppWorkflow() {
 		setIsCreatingShortUrl(true);
 		setState((current) => ({
 			...current,
+			preferShortUrl: true,
 			responseOriginStage: "stage3",
 			messages: [],
 			blockingErrors: [],
@@ -600,7 +651,7 @@ export function useAppWorkflow() {
 			const response = await postShortLink(state.generatedUrls.longUrl);
 			setState((current) => ({
 				...current,
-				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl, true),
+				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl),
 				currentLinkInput: response.shortUrl,
 				responseOriginStage: "stage3",
 				messages: response.messages,
@@ -610,6 +661,7 @@ export function useAppWorkflow() {
 			const errorResponse = getErrorResponse(error);
 			setState((current) => ({
 				...current,
+				preferShortUrl: false,
 				responseOriginStage: "stage3",
 				messages: errorResponse?.messages ?? [],
 				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {

@@ -5,11 +5,11 @@ export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
 export interface GeneratedUrls {
 	longUrl: string;
 	shortUrl: string | null;
-	preferShortUrl: boolean;
 }
 
 export interface AppState {
 	currentLinkInput: string;
+	preferShortUrl: boolean;
 	stage1Input: Stage1Input;
 	stage2Init: Stage2Init | null;
 	stage2Snapshot: Stage2Snapshot;
@@ -38,6 +38,7 @@ export const initialStage1Input: Stage1Input = {
 
 export const initialAppState: AppState = {
 	currentLinkInput: "",
+	preferShortUrl: false,
 	stage1Input: initialStage1Input,
 	stage2Init: null,
 	stage2Snapshot: {
