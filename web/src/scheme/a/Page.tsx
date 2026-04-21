@@ -205,7 +205,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
 
-	const preferShort = state.generatedUrls?.preferShortUrl ?? false;
+	const preferShort = state.preferShortUrl;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
 	const stage1Empty =
 		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === "";
@@ -839,39 +839,41 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						<StatusPill label={stage3Status.label} tone={stage3Status.tone} />
 					</div>
 
-					<label className="a-field" htmlFor="a-current-link">
-						<span className="a-field-label">当前链接（展示值与反向解析输入）</span>
-						<input
-							id="a-current-link"
-							className={`a-input a-input--mono ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
-							type="url"
-							value={state.currentLinkInput}
-							onChange={(event) => setCurrentLinkInput(event.target.value)}
-							placeholder="生成或粘贴 longUrl / shortUrl"
-							autoComplete="off"
-							aria-invalid={currentLinkFieldErrors.length > 0 ? true : undefined}
-							aria-describedby={currentLinkFieldErrors.length > 0 ? currentLinkErrorId : undefined}
-						/>
+					<div className="a-field">
+						<label className="a-field-label" htmlFor="a-current-link">
+							当前链接（展示值与反向解析输入）
+						</label>
+						<div className="a-current-link-row">
+							<input
+								id="a-current-link"
+								className={`a-input a-input--mono ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
+								type="url"
+								value={state.currentLinkInput}
+								onChange={(event) => setCurrentLinkInput(event.target.value)}
+								placeholder="生成或粘贴 longUrl / shortUrl"
+								autoComplete="off"
+								aria-invalid={currentLinkFieldErrors.length > 0 ? true : undefined}
+								aria-describedby={currentLinkFieldErrors.length > 0 ? currentLinkErrorId : undefined}
+							/>
+							<label className="a-check a-check--block a-check--switch">
+								<input
+									className="a-switch__input"
+									type="checkbox"
+									checked={preferShort}
+									disabled={isGenerating || isCreatingShortUrl}
+									onChange={(event) => void handlePreferShortUrl(event.target.checked)}
+								/>
+								<span className="a-switch" aria-hidden />
+								短链接
+								{isCreatingShortUrl ? <span className="a-inline-muted">（创建短链中…）</span> : null}
+							</label>
+						</div>
 						{currentLinkFieldErrors.length > 0 ? (
 							<p id={currentLinkErrorId} className="a-sr-only" role="status">
 								{LOCAL_ERROR_ARIA_HINT}
 							</p>
 						) : null}
-					</label>
-
-					{state.generatedUrls ? (
-						<label className="a-check a-check--block">
-							<input
-								type="checkbox"
-								checked={preferShort}
-								disabled={isCreatingShortUrl}
-								onChange={(event) => void handlePreferShortUrl(event.target.checked)}
-							/>
-							使用短链接展示
-							{isCreatingShortUrl ? <span className="a-inline-muted">（创建短链中…）</span> : null}
-							{hasShort ? null : preferShort ? <span className="a-inline-muted">（将请求创建短链）</span> : null}
-						</label>
-					) : null}
+					</div>
 
 					<div className="a-output-actions">
 						<button type="button" className="a-btn a-btn--secondary" onClick={outputActions.openCurrentLink}>
