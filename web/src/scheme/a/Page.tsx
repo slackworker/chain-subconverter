@@ -443,7 +443,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									transitRawText: next,
 								}))
 							}
-							placeholder="中转订阅、节点 URI 或 data:text/plain,..."
+							placeholder="机场订阅、节点 URI 或 data:text/plain,..."
 							bottomLeftContent={
 								state.stage1Input.forwardRelayItems.length > 0 ? (
 									<ul className={`a-tag-list ${forwardRelayErrors.length > 0 ? "a-tag-list--error" : ""}`} aria-label="端口转发标签">
