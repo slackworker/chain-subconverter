@@ -338,6 +338,9 @@ export function useAppWorkflow() {
 			const changedFields = getChangedStage1Fields(current.stage1Input, nextStage1Input);
 			const becomesStale = current.stage2Snapshot.rows.length > 0;
 			let blockingErrors = clearStage1FieldErrors(current.blockingErrors, changedFields);
+			if (changedFields.length > 0 && current.responseOriginStage === "stage1") {
+				blockingErrors = [];
+			}
 			if (becomesStale) {
 				blockingErrors = clearBlockingErrorsSupersededByStage2Stale(blockingErrors, current.responseOriginStage);
 			}
