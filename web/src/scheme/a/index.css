@@ -133,6 +133,65 @@
 	box-shadow: 0 8px 32px rgba(28, 25, 21, 0.14), var(--shadow);
 }
 
+/* 阶段操作区旁反馈条：与按钮同排（窄屏自动换行）；danger / warning 仅配色不同 */
+.a-stage-feedback-strip {
+	display: inline-flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.4rem 0.65rem;
+	margin: 0;
+	padding: 0.35rem 0.6rem;
+	max-width: 100%;
+	min-width: 0;
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	font-size: 0.88rem;
+	line-height: 1.35;
+}
+
+.a-stage-feedback-strip--danger {
+	border: 1px solid #f1c4c8;
+	background: #fff8f8;
+	color: var(--color-danger);
+}
+
+.a-stage-feedback-strip--warning {
+	border: 1px solid #f0d3a4;
+	background: #fff4e5;
+	color: #6b3f0a;
+}
+
+.a-stage-feedback-strip__stage {
+	flex-shrink: 0;
+	padding: 0.1rem 0.45rem;
+	border-radius: 999px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}
+
+.a-stage-feedback-strip--danger .a-stage-feedback-strip__stage {
+	background: rgba(163, 15, 30, 0.08);
+	color: #8b101c;
+}
+
+.a-stage-feedback-strip--warning .a-stage-feedback-strip__stage {
+	background: rgba(139, 89, 16, 0.12);
+	color: #6b3f0a;
+}
+
+.a-stage-feedback-strip__msg {
+	min-width: 0;
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.5rem;
+	align-items: baseline;
+}
+
+.a-stage-feedback-strip__line:not(:last-child)::after {
+	content: "；";
+}
+
 .a-panel__title {
 	margin: 0 0 0.35rem;
 	font-size: 1rem;
@@ -423,6 +482,11 @@
 	min-height: 9rem;
 }
 
+.a-lined-input--error {
+	border-color: #e3a3ab;
+	box-shadow: inset 0 0 0 1px rgba(163, 15, 30, 0.16);
+}
+
 .a-lined-input__bottom-left {
 	padding-left: 0.2rem;
 }
@@ -474,6 +538,16 @@
 .a-input:focus {
 	border-color: var(--color-accent);
 	box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.a-input--error {
+	border-color: #e3a3ab;
+	background: #fff8f8;
+}
+
+.a-input--error:focus {
+	border-color: var(--color-danger);
+	box-shadow: 0 0 0 3px rgba(163, 15, 30, 0.14);
 }
 
 .a-inline-actions {
@@ -566,6 +640,12 @@
 	list-style: none;
 }
 
+.a-tag-list--error {
+	outline: 1px solid #e3a3ab;
+	outline-offset: 2px;
+	border-radius: 8px;
+}
+
 .a-tag-chip {
 	display: inline-flex;
 	align-items: center;
@@ -622,10 +702,13 @@
 	margin-top: 1rem;
 }
 
-.a-stale-hint {
-	margin: 0;
-	font-size: 0.88rem;
-	color: #8a4b10;
+.a-stage-actions__feedback {
+	flex: 1 1 12rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	align-items: stretch;
+	min-width: 0;
 }
 
 .a-conflict-banner {
@@ -657,6 +740,10 @@
 	text-align: left;
 	vertical-align: top;
 	border-bottom: 1px solid var(--color-line);
+}
+
+.a-table__row--error td {
+	background: #fff8f8;
 }
 
 .a-table th {

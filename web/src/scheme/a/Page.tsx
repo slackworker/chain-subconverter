@@ -1,7 +1,10 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
-import { getFieldErrors } from "../../lib/notices";
+import {
+	getGlobalPrimaryBlockingErrors,
+	getOriginStageLabel,
+} from "../../lib/notices";
 import {
 	addForwardRelayItem,
 	appendManualSocks5ToStage1Input,
@@ -16,6 +19,7 @@ import "./index.css";
 
 const DEFAULT_TEMPLATE_HINT =
 	"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
+const LOCAL_ERROR_ARIA_HINT = "该位置存在错误，请查看当前阶段反馈条。";
 
 function schemeHref(schemeId: string) {
 	const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -47,6 +51,31 @@ function BlockingPanel({
 					))}
 				</ul>
 			</section>
+		</div>
+	);
+}
+
+/** 与 spec「originStage 内主反馈」一致：主阻断摘要锚在阶段动作区，不用顶部全局 flyout；字段/行内 scope 提示仍单独展示（见 04-business-rules 局部提示规则）。 */
+function OriginAnchoredBlockingStrip({
+	errors,
+	stageLabel,
+}: {
+	errors: { code: string; message: string }[];
+	stageLabel?: string;
+}) {
+	if (errors.length === 0) {
+		return null;
+	}
+	return (
+		<div className="a-stage-feedback-strip a-stage-feedback-strip--danger" role="status" aria-live="polite">
+			<span className="a-stage-feedback-strip__stage">{stageLabel ?? "当前阶段"}</span>
+			<span className="a-stage-feedback-strip__msg">
+				{errors.map((error) => (
+					<span key={`${error.code}:${error.message}`} className="a-stage-feedback-strip__line">
+						{error.message}
+					</span>
+				))}
+			</span>
 		</div>
 	);
 }
@@ -128,12 +157,15 @@ function MessagesPanel({ messages }: { messages: { level: string; message: strin
 	);
 }
 
-export function AAppPage({ workflow, outputActions }: AppPageProps) {
+export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlacement }: AppPageProps) {
 	const {
 		state,
 		stage2Rows,
 		modeOptions,
+		originStageLabel,
 		responseOriginStage,
+		visibleMessages,
+		shouldShowStage2StaleNotice,
 		isConverting,
 		isRestoring,
 		isGenerating,
@@ -144,10 +176,13 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 		stage1Status,
 		stage2Status,
 		stage3Status,
+		setCurrentLinkInput,
 		updateStage1Input,
+		getStage1FieldErrors,
+		getStage3FieldErrors,
 		getStage2RowMeta,
 		getStage2RowErrors,
-		getStageMessages,
+		getPrimaryBlockingErrorsForStage,
 		getChainTargetChoiceGroups,
 		getForwardRelayChoices,
 		handleStage1Convert,
@@ -170,32 +205,29 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
 
-	const globalErrors = useMemo(() => state.blockingErrors.filter((error) => error.scope === "global"), [state.blockingErrors]);
-
-	const stageLabel = useMemo(() => {
-		if (responseOriginStage === "stage1") {
-			return "阶段 1";
-		}
-		if (responseOriginStage === "stage2") {
-			return "阶段 2";
-		}
-		if (responseOriginStage === "stage3") {
-			return "阶段 3";
-		}
-		return undefined;
-	}, [responseOriginStage]);
-
-	const visibleMessages = useMemo(() => {
-		if (responseOriginStage === null) {
-			return state.messages;
-		}
-		return getStageMessages(responseOriginStage);
-	}, [responseOriginStage, state.messages, getStageMessages]);
-
 	const preferShort = state.generatedUrls?.preferShortUrl ?? false;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
 	const stage1Empty =
 		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === "";
+
+	const stage1PrimaryBlockingErrors = getPrimaryBlockingErrorsForStage("stage1");
+	const stage2PrimaryBlockingErrors = state.stage2Stale || isConflictReadonly ? [] : getPrimaryBlockingErrorsForStage("stage2");
+	const stage3PrimaryBlockingErrors = getPrimaryBlockingErrorsForStage("stage3");
+	const globalPrimaryBlockingErrors = getGlobalPrimaryBlockingErrors(
+		state.blockingErrors,
+		responseOriginStage,
+		primaryBlockingFeedbackPlacement,
+	);
+	const showGlobalBlockingFlyout = globalPrimaryBlockingErrors.length > 0;
+	const landingFieldErrors = getStage1FieldErrors("landingRawText");
+	const transitFieldErrors = getStage1FieldErrors("transitRawText");
+	const forwardRelayErrors = getStage1FieldErrors("forwardRelayItems");
+	const configFieldErrors = getStage1FieldErrors("config");
+	const currentLinkFieldErrors = getStage3FieldErrors("currentLinkInput");
+	const landingErrorId = `${stage1Id}-landing-error`;
+	const transitErrorId = `${stage1Id}-transit-error`;
+	const configErrorId = `${stage1Id}-config-error`;
+	const currentLinkErrorId = "a-current-link-error";
 
 	function submitSocks5() {
 		try {
@@ -301,7 +333,9 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 				</nav>
 			</header>
 
-			<BlockingPanel globalErrors={globalErrors} stageLabel={stageLabel} />
+			{showGlobalBlockingFlyout ? (
+				<BlockingPanel globalErrors={globalPrimaryBlockingErrors} stageLabel={originStageLabel} />
+			) : null}
 			<MessagesPanel messages={visibleMessages} />
 
 			<main className="a-main">
@@ -333,6 +367,9 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 								}))
 							}
 							placeholder="订阅 URL 或节点 URI，每行一条"
+							hasError={landingFieldErrors.length > 0}
+							errorId={landingErrorId}
+							errorText={landingFieldErrors[0]?.message}
 						/>
 						<LineNumberTextarea
 							id={`${stage1Id}-transit`}
@@ -352,7 +389,7 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 							placeholder="中转订阅、节点 URI 或 data:text/plain,..."
 							bottomLeftContent={
 								state.stage1Input.forwardRelayItems.length > 0 ? (
-									<ul className="a-tag-list" aria-label="端口转发标签">
+									<ul className={`a-tag-list ${forwardRelayErrors.length > 0 ? "a-tag-list--error" : ""}`} aria-label="端口转发标签">
 										{state.stage1Input.forwardRelayItems.map((item, index) => (
 											<li key={`${item}-${index}`} className="a-tag-chip">
 												<span className="a-tag-chip__text">{item}</span>
@@ -371,18 +408,11 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 									</ul>
 								) : null
 							}
+							hasError={transitFieldErrors.length > 0}
+							errorId={transitErrorId}
+							errorText={transitFieldErrors[0]?.message}
 						/>
 					</div>
-
-					{getFieldErrors(state.blockingErrors, "landingRawText").length > 0 ? (
-						<p className="a-field-error">{getFieldErrors(state.blockingErrors, "landingRawText").map((error) => error.message).join(" ")}</p>
-					) : null}
-					{getFieldErrors(state.blockingErrors, "transitRawText").length > 0 ? (
-						<p className="a-field-error">{getFieldErrors(state.blockingErrors, "transitRawText").map((error) => error.message).join(" ")}</p>
-					) : null}
-					{getFieldErrors(state.blockingErrors, "forwardRelayItems").length > 0 ? (
-						<p className="a-field-error">{getFieldErrors(state.blockingErrors, "forwardRelayItems").map((error) => error.message).join(" ")}</p>
-					) : null}
 
 					<div className="a-advanced">
 						<button type="button" className="a-advanced__toggle" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
@@ -398,7 +428,7 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 										</span>
 									</span>
 									<input
-										className="a-input"
+										className={`a-input ${configFieldErrors.length > 0 ? "a-input--error" : ""}`}
 										type="text"
 										value={state.stage1Input.advancedOptions.config ?? ""}
 										onChange={(event) =>
@@ -411,7 +441,14 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 											}))
 										}
 										placeholder="请使用带地域分组的模板，留空将使用推荐的 Aethersailor 模板"
+										aria-invalid={configFieldErrors.length > 0 ? true : undefined}
+										aria-describedby={configFieldErrors.length > 0 ? configErrorId : undefined}
 									/>
+									{configFieldErrors.length > 0 ? (
+										<p id={configErrorId} className="a-sr-only" role="status">
+											{LOCAL_ERROR_ARIA_HINT}
+										</p>
+									) : null}
 								</label>
 
 								<div className="a-advanced__row-tags">
@@ -497,8 +534,18 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 						<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
 							{isConverting ? "转换中…" : "转换并自动填充"}
 						</button>
-						{state.stage2Stale && stage2Rows.length > 0 ? (
-							<p className="a-stale-hint">阶段 1 已变更：请重新执行转换后再生成链接。</p>
+						{(stage1PrimaryBlockingErrors.length > 0 || shouldShowStage2StaleNotice) ? (
+							<div className="a-stage-actions__feedback">
+								{stage1PrimaryBlockingErrors.length > 0 ? (
+									<OriginAnchoredBlockingStrip errors={stage1PrimaryBlockingErrors} stageLabel={originStageLabel} />
+								) : null}
+								{shouldShowStage2StaleNotice ? (
+									<div className="a-stage-feedback-strip a-stage-feedback-strip--warning" role="status">
+										<span className="a-stage-feedback-strip__stage">{getOriginStageLabel("stage1")}</span>
+										<span className="a-stage-feedback-strip__msg">已变更：请重新执行转换后再生成链接。</span>
+									</div>
+								) : null}
+							</div>
 						) : null}
 					</div>
 				</section>
@@ -557,20 +604,14 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 										const editable = isStage2Editable;
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
+										const rowErrorId = `a-s2-row-error-${rowIndex}`;
 
 										return (
-											<tr key={row.landingNodeName}>
+											<tr key={row.landingNodeName} className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
 												<td>
 													<div className="a-cell-name">{row.landingNodeName}</div>
 													{meta?.restrictedModes && Object.keys(meta.restrictedModes).length > 0 ? (
 														<p className="a-cell-meta">本行存在模式限制，详见下拉禁用项提示。</p>
-													) : null}
-													{rowErrors.length > 0 ? (
-														<ul className="a-row-errors">
-															{rowErrors.map((error) => (
-																<li key={`${error.code}:${error.message}`}>{error.message}</li>
-															))}
-														</ul>
 													) : null}
 												</td>
 												<td>
@@ -582,7 +623,13 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 															className="a-select"
 															value={row.mode}
 															disabled={!editable}
-															aria-describedby={activeModeWarning ? modeWarnId : undefined}
+															aria-invalid={rowErrors.length > 0 ? true : undefined}
+															aria-describedby={[
+																activeModeWarning ? modeWarnId : null,
+																rowErrors.length > 0 ? rowErrorId : null,
+															]
+																.filter(Boolean)
+																.join(" ") || undefined}
 															onChange={(event) =>
 																handleModeChange(
 																	row.landingNodeName,
@@ -738,6 +785,8 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 															className="a-select"
 															value={row.targetName ?? ""}
 															disabled={!editable || row.mode === "none"}
+															aria-invalid={rowErrors.length > 0 ? true : undefined}
+															aria-describedby={rowErrors.length > 0 ? rowErrorId : undefined}
 															onChange={(event) =>
 																handleTargetChange(
 																	row.landingNodeName,
@@ -753,6 +802,11 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 															))}
 														</select>
 													)}
+													{rowErrors.length > 0 ? (
+														<p id={rowErrorId} className="a-sr-only" role="status">
+															{LOCAL_ERROR_ARIA_HINT}
+														</p>
+													) : null}
 												</td>
 											</tr>
 										);
@@ -766,6 +820,11 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
 							{isGenerating ? "生成中…" : "生成链接"}
 						</button>
+						{stage2PrimaryBlockingErrors.length > 0 ? (
+							<div className="a-stage-actions__feedback">
+								<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={originStageLabel} />
+							</div>
+						) : null}
 					</div>
 				</section>
 
@@ -784,13 +843,20 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 						<span className="a-field-label">当前链接（展示值与反向解析输入）</span>
 						<input
 							id="a-current-link"
-							className="a-input a-input--mono"
+							className={`a-input a-input--mono ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
 							type="url"
 							value={state.currentLinkInput}
-							onChange={(event) => workflow.setCurrentLinkInput(event.target.value)}
+							onChange={(event) => setCurrentLinkInput(event.target.value)}
 							placeholder="生成或粘贴 longUrl / shortUrl"
 							autoComplete="off"
+							aria-invalid={currentLinkFieldErrors.length > 0 ? true : undefined}
+							aria-describedby={currentLinkFieldErrors.length > 0 ? currentLinkErrorId : undefined}
 						/>
+						{currentLinkFieldErrors.length > 0 ? (
+							<p id={currentLinkErrorId} className="a-sr-only" role="status">
+								{LOCAL_ERROR_ARIA_HINT}
+							</p>
+						) : null}
 					</label>
 
 					{state.generatedUrls ? (
@@ -821,6 +887,14 @@ export function AAppPage({ workflow, outputActions }: AppPageProps) {
 							{isRestoring ? "反向解析中…" : "反向解析"}
 						</button>
 					</div>
+
+					{stage3PrimaryBlockingErrors.length > 0 ? (
+						<div className="a-stage-actions">
+							<div className="a-stage-actions__feedback">
+								<OriginAnchoredBlockingStrip errors={stage3PrimaryBlockingErrors} stageLabel={originStageLabel} />
+							</div>
+						</div>
+					) : null}
 
 					{outputActions.copyState === "done" ? <p className="a-toast a-toast--ok">已复制到剪贴板</p> : null}
 					{outputActions.copyState === "failed" ? <p className="a-toast a-toast--err">复制失败，请检查权限或手动复制</p> : null}
