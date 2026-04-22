@@ -440,6 +440,12 @@
 	margin-bottom: 0.75rem;
 }
 
+.a-field--socks-uri-divider {
+	border-top: 1px dashed var(--color-line);
+	padding-top: 0.35rem;
+	margin-top: 0.15rem;
+}
+
 .a-field--inline {
 	flex-direction: row;
 	align-items: center;
@@ -1202,8 +1208,20 @@ select.a-select {
 .a-output-actions {
 	display: flex;
 	flex-wrap: wrap;
+	width: 100%;
 	gap: 0.5rem;
 	margin-top: 0.75rem;
+	--a-output-secondary-max-width: 6.5rem;
+}
+
+.a-output-actions > .a-btn--secondary {
+	flex: 1 1 0;
+	min-width: 0;
+	max-width: var(--a-output-secondary-max-width);
+}
+
+.a-output-actions > :last-child {
+	margin-left: auto;
 }
 
 .a-inline-muted {

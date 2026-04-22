@@ -20,6 +20,15 @@ import "./index.css";
 const DEFAULT_TEMPLATE_HINT =
 	"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
 const LOCAL_ERROR_ARIA_HINT = "该位置存在错误，请查看当前阶段反馈条。";
+const MODE_LABELS: Record<string, string> = {
+	none: "不配置",
+	chain: "链式代理",
+	port_forward: "端口转发",
+};
+
+function getModeLabel(mode: string) {
+	return MODE_LABELS[mode] ?? mode;
+}
 
 function appendMultilineLine(currentValue: string, nextLine: string) {
 	if (currentValue === "") {
@@ -152,7 +161,7 @@ function MessagesPanel({ messages }: { messages: { level: string; message: strin
 						))}
 					</ul>
 				) : (
-					<p className="a-messages__empty">当前阶段后端未返回 messages（这通常是正常情况）</p>
+					<p className="a-messages__empty">当前阶段后端未返回 messages</p>
 				)}
 			</section>
 		</div>
@@ -288,16 +297,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	function submitPortForwardTags() {
 		const nextTags = portForwardDraftTags ?? [];
 		try {
-			updateStage1Input((current) => {
-				const withAppendedTags = nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), current);
-				return {
-					...withAppendedTags,
-					advancedOptions: {
-						...withAppendedTags.advancedOptions,
-						enablePortForward: true,
-					},
-				};
-			});
+			const nextStage1Input = nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), state.stage1Input);
+			updateStage1Input(() => ({
+				...nextStage1Input,
+				advancedOptions: {
+					...nextStage1Input.advancedOptions,
+					enablePortForward: true,
+				},
+			}));
 			setPortForwardDraftTags([]);
 			setPortForwardError(null);
 			closePortForwardModal();
@@ -346,7 +353,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<div className="a-header__brand">
 					<p className="a-eyebrow">Chain Subconverter</p>
 					<h1 className="a-title">链式代理 · 订阅转换</h1>
-					<p className="a-lede">交互式 链式代理 · 订阅转换工具 for Mihomo</p>
+					<p className="a-lede">交互式 链式代理 · 订阅转换 for Mihomo</p>
 				</div>
 				<nav className="a-scheme-nav" aria-label="快捷操作">
 					<button
@@ -493,7 +500,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								<label className="a-field a-field--inline">
 									<span className="a-field-label">
 										订阅转换模板{" "}
-										<span className="a-hint" title={`又名远程配置; 默认模板：${DEFAULT_TEMPLATE_HINT}`} aria-label="模板 URL 说明">
+										<span className="a-hint" title={`远程配置; 缺省模板：${DEFAULT_TEMPLATE_HINT}`} aria-label="模板 URL 说明">
 											?
 										</span>
 									</span>
@@ -711,6 +718,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 															{modeOptions.map((mode) => {
 																const restriction = meta?.restrictedModes?.[mode];
 																const modeWarn = meta?.modeWarnings?.[mode];
+																const label = getModeLabel(mode);
 																return (
 																	<option
 																		key={mode}
@@ -718,7 +726,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																		disabled={Boolean(restriction)}
 																		title={modeWarn && !restriction ? modeWarn.reasonText : undefined}
 																	>
-																		{restriction ? `${mode}（${restriction.reasonText}）` : mode}
+																		{restriction ? `${label}（${restriction.reasonText}）` : label}
 																	</option>
 																);
 															})}
@@ -913,14 +921,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							<h2 id="a-stage3-h" className="a-stage__title">
 								阶段 3 · 输出
 							</h2>
-							<p className="a-stage__desc">打开、复制、下载 生成的订阅链接；亦可粘贴已有链接进行反向解析恢复配置</p>
+							<p className="a-stage__desc">打开、复制、下载 生成的订阅链接；输入已有链接进行反向解析</p>
 						</div>
 						<StatusPill label={stage3Status.label} tone={stage3Status.tone} />
 					</div>
 
 					<div className="a-field">
 						<label className="a-field-label" htmlFor="a-current-link">
-							当前链接（展示值与反向解析输入）
+							当前链接
 						</label>
 						<div className="a-current-link-row">
 							<input
@@ -992,7 +1000,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						onClick={(event) => event.stopPropagation()}
 					>
 						<h2 id="a-socks-title" className="a-modal__title">
-							手动添加 SOCKS5 节点
+							添加 / 转换 SOCKS5 节点
 						</h2>
 						<div className="a-modal__grid">
 							<label className="a-field">
@@ -1040,8 +1048,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									/>
 								</label>
 							</div>
-							<label className="a-field">
-								<span className="a-field-label">SOCKS5 URI（可选）</span>
+							<label className="a-field a-field--socks-uri-divider">
+								<span className="a-field-label">SOCKS5 URI（转换为可解析格式）</span>
 								<input
 									className="a-input"
 									value={socksURI}
@@ -1063,7 +1071,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								取消
 							</button>
 							<button type="button" className="a-btn a-btn--primary" onClick={submitSocks5}>
-								追加
+								添加
 							</button>
 						</div>
 					</div>
@@ -1079,10 +1087,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						onClick={(event) => event.stopPropagation()}
 					>
 						<h2 id="a-port-forward-title" className="a-modal__title">
-							添加端口转发标签
+							添加端口转发服务（实验性）
 						</h2>
 						<TagField
-							label="端口转发（支持多个 tag）"
+							label="转发信息"
 							values={portForwardDraftTags}
 							onChange={(next) => {
 								setPortForwardDraftTags(next);
@@ -1090,7 +1098,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									setPortForwardError(null);
 								}
 							}}
-							placeholder="输入 server:port 后按 Enter 添加"
+							placeholder="输入 server:port ，按 Enter 添加多个"
 						/>
 						{portForwardError ? <p className="a-field-error">{portForwardError}</p> : null}
 						<div className="a-modal__actions">
