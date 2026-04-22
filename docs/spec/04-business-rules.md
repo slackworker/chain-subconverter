@@ -148,6 +148,7 @@
 - 非法输入项报错；重复输入项报错。重复判定时，hostname 必须按 ASCII 小写归一化后与 `port` 一起比较；IPv4 按原值与 `port` 一起比较
 - 每条合法服务都必须生成唯一的规范化字面量 `server:port`：hostname 一律转为 ASCII 小写，IPv4 保持原值，`port` 一律转为无前导 `0` 的十进制字符串
 - 只要存在任一报错，阶段 1 视为失败，不产出 `stage2Init.forwardRelays[]`
+- 前端可复用本节同一语法与规范化口径做录入期预校验，但不得以 UI 预校验替代后端在阶段 1 的最终裁决
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 
 ### 1.2 输出

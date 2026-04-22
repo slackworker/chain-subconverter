@@ -89,12 +89,14 @@
 
 - 仅支持手动添加 SOCKS5 类型的节点
 - `username` 与 `password` 必须成对出现
+- `server`、`port` 的录入合法性必须在前端共享层统一校验：`server` 只允许 IPv4 或 ASCII 域名，`port` 只允许 `1-65535` 的十进制整数
 - 表单应提供可选 `socks5://` URI 粘贴输入框；当前端收到该 URI 时，必须先解析为 `name/server/port/username/password`，再允许用户确认或补充后提交
 - 弹窗字段布局建议为四行：第一行 `name`；第二行左 `server` / 右 `port`；第三行左 `username` / 右 `password`；第四行 `socks5://` URI（可选）
 - `socks5://` URI 输入框不单独提供提交按钮，与分字段输入共用同一个提交动作
 - 提交后必须转换为一条 `subconverter` 可解析的 SOCKS URI 追加到落地输入区
 - 提交时必须统一编码为 `tg://socks?server=<server>&port=<port>&remarks=<name>`；若存在认证信息，则继续追加 `&user=<username>&pass=<password>`
 - 统一使用 `tg://socks` 是权威口径，不再区分 `IPv4` / 主机名，也不再生成 `socks://<base64>`；原因是 `subconverter` 已正式支持 Telegram 风格 SOCKS 源，且该格式可以规避当前 `socks://<base64>` 在“域名 + 认证”等组合上的解析局限
+- 方案层只负责表单交互、错误展示、弹窗开关与提交时机；`server` / `port` 的共享合法性规则不得散落在单一 UI 方案组件内重复实现
 
 #### 1.1.2 落地副本
 
@@ -119,6 +121,7 @@
 - 关闭“启用端口转发（实验性）”时，前端必须隐藏并清空该输入区
 - 提交阶段 1 快照时，端口转发服务信息必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
 - 校验与去重口径：统一遵循 [04-business-rules](04-business-rules.md) `1.1.2 端口转发服务输入校验（权威口径）`
+- 前端可在录入或提交 TagInput 时复用同一口径做预校验，并阻止非法值进入 `forwardRelayItems`；但后端返回的校验结果仍是最终裁决
 
 ### 1.4 高级菜单区
 
