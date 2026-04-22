@@ -281,9 +281,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 			}
 		} else if containsString(finalAvailableModes, "port_forward") {
 			row.Mode = "port_forward"
-			if len(forwardRelays) == 1 {
-				row.TargetName = stringPtr(forwardRelays[0].Name)
-			}
 		}
 
 		rows = append(rows, row)

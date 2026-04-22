@@ -218,8 +218,8 @@ func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T
 	if row.Mode != "port_forward" {
 		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "port_forward")
 	}
-	if row.TargetName == nil || *row.TargetName != "relay.example.com:443" {
-		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "relay.example.com:443")
+	if row.TargetName != nil {
+		t.Fatalf("row targetName mismatch: got %v want nil", row.TargetName)
 	}
 }
 

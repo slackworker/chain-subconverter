@@ -291,8 +291,7 @@
 
 - 本规则同时适用于“初始化直接落到 `port_forward`”和“用户后续手动切换到 `port_forward`”
 - `targetName` 保存所选 `forwardRelays[].name`
-- 若 `forwardRelays[]` 中仅有 1 个服务，则 `targetName` 自动填写该服务的 `name`
-- 若 `forwardRelays[]` 中有多个服务，则 `targetName = null`，并保留完整 `forwardRelays[]` 供用户手动选择
+- `targetName` 仅允许由用户手动选择，系统不得自动填充；进入 `port_forward` 时默认 `targetName = null`，并保留完整 `forwardRelays[]` 供用户选择
 
 #### 初始化决策表
 
@@ -301,8 +300,7 @@
 | `["none"]` | 不适用 | 不适用 | `none` | `null` |
 | `["none", "chain"]` | 唯一命中 | 不适用 | `chain` | 对应区域策略组名称 |
 | `["none", "chain"]` | 未唯一命中 | 不适用 | `none` | `null` |
-| `["none", "port_forward"]` | 不适用 | `1` | `port_forward` | 唯一 relay 名称 |
-| `["none", "port_forward"]` | 不适用 | `>1` | `port_forward` | `null` |
+| `["none", "port_forward"]` | 不适用 | `>=1` | `port_forward` | `null` |
 | `["none", "chain", "port_forward"]` | 唯一命中 | 任意 | `chain` | 对应区域策略组名称 |
 | `["none", "chain", "port_forward"]` | 未唯一命中 | 任意 | `none` | `null` |
 

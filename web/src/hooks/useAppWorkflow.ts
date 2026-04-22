@@ -273,9 +273,6 @@ function pickNextTarget(stage2Init: Stage2Init | null, stage2Rows: Stage2Snapsho
 	if (choices.some((choice) => choice.value === currentTarget)) {
 		return currentTarget;
 	}
-	if (mode === "port_forward" && choices.length === 1) {
-		return choices[0].value;
-	}
 	return null;
 }
 
