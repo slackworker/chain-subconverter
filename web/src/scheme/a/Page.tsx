@@ -334,7 +334,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<div className="a-header__brand">
 					<p className="a-eyebrow">Chain Subconverter</p>
 					<h1 className="a-title">链式代理 · 订阅转换</h1>
-					<p className="a-lede">一站式 链式代理 · 订阅转换工具 for Mihomo</p>
+					<p className="a-lede">交互式 链式代理 · 订阅转换工具 for Mihomo</p>
 				</div>
 				<nav className="a-scheme-nav" aria-label="快捷操作">
 					<button
@@ -402,7 +402,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							<h2 id={`${stage1Id}-h`} className="a-stage__title">
 								阶段 1 · 输入
 							</h2>
-							<p className="a-stage__desc">输入落地与中转信息，执行转换以生成阶段 2 配置基底。</p>
+							<p className="a-stage__desc">输入落地与中转信息，执行转换以生成阶段 2 配置基底</p>
 						</div>
 						<StatusPill label={stage1Status.label} tone={stage1Status.tone} />
 					</div>
@@ -480,8 +480,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								<div className="a-advanced__body">
 								<label className="a-field a-field--inline">
 									<span className="a-field-label">
-										模板 URL（config）{" "}
-										<span className="a-hint" title={`默认推荐模板：${DEFAULT_TEMPLATE_HINT}`} aria-label="模板 URL 说明">
+										订阅转换模板{" "}
+										<span className="a-hint" title={`又名远程配置; 默认模板：${DEFAULT_TEMPLATE_HINT}`} aria-label="模板 URL 说明">
 											?
 										</span>
 									</span>
@@ -498,7 +498,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 												},
 											}))
 										}
-										placeholder="请使用带地域分组的模板，留空将使用推荐的 Aethersailor 模板"
+										placeholder="请输入带地域分组的模板URL，缺省将使用 Aethersailor 模板"
 										aria-invalid={configFieldErrors.length > 0 ? true : undefined}
 										aria-describedby={configFieldErrors.length > 0 ? configErrorId : undefined}
 									/>
@@ -615,7 +615,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							<h2 id="a-stage2-h" className="a-stage__title">
 								阶段 2 · 落地配置
 							</h2>
-							<p className="a-stage__desc">按落地节点逐行选择模式与目标；生成链接前须处于就绪且非过期状态。</p>
+							<p className="a-stage__desc">按落地节点逐行选择模式与目标</p>
 						</div>
 						<StatusPill label={stage2Status.label} tone={stage2Status.tone} />
 					</div>
@@ -846,26 +846,28 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 															</div>
 														</div>
 													) : (
-														<select
-															className="a-select"
-															value={row.targetName ?? ""}
-															disabled={!editable || row.mode === "none"}
-															aria-invalid={rowErrors.length > 0 ? true : undefined}
-															aria-describedby={rowErrors.length > 0 ? rowErrorId : undefined}
-															onChange={(event) =>
-																handleTargetChange(
-																	row.landingNodeName,
-																	event.target.value === "" ? "" : event.target.value,
-																)
-															}
-														>
-															<option value="">{row.mode === "none" ? "—" : "请选择"}</option>
-															{forwardRelayChoices.map((choice) => (
-																<option key={choice.value} value={choice.value} disabled={choice.disabled}>
-																	{choice.label}
-																</option>
-															))}
-														</select>
+														<div className="a-target-picker">
+															<select
+																className="a-select"
+																value={row.targetName ?? ""}
+																disabled={!editable || row.mode === "none"}
+																aria-invalid={rowErrors.length > 0 ? true : undefined}
+																aria-describedby={rowErrors.length > 0 ? rowErrorId : undefined}
+																onChange={(event) =>
+																	handleTargetChange(
+																		row.landingNodeName,
+																		event.target.value === "" ? "" : event.target.value,
+																	)
+																}
+															>
+																<option value="">{row.mode === "none" ? "—" : "请选择"}</option>
+																{forwardRelayChoices.map((choice) => (
+																	<option key={choice.value} value={choice.value} disabled={choice.disabled}>
+																		{choice.label}
+																	</option>
+																))}
+															</select>
+														</div>
 													)}
 													{rowErrors.length > 0 ? (
 														<p id={rowErrorId} className="a-sr-only" role="status">
@@ -897,9 +899,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					<div className="a-stage__head">
 						<div>
 							<h2 id="a-stage3-h" className="a-stage__title">
-								阶段 3 · 链接与恢复
+								阶段 3 · 输出
 							</h2>
-							<p className="a-stage__desc">当前订阅链接触发打开、复制与下载；亦可粘贴已有长/短链进行反向解析恢复。</p>
+							<p className="a-stage__desc">打开、复制、下载 生成的订阅链接；亦可粘贴已有链接进行反向解析恢复配置</p>
 						</div>
 						<StatusPill label={stage3Status.label} tone={stage3Status.tone} />
 					</div>
