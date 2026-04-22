@@ -202,6 +202,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const [socksError, setSocksError] = useState<string | null>(null);
 	const [portForwardOpen, setPortForwardOpen] = useState(false);
 	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>([]);
+	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
@@ -264,6 +265,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	}
 
 	function openPortForwardModal() {
+		setPortForwardError(null);
 		setPortForwardDraftTags([]);
 		setPortForwardOpen(true);
 	}
@@ -278,20 +280,30 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		setSocksOpen(false);
 	}
 
-	function submitPortForwardTags() {
-		const nextTags = (portForwardDraftTags ?? []).map((tag) => tag.trim()).filter((tag) => tag !== "");
-		updateStage1Input((current) => {
-			const withAppendedTags = nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), current);
-			return {
-				...withAppendedTags,
-				advancedOptions: {
-					...withAppendedTags.advancedOptions,
-					enablePortForward: true,
-				},
-			};
-		});
-		setPortForwardDraftTags([]);
+	function closePortForwardModal() {
+		setPortForwardError(null);
 		setPortForwardOpen(false);
+	}
+
+	function submitPortForwardTags() {
+		const nextTags = portForwardDraftTags ?? [];
+		try {
+			updateStage1Input((current) => {
+				const withAppendedTags = nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), current);
+				return {
+					...withAppendedTags,
+					advancedOptions: {
+						...withAppendedTags.advancedOptions,
+						enablePortForward: true,
+					},
+				};
+			});
+			setPortForwardDraftTags([]);
+			setPortForwardError(null);
+			closePortForwardModal();
+		} catch (error) {
+			setPortForwardError(error instanceof Error ? error.message : "端口转发服务校验失败");
+		}
 	}
 
 	function setSupplementOpen(landingNodeName: string, open: boolean) {
@@ -1058,7 +1070,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				</div>
 			) : null}
 			{portForwardOpen ? (
-				<div className="a-modal-backdrop" role="presentation" onClick={() => setPortForwardOpen(false)}>
+				<div className="a-modal-backdrop" role="presentation" onClick={closePortForwardModal}>
 					<div
 						className="a-modal"
 						role="dialog"
@@ -1072,11 +1084,17 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						<TagField
 							label="端口转发（支持多个 tag）"
 							values={portForwardDraftTags}
-							onChange={setPortForwardDraftTags}
+							onChange={(next) => {
+								setPortForwardDraftTags(next);
+								if (portForwardError) {
+									setPortForwardError(null);
+								}
+							}}
 							placeholder="输入 server:port 后按 Enter 添加"
 						/>
+						{portForwardError ? <p className="a-field-error">{portForwardError}</p> : null}
 						<div className="a-modal__actions">
-							<button type="button" className="a-btn a-btn--secondary" onClick={() => setPortForwardOpen(false)}>
+							<button type="button" className="a-btn a-btn--secondary" onClick={closePortForwardModal}>
 								取消
 							</button>
 							<button type="button" className="a-btn a-btn--primary" onClick={submitPortForwardTags}>
