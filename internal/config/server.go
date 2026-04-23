@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 	DefaultMaxURLsPerField        = 20
 	DefaultShortLinkDBPath        = "data/short-links.sqlite3"
 	DefaultShortLinkCapacity      = 1000
+	DefaultTemplateFetchCacheTTL  = 0 * time.Second
 
 	EnvHTTPAddress            = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL          = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
@@ -27,6 +29,7 @@ const (
 	EnvMaxURLsPerField        = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
 	EnvShortLinkDBPath        = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
 	EnvShortLinkCapacity      = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
+	EnvTemplateFetchCacheTTL  = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 )
 
 type Server struct {
@@ -39,6 +42,7 @@ type Server struct {
 	MaxURLsPerField        int
 	ShortLinkDBPath        string
 	ShortLinkCapacity      int
+	TemplateFetchCacheTTL  time.Duration
 }
 
 func DefaultServer() Server {
@@ -52,6 +56,7 @@ func DefaultServer() Server {
 		MaxURLsPerField:        DefaultMaxURLsPerField,
 		ShortLinkDBPath:        DefaultShortLinkDBPath,
 		ShortLinkCapacity:      DefaultShortLinkCapacity,
+		TemplateFetchCacheTTL:  DefaultTemplateFetchCacheTTL,
 	}
 }
 
@@ -101,6 +106,13 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.ShortLinkCapacity = shortLinkCapacity
 	}
+	if value, ok := lookupTrimmedEnv(EnvTemplateFetchCacheTTL); ok {
+		templateFetchCacheTTL, err := time.ParseDuration(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvTemplateFetchCacheTTL, err)
+		}
+		cfg.TemplateFetchCacheTTL = templateFetchCacheTTL
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return Server{}, err
@@ -129,6 +141,9 @@ func (cfg Server) Validate() error {
 	}
 	if cfg.ShortLinkCapacity <= 0 {
 		return fmt.Errorf("short link capacity must be greater than zero")
+	}
+	if cfg.TemplateFetchCacheTTL < 0 {
+		return fmt.Errorf("template fetch cache TTL must not be negative")
 	}
 
 	parsedURL, err := url.Parse(cfg.PublicBaseURL)

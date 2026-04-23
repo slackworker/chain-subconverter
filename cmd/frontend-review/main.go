@@ -127,7 +127,7 @@ func run(options reviewOptions) error {
 	}
 	defer shutdownTemplateServer()
 
-	source, err := service.NewManagedConversionSource(client, templateStore, managedTemplateBaseURL, subconverterCfg.Timeout)
+	source, err := service.NewManagedConversionSource(client, templateStore, managedTemplateBaseURL, subconverterCfg.Timeout, service.ManagedConversionSourceOptions{})
 	if err != nil {
 		return fmt.Errorf("init managed conversion source: %w", err)
 	}

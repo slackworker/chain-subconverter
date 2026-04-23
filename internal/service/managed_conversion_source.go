@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
@@ -14,14 +15,19 @@ import (
 
 const defaultTemplateConfigURL = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 
+type ManagedConversionSourceOptions struct {
+	TemplateFetchCacheTTL time.Duration
+}
+
 type ManagedConversionSource struct {
 	client                 *subconverter.Client
 	templateStore          TemplateContentStore
 	managedTemplateBaseURL *url.URL
 	httpClient             *http.Client
+	templateFetchCache     *templateFetchCache
 }
 
-func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, managedTemplateBaseURL string, templateTimeout time.Duration) (*ManagedConversionSource, error) {
+func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, managedTemplateBaseURL string, templateTimeout time.Duration, options ManagedConversionSourceOptions) (*ManagedConversionSource, error) {
 	if client == nil {
 		return nil, fmt.Errorf("conversion client must not be nil")
 	}
@@ -44,6 +50,7 @@ func NewManagedConversionSource(client *subconverter.Client, templateStore Templ
 		templateStore:          templateStore,
 		managedTemplateBaseURL: parsedBaseURL,
 		httpClient:             &http.Client{Timeout: templateTimeout},
+		templateFetchCache:     newTemplateFetchCache(options.TemplateFetchCacheTTL),
 	}, nil
 }
 
@@ -115,6 +122,16 @@ func resolveEffectiveTemplateURL(stage1Input Stage1Input) (string, error) {
 }
 
 func (source *ManagedConversionSource) fetchTemplateConfig(ctx context.Context, templateURL string) (string, error) {
+	if source.templateFetchCache != nil {
+		return source.templateFetchCache.LoadOrFetch(ctx, templateURL, func(ctx context.Context) (string, error) {
+			return source.fetchTemplateConfigFromUpstream(ctx, templateURL)
+		})
+	}
+
+	return source.fetchTemplateConfigFromUpstream(ctx, templateURL)
+}
+
+func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx context.Context, templateURL string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, templateURL, nil)
 	if err != nil {
 		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
@@ -149,4 +166,84 @@ func (source *ManagedConversionSource) buildManagedTemplateURL(id string) (strin
 	templateURL.RawQuery = ""
 	templateURL.Fragment = ""
 	return templateURL.String(), nil
+}
+
+type templateFetchCache struct {
+	ttl      time.Duration
+	now      func() time.Time
+	mu       sync.Mutex
+	entries  map[string]templateFetchCacheEntry
+	inflight map[string]*templateFetchCall
+}
+
+type templateFetchCacheEntry struct {
+	content   string
+	expiresAt time.Time
+}
+
+type templateFetchCall struct {
+	done    chan struct{}
+	content string
+	err     error
+}
+
+func newTemplateFetchCache(ttl time.Duration) *templateFetchCache {
+	if ttl <= 0 {
+		return nil
+	}
+
+	return &templateFetchCache{
+		ttl: ttl,
+		now: time.Now,
+	}
+}
+
+func (cache *templateFetchCache) LoadOrFetch(ctx context.Context, key string, fetch func(context.Context) (string, error)) (string, error) {
+	cache.mu.Lock()
+	if cache.entries != nil {
+		if entry, ok := cache.entries[key]; ok {
+			if cache.now().Before(entry.expiresAt) {
+				cache.mu.Unlock()
+				return entry.content, nil
+			}
+			delete(cache.entries, key)
+		}
+	}
+	if cache.inflight != nil {
+		if call, ok := cache.inflight[key]; ok {
+			cache.mu.Unlock()
+			select {
+			case <-call.done:
+				return call.content, call.err
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		}
+	} else {
+		cache.inflight = make(map[string]*templateFetchCall)
+	}
+
+	call := &templateFetchCall{done: make(chan struct{})}
+	cache.inflight[key] = call
+	cache.mu.Unlock()
+
+	content, err := fetch(ctx)
+
+	cache.mu.Lock()
+	delete(cache.inflight, key)
+	if err == nil {
+		if cache.entries == nil {
+			cache.entries = make(map[string]templateFetchCacheEntry)
+		}
+		cache.entries[key] = templateFetchCacheEntry{
+			content:   content,
+			expiresAt: cache.now().Add(cache.ttl),
+		}
+	}
+	call.content = content
+	call.err = err
+	close(call.done)
+	cache.mu.Unlock()
+
+	return content, err
 }

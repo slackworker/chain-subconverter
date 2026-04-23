@@ -3,6 +3,7 @@ package config
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadServerFromEnv(t *testing.T) {
@@ -34,6 +35,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvMaxLongURLLength:       " 4096 ",
 				EnvShortLinkDBPath:        "  tmp/short-links.sqlite3  ",
 				EnvShortLinkCapacity:      " 2048 ",
+				EnvTemplateFetchCacheTTL:  " 5m ",
 			},
 			want: Server{
 				HTTPAddress:            ":11300",
@@ -45,6 +47,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        "tmp/short-links.sqlite3",
 				ShortLinkCapacity:      2048,
+				TemplateFetchCacheTTL:  5 * time.Minute,
 			},
 		},
 		{
@@ -67,6 +70,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvShortLinkCapacity: "bad",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY",
+		},
+		{
+			name: "invalid template fetch cache ttl",
+			env: map[string]string{
+				EnvTemplateFetchCacheTTL: "bad",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL",
 		},
 		{
 			name: "invalid managed template base url",
@@ -220,6 +230,22 @@ func TestServerValidate(t *testing.T) {
 			},
 			wantErr: "managed template base URL must include scheme and host",
 		},
+		{
+			name: "negative template fetch cache ttl",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				TemplateFetchCacheTTL:  -1 * time.Second,
+			},
+			wantErr: "template fetch cache TTL must not be negative",
+		},
 	}
 
 	for _, tt := range tests {
@@ -254,6 +280,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvMaxURLsPerField, "")
 	t.Setenv(EnvShortLinkDBPath, "")
 	t.Setenv(EnvShortLinkCapacity, "")
+	t.Setenv(EnvTemplateFetchCacheTTL, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)

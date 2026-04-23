@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -255,7 +256,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	source, err := NewManagedConversionSource(client, templateStore, internalTemplateServer.URL, time.Second)
+	source, err := NewManagedConversionSource(client, templateStore, internalTemplateServer.URL, time.Second, ManagedConversionSourceOptions{})
 	if err != nil {
 		t.Fatalf("NewManagedConversionSource() error = %v", err)
 	}
@@ -291,6 +292,104 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 			t.Fatalf("timed out waiting for managed template fetch %d", i)
 		}
 	}
+}
+
+func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
+	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
+
+	newSource := func(t *testing.T, ttl time.Duration) *ManagedConversionSource {
+		t.Helper()
+
+		dummySubconverter := httptest.NewServer(http.NotFoundHandler())
+		defer dummySubconverter.Close()
+
+		client, err := subconverter.NewClient(config.Subconverter{
+			BaseURL:     dummySubconverter.URL + "/sub?",
+			Timeout:     time.Second,
+			MaxInFlight: 1,
+		})
+		if err != nil {
+			t.Fatalf("NewClient() error = %v", err)
+		}
+
+		source, err := NewManagedConversionSource(client, NewInMemoryTemplateContentStore(), "http://internal.example.com", time.Second, ManagedConversionSourceOptions{TemplateFetchCacheTTL: ttl})
+		if err != nil {
+			t.Fatalf("NewManagedConversionSource() error = %v", err)
+		}
+
+		return source
+	}
+
+	t.Run("disabled by default", func(t *testing.T) {
+		var hits atomic.Int32
+		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			hits.Add(1)
+			_, _ = writer.Write([]byte(templateConfig))
+		}))
+		defer templateServer.Close()
+
+		source := newSource(t, 0)
+		stage1Input := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
+
+		first, err := source.PrepareConversion(context.Background(), stage1Input)
+		if err != nil {
+			t.Fatalf("PrepareConversion() first error = %v", err)
+		}
+		defer first.Cleanup()
+
+		second, err := source.PrepareConversion(context.Background(), stage1Input)
+		if err != nil {
+			t.Fatalf("PrepareConversion() second error = %v", err)
+		}
+		defer second.Cleanup()
+
+		if got := hits.Load(); got != 2 {
+			t.Fatalf("template fetch count = %d, want 2 when cache is disabled", got)
+		}
+	})
+
+	t.Run("reuses cached template until ttl expires", func(t *testing.T) {
+		var hits atomic.Int32
+		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			hits.Add(1)
+			_, _ = writer.Write([]byte(templateConfig))
+		}))
+		defer templateServer.Close()
+
+		source := newSource(t, time.Minute)
+		currentTime := time.Unix(1700000000, 0)
+		source.templateFetchCache.now = func() time.Time {
+			return currentTime
+		}
+		stage1Input := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
+
+		first, err := source.PrepareConversion(context.Background(), stage1Input)
+		if err != nil {
+			t.Fatalf("PrepareConversion() first error = %v", err)
+		}
+		defer first.Cleanup()
+
+		second, err := source.PrepareConversion(context.Background(), stage1Input)
+		if err != nil {
+			t.Fatalf("PrepareConversion() second error = %v", err)
+		}
+		defer second.Cleanup()
+
+		if got := hits.Load(); got != 1 {
+			t.Fatalf("template fetch count after cache hit = %d, want 1", got)
+		}
+
+		currentTime = currentTime.Add(2 * time.Minute)
+		third, err := source.PrepareConversion(context.Background(), stage1Input)
+		if err != nil {
+			t.Fatalf("PrepareConversion() third error = %v", err)
+		}
+		defer third.Cleanup()
+
+		if got := hits.Load(); got != 2 {
+			t.Fatalf("template fetch count after ttl expiry = %d, want 2", got)
+		}
+	})
 }
 
 func loadThreePassResult(t *testing.T, fixtureDir string) subconverter.ThreePassResult {
