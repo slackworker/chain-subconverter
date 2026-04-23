@@ -34,7 +34,7 @@ curl http://localhost:11200/healthz
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
   - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=http://localhost:11200`
   - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
-  - `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL=5m`
+  - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`
   - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL=http://subconverter:25500/sub?`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY=1000`
@@ -47,7 +47,9 @@ curl http://localhost:11200/healthz
 
 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 默认走 Compose 内部服务地址 `http://app:11200`，供 `subconverter` 在私有网络内回取托管模板；该地址不是对外公开入口。
 
-`CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL` 控制模板上游抓取缓存的 TTL；留空或设为 `0` 表示关闭缓存，适合个人私有部署。当前 Compose preview 默认设为 `5m`，用于降低公开预览场景下对模板上游的重复请求压力。
+`CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` 控制内置默认模板的上游抓取缓存 TTL；默认即为非零值，用于降低默认路径在公开部署或意外暴露场景下对模板上游的重复请求压力。当前 Compose preview 显式设为 `5m`。
+
+`CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL` 控制其他模板 URL 的上游抓取缓存 TTL；留空或设为 `0` 表示关闭。若同时设置两个变量，内置默认模板优先使用 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL`，其他模板使用 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL`。
 
 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 推荐显式写成完整 endpoint，例如 `http://subconverter:25500/sub`。当前服务启动时会自动补全缺失的 `http://` 与 `/sub`，因此 `subconverter:25500`、`http://subconverter:25500` 也可接受；若显式提供路径前缀，例如 `http://subconverter:25500/proxy`，则会归一化为 `http://subconverter:25500/proxy/sub`。
 

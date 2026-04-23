@@ -16,6 +16,7 @@ import (
 const defaultTemplateConfigURL = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 
 type ManagedConversionSourceOptions struct {
+	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL time.Duration
 }
 
@@ -24,6 +25,7 @@ type ManagedConversionSource struct {
 	templateStore          TemplateContentStore
 	managedTemplateBaseURL *url.URL
 	httpClient             *http.Client
+	defaultTemplateFetchCache *templateFetchCache
 	templateFetchCache     *templateFetchCache
 }
 
@@ -50,6 +52,7 @@ func NewManagedConversionSource(client *subconverter.Client, templateStore Templ
 		templateStore:          templateStore,
 		managedTemplateBaseURL: parsedBaseURL,
 		httpClient:             &http.Client{Timeout: templateTimeout},
+		defaultTemplateFetchCache: newTemplateFetchCache(options.DefaultTemplateFetchCacheTTL),
 		templateFetchCache:     newTemplateFetchCache(options.TemplateFetchCacheTTL),
 	}, nil
 }
@@ -122,13 +125,20 @@ func resolveEffectiveTemplateURL(stage1Input Stage1Input) (string, error) {
 }
 
 func (source *ManagedConversionSource) fetchTemplateConfig(ctx context.Context, templateURL string) (string, error) {
-	if source.templateFetchCache != nil {
-		return source.templateFetchCache.LoadOrFetch(ctx, templateURL, func(ctx context.Context) (string, error) {
+	if cache := source.templateFetchCacheForURL(templateURL); cache != nil {
+		return cache.LoadOrFetch(ctx, templateURL, func(ctx context.Context) (string, error) {
 			return source.fetchTemplateConfigFromUpstream(ctx, templateURL)
 		})
 	}
 
 	return source.fetchTemplateConfigFromUpstream(ctx, templateURL)
+}
+
+func (source *ManagedConversionSource) templateFetchCacheForURL(templateURL string) *templateFetchCache {
+	if templateURL == defaultTemplateConfigURL && source.defaultTemplateFetchCache != nil {
+		return source.defaultTemplateFetchCache
+	}
+	return source.templateFetchCache
 }
 
 func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx context.Context, templateURL string) (string, error) {

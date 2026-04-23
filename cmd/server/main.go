@@ -45,6 +45,7 @@ func main() {
 	defer shortLinkStore.Close()
 
 	managedSource, err := service.NewManagedConversionSource(client, templateStore, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout, service.ManagedConversionSourceOptions{
+		DefaultTemplateFetchCacheTTL: serverCfg.DefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL: serverCfg.TemplateFetchCacheTTL,
 	})
 	if err != nil {

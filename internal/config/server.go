@@ -18,6 +18,7 @@ const (
 	DefaultMaxURLsPerField        = 20
 	DefaultShortLinkDBPath        = "data/short-links.sqlite3"
 	DefaultShortLinkCapacity      = 1000
+	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL  = 0 * time.Second
 
 	EnvHTTPAddress            = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
@@ -29,6 +30,7 @@ const (
 	EnvMaxURLsPerField        = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
 	EnvShortLinkDBPath        = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
 	EnvShortLinkCapacity      = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
+	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateFetchCacheTTL  = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 )
 
@@ -42,6 +44,7 @@ type Server struct {
 	MaxURLsPerField        int
 	ShortLinkDBPath        string
 	ShortLinkCapacity      int
+	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL  time.Duration
 }
 
@@ -56,6 +59,7 @@ func DefaultServer() Server {
 		MaxURLsPerField:        DefaultMaxURLsPerField,
 		ShortLinkDBPath:        DefaultShortLinkDBPath,
 		ShortLinkCapacity:      DefaultShortLinkCapacity,
+		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:  DefaultTemplateFetchCacheTTL,
 	}
 }
@@ -106,6 +110,13 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.ShortLinkCapacity = shortLinkCapacity
 	}
+	if value, ok := lookupTrimmedEnv(EnvDefaultTemplateFetchCacheTTL); ok {
+		defaultTemplateFetchCacheTTL, err := time.ParseDuration(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvDefaultTemplateFetchCacheTTL, err)
+		}
+		cfg.DefaultTemplateFetchCacheTTL = defaultTemplateFetchCacheTTL
+	}
 	if value, ok := lookupTrimmedEnv(EnvTemplateFetchCacheTTL); ok {
 		templateFetchCacheTTL, err := time.ParseDuration(value)
 		if err != nil {
@@ -141,6 +152,9 @@ func (cfg Server) Validate() error {
 	}
 	if cfg.ShortLinkCapacity <= 0 {
 		return fmt.Errorf("short link capacity must be greater than zero")
+	}
+	if cfg.DefaultTemplateFetchCacheTTL < 0 {
+		return fmt.Errorf("default template fetch cache TTL must not be negative")
 	}
 	if cfg.TemplateFetchCacheTTL < 0 {
 		return fmt.Errorf("template fetch cache TTL must not be negative")

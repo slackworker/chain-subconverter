@@ -297,7 +297,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 
-	newSource := func(t *testing.T, ttl time.Duration) *ManagedConversionSource {
+	newSource := func(t *testing.T, defaultTTL time.Duration, ttl time.Duration) *ManagedConversionSource {
 		t.Helper()
 
 		dummySubconverter := httptest.NewServer(http.NotFoundHandler())
@@ -312,7 +312,10 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 			t.Fatalf("NewClient() error = %v", err)
 		}
 
-		source, err := NewManagedConversionSource(client, NewInMemoryTemplateContentStore(), "http://internal.example.com", time.Second, ManagedConversionSourceOptions{TemplateFetchCacheTTL: ttl})
+		source, err := NewManagedConversionSource(client, NewInMemoryTemplateContentStore(), "http://internal.example.com", time.Second, ManagedConversionSourceOptions{
+			DefaultTemplateFetchCacheTTL: defaultTTL,
+			TemplateFetchCacheTTL:        ttl,
+		})
 		if err != nil {
 			t.Fatalf("NewManagedConversionSource() error = %v", err)
 		}
@@ -328,7 +331,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}))
 		defer templateServer.Close()
 
-		source := newSource(t, 0)
+		source := newSource(t, 0, 0)
 		stage1Input := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
 
 		first, err := source.PrepareConversion(context.Background(), stage1Input)
@@ -348,7 +351,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}
 	})
 
-	t.Run("reuses cached template until ttl expires", func(t *testing.T) {
+	t.Run("reuses cached custom template until ttl expires", func(t *testing.T) {
 		var hits atomic.Int32
 		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			hits.Add(1)
@@ -356,7 +359,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}))
 		defer templateServer.Close()
 
-		source := newSource(t, time.Minute)
+		source := newSource(t, 0, time.Minute)
 		currentTime := time.Unix(1700000000, 0)
 		source.templateFetchCache.now = func() time.Time {
 			return currentTime
@@ -388,6 +391,55 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 
 		if got := hits.Load(); got != 2 {
 			t.Fatalf("template fetch count after ttl expiry = %d, want 2", got)
+		}
+	})
+
+	t.Run("reuses default template with dedicated ttl while custom template stays uncached", func(t *testing.T) {
+		var hits atomic.Int32
+		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			hits.Add(1)
+			_, _ = writer.Write([]byte(templateConfig))
+		}))
+		defer templateServer.Close()
+
+		source := newSource(t, 10*time.Minute, 0)
+		currentTime := time.Unix(1700000000, 0)
+		source.defaultTemplateFetchCache.now = func() time.Time {
+			return currentTime
+		}
+
+		defaultInput := Stage1Input{}
+		firstDefault, err := source.PrepareConversion(context.Background(), defaultInput)
+		if err != nil {
+			t.Fatalf("PrepareConversion() first default error = %v", err)
+		}
+		defer firstDefault.Cleanup()
+
+		secondDefault, err := source.PrepareConversion(context.Background(), defaultInput)
+		if err != nil {
+			t.Fatalf("PrepareConversion() second default error = %v", err)
+		}
+		defer secondDefault.Cleanup()
+
+		if cache := source.templateFetchCacheForURL(defaultTemplateConfigURL); cache != source.defaultTemplateFetchCache {
+			t.Fatalf("default template cache mismatch")
+		}
+
+		customInput := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
+		firstCustom, err := source.PrepareConversion(context.Background(), customInput)
+		if err != nil {
+			t.Fatalf("PrepareConversion() first custom error = %v", err)
+		}
+		defer firstCustom.Cleanup()
+
+		secondCustom, err := source.PrepareConversion(context.Background(), customInput)
+		if err != nil {
+			t.Fatalf("PrepareConversion() second custom error = %v", err)
+		}
+		defer secondCustom.Cleanup()
+
+		if got := hits.Load(); got != 2 {
+			t.Fatalf("custom template fetch count = %d, want 2 when only default cache is enabled", got)
 		}
 	})
 }

@@ -35,6 +35,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvMaxLongURLLength:       " 4096 ",
 				EnvShortLinkDBPath:        "  tmp/short-links.sqlite3  ",
 				EnvShortLinkCapacity:      " 2048 ",
+				EnvDefaultTemplateFetchCacheTTL: " 30m ",
 				EnvTemplateFetchCacheTTL:  " 5m ",
 			},
 			want: Server{
@@ -47,6 +48,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        "tmp/short-links.sqlite3",
 				ShortLinkCapacity:      2048,
+				DefaultTemplateFetchCacheTTL: 30 * time.Minute,
 				TemplateFetchCacheTTL:  5 * time.Minute,
 			},
 		},
@@ -70,6 +72,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvShortLinkCapacity: "bad",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY",
+		},
+		{
+			name: "invalid default template fetch cache ttl",
+			env: map[string]string{
+				EnvDefaultTemplateFetchCacheTTL: "bad",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL",
 		},
 		{
 			name: "invalid template fetch cache ttl",
@@ -231,6 +240,22 @@ func TestServerValidate(t *testing.T) {
 			wantErr: "managed template base URL must include scheme and host",
 		},
 		{
+			name: "negative default template fetch cache ttl",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateFetchCacheTTL: -1 * time.Second,
+			},
+			wantErr: "default template fetch cache TTL must not be negative",
+		},
+		{
 			name: "negative template fetch cache ttl",
 			cfg: Server{
 				HTTPAddress:            DefaultHTTPAddress,
@@ -242,6 +267,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 				TemplateFetchCacheTTL:  -1 * time.Second,
 			},
 			wantErr: "template fetch cache TTL must not be negative",
@@ -280,6 +306,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvMaxURLsPerField, "")
 	t.Setenv(EnvShortLinkDBPath, "")
 	t.Setenv(EnvShortLinkCapacity, "")
+	t.Setenv(EnvDefaultTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateFetchCacheTTL, "")
 
 	for key, value := range values {
