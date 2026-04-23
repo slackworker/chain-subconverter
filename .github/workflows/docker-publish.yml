@@ -6,7 +6,26 @@ on:
       - "main"    # 当代码推送到 main 分支时触发
     tags:
       - 'v*.*.*'  # 当推送形如 v1.0.0, v1.2.3 等版本标签时触发
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build. Leave empty to build the workflow commit, or set a branch / full SHA explicitly.
+        required: false
+        default: ''
+      image_tag:
+        description: Docker image tag to publish
+        required: false
+        default: manual-preview
+      update_dev_latest:
+        description: Also publish dev-latest for the selected image build
+        required: false
+        type: boolean
+        default: false
+      trigger_render:
+        description: Trigger Render deploy hook after a successful manual build
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-and-push-main-latest: # 处理 main 分支的推送，打上 latest 标签
@@ -112,3 +131,71 @@ jobs:
         if: success() && steps.build_image_for_render.outputs.digest # 仅在镜像构建并推送成功时运行
         run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         # 确保 Render 服务配置为拉取 ghcr.io/${{ github.repository_owner }}/chain-subconverter:dev-latest
+
+  build-manual-image:
+    if: github.event_name == 'workflow_dispatch'
+    name: Build Manual Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Capture source revision
+        id: source_revision
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute manual image tags
+        id: manual_tags
+        run: |
+          image="ghcr.io/${{ github.repository_owner }}/chain-subconverter"
+          tags="${image}:${{ inputs.image_tag }}"
+          if [[ "${{ inputs.update_dev_latest }}" == "true" ]]; then
+            tags="${tags}"$'\n'"${image}:dev-latest"
+          fi
+
+          {
+            echo 'tags<<EOF'
+            printf '%s\n' "$tags"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push manual Docker image
+        id: build_manual_image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.manual_tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.source_revision.outputs.sha }}
+            org.opencontainers.image.version=${{ inputs.image_tag }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trigger Render Deploy for manual build
+        if: success() && steps.build_manual_image.outputs.digest && inputs.trigger_render
+        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
