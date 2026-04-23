@@ -340,7 +340,12 @@ func resolveManagedTemplateServer(subconverterCfg config.Subconverter) (string, 
 		return "0.0.0.0:0", "http://host.docker.internal", nil
 	}
 
-	parsedBaseURL, err := url.Parse(strings.TrimSpace(subconverterCfg.BaseURL))
+	normalizedBaseURL, err := config.NormalizeSubconverterBaseURL(subconverterCfg.BaseURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	parsedBaseURL, err := url.Parse(normalizedBaseURL)
 	if err != nil {
 		return "", "", fmt.Errorf("parse subconverter base URL: %w", err)
 	}

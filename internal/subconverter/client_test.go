@@ -144,6 +144,24 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	}
 }
 
+func TestNewClient_NormalizesBaseURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, strings.TrimPrefix(server.URL, "http://"), 2*time.Second, 10)
+	if got, want := client.baseURL.String(), server.URL+"/sub"; got != want {
+		t.Fatalf("normalized base URL mismatch: got %q want %q", got, want)
+	}
+
+	client = newTestClient(t, server.URL+"/proxy", 2*time.Second, 10)
+	if got, want := client.baseURL.String(), server.URL+"/proxy/sub"; got != want {
+		t.Fatalf("normalized prefixed base URL mismatch: got %q want %q", got, want)
+	}
+}
+
 func TestConvert_PropagatesExplicitFalseBooleanQueryParameters(t *testing.T) {
 	var got []*url.URL
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

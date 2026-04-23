@@ -25,7 +25,12 @@ func NewClient(cfg config.Subconverter) (*Client, error) {
 		return nil, err
 	}
 
-	baseURL, err := url.Parse(cfg.BaseURL)
+	normalizedBaseURL, err := config.NormalizeSubconverterBaseURL(cfg.BaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	baseURL, err := url.Parse(normalizedBaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse subconverter base URL: %w", err)
 	}

@@ -35,11 +35,40 @@ func TestLoadSubconverterFromEnv(t *testing.T) {
 			},
 		},
 		{
+			name: "normalizes missing scheme and path",
+			env: map[string]string{
+				EnvSubconverterBaseURL: "  localhost:25500  ",
+			},
+			want: Subconverter{
+				BaseURL:     "http://localhost:25500/sub",
+				Timeout:     DefaultSubconverterTimeout,
+				MaxInFlight: DefaultSubconverterMaxInFlight,
+			},
+		},
+		{
+			name: "normalizes custom prefix path",
+			env: map[string]string{
+				EnvSubconverterBaseURL: "https://sub.example.internal/proxy",
+			},
+			want: Subconverter{
+				BaseURL:     "https://sub.example.internal/proxy/sub",
+				Timeout:     DefaultSubconverterTimeout,
+				MaxInFlight: DefaultSubconverterMaxInFlight,
+			},
+		},
+		{
 			name: "invalid timeout",
 			env: map[string]string{
 				EnvSubconverterTimeout: "soon",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_SUBCONVERTER_TIMEOUT",
+		},
+		{
+			name: "invalid scheme",
+			env: map[string]string{
+				EnvSubconverterBaseURL: "ftp://localhost:25500/sub",
+			},
+			wantErr: "normalize CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: subconverter base URL must use http or https",
 		},
 		{
 			name: "invalid max in flight",
@@ -114,6 +143,15 @@ func TestSubconverterValidate(t *testing.T) {
 				MaxInFlight: -1,
 			},
 			wantErr: "subconverter maxInFlight must be greater than zero",
+		},
+		{
+			name: "missing host after normalization",
+			cfg: Subconverter{
+				BaseURL:     "http:///sub",
+				Timeout:     DefaultSubconverterTimeout,
+				MaxInFlight: DefaultSubconverterMaxInFlight,
+			},
+			wantErr: "subconverter base URL must include host",
 		},
 	}
 

@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +38,11 @@ func LoadSubconverterFromEnv() (Subconverter, error) {
 	cfg := DefaultSubconverter()
 
 	if value, ok := lookupTrimmedEnv(EnvSubconverterBaseURL); ok {
-		cfg.BaseURL = value
+		normalizedBaseURL, err := NormalizeSubconverterBaseURL(value)
+		if err != nil {
+			return Subconverter{}, fmt.Errorf("normalize %s: %w", EnvSubconverterBaseURL, err)
+		}
+		cfg.BaseURL = normalizedBaseURL
 	}
 
 	if value, ok := lookupTrimmedEnv(EnvSubconverterTimeout); ok {
@@ -66,6 +72,9 @@ func (cfg Subconverter) Validate() error {
 	if strings.TrimSpace(cfg.BaseURL) == "" {
 		return fmt.Errorf("subconverter base URL must not be empty")
 	}
+	if _, err := NormalizeSubconverterBaseURL(cfg.BaseURL); err != nil {
+		return err
+	}
 	if cfg.Timeout <= 0 {
 		return fmt.Errorf("subconverter timeout must be greater than zero")
 	}
@@ -73,6 +82,50 @@ func (cfg Subconverter) Validate() error {
 		return fmt.Errorf("subconverter maxInFlight must be greater than zero")
 	}
 	return nil
+}
+
+func NormalizeSubconverterBaseURL(rawURL string) (string, error) {
+	trimmedURL := strings.TrimSpace(rawURL)
+	if trimmedURL == "" {
+		return "", fmt.Errorf("subconverter base URL must not be empty")
+	}
+
+	candidateURL := trimmedURL
+	if !strings.Contains(candidateURL, "://") {
+		candidateURL = "http://" + candidateURL
+	}
+
+	parsedURL, err := url.Parse(candidateURL)
+	if err != nil {
+		return "", fmt.Errorf("subconverter base URL must be a valid http(s) URL, got %q", trimmedURL)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return "", fmt.Errorf("subconverter base URL must use http or https, got %q", parsedURL.Scheme)
+	}
+	if parsedURL.Host == "" {
+		return "", fmt.Errorf("subconverter base URL must include host, got %q; try %q", trimmedURL, "http://localhost:25500/sub")
+	}
+
+	parsedURL.Path = normalizeSubconverterEndpointPath(parsedURL.Path)
+	parsedURL.RawPath = ""
+	return parsedURL.String(), nil
+}
+
+func normalizeSubconverterEndpointPath(rawPath string) string {
+	trimmedPath := strings.TrimSpace(rawPath)
+	if trimmedPath == "" || trimmedPath == "/" {
+		return "/sub"
+	}
+
+	cleanPath := path.Clean(trimmedPath)
+	if !strings.HasPrefix(cleanPath, "/") {
+		cleanPath = "/" + cleanPath
+	}
+	if cleanPath == "/sub" || strings.HasSuffix(cleanPath, "/sub") {
+		return cleanPath
+	}
+
+	return strings.TrimRight(cleanPath, "/") + "/sub"
 }
 
 func lookupTrimmedEnv(key string) (string, bool) {
