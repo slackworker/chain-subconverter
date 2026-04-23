@@ -496,6 +496,56 @@ func TestBuildStage2Init_WarnsForRealityButKeepsDefaultChain(t *testing.T) {
 	}
 }
 
+func TestBuildStage2Init_HighLandingPortEmitsChainWarning(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		singleLandingFixtureWithPort("HK High Port", "ss", "🇭🇰 香港节点", 10001),
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	row := stage2Init.Rows[0]
+	warning, ok := row.ModeWarnings["chain"]
+	if !ok {
+		t.Fatalf("expected modeWarnings.chain, got %v", row.ModeWarnings)
+	}
+	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PORT" {
+		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
+	}
+	if !strings.Contains(warning.ReasonText, "10001") {
+		t.Fatalf("ReasonText should mention current landing port, got %q", warning.ReasonText)
+	}
+	if !strings.Contains(warning.ReasonText, "10000 以内端口") {
+		t.Fatalf("ReasonText should include recommended port range, got %q", warning.ReasonText)
+	}
+}
+
+func TestBuildStage2Init_HighLandingPortAndProtocolMergeChainWarnings(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		singleLandingFixtureWithPort("HK Reality High Port", "vless-reality", "🇭🇰 香港节点", 12000),
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	row := stage2Init.Rows[0]
+	warning, ok := row.ModeWarnings["chain"]
+	if !ok {
+		t.Fatalf("expected modeWarnings.chain, got %v", row.ModeWarnings)
+	}
+	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT" {
+		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
+	}
+	if !strings.Contains(warning.ReasonText, "建议 SS（AEAD）或 VMess") {
+		t.Fatalf("ReasonText should retain protocol guidance, got %q", warning.ReasonText)
+	}
+	if !strings.Contains(warning.ReasonText, "12000") {
+		t.Fatalf("ReasonText should mention current landing port, got %q", warning.ReasonText)
+	}
+}
+
 func TestParseInlineProxyList_ClassifiesVLESSRealityFromRealityOpts(t *testing.T) {
 	proxies, err := parseInlineProxyList("proxies:\n- {name: HK Reality, type: vless, server: landing.example.com, port: 443, reality-opts: {public-key: test-public-key}}\n")
 	if err != nil {
@@ -618,10 +668,14 @@ func normalizeTestFixtureNewlines(value string) string {
 }
 
 func singleLandingFixture(landingName string, landingType string, transitGroupName string) ConversionFixtures {
+	return singleLandingFixtureWithPort(landingName, landingType, transitGroupName, 443)
+}
+
+func singleLandingFixtureWithPort(landingName string, landingType string, transitGroupName string, landingPort int) ConversionFixtures {
 	transitYAML := "proxies:\n"
 	fullBaseProxyLines := []string{
 		"proxies:",
-		inlineLandingFixtureLine(landingName, landingType, true),
+		inlineLandingFixtureLineWithPort(landingName, landingType, landingPort, true),
 	}
 	if transitGroupName != "" {
 		transitYAML = "proxies:\n- {name: transit-a, type: ss}\n"
@@ -643,7 +697,7 @@ func singleLandingFixture(landingName string, landingType string, transitGroupNa
 	}
 
 	return ConversionFixtures{
-		LandingDiscoveryYAML: "proxies:\n" + inlineLandingFixtureLine(landingName, landingType, false) + "\n",
+		LandingDiscoveryYAML: "proxies:\n" + inlineLandingFixtureLineWithPort(landingName, landingType, landingPort, false) + "\n",
 		TransitDiscoveryYAML: transitYAML,
 		FullBaseYAML:         strings.Join(append(fullBaseProxyLines, append(groupLines, "")...), "\n"),
 		TemplateConfig:       defaultRegionConfig,
@@ -651,14 +705,18 @@ func singleLandingFixture(landingName string, landingType string, transitGroupNa
 }
 
 func inlineLandingFixtureLine(landingName string, landingType string, includeEndpoint bool) string {
+	return inlineLandingFixtureLineWithPort(landingName, landingType, 443, includeEndpoint)
+}
+
+func inlineLandingFixtureLineWithPort(landingName string, landingType string, landingPort int, includeEndpoint bool) string {
 	if landingType == "vless-reality" {
 		if includeEndpoint {
-			return fmt.Sprintf("- {name: %s, type: vless, server: landing.example.com, port: 443, reality-opts: {public-key: test-public-key}}", landingName)
+			return fmt.Sprintf("- {name: %s, type: vless, server: landing.example.com, port: %d, reality-opts: {public-key: test-public-key}}", landingName, landingPort)
 		}
 		return fmt.Sprintf("- {name: %s, type: vless, reality-opts: {public-key: test-public-key}}", landingName)
 	}
 	if includeEndpoint {
-		return fmt.Sprintf("- {name: %s, type: %s, server: landing.example.com, port: 443}", landingName, landingType)
+		return fmt.Sprintf("- {name: %s, type: %s, server: landing.example.com, port: %d}", landingName, landingType, landingPort)
 	}
 	return fmt.Sprintf("- {name: %s, type: %s}", landingName, landingType)
 }

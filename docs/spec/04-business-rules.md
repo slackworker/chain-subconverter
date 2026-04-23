@@ -198,6 +198,7 @@
 - 在当前规格中，`landingNodeName` 是阶段 2 快照、生成改写与恢复重放的唯一定位键
 - `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合，但必须经过与同一条转换管线 `full-base pass` 的唯一同名校验后才能固化
 - `landingNodeType` 来源于 `landing-discovery pass` 的结构化 `proxy.type` 与展示分类规则；当前只承担阶段 2 展示语义，不进入阶段 2 快照、生成改写或恢复定位键
+- 若阶段 2 的其他规则需要读取落地节点的 `server`、`port` 或同类端点字段，必须在完成上述唯一同名校验后，从匹配到的 `full-base pass` 代理对象读取；不得把 `landing-discovery pass` 中除身份与展示分类外的附加字段视为稳定契约
 - 落地节点名称的产出、重名处理与相关实现细节由 `subconverter` 服务负责；本规格不规定具体命名或消歧算法
 - 前端只消费 `stage2Init` 中返回的 `landingNodeName`，不得自行重命名、去重或补算映射
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
@@ -230,6 +231,9 @@
 - `rows[].modeWarnings` 中的模式键必须属于 `stage2Init.availableModes`
 - `rows[].modeWarnings.<mode>.reasonCode` 与 `reasonText` 都必须返回；`reasonText` 面向用户展示
 - 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点协议属于“链式代理不推荐”集合，则该行必须返回 `modeWarnings.chain`
+- 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点当前使用端口大于 `10000`，则该行必须返回 `modeWarnings.chain`，提示建议改用 `10000` 以内端口，避免部分机场屏蔽高位端口导致不通
+- 前端不得自行识别落地端口并补算该 warning；落地端口识别与 warning 组装都属于后端阶段 2 初始化职责
+- 若同一行同时命中多条 `chain` warning 条件，后端必须合并为单个 `modeWarnings.chain` 项；`reasonCode` 允许为 `DISCOURAGED_BY_LANDING_PROTOCOL`、`DISCOURAGED_BY_LANDING_PORT` 或 `DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT`
 - 当前链式代理不推荐集合为：`hysteria`、`hysteria2`、`tuic`、`wireguard`、`anytls`、`vless-reality`、`shadowtls`
 - 上述协议在当前规格中仍允许手动选择 `chain`、允许自动填充 `chain`、允许进入生成与恢复链路；warning 仅承担前端提示语义，不改变可选性
 
@@ -381,10 +385,9 @@
 - 当 `mode = port_forward` 时，将 `targetName` 按规范化 `server:port` 重新解析为 `server` 与 `port`，再用其替换该落地节点的 `server` 与 `port`
 - 仅替换 `server` 与 `port`，不联动修改其他字段
 
-### 3.5 协议限制
+### 3.5 协议与端口限制
 
-- 链式代理不推荐集合为：`hysteria`、`hysteria2`、`tuic`、`wireguard`、`anytls`、`vless-reality`、`shadowtls`
-- 上述协议在阶段 2 中仍允许选择 `chain`，但必须通过 `modeWarnings.chain` 向前端返回提示文案
+- `modeWarnings.chain` 的触发条件、`reasonCode` 取值与多条件合并规则统一以 `2.2 模式可用性与行级限制` 为准
 - 端口转发对上述协议仍只替换 `server` 与 `port`
 
 ### 3.6 最终配置交付时机

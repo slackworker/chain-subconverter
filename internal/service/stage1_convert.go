@@ -163,6 +163,7 @@ type resolvedLandingProxy struct {
 	Name         string
 	TypeLabel    string
 	ProtocolType string
+	Port         int
 }
 
 type proxyGroup struct {
@@ -175,6 +176,8 @@ type regionMatcher struct {
 	TargetName string
 	Pattern    *regexp2.Regexp
 }
+
+const recommendedChainLandingPortMax = 10000
 
 func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
@@ -261,7 +264,7 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		if len(restrictedModes) > 0 {
 			row.RestrictedModes = restrictedModes
 		}
-		modeWarnings := buildModeWarnings(landing.ProtocolType, availableModes)
+		modeWarnings := buildModeWarnings(landing.ProtocolType, landing.Port, availableModes)
 		if len(modeWarnings) > 0 {
 			row.ModeWarnings = modeWarnings
 		}
@@ -416,30 +419,68 @@ func buildRestrictedModes(_ string, _ []string) map[string]ModeRestriction {
 	return nil
 }
 
-func buildModeWarnings(landingProtocolType string, availableModes []string) map[string]ModeRestriction {
+func buildModeWarnings(landingProtocolType string, landingPort int, availableModes []string) map[string]ModeRestriction {
 	if !containsString(availableModes, "chain") {
 		return nil
 	}
-	if !isDiscouragedChainLandingProtocol(landingProtocolType) {
+	reasonCode, reasonText := buildChainModeWarning(landingProtocolType, landingPort)
+	if reasonCode == "" {
 		return nil
 	}
 	return map[string]ModeRestriction{
 		"chain": {
-			ReasonCode: "DISCOURAGED_BY_LANDING_PROTOCOL",
-			ReasonText: "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess",
+			ReasonCode: reasonCode,
+			ReasonText: reasonText,
 		},
 	}
 }
 
+func buildChainModeWarning(landingProtocolType string, landingPort int) (string, string) {
+	protocolWarning := isDiscouragedChainLandingProtocol(landingProtocolType)
+	portWarning := landingPort > recommendedChainLandingPortMax
+
+	switch {
+	case protocolWarning && portWarning:
+		return "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT", protocolChainWarningText() + "；" + chainHighPortWarningText(landingPort)
+	case protocolWarning:
+		return "DISCOURAGED_BY_LANDING_PROTOCOL", protocolChainWarningText()
+	case portWarning:
+		return "DISCOURAGED_BY_LANDING_PORT", chainHighPortWarningText(landingPort)
+	default:
+		return "", ""
+	}
+
+}
+
+func protocolChainWarningText() string {
+	return "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+}
+
+func chainHighPortWarningText(landingPort int) string {
+	return fmt.Sprintf(
+		"当前落地节点端口为 %d；若选择链式代理，建议使用 %d 以内端口，避免部分机场对 %d 以上高位端口进行屏蔽导致不通",
+		landingPort,
+		recommendedChainLandingPortMax,
+		recommendedChainLandingPortMax,
+	)
+}
+
 func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxies []inlineProxy) ([]resolvedLandingProxy, error) {
+	// Stage 2 identity/type come from landing-discovery, but endpoint fields used by
+	// later rules must come from the uniquely matched full-base proxy so they stay
+	// aligned with the base config that generate/restore paths actually mutate.
 	fullBaseNameCounts := make(map[string]int, len(fullBaseProxies))
+	fullBaseProxyByName := make(map[string]inlineProxy, len(fullBaseProxies))
 	for _, proxy := range fullBaseProxies {
 		fullBaseNameCounts[proxy.Name]++
+		if _, exists := fullBaseProxyByName[proxy.Name]; !exists {
+			fullBaseProxyByName[proxy.Name] = proxy
+		}
 	}
 
 	resolved := make([]resolvedLandingProxy, 0, len(landingProxies))
 	for _, proxy := range landingProxies {
-		resolvedName, typeLabel, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts)
+		resolvedName, typeLabel, port, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts, fullBaseProxyByName)
 		if err != nil {
 			return nil, err
 		}
@@ -447,24 +488,37 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 			Name:         resolvedName,
 			TypeLabel:    typeLabel,
 			ProtocolType: proxy.Type,
+			Port:         port,
 		})
 	}
 
 	return resolved, nil
 }
 
-func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int) (string, string, error) {
+func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int, fullBaseProxyByName map[string]inlineProxy) (string, string, int, error) {
 	resolvedName := proxy.Name
 	count := fullBaseNameCounts[resolvedName]
 	if count == 1 {
-		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), nil
+		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), extractInlineProxyPort(fullBaseProxyByName[resolvedName]), nil
 	}
 	if count > 1 {
 		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", resolvedName, count)
-		return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
+		return "", "", 0, subconverter.NewUnavailableError("validate landing-discovery names", cause)
 	}
 	cause := fmt.Errorf("landing discovery proxy %q is missing from full-base result", resolvedName)
-	return "", "", subconverter.NewUnavailableError("validate landing-discovery names", cause)
+	return "", "", 0, subconverter.NewUnavailableError("validate landing-discovery names", cause)
+}
+
+func extractInlineProxyPort(proxy inlineProxy) int {
+	portText, err := extractInlineField(proxy.Raw, "port")
+	if err != nil {
+		return 0
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil || port < 1 || port > 65535 {
+		return 0
+	}
+	return port
 }
 
 func formatLandingNodeTypeLabel(protocolType string) string {

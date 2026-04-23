@@ -129,6 +129,8 @@
 - `rows[].modeWarnings`：当前行的模式 warning 映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].modeWarnings.<mode>.reasonCode`：warning 原因码
 - `rows[].modeWarnings.<mode>.reasonText`：warning 文案
+- `modeWarnings.chain.reasonCode` 在当前规格中允许为 `DISCOURAGED_BY_LANDING_PROTOCOL`、`DISCOURAGED_BY_LANDING_PORT` 或 `DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT`
+- 当同一行同时命中多条 `chain` warning 条件时，后端必须合并为单个 `modeWarnings.chain` 项，并在 `reasonText` 中保留所有适用提示
 
 ### 4. 消息与错误模型
 
