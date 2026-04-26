@@ -12,6 +12,7 @@ import {
 	parseSocks5URIToManualSocks5FormState,
 	type ManualSocks5FormState,
 	removeForwardRelayItem,
+	setPortForwardEnabled,
 } from "../../lib/stage1";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
@@ -219,6 +220,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 	const preferShort = state.preferShortUrl;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
+	const portForwardEnabled = state.stage1Input.advancedOptions.enablePortForward;
 	const stage1Empty =
 		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === "";
 
@@ -291,21 +293,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 	function closePortForwardModal() {
 		setPortForwardError(null);
+		setPortForwardDraftTags([]);
 		setPortForwardOpen(false);
 	}
 
 	function submitPortForwardTags() {
 		const nextTags = portForwardDraftTags ?? [];
 		try {
-			const nextStage1Input = nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), state.stage1Input);
-			updateStage1Input(() => ({
-				...nextStage1Input,
-				advancedOptions: {
-					...nextStage1Input.advancedOptions,
-					enablePortForward: true,
-				},
-			}));
-			setPortForwardDraftTags([]);
+			updateStage1Input((current) => nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), current));
 			setPortForwardError(null);
 			closePortForwardModal();
 		} catch (error) {
@@ -450,11 +445,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						<LineNumberTextarea
 							id={`${stage1Id}-transit`}
 							label="中转信息"
-							labelAction={
+							labelAction={portForwardEnabled ? (
 								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openPortForwardModal}>
 									+端口转发
 								</button>
-							}
+							) : null}
 							value={state.stage1Input.transitRawText}
 							onChange={(next) =>
 								updateStage1Input((current) => ({
@@ -464,7 +459,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							}
 							placeholder="机场订阅、节点 URI 或 data:text/plain,..."
 							bottomLeftContent={
-								state.stage1Input.forwardRelayItems.length > 0 ? (
+								portForwardEnabled && state.stage1Input.forwardRelayItems.length > 0 ? (
 									<ul className={`a-tag-list ${forwardRelayErrors.length > 0 ? "a-tag-list--error" : ""}`} aria-label="端口转发标签">
 										{state.stage1Input.forwardRelayItems.map((item, index) => (
 											<li key={`${item}-${index}`} className="a-tag-chip">
@@ -601,6 +596,22 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 											}
 										/>
 										跳过证书校验（scv）
+									</label>
+									<label className="a-check a-check--switch">
+										<input
+											className="a-switch__input"
+											type="checkbox"
+											checked={portForwardEnabled}
+											onChange={(event) => {
+												const enabled = event.target.checked;
+												updateStage1Input((current) => setPortForwardEnabled(current, enabled));
+												if (!enabled) {
+													closePortForwardModal();
+												}
+											}}
+										/>
+										<span className="a-switch" aria-hidden />
+										启用端口转发
 									</label>
 								</div>
 								</div>
@@ -1077,7 +1088,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					</div>
 				</div>
 			) : null}
-			{portForwardOpen ? (
+			{portForwardEnabled && portForwardOpen ? (
 				<div className="a-modal-backdrop" role="presentation" onClick={closePortForwardModal}>
 					<div
 						className="a-modal"
