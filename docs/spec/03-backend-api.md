@@ -27,8 +27,7 @@
       "skipCertVerify": null,
       "config": null,
       "include": ["TagA", "TagB"],
-      "exclude": null,
-      "enablePortForward": false
+      "exclude": null
     }
   }
 }
@@ -36,7 +35,7 @@
 
 约束：
 
-- `forwardRelayItems` 始终是字符串数组；`advancedOptions.enablePortForward = false` 时必须为 `[]`，非空视为无效请求
+- `forwardRelayItems` 始终是字符串数组；是否录入过端口转发服务只由该数组自身表达，空数组表示当前未录入任何端口转发服务项
 - `forwardRelayItems[]` 的每个元素对应一个独立端口转发输入项；数组顺序保留用户输入顺序，不使用连续文本序列化
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
 - 接口接受层中，`advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config` 使用 `非空字符串 | null`；`include`、`exclude` 使用 `非空字符串数组 | null`
@@ -218,8 +217,7 @@
       "skipCertVerify": null,
       "config": null,
       "include": ["TagA", "TagB"],
-      "exclude": ["TagX"],
-      "enablePortForward": true
+      "exclude": ["TagX"]
     }
   }
 }
@@ -512,8 +510,7 @@
       "skipCertVerify": null,
       "config": null,
       "include": ["TagA", "TagB"],
-      "exclude": null,
-      "enablePortForward": true
+      "exclude": null
     }
   },
   "stage2Snapshot": {

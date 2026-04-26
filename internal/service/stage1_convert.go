@@ -14,13 +14,12 @@ import (
 )
 
 type AdvancedOptions struct {
-	Emoji             *bool    `json:"emoji"`
-	UDP               *bool    `json:"udp"`
-	SkipCertVerify    *bool    `json:"skipCertVerify"`
-	Config            *string  `json:"config"`
-	Include           []string `json:"include"`
-	Exclude           []string `json:"exclude"`
-	EnablePortForward bool     `json:"enablePortForward"`
+	Emoji          *bool    `json:"emoji"`
+	UDP            *bool    `json:"udp"`
+	SkipCertVerify *bool    `json:"skipCertVerify"`
+	Config         *string  `json:"config"`
+	Include        []string `json:"include"`
+	Exclude        []string `json:"exclude"`
 }
 
 type Stage1Input struct {
@@ -185,11 +184,6 @@ func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stag
 }
 
 func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func(string) ([]regionMatcher, error)) (Stage2Init, error) {
-	if !stage1Input.AdvancedOptions.EnablePortForward && len(stage1Input.ForwardRelayItems) > 0 {
-		cause := fmt.Errorf("forwardRelayItems must be empty when enablePortForward is false")
-		return Stage2Init{}, newStage1FieldInvalidRequestError("forwardRelayItems must be empty when enablePortForward is false", "forwardRelayItems", cause)
-	}
-
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
 	if err != nil {
 		return Stage2Init{}, fmt.Errorf("parse landing discovery fixture: %w", err)
@@ -393,10 +387,6 @@ func detectDefaultChainTarget(landingNodeName string, matchers []regionMatcher, 
 }
 
 func parseForwardRelays(stage1Input Stage1Input) ([]ForwardRelay, error) {
-	if !stage1Input.AdvancedOptions.EnablePortForward {
-		return []ForwardRelay{}, nil
-	}
-
 	seen := make(map[string]struct{})
 	relays := make([]ForwardRelay, 0, len(stage1Input.ForwardRelayItems))
 	for _, item := range stage1Input.ForwardRelayItems {

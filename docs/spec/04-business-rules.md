@@ -100,7 +100,7 @@
 - `subconverter` 使用落地节点信息、中转节点信息、`config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
 - `config` 的用户输入只用于确定本次有效模板来源；模板内容由 `chain-subconverter` 拉取、校验并托管后，再供 `subconverter` 使用
 - 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
-- `advancedOptions.enablePortForward = false` 时，`forwardRelayItems` 固定为空数组，且不参与解析、校验或候选生成
+- `forwardRelayItems = []` 时，流程仍视为“未提供任何端口转发服务项”；允许继续转换，但不会产出任何 `forwardRelays[]` 候选
 - `transitRawText` 支持三种输入项：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
 - `data:text/plain,<base64文本>` 在业务语义上视为订阅 URL，不单独引入“内联原始订阅文本”输入类型
 
@@ -216,7 +216,6 @@
 - `stage2Init.availableModes` 必须始终包含 `none`
 - 当存在至少一个可选择的链式代理候选时，`stage2Init.availableModes` 必须包含 `chain`
 - 当满足以下两个条件时，`stage2Init.availableModes` 必须包含 `port_forward`
-  - 阶段 1 已开启端口转发功能
   - 阶段 1 已录入至少一个合法端口转发服务
 - 当某模式不满足上述全局条件时，`stage2Init.availableModes` 不得包含该模式
 - `stage2Init.availableModes` 的顺序固定为 `none`、`chain`、`port_forward`；未启用的模式直接省略，不重排其余模式相对顺序

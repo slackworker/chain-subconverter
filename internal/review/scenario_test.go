@@ -43,9 +43,6 @@ func TestLoadCase_DefaultExample(t *testing.T) {
 	if testCase.Stage1Input.AdvancedOptions.Exclude != nil {
 		t.Fatalf("Exclude = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Exclude)
 	}
-	if testCase.Stage1Input.AdvancedOptions.EnablePortForward {
-		t.Fatal("EnablePortForward default should be false")
-	}
 	if len(testCase.Stage2Input.Rows) == 0 {
 		t.Fatal("Stage2Input.Rows should not be empty")
 	}
@@ -62,7 +59,7 @@ func TestLoadStage1Case_DoesNotRequireStage2Input(t *testing.T) {
 		LandingFileName:         "landing-node",
 		TransitFileName:         "transit-node",
 		ForwardRelaysFileName:   "",
-		AdvancedOptionsFileName: "emoji: true\nudp: true\nenablePortForward: false\n",
+		AdvancedOptionsFileName: "emoji: true\nudp: true\n",
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(stage1InputDir, name), []byte(content), 0o644); err != nil {
@@ -151,7 +148,6 @@ skipCertVerify:
 config: ""
 include: ""
 exclude: ""
-enablePortForward: false
 `) + "\n",
 	}
 	for name, content := range files {
@@ -194,7 +190,7 @@ func TestLoadCase_PrefersWrappedStage2SnapshotEvenWhenRowsEmpty(t *testing.T) {
 		filepath.Join(stage1InputDir, LandingFileName):         "landing-node",
 		filepath.Join(stage1InputDir, TransitFileName):         "transit-node",
 		filepath.Join(stage1InputDir, ForwardRelaysFileName):   "",
-		filepath.Join(stage1InputDir, AdvancedOptionsFileName): "emoji: true\nudp: true\nenablePortForward: false\n",
+		filepath.Join(stage1InputDir, AdvancedOptionsFileName): "emoji: true\nudp: true\n",
 		filepath.Join(stage2InputDir, Stage2SnapshotFileName): strings.TrimSpace(`
 {
   "stage2Snapshot": {

@@ -37,7 +37,7 @@ func TestResolveReviewCaseLoadsStage1InputFromCaseDir(t *testing.T) {
 		"landing.txt":           "landing-node\n",
 		"transit.txt":           "transit-node\n",
 		"forward-relays.txt":    "\n",
-		"advanced-options.yaml": "emoji: true\nudp: true\nenablePortForward: false\n",
+		"advanced-options.yaml": "emoji: true\nudp: true\n",
 	}
 	for name, content := range files {
 		if err := os.WriteFile(filepath.Join(stage1InputDir, name), []byte(content), 0o644); err != nil {

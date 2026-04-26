@@ -67,7 +67,7 @@ func (handler *frontendAssetsHandler) ServeHTTP(writer http.ResponseWriter, requ
 func (handler *frontendAssetsHandler) serveAssetOrIndex(writer http.ResponseWriter, request *http.Request) bool {
 	cleanPath := path.Clean("/" + request.URL.Path)
 	if cleanPath == "/" {
-		http.ServeFile(writer, request, handler.indexPath)
+		handler.serveIndex(writer, request)
 		return true
 	}
 
@@ -82,8 +82,12 @@ func (handler *frontendAssetsHandler) serveAssetOrIndex(writer http.ResponseWrit
 		return false
 	}
 
-	http.ServeFile(writer, request, handler.indexPath)
+	handler.serveIndex(writer, request)
 	return true
+}
+
+func (handler *frontendAssetsHandler) serveIndex(writer http.ResponseWriter, request *http.Request) {
+	http.ServeFile(writer, request, handler.indexPath)
 }
 
 func shouldBypassFrontendFallback(requestPath string) bool {

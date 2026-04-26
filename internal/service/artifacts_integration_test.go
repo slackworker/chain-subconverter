@@ -204,13 +204,12 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 			TransitRawText:    "transit",
 			ForwardRelayItems: []string{"forward"},
 			AdvancedOptions: AdvancedOptions{
-				Emoji:             &emoji,
-				UDP:               &udp,
-				SkipCertVerify:    &skipCertVerify,
-				Config:            &config,
-				Include:           include,
-				Exclude:           exclude,
-				EnablePortForward: true,
+				Emoji:          &emoji,
+				UDP:            &udp,
+				SkipCertVerify: &skipCertVerify,
+				Config:         &config,
+				Include:        include,
+				Exclude:        exclude,
 			},
 		},
 		Stage2Snapshot: Stage2Snapshot{
@@ -227,7 +226,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"enablePortForward":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"landingNodeName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":1}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"landingNodeName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":1}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

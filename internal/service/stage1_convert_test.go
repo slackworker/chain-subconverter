@@ -96,9 +96,6 @@ func TestBuildStage2Init_UsesStructuredLandingTypeField(t *testing.T) {
 func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
-			AdvancedOptions: AdvancedOptions{
-				EnablePortForward: true,
-			},
 			ForwardRelayItems: []string{"relay.example.com:443"},
 		},
 		ConversionFixtures{
@@ -160,9 +157,6 @@ func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t 
 func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
-			AdvancedOptions: AdvancedOptions{
-				EnablePortForward: true,
-			},
 			ForwardRelayItems: []string{"relay.example.com:443"},
 		},
 		ConversionFixtures{
@@ -309,9 +303,6 @@ func TestBuildStage2Init_MissingRecognizedRegionGroupReturnsUnavailable(t *testi
 
 func TestParseForwardRelays_NormalizesAndRejectsDuplicates(t *testing.T) {
 	_, err := parseForwardRelays(Stage1Input{
-		AdvancedOptions: AdvancedOptions{
-			EnablePortForward: true,
-		},
 		ForwardRelayItems: []string{"Relay.EXAMPLE.com:00080", "relay.example.com:80"},
 	})
 	if err == nil {
@@ -334,9 +325,6 @@ func TestParseForwardRelays_RejectsInvalidLines(t *testing.T) {
 	for _, rawLine := range testCases {
 		t.Run(rawLine, func(t *testing.T) {
 			_, err := parseForwardRelays(Stage1Input{
-				AdvancedOptions: AdvancedOptions{
-					EnablePortForward: true,
-				},
 				ForwardRelayItems: []string{rawLine},
 			})
 			if err == nil {
@@ -459,9 +447,6 @@ func TestBuildStage2Init_UsesTemplateConfigForDynamicRegionAutoDetect(t *testing
 func TestBuildStage2Init_WarnsForRealityButKeepsDefaultChain(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{
-			AdvancedOptions: AdvancedOptions{
-				EnablePortForward: true,
-			},
 			ForwardRelayItems: []string{"Relay.EXAMPLE.com:00080"},
 		},
 		singleLandingFixture("HK Reality", "vless-reality", "🇭🇰 香港节点"),

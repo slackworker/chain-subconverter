@@ -109,9 +109,6 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 	_, err := validateGenerateSnapshot(
 		Stage1Input{
 			ForwardRelayItems: []string{targetName},
-			AdvancedOptions: AdvancedOptions{
-				EnablePortForward: true,
-			},
 		},
 		Stage2Snapshot{
 			Rows: []Stage2Row{

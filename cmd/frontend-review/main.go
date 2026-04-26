@@ -31,13 +31,12 @@ type reviewOptions struct {
 }
 
 type advancedOptionsFile struct {
-	Emoji             *bool    `yaml:"emoji,omitempty"`
-	UDP               *bool    `yaml:"udp,omitempty"`
-	SkipCertVerify    *bool    `yaml:"skipCertVerify,omitempty"`
-	Config            *string  `yaml:"config,omitempty"`
-	Include           []string `yaml:"include,omitempty"`
-	Exclude           []string `yaml:"exclude,omitempty"`
-	EnablePortForward bool     `yaml:"enablePortForward"`
+	Emoji          *bool    `yaml:"emoji,omitempty"`
+	UDP            *bool    `yaml:"udp,omitempty"`
+	SkipCertVerify *bool    `yaml:"skipCertVerify,omitempty"`
+	Config         *string  `yaml:"config,omitempty"`
+	Include        []string `yaml:"include,omitempty"`
+	Exclude        []string `yaml:"exclude,omitempty"`
 }
 
 type templateAccessRecorder struct {
@@ -191,9 +190,7 @@ func buildStage1Input(options reviewOptions) (service.Stage1Input, error) {
 		LandingRawText:    landingURL,
 		TransitRawText:    transitURL,
 		ForwardRelayItems: []string{},
-		AdvancedOptions: service.AdvancedOptions{
-			EnablePortForward: false,
-		},
+		AdvancedOptions:   service.AdvancedOptions{},
 	}
 
 	if trimmedTemplateURL := strings.TrimSpace(options.TemplateURL); trimmedTemplateURL != "" {
@@ -410,13 +407,12 @@ func writeInputs(outputDir string, stage1Input service.Stage1Input) error {
 
 func marshalAdvancedOptions(options service.AdvancedOptions) (string, error) {
 	fileOptions := advancedOptionsFile{
-		Emoji:             options.Emoji,
-		UDP:               options.UDP,
-		SkipCertVerify:    options.SkipCertVerify,
-		Config:            options.Config,
-		Include:           options.Include,
-		Exclude:           options.Exclude,
-		EnablePortForward: options.EnablePortForward,
+		Emoji:          options.Emoji,
+		UDP:            options.UDP,
+		SkipCertVerify: options.SkipCertVerify,
+		Config:         options.Config,
+		Include:        options.Include,
+		Exclude:        options.Exclude,
 	}
 
 	data, err := yaml.Marshal(fileOptions)
@@ -424,7 +420,7 @@ func marshalAdvancedOptions(options service.AdvancedOptions) (string, error) {
 		return "", err
 	}
 	if len(data) == 0 {
-		return "enablePortForward: false\n", nil
+		return "{}\n", nil
 	}
 	return string(data), nil
 }

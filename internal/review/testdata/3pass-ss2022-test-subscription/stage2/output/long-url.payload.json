@@ -10,8 +10,7 @@
       "skipCertVerify": null,
       "config": null,
       "include": null,
-      "exclude": null,
-      "enablePortForward": false
+	      "exclude": null
     }
   },
   "stage2Snapshot": {

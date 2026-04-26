@@ -16,7 +16,7 @@ import {
 	getVisibleMessages,
 	shouldPromoteStage2StaleNotice,
 } from "../lib/notices";
-import { initialAppState } from "../lib/state";
+import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
 import type { ResponseOriginStage } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
@@ -258,9 +258,6 @@ function getChangedStage1Fields(current: Stage1Input, next: Stage1Input) {
 	if (!sameNullableBoolean(current.advancedOptions.skipCertVerify, next.advancedOptions.skipCertVerify)) {
 		changedFields.add("skipCertVerify");
 	}
-	if (current.advancedOptions.enablePortForward !== next.advancedOptions.enablePortForward) {
-		changedFields.add("enablePortForward");
-	}
 
 	return Array.from(changedFields);
 }
@@ -398,7 +395,7 @@ export function useAppWorkflow() {
 		}));
 
 		try {
-			const response = await postStage1Convert({ stage1Input });
+			const response = await postStage1Convert({ stage1Input: toStage1InputPayload(stage1Input) });
 			applyStage2Init(response.stage2Init);
 			setState((current) => ({
 				...current,
@@ -439,12 +436,13 @@ export function useAppWorkflow() {
 
 		try {
 			const restoreResponse = await postResolveURL(restoreInput);
+			const restoredStage1Input = hydrateStage1Input(restoreResponse.stage1Input);
 			if (restoreResponse.restoreStatus === "conflicted") {
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
 					preferShortUrl: Boolean(restoreResponse.shortUrl),
-					stage1Input: restoreResponse.stage1Input,
+					stage1Input: restoredStage1Input,
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
@@ -463,7 +461,7 @@ export function useAppWorkflow() {
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
 					preferShortUrl: Boolean(restoreResponse.shortUrl),
-					stage1Input: restoreResponse.stage1Input,
+					stage1Input: restoredStage1Input,
 					stage2Init: convertResponse.stage2Init,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
@@ -479,7 +477,7 @@ export function useAppWorkflow() {
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
 					preferShortUrl: Boolean(restoreResponse.shortUrl),
-					stage1Input: restoreResponse.stage1Input,
+					stage1Input: restoredStage1Input,
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
@@ -552,7 +550,7 @@ export function useAppWorkflow() {
 
 		try {
 			const response = await postGenerate({
-				stage1Input,
+				stage1Input: toStage1InputPayload(stage1Input),
 				stage2Snapshot,
 			});
 			if (!preferShortUrl) {

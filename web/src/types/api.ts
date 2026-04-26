@@ -17,14 +17,24 @@ export interface BlockingError {
 	retryable?: boolean;
 }
 
-export interface AdvancedOptions {
+export interface AdvancedOptionsPayload {
 	emoji: boolean | null;
 	udp: boolean | null;
 	skipCertVerify: boolean | null;
 	config: string | null;
 	include: string[] | null;
 	exclude: string[] | null;
+	}
+
+export interface AdvancedOptions extends AdvancedOptionsPayload {
 	enablePortForward: boolean;
+}
+
+export interface Stage1InputPayload {
+	landingRawText: string;
+	transitRawText: string;
+	forwardRelayItems: string[];
+	advancedOptions: AdvancedOptionsPayload;
 }
 
 export interface Stage1Input {
@@ -73,7 +83,7 @@ export interface Stage2Snapshot {
 }
 
 export interface Stage1ConvertRequest {
-	stage1Input: Stage1Input;
+	stage1Input: Stage1InputPayload;
 }
 
 export interface Stage1ConvertResponse {
@@ -83,7 +93,7 @@ export interface Stage1ConvertResponse {
 }
 
 export interface GenerateRequest {
-	stage1Input: Stage1Input;
+	stage1Input: Stage1InputPayload;
 	stage2Snapshot: Stage2Snapshot;
 }
 
@@ -104,7 +114,7 @@ export interface ResolveURLResponse {
 	longUrl: string;
 	shortUrl?: string;
 	restoreStatus: "replayable" | "conflicted";
-	stage1Input: Stage1Input;
+	stage1Input: Stage1InputPayload;
 	stage2Snapshot: Stage2Snapshot;
 	messages: Message[];
 	blockingErrors: BlockingError[];

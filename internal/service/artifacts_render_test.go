@@ -11,9 +11,6 @@ func TestRenderCompleteConfig_PortForwardRewritesServerAndPort(t *testing.T) {
 
 	rendered, err := RenderCompleteConfig(
 		Stage1Input{
-			AdvancedOptions: AdvancedOptions{
-				EnablePortForward: true,
-			},
 			ForwardRelayItems: []string{targetName},
 		},
 		Stage2Snapshot{

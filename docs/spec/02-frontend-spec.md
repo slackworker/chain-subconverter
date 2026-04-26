@@ -109,51 +109,61 @@
 - 用途：输入中转节点或中转订阅信息
 - 输入方式：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
 - 展示规则：每条一行，显示行号，不自动换行，允许横向滚动
+- `+端口转发` 按钮视觉上挂靠在“中转信息”输入区右上角，但其承载的不是 `transitRawText` 文本输入本身；仅当高级菜单区第 4 行 `enablePortForward` switch 开启时显示
 - 具体输入归一化与上游传递规则见 [04-business-rules](04-business-rules.md)
 - 若横向宽度充足，允许与“落地节点信息输入区”左右排列
 
-### 1.3 端口转发服务信息区（属于中转信息输入区的一部分）
+#### 1.2.1 端口转发服务
 
-- 启用前提：先展开高级菜单，再开启“启用端口转发（实验性）”Switch
-- 默认状态：隐藏
-- 布局位置：位于“中转信息输入区”下方。若“落地节点信息输入区”和“中转信息输入区”左右排列，则在两者下方
-- 输入形态：单行TagInput，按输入项逐个录入 `server:port`
-- 关闭“启用端口转发（实验性）”时，前端必须隐藏并清空该输入区
-- 提交阶段 1 快照时，端口转发服务信息必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
+- 启用前提：高级菜单区第 4 行 `enablePortForward` switch 已开启
+- 端口转发服务在视觉编排上挂靠“中转信息输入区”，在业务语义上是阶段 1 的独立逻辑块
+- 端口转发服务不写入 `transitRawText`，而是以独立字段 `forwardRelayItems` 进入阶段 1 快照
+- 端口转发服务的后续消费链路独立于中转节点文本输入；其输入、校验、去重与阶段 2 消费均按独立业务语义处理
+- 触发控件：`+端口转发` 是当前 Web 前端唯一录入入口
+- 交互形态：点击按钮后弹出独立 modal；modal 标题为“添加端口转发服务（实验性）”
+- 输入形态：modal 内使用 TagInput 录入一个或多个 `server:port`
+- 提交时机：用户点击 modal 的“确认”后，才将本次录入的端口转发服务写入阶段 1 快照
+- 展示规则：确认后，已录入条目以 Tag 列表显示在“中转信息”输入框下方；未录入任何条目时不展示列表；当 `enablePortForward` 关闭时，中转区周边的端口转发入口、Tag 列表与相关局部反馈一并隐藏
+- 布局规则：若“落地节点信息输入区”和“中转信息输入区”左右排列，端口转发服务的入口按钮、Tag 列表与错误反馈仍跟随“中转信息输入区”展示，不跨列到落地区
+- 提交阶段 1 快照时，端口转发服务必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
+- `enablePortForward` 是前端本地 UI 控制字段，不进入后端 API 请求体，也不进入长链接共享状态
+- 当前 Web 前端本地状态：`enablePortForward` 的初始值固定默认 `false`；用户开启 switch 后可先进入“显示端口转发入口但尚未录入条目”的状态；用户关闭 switch 后必须清空 `forwardRelayItems`；仅因用户删除或移除全部端口转发条目时，前端不得自动将该 switch 反向关闭
+- 从 `resolve-url` 恢复页面时，前端必须按 `forwardRelayItems.length > 0` 自动派生 `enablePortForward = true`；否则派生为 `false`
 - 校验与去重口径：统一遵循 [04-business-rules](04-business-rules.md) `1.1.2 端口转发服务输入校验（权威口径）`
-- 前端可在录入或提交 TagInput 时复用同一口径做预校验，并阻止非法值进入 `forwardRelayItems`；但后端返回的校验结果仍是最终裁决
+- 前端可在 modal 录入或确认提交时复用同一口径做预校验，并阻止非法值进入 `forwardRelayItems`；但后端返回的校验结果仍是最终裁决
 
-### 1.4 高级菜单区
+### 1.3 高级菜单区
 
 - 形态：默认折叠/隐藏
-- 阶段 1 中可配置的 `subconverter` 其他参数以及端口转发开关收纳在此区域
-- 前端控件集合（阶段 1 快照字段名）：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
-- 阶段 1 提交模型必须保持结构化：高级菜单区作为 `advancedOptions` 对象提交；端口转发服务信息区作为 `forwardRelayItems` 数组提交
+- 阶段 1 中可配置的 `subconverter` 其他参数与端口转发开关收纳在此区域
+- 前端控件集合：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
+- 阶段 1 提交模型必须保持结构化：高级菜单区中的 API 字段作为 `advancedOptions` 对象提交；端口转发服务作为 `forwardRelayItems` 数组提交；`enablePortForward` 不提交
 - 行位顺序：第 1 行为“模板 URL”；第 2、3 行为 `include`、`exclude`，默认各占一行，横向宽度充足时可左右同排；第 4 行为 `emoji`、`udp`、`skipCertVerify` 与 `enablePortForward`
 - 控件类型：
   - `config`：单行文本输入框
   - `include`、`exclude`：单行TagInput
   - `emoji`、`udp`、`skipCertVerify`：checkbox
   - `enablePortForward`：switch
-- 交互联动：开启 `enablePortForward` 后，在“中转信息输入区”下方显示“端口转发服务信息区”；关闭时必须隐藏并清空该输入区
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
 - “模板 URL”输入框默认留空，placeholder：`请使用带地域分组的模板，留空将使用推荐的 Aethersailor 模板`
 - 方案层Tooltip向用户提示当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，并说明上游更新可能导致规则变化；具体使用提示 icon、说明文本或其他呈现方式由方案层决定
 - 前端默认状态：`emoji` 与 `udp` 默认勾选，`skipCertVerify` 默认不勾选
+- 当前 Web 前端默认状态：`enablePortForward` 默认关闭
 - `include`、`exclude` 使用 TagInput 时，多标签值必须以字符串数组写入阶段 1 快照，数组顺序保留输入顺序；例如前端填写 `TagA`、`TagB`、`TagC`，快照值应为 `["TagA", "TagB", "TagC"]`
 - 当前 Web 前端产出层提交值规则：`emoji`、`udp`、`skipCertVerify` 的 checkbox 只提交 `true | null`（勾选 `true`，未勾选 `null`）；`config` 留空提交 `null`；`include`、`exclude` 在无标签时提交 `null`，有标签时提交按输入顺序组成的字符串数组
+- `enablePortForward` 开启后，前端才展示“中转信息输入区”周边的端口转发入口与 Tag 列表；关闭后必须隐藏这些控件，并清空 `forwardRelayItems`
 - 前端只负责渲染与提交高级选项快照；接口接受层的三态模型与入站归一化规则以 [03-backend-api](03-backend-api.md) 为准；参数默认值与 `GET /sub` 传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 
-### 1.5 转换动作
+### 1.4 转换动作
 
 - 功能：调用 `POST /api/stage1/convert`
 - 成功后：使用后端返回的 `stage2Init` 直接初始化阶段 2
 - 当接口返回失败时，前端按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - 阶段 1 成功不代表前端已拿到 `completeConfig`；前端只消费初始化结果
 
-### 1.6 阶段 1 交互约束
+### 1.5 阶段 1 交互约束
 
-- 逻辑上必须覆盖：落地输入、手动添加 SOCKS5 节点、中转输入、条件显示的端口转发输入、高级选项与转换动作
+- 逻辑上必须覆盖：落地输入、手动添加 SOCKS5 节点、中转输入、端口转发开关、端口转发服务弹窗录入与标签展示、高级选项与转换动作
 - 方案层在无约定的情况下可以重组这些内容的物理布局、信息层级与展开节奏，但不得删改其业务语义
 - 修改阶段 1 任一输入后，阶段 2 标记过期：禁用“生成链接”，直到下一次转换成功
 - `stage2Stale` 属于阶段工作流状态语义；方案层可在阶段内嵌状态槽位提示“需重新执行转换并自动填充”

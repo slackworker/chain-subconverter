@@ -1,4 +1,4 @@
-import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Snapshot } from "../types/api";
+import type { BlockingError, Message, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
 
 export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
 
@@ -35,6 +35,27 @@ export const initialStage1Input: Stage1Input = {
 		enablePortForward: false,
 	},
 };
+
+export function toStage1InputPayload(stage1Input: Stage1Input): Stage1InputPayload {
+	const { enablePortForward: _enablePortForward, ...advancedOptions } = stage1Input.advancedOptions;
+
+	return {
+		landingRawText: stage1Input.landingRawText,
+		transitRawText: stage1Input.transitRawText,
+		forwardRelayItems: stage1Input.forwardRelayItems,
+		advancedOptions,
+	};
+}
+
+export function hydrateStage1Input(stage1Input: Stage1InputPayload): Stage1Input {
+	return {
+		...stage1Input,
+		advancedOptions: {
+			...stage1Input.advancedOptions,
+			enablePortForward: stage1Input.forwardRelayItems.length > 0,
+		},
+	};
+}
 
 export const initialAppState: AppState = {
 	currentLinkInput: "",

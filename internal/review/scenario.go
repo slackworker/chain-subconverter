@@ -27,13 +27,12 @@ type Case struct {
 }
 
 type advancedOptionsFile struct {
-	Emoji             *bool              `yaml:"emoji"`
-	UDP               *bool              `yaml:"udp"`
-	SkipCertVerify    *bool              `yaml:"skipCertVerify"`
-	Config            *string            `yaml:"config"`
-	Include           optionalStringList `yaml:"include"`
-	Exclude           optionalStringList `yaml:"exclude"`
-	EnablePortForward *bool              `yaml:"enablePortForward"`
+	Emoji          *bool              `yaml:"emoji"`
+	UDP            *bool              `yaml:"udp"`
+	SkipCertVerify *bool              `yaml:"skipCertVerify"`
+	Config         *string            `yaml:"config"`
+	Include        optionalStringList `yaml:"include"`
+	Exclude        optionalStringList `yaml:"exclude"`
 }
 
 type optionalStringList []string
@@ -160,9 +159,7 @@ func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
 		return service.AdvancedOptions{}, fmt.Errorf("read %s: %w", filePath, err)
 	}
 
-	options := service.AdvancedOptions{
-		EnablePortForward: false,
-	}
+	options := service.AdvancedOptions{}
 
 	var fileOptions advancedOptionsFile
 	if err := yaml.Unmarshal(content, &fileOptions); err != nil {
@@ -192,10 +189,6 @@ func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
 	if exclude := normalizeEditableList(fileOptions.Exclude); len(exclude) > 0 {
 		options.Exclude = exclude
 	}
-	if fileOptions.EnablePortForward != nil {
-		options.EnablePortForward = *fileOptions.EnablePortForward
-	}
-
 	return options, nil
 }
 

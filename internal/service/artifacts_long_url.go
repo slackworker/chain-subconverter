@@ -55,13 +55,12 @@ type longURLStage1Input struct {
 }
 
 type longURLAdvancedOptions struct {
-	Config            *string  `json:"config"`
-	Emoji             *bool    `json:"emoji"`
-	EnablePortForward bool     `json:"enablePortForward"`
-	Exclude           []string `json:"exclude"`
-	Include           []string `json:"include"`
-	SkipCertVerify    *bool    `json:"skipCertVerify"`
-	UDP               *bool    `json:"udp"`
+	Config         *string  `json:"config"`
+	Emoji          *bool    `json:"emoji"`
+	Exclude        []string `json:"exclude"`
+	Include        []string `json:"include"`
+	SkipCertVerify *bool    `json:"skipCertVerify"`
+	UDP            *bool    `json:"udp"`
 }
 
 type longURLStage2Snapshot struct {
@@ -292,13 +291,12 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			TransitRawText:    schema.Stage1Input.TransitRawText,
 			ForwardRelayItems: schema.Stage1Input.ForwardRelayItems,
 			AdvancedOptions: AdvancedOptions{
-				Emoji:             schema.Stage1Input.AdvancedOptions.Emoji,
-				UDP:               schema.Stage1Input.AdvancedOptions.UDP,
-				SkipCertVerify:    schema.Stage1Input.AdvancedOptions.SkipCertVerify,
-				Config:            schema.Stage1Input.AdvancedOptions.Config,
-				Include:           schema.Stage1Input.AdvancedOptions.Include,
-				Exclude:           schema.Stage1Input.AdvancedOptions.Exclude,
-				EnablePortForward: schema.Stage1Input.AdvancedOptions.EnablePortForward,
+				Emoji:          schema.Stage1Input.AdvancedOptions.Emoji,
+				UDP:            schema.Stage1Input.AdvancedOptions.UDP,
+				SkipCertVerify: schema.Stage1Input.AdvancedOptions.SkipCertVerify,
+				Config:         schema.Stage1Input.AdvancedOptions.Config,
+				Include:        schema.Stage1Input.AdvancedOptions.Include,
+				Exclude:        schema.Stage1Input.AdvancedOptions.Exclude,
 			},
 		},
 		Stage2Snapshot: Stage2Snapshot{Rows: rows},
@@ -306,10 +304,6 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
-	if !payload.Stage1Input.AdvancedOptions.EnablePortForward && len(payload.Stage1Input.ForwardRelayItems) > 0 {
-		return fmt.Errorf("forwardRelayItems must be empty when enablePortForward is false")
-	}
-
 	rowsByLanding := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
 	for _, row := range payload.Stage2Snapshot.Rows {
 		landingNodeName := strings.TrimSpace(row.LandingNodeName)
@@ -474,13 +468,12 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	return longURLPayloadSchema{
 		Stage1Input: longURLStage1Input{
 			AdvancedOptions: longURLAdvancedOptions{
-				Config:            payload.Stage1Input.AdvancedOptions.Config,
-				Emoji:             payload.Stage1Input.AdvancedOptions.Emoji,
-				EnablePortForward: payload.Stage1Input.AdvancedOptions.EnablePortForward,
-				Exclude:           payload.Stage1Input.AdvancedOptions.Exclude,
-				Include:           payload.Stage1Input.AdvancedOptions.Include,
-				SkipCertVerify:    payload.Stage1Input.AdvancedOptions.SkipCertVerify,
-				UDP:               payload.Stage1Input.AdvancedOptions.UDP,
+				Config:         payload.Stage1Input.AdvancedOptions.Config,
+				Emoji:          payload.Stage1Input.AdvancedOptions.Emoji,
+				Exclude:        payload.Stage1Input.AdvancedOptions.Exclude,
+				Include:        payload.Stage1Input.AdvancedOptions.Include,
+				SkipCertVerify: payload.Stage1Input.AdvancedOptions.SkipCertVerify,
+				UDP:            payload.Stage1Input.AdvancedOptions.UDP,
 			},
 			ForwardRelayItems: payload.Stage1Input.ForwardRelayItems,
 			LandingRawText:    payload.Stage1Input.LandingRawText,
