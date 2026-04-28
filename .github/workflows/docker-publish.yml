@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "main"    # 当代码推送到 main 分支时触发
+      - "ui-A"    # 当代码推送到 UI-A 内测分支时触发
     tags:
       - 'v*.*.*'  # 当推送形如 v1.0.0, v1.2.3 等版本标签时触发
   workflow_dispatch:
@@ -72,6 +73,53 @@ jobs:
           push: true
           tags: ${{ steps.meta_main_latest.outputs.tags }}
           labels: ${{ steps.meta_main_latest.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-and-push-ui-a-alpha-latest: # 处理 UI-A 内测分支的推送，打上 alpha-latest 标签
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ui-A'
+    name: Build and Push UI-A Alpha Latest Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for UI-A Alpha Docker Image
+        id: meta_ui_a_alpha
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/chain-subconverter
+          tags: |
+            type=raw,value=alpha-latest
+            type=sha,prefix=ui-a-,format=short
+
+      - name: Build and push UI-A Alpha Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta_ui_a_alpha.outputs.tags }}
+          labels: ${{ steps.meta_ui_a_alpha.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max

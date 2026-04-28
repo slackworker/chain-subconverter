@@ -10,7 +10,7 @@ services:
       start_period: 10s
 
   app:
-    image: ghcr.io/slackworker/chain-subconverter:dev-latest
+    image: ghcr.io/slackworker/chain-subconverter:alpha-latest
     build:
       context: ..
       dockerfile: Dockerfile

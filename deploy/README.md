@@ -19,7 +19,7 @@
 APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
 PUBLIC_BASE_URL="http://localhost:11200"
-APP_IMAGE="ghcr.io/slackworker/chain-subconverter:dev-latest"
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 SHORT_LINK_CAPACITY="1000"
 
@@ -67,6 +67,7 @@ volumes:
   short-link-data:
 EOF
 
+docker compose pull
 docker compose up -d
 ```
 
@@ -108,7 +109,7 @@ curl http://localhost:11200/healthz
 - `APP_DIR`：本机保存 Compose 文件的位置
 - `HOST_PORT`：宿主机对外暴露的端口
 - `PUBLIC_BASE_URL`：对浏览器、短链与订阅结果公开的外部地址；第三方设备部署时必须改成宿主机可访问地址，而不是容器内地址
-- `APP_IMAGE`：主应用镜像；内测部署推荐改成明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:0.1.0-alpha.1`
+- `APP_IMAGE`：主应用镜像；`alpha-latest` 由 `ui-A` 分支 push 自动更新，内测稳定后可改成明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:0.1.0-alpha.1`
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
 
@@ -124,10 +125,10 @@ curl http://localhost:11200/healthz
   - `CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY=1000`
 - 由 Compose 解析的宿主机 / 镜像变量
   - `HOST_PORT=11200`
-  - `APP_IMAGE=ghcr.io/slackworker/chain-subconverter:dev-latest`
+  - `APP_IMAGE=ghcr.io/slackworker/chain-subconverter:alpha-latest`
   - `SUBCONVERTER_IMAGE=ghcr.io/slackworker/subconverter:integration-chain-subconverter`
 
-如需切换镜像标签，可修改命令顶部的 `APP_IMAGE` 与 `SUBCONVERTER_IMAGE` 后重新执行。
+如需切换或刷新镜像标签，可修改命令顶部的 `APP_IMAGE` 与 `SUBCONVERTER_IMAGE` 后重新执行；命令会先拉取远端镜像，再启动 Compose。
 
 `app` 服务会把 SQLite 文件写入命名卷 `short-link-data`，用于在容器重建后保留短链接索引。
 
@@ -145,7 +146,7 @@ curl http://localhost:11200/healthz
 
 ## Alpha 部署建议
 
-- 第三方设备内测优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建
+- 第三方设备内测优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建；当前默认 `alpha-latest` 对应 `ui-A` 分支最新成功构建
 - 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/ui/a`、`POST /api/stage1/convert` 与一条最终订阅读取路径
 - 内测设备建议保留默认命名卷 `short-link-data`，并在容器重启后确认短链仍可恢复
 
