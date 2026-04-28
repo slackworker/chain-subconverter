@@ -81,7 +81,7 @@
 ## 7. `subconverter` 集成与更新策略
 
 - 默认集成方式为：Compose 中直接使用固定版本的 `subconverter` 官方镜像
-- 版本固定值必须集中写在 Compose 配置或 `.env` 中，便于手动升级
+- 版本固定值必须集中写在 Compose 配置或部署命令顶部变量中，便于手动升级
 - 需要同步上游更新时，首选流程是：调整镜像版本 -> 拉取新镜像 -> 重启部署 -> 做兼容性验证
 - 当前不将 `subconverter` 源码 vendoring 到本仓库，也不与其源码级强绑定
 - 如确有必要，可增加**薄封装**镜像或本地构建覆盖配置，但该路径只作为手动维护选项，不作为默认路径
@@ -114,7 +114,7 @@ chain-subconverter/
 - `internal/subconverter` 是唯一的 `subconverter` 访问入口
 - `internal/store` 预留给短链接存储实现
 - `web` 目录预留给前端工程与构建产物
-- `deploy` 目录只承载部署清单与相关示例配置
+- `deploy` 目录只承载部署清单与部署说明
 
 
 

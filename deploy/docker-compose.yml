@@ -1,6 +1,6 @@
 services:
   subconverter:
-    image: ${CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE:-ghcr.io/slackworker/subconverter:integration-chain-subconverter}
+    image: ghcr.io/slackworker/subconverter:integration-chain-subconverter
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:25500/version || exit 1"]
@@ -10,6 +10,7 @@ services:
       start_period: 10s
 
   app:
+    image: ghcr.io/slackworker/chain-subconverter:dev-latest
     build:
       context: ..
       dockerfile: Dockerfile

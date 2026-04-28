@@ -7,9 +7,10 @@
 ## 目标
 
 - 面向单人本机开发环境：`VS Code + WSL + Docker Desktop`
+- 面向第三方局域网 / 家庭设备：`Docker Compose` 冷启动部署
 - 让前端开发者能独立拉起 `frontend + backend + subconverter`
 - 让浏览器可直接访问 A/B/C 任一 `scheme` 并跑完整主线
-- 让自动化基线、live smoke 与人工签收职责分层清晰
+- 让自动化基线、live smoke、人工签收与第三方设备部署职责分层清晰
 
 ## 当前已验证基线
 
@@ -18,21 +19,23 @@
 - `npm run build:b`：2026-04-18 通过
 - `docker compose -f deploy/docker-compose.yml config`：2026-04-18 通过
 - `deploy/docker-compose.yml` 已对 `subconverter` 与 `app` 配置健康检查
+- `.vscode/tasks.json` 已提供 `dev: up` 与 `review: live subscriptions` 正式任务入口
+- `deploy/README.md` 已提供第三方设备部署所需的单段复制命令
 - `web/` 已具备 `/ui/a`、`/ui/b`、`/ui/c` 方案入口骨架
 
 ## 当前缺口
 
-- 仓库内没有正式 `scripts/` 或 `.vscode/tasks.json` 任务编排；本地启动仍依赖临时命令与 `.tmp/` 记录
 - Compose 可做最终预览 / 集成验证，但不适合作为前端日常 HMR 主路径
-- 本地 Go 后端运行路径缺少正式文档、环境变量模板与 `subconverter` 可达性检测
+- 本地 Go 后端运行路径与 Compose 第三方设备路径仍缺少一套统一的冷启动验收记录
 - 现有自动化测试未明确分层为 stable unit / contract 与 live smoke；用户手动确认路径未形成固定清单
 - 模板调用、参数传递、接口功能的“真实跑通 + 人工签收”还没有固定成统一矩阵
+- 第三方设备部署还缺一次非当前开发机的 Compose 冷启动验证，用于确认 `PUBLIC_BASE_URL`、卷持久化与局域网访问都符合预期
 
 ## 方向选择
 
 采用“双路径收口”：
 
-1. 正式预览 / 部署路径：`docker compose -f deploy/docker-compose.yml up --build -d`
+1. 正式预览 / 部署路径：按 `deploy/README.md` 复制单段命令，生成本地 `docker-compose.yml` 后执行 `docker compose up -d`
 2. 日常 UI 开发路径：VS Code task 或等价脚本启动 `subconverter`、本地 Go backend、Vite dev server
 
 约束：
@@ -40,6 +43,7 @@
 - Compose 仍是对外主路径，符合 [spec/05-tech-stack](../spec/05-tech-stack.md)
 - 本地 dev path 只解决热更新和调试效率，不替代最终部署验收
 - 两条路径共用同一组连通性检查、样例输入与 smoke 口径
+- 第三方设备部署必须显式填写 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，不得复用本机 `localhost` 假设
 - `subconverter` 默认以 `ghcr.io/slackworker/subconverter:integration-chain-subconverter` 作为运行来源；工作区内 [subconverter/](../../subconverter/) 仅作为可选源码参考与后续本地构建来源
 
 ## 工作包
@@ -88,6 +92,26 @@
 
 - 新前端分支开发时，能在 5 分钟内从空终端拉起浏览器可访问页面
 - 用户可明确判断失败是 Docker、`subconverter`、backend 还是 frontend 侧问题
+
+### P4-R1.5：第三方设备 Compose 冷启动
+
+目标：
+
+- 让非当前开发机的局域网 / 家庭设备仅凭发布镜像与一段可复制命令完成部署
+- 把“本机预览可跑”提升为“内测设备可分发部署”
+
+任务：
+
+- 复制 `deploy/README.md` 中的单段命令，填写设备可访问的 `PUBLIC_BASE_URL`、镜像标签与宿主机端口
+- 优先使用已发布的 `APP_IMAGE` 与 `SUBCONVERTER_IMAGE`，不依赖设备本地源码构建
+- 在非当前开发机上执行单段命令，完成 Compose 文件创建与 `docker compose up -d`
+- 从另一台终端访问 `http://<device-ip>:<host-port>/ui/<scheme>` 并完成 `GET /healthz` 验证
+- 验证短链卷在容器重启后仍可保留数据
+
+完成口径：
+
+- 第三方设备可冷启动部署并对局域网内其他终端提供页面、API 与订阅访问
+- Alpha 内测不再只依赖当前 WSL 开发环境成立
 
 ### P4-R2：测试收口
 
@@ -160,19 +184,21 @@
 - `docs/testing/` 下新增本地 smoke 文档
 - [deploy/README.md](../../deploy/README.md)：补上 compose preview 验证顺序
 - [web/README.md](../../web/README.md)：补上 Vite dev 与 `scheme` 访问说明
-- 必要时补 `.env.example` 或正式 env 说明
+- 必要时补正式部署命令说明
 
 ## 执行顺序
 
 1. 先完成 P4-R0，冻结端口与 env contract
 2. 再完成 P4-R1，形成正式启动机制
-3. 然后完成 P4-R2，清理自动化与 live smoke 缺口
-4. 最后完成 P4-R3 与 P4-R4，再把 A/B/C 分支开发视为真正解阻
+3. 然后完成 P4-R1.5，补齐第三方设备 Compose 冷启动验证
+4. 再完成 P4-R2，清理自动化与 live smoke 缺口
+5. 最后完成 P4-R3 与 P4-R4，再把 A/B/C 分支开发视为真正解阻
 
 ## 解阻定义
 
 - Compose preview path 可启动并完成健康检查
 - 本地 dev path 可启动并完成健康检查
+- 第三方设备 Compose path 可冷启动并完成健康检查
 - 稳定自动化基线持续通过
 - live smoke 与人工签收矩阵有固定入口并可复用
 - 前端开发者可直接按文档在浏览器中跑完整主线

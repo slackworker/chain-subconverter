@@ -11,6 +11,12 @@
 
 完整文档入口、阅读顺序与索引统一见 [docs/README.md](docs/README.md)。
 
+## 部署
+
+- 本地开发与联调入口见 [docs/testing/local-dev-smoke.md](docs/testing/local-dev-smoke.md)
+- `Docker Compose` 部署入口见 [deploy/README.md](deploy/README.md)
+- 第三方设备部署可直接复制 [deploy/README.md](deploy/README.md) 中的单段命令，修改 `PUBLIC_BASE_URL`、镜像标签与端口后执行
+
 ## License
 
 MIT
