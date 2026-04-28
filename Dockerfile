@@ -35,6 +35,8 @@ WORKDIR /app
 COPY --from=builder /out/chain-subconverter /usr/local/bin/chain-subconverter
 COPY --from=web-builder /web/dist /app/web/dist
 
+RUN mkdir -p /data && chown app:app /data
+
 ENV CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/tmp/short-links.sqlite3
 
 USER app

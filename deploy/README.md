@@ -18,7 +18,7 @@
 ```bash
 APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
-PUBLIC_BASE_URL="http://192.168.1.10:11200"
+PUBLIC_BASE_URL="http://localhost:11200"
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:dev-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 SHORT_LINK_CAPACITY="1000"
