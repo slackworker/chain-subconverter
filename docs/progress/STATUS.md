@@ -4,10 +4,12 @@
 
 ## 当前结论
 
+- 本页只维护内部阶段状态与缺口；对外版本发布说明统一见 [../../RELEASES.md](../../RELEASES.md)。
 - `Phase 0` 到 `Phase 3` 已完成。
 - `Phase 4` 进行中，当前已进入 Alpha（内测）发布与反馈收口阶段。
+- 当前对外内测版本口径统一按 `3.0 Alpha` 描述。
 - `G1` 前端共享业务层已签收；共享边界以 [spec/02-frontend-spec](../spec/02-frontend-spec.md) 为准，不再单独维护一份 G1 验收说明。
-- Alpha 对外口径已统一为 `ghcr.io/slackworker/chain-subconverter:alpha-latest` + Compose 单段部署命令。
+- Alpha 对外口径已统一为 `UI-A` 基线：`ghcr.io/slackworker/chain-subconverter:alpha-latest` + `/ui/a` + Compose 单段部署命令。
 
 ## Phase 进度
 
@@ -31,10 +33,11 @@
 
 ## 当前缺口
 
-- A/B/C 方案评审尚未完成，当前不把任一方案视为最终 UI。
+- A/B/C 方案评审尚未完成；当前 Alpha 发布基线固定为 UI-A，但仍不把任一方案视为最终 UI。
 - 正式本地预览 / live smoke / Compose 单入口验收仍需持续回归，尚未形成稳定的版本化发布节奏。
 - Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
+- Alpha 发布、最小回归顺序与反馈记录入口已固定到 [testing/alpha-release](../testing/alpha-release.md)，后续回归记录应按该文档执行。
 - 后续收口计划见 [plan/phase-4-dev-readiness](../plan/phase-4-dev-readiness.md)。
 
 ## 最近验证
@@ -55,4 +58,5 @@
 - 阶段顺序与整体路线：[`docs/ROADMAP.md`](../ROADMAP.md)
 - 权威边界与契约：[`docs/spec/`](../spec/)
 - 本地 UI 启动与 smoke 入口：[`docs/testing/local-dev-smoke.md`](../testing/local-dev-smoke.md)
+- Alpha 发布与反馈闭环：[`docs/testing/alpha-release.md`](../testing/alpha-release.md)
 - 第三方设备 Compose 启动命令：[`deploy/README.md`](../../deploy/README.md)
