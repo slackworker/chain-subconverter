@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useAppWorkflow } from "./hooks/useAppWorkflow";
+import { copyTextToClipboard } from "./lib/clipboard";
 import type { OutputActions } from "./lib/composition";
 import { useUIScheme } from "./lib/scheme-context";
 
@@ -41,10 +42,10 @@ export default function App() {
 		if (trimmedCurrentLinkValue === "") {
 			return;
 		}
-		try {
-			await navigator.clipboard.writeText(trimmedCurrentLinkValue);
+		const copied = await copyTextToClipboard(trimmedCurrentLinkValue);
+		if (copied) {
 			setCopyState("done");
-		} catch {
+		} else {
 			setCopyState("failed");
 		}
 	}
