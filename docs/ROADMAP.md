@@ -78,7 +78,7 @@ flowchart LR
 
 ## Phase 4：前端与部署
 
-**目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（进行中）
+**目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（进行中，Alpha 内测发布已到位）
 
 细化实施顺序见 [plan/phase-4-breakdown](plan/phase-4-breakdown.md)。
 
@@ -88,7 +88,7 @@ flowchart LR
 | 三阶段主线 UI | 当前共享主线已接入 `stage1/convert -> stage2 -> generate -> longUrl`，仍待 UI 方案评审与细节收口 |
 | 恢复与短链 | 共享主线已接入 `resolve-url` 与 `short-links`，仍待与最终 UI 方案合并验收 |
 | `cmd/server/` | HTTP 启动、静态资源分发与运行形态收口 |
-| `deploy/` | Docker Compose 单入口路径（`app + subconverter`） |
+| `deploy/` | Docker Compose 单入口路径（`app + subconverter`）；Alpha 内测发布默认走 `alpha-latest` 镜像标签 |
 
 > 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 

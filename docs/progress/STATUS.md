@@ -5,8 +5,9 @@
 ## 当前结论
 
 - `Phase 0` 到 `Phase 3` 已完成。
-- `Phase 4` 进行中，当前重点不再是共享边界定义，而是本地预览、第三方设备部署与最终验收收口。
+- `Phase 4` 进行中，当前已进入 Alpha（内测）发布与反馈收口阶段。
 - `G1` 前端共享业务层已签收；共享边界以 [spec/02-frontend-spec](../spec/02-frontend-spec.md) 为准，不再单独维护一份 G1 验收说明。
+- Alpha 对外口径已统一为 `ghcr.io/slackworker/chain-subconverter:alpha-latest` + Compose 单段部署命令。
 
 ## Phase 进度
 
@@ -26,12 +27,13 @@
 - 本地开发主入口已固定为 `./scripts/dev-up.sh <scheme>`，默认端口为 `25500 / 11200 / 5173`。
 - Docker 镜像已接入前端构建，后端也已具备 SPA 静态资源托管能力。
 - `deploy/README.md` 已将第三方设备部署改为单段可复制命令，由用户修改顶部变量后生成并启动本地 `docker-compose.yml`。
+- Alpha（内测）发布默认镜像标签与部署入口已固定，可直接用于第三方设备冷启动。
 
 ## 当前缺口
 
 - A/B/C 方案评审尚未完成，当前不把任一方案视为最终 UI。
-- 正式本地预览 / live smoke / Compose 单入口验收尚未完全收口。
-- 第三方设备 Compose 冷启动验证尚未完成，当前仍缺少一轮非开发机部署验收。
+- 正式本地预览 / live smoke / Compose 单入口验收仍需持续回归，尚未形成稳定的版本化发布节奏。
+- Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - 后续收口计划见 [plan/phase-4-dev-readiness](../plan/phase-4-dev-readiness.md)。
 
