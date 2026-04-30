@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-04-28
+> 最近更新：2026-05-01
 
 ## 当前结论
 
@@ -39,6 +39,7 @@
 
 ## 最近验证
 
+- `2026-05-01`: `cd web && npm run build:b`
 - `2026-04-28`: `docker compose -f deploy/docker-compose.yml config`
 - `2026-04-28`: 单段部署命令生成的 `docker-compose.yml` 通过 `docker compose -f - config`
 - `2026-04-21`: `go test ./internal/service ./internal/api`
