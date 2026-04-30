@@ -106,6 +106,60 @@ curl http://localhost:11200/healthz
 
 若只是日常前端开发与热更新联调，优先使用仓库根目录的 `./scripts/dev-up.sh <scheme>` 或 VS Code 任务 `dev: up`；Compose 路径继续保留为正式预览 / 集成验证主路径。
 
+## 更新
+
+### 第三方设备 / 局域网设备
+
+如果只是刷新同一份 `docker-compose.yml` 中引用的镜像 tag，例如 `alpha-latest` 已有新内容，可在设备上执行：
+
+```bash
+cd "$HOME/chain-subconverter"
+docker compose pull
+docker compose up -d
+docker compose ps
+curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
+```
+
+这会拉取新镜像并按当前 Compose 配置重建容器；命名卷 `short-link-data` 不会因此删除，现有 SQLite 短链接索引会保留。
+
+如果本轮更新同时改了以下任一项：
+
+- `APP_IMAGE`
+- `SUBCONVERTER_IMAGE`
+- `HOST_PORT`
+- `PUBLIC_BASE_URL`
+- `SHORT_LINK_CAPACITY`
+- 其他 `app` 环境变量
+
+不要只执行 `docker compose pull`；应回到“首次部署”那段单段命令，先修改顶部变量，再整段重新执行一遍，以重新生成最新的 `docker-compose.yml`，然后再由 Compose 拉取镜像并重建容器。
+
+更新后至少复验：
+
+- `docker compose ps` 中 `app` 与 `subconverter` 为健康状态
+- `GET /healthz` 成功
+- 浏览器可打开 `http://<device-ip>:<host-port>/ui/a`
+- 至少跑通一条 `POST /api/stage1/convert` 与最终订阅读取路径
+
+### 仓库内 Compose 预览
+
+如果更新的是仓库源码或 Dockerfile，在仓库根目录执行：
+
+```bash
+git pull
+docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/docker-compose.yml ps
+curl http://localhost:11200/healthz
+```
+
+其中 `--build` 会按当前源码重新构建 `app` 镜像并重建容器。
+
+如果只想同步 `subconverter` 远端镜像，也可以额外先执行：
+
+```bash
+docker compose -f deploy/docker-compose.yml pull subconverter
+docker compose -f deploy/docker-compose.yml up --build -d
+```
+
 ## 环境变量
 
 部署命令顶部变量用于生成最终的 `docker-compose.yml`：
