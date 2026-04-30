@@ -15,7 +15,7 @@
 
 - 本地开发与联调入口见 [docs/testing/local-dev-smoke.md](docs/testing/local-dev-smoke.md)
 - `Docker Compose` 部署入口见 [deploy/README.md](deploy/README.md)
-- 第三方设备部署可直接复制 [deploy/README.md](deploy/README.md) 中的单段命令，修改 `PUBLIC_BASE_URL`、镜像标签与端口后执行
+- 第三方设备部署可直接复制 [deploy/README.md](deploy/README.md) 中的单段命令，按需固定 `PUBLIC_BASE_URL`，并修改镜像标签与端口后执行
 
 ## License
 

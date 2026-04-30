@@ -43,7 +43,7 @@
 - Compose 仍是对外主路径，符合 [spec/05-tech-stack](../spec/05-tech-stack.md)
 - 本地 dev path 只解决热更新和调试效率，不替代最终部署验收
 - 两条路径共用同一组连通性检查、样例输入与 smoke 口径
-- 第三方设备部署必须显式填写 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，不得复用本机 `localhost` 假设
+- 第三方设备部署默认允许省略 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，由服务端按请求来源自动推断发布地址；仅在多入口、反代或需要固定对外地址时再显式填写
 - `subconverter` 默认以 `ghcr.io/slackworker/subconverter:integration-chain-subconverter` 作为运行来源；工作区内 [subconverter/](../../subconverter/) 仅作为可选源码参考与后续本地构建来源
 
 ## 工作包
@@ -60,7 +60,7 @@
 - 固定本地默认端口：backend `11200`、frontend dev `5173`、compose app `11200`、compose subconverter `25500`
 - 固定本地 `scheme` 访问方式：`/ui/a`、`/ui/b`、`/ui/c`
 - 固定 `VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET=http://localhost:11200`
-- 固定 backend env 最小集合：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`、`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`、`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`、`CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR`、`CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH`
+- 固定 backend env 最小集合：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`、`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`、`CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR`、`CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH`；`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 改为可选覆盖项
 - 本地 dev path 中，`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 必须使用 `subconverter` 容器可回连的地址；当前 `WSL + Docker Desktop` 基线固定为 `http://host.docker.internal:<backend-port>`，不得直接复用对浏览器公开的 `localhost` URL
 - 把上述约定写入开发文档与任务配置
 
@@ -102,7 +102,7 @@
 
 任务：
 
-- 复制 `deploy/README.md` 中的单段命令，填写设备可访问的 `PUBLIC_BASE_URL`、镜像标签与宿主机端口
+- 复制 `deploy/README.md` 中的单段命令，按需填写固定 `PUBLIC_BASE_URL`，并设置镜像标签与宿主机端口
 - 优先使用已发布的 `APP_IMAGE` 与 `SUBCONVERTER_IMAGE`，不依赖设备本地源码构建
 - 在非当前开发机上执行单段命令，完成 Compose 文件创建与 `docker compose up -d`
 - 从另一台终端访问 `http://<device-ip>:<host-port>/ui/<scheme>` 并完成 `GET /healthz` 验证

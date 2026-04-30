@@ -9,58 +9,58 @@ import (
 )
 
 const (
-	DefaultHTTPAddress            = ":11200"
-	DefaultPublicBaseURL          = "http://localhost:11200"
-	DefaultManagedTemplateBaseURL = DefaultPublicBaseURL
-	DefaultFrontendDistDir        = "web/dist"
-	DefaultMaxLongURLLength       = 8192
-	DefaultMaxInputSize           = 2048
-	DefaultMaxURLsPerField        = 20
-	DefaultShortLinkDBPath        = "data/short-links.sqlite3"
-	DefaultShortLinkCapacity      = 1000
+	DefaultHTTPAddress                  = ":11200"
+	DefaultPublicBaseURL                = "http://localhost:11200"
+	DefaultManagedTemplateBaseURL       = DefaultPublicBaseURL
+	DefaultFrontendDistDir              = "web/dist"
+	DefaultMaxLongURLLength             = 8192
+	DefaultMaxInputSize                 = 2048
+	DefaultMaxURLsPerField              = 20
+	DefaultShortLinkDBPath              = "data/short-links.sqlite3"
+	DefaultShortLinkCapacity            = 1000
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
-	DefaultTemplateFetchCacheTTL  = 0 * time.Second
+	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 
-	EnvHTTPAddress            = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
-	EnvPublicBaseURL          = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
-	EnvManagedTemplateBaseURL = "CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL"
-	EnvFrontendDistDir        = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
-	EnvMaxLongURLLength       = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
-	EnvMaxInputSize           = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
-	EnvMaxURLsPerField        = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
-	EnvShortLinkDBPath        = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
-	EnvShortLinkCapacity      = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
+	EnvHTTPAddress                  = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
+	EnvPublicBaseURL                = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
+	EnvManagedTemplateBaseURL       = "CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL"
+	EnvFrontendDistDir              = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
+	EnvMaxLongURLLength             = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
+	EnvMaxInputSize                 = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
+	EnvMaxURLsPerField              = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
+	EnvShortLinkDBPath              = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
+	EnvShortLinkCapacity            = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
 	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
-	EnvTemplateFetchCacheTTL  = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
+	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 )
 
 type Server struct {
-	HTTPAddress            string
-	PublicBaseURL          string
-	ManagedTemplateBaseURL string
-	FrontendDistDir        string
-	MaxLongURLLength       int
-	MaxInputSize           int
-	MaxURLsPerField        int
-	ShortLinkDBPath        string
-	ShortLinkCapacity      int
+	HTTPAddress                  string
+	PublicBaseURL                string
+	ManagedTemplateBaseURL       string
+	FrontendDistDir              string
+	MaxLongURLLength             int
+	MaxInputSize                 int
+	MaxURLsPerField              int
+	ShortLinkDBPath              string
+	ShortLinkCapacity            int
 	DefaultTemplateFetchCacheTTL time.Duration
-	TemplateFetchCacheTTL  time.Duration
+	TemplateFetchCacheTTL        time.Duration
 }
 
 func DefaultServer() Server {
 	return Server{
-		HTTPAddress:            DefaultHTTPAddress,
-		PublicBaseURL:          DefaultPublicBaseURL,
-		ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
-		FrontendDistDir:        DefaultFrontendDistDir,
-		MaxLongURLLength:       DefaultMaxLongURLLength,
-		MaxInputSize:           DefaultMaxInputSize,
-		MaxURLsPerField:        DefaultMaxURLsPerField,
-		ShortLinkDBPath:        DefaultShortLinkDBPath,
-		ShortLinkCapacity:      DefaultShortLinkCapacity,
+		HTTPAddress:                  DefaultHTTPAddress,
+		PublicBaseURL:                "",
+		ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+		FrontendDistDir:              DefaultFrontendDistDir,
+		MaxLongURLLength:             DefaultMaxLongURLLength,
+		MaxInputSize:                 DefaultMaxInputSize,
+		MaxURLsPerField:              DefaultMaxURLsPerField,
+		ShortLinkDBPath:              DefaultShortLinkDBPath,
+		ShortLinkCapacity:            DefaultShortLinkCapacity,
 		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
-		TemplateFetchCacheTTL:  DefaultTemplateFetchCacheTTL,
+		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 	}
 }
 
@@ -160,12 +160,14 @@ func (cfg Server) Validate() error {
 		return fmt.Errorf("template fetch cache TTL must not be negative")
 	}
 
-	parsedURL, err := url.Parse(cfg.PublicBaseURL)
-	if err != nil {
-		return fmt.Errorf("parse public base URL: %w", err)
-	}
-	if parsedURL.Scheme == "" || parsedURL.Host == "" {
-		return fmt.Errorf("public base URL must include scheme and host")
+	if strings.TrimSpace(cfg.PublicBaseURL) != "" {
+		parsedURL, err := url.Parse(cfg.PublicBaseURL)
+		if err != nil {
+			return fmt.Errorf("parse public base URL: %w", err)
+		}
+		if parsedURL.Scheme == "" || parsedURL.Host == "" {
+			return fmt.Errorf("public base URL must include scheme and host")
+		}
 	}
 	managedTemplateURL, err := url.Parse(cfg.ManagedTemplateBaseURL)
 	if err != nil {

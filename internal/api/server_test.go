@@ -901,6 +901,36 @@ func mustNewTestHandlerWithShortLinks(t *testing.T, source service.ConversionSou
 	return handler
 }
 
+func TestEffectiveBaseURL_InfersFromRequestHost(t *testing.T) {
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(&fakeConversionSource{}, templateStore, service.NewInMemoryShortLinkStore(), "", "http://localhost:11200", 2048, service.InputLimits{})
+	if err != nil {
+		t.Fatalf("NewHandler() with empty publicBaseURL error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "http://myhost.example:9090/sub?data=x", nil)
+	got := handler.effectiveBaseURL(request)
+	want := "http://myhost.example:9090"
+	if got != want {
+		t.Fatalf("effectiveBaseURL() = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveBaseURL_PrefersExplicitConfig(t *testing.T) {
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(&fakeConversionSource{}, templateStore, service.NewInMemoryShortLinkStore(), "https://configured.example.com", "http://localhost:11200", 2048, service.InputLimits{})
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "http://other.host/sub?data=x", nil)
+	got := handler.effectiveBaseURL(request)
+	want := "https://configured.example.com"
+	if got != want {
+		t.Fatalf("effectiveBaseURL() = %q, want %q", got, want)
+	}
+}
+
 func boolPtr(value bool) *bool {
 	return &value
 }

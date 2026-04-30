@@ -18,7 +18,9 @@
 ```bash
 APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
-PUBLIC_BASE_URL="http://localhost:11200"
+# PUBLIC_BASE_URL 可选：未配置时服务端会自动按请求来源推断，适用于单入口部署。
+# 若要固定发布地址（多入口、反代、公网部署等），取消注释并改为实际可访问地址，例如 http://<设备IP>:11200。
+# PUBLIC_BASE_URL=""
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 SHORT_LINK_CAPACITY="1000"
@@ -45,7 +47,9 @@ services:
         condition: service_healthy
     environment:
       CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
-      CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
+      # PUBLIC_BASE_URL 可选，留空时服务端自动按请求来源推断发布地址。
+      # 若需固定发布地址，取消注释并填入实际可访问地址：
+      # CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
@@ -108,7 +112,7 @@ curl http://localhost:11200/healthz
 
 - `APP_DIR`：本机保存 Compose 文件的位置
 - `HOST_PORT`：宿主机对外暴露的端口
-- `PUBLIC_BASE_URL`：对浏览器、短链与订阅结果公开的外部地址；第三方设备部署时必须改成宿主机可访问地址，而不是容器内地址
+- `PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源（`Host` 请求头与 TLS 状态）推断，适用于直连局域网或 DDNS 等单入口部署。**若前端有 Nginx/Caddy 等反代做 HTTPS 终止**，服务端看不到 TLS，自动推断会产生 `http://` 链接，此时必须显式填入 `https://<域名>` 才能生成正确的订阅链接。多入口或固定发布地址场景同理
 - `APP_IMAGE`：主应用镜像；`alpha-latest` 由 `ui-A` 分支 push 自动更新，内测稳定后可改成明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:0.1.0-alpha.1`
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
@@ -117,7 +121,7 @@ curl http://localhost:11200/healthz
 
 - 传给 `app` 的运行时环境变量
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
-  - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`：对浏览器、短链与订阅结果公开的外部地址；第三方设备部署时必须改成宿主机可访问地址，而不是容器内地址
+  - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源推断，适用于直连局域网或 DDNS 等单入口部署。若前端有反代做 HTTPS 终止，或需固定发布地址，按实际可访问地址填入（`https://` 或 `http://`），不要填容器内地址
   - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`
   - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL=http://subconverter:25500/sub?`

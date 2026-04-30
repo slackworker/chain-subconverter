@@ -40,9 +40,6 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	if templateStore == nil {
 		return nil, fmt.Errorf("template store must not be nil")
 	}
-	if strings.TrimSpace(publicBaseURL) == "" {
-		return nil, fmt.Errorf("public base URL must not be empty")
-	}
 	managedTemplatePath, err := managedTemplateRoutePath(managedTemplateBaseURL)
 	if err != nil {
 		return nil, err
@@ -106,7 +103,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 
 	response, err := service.BuildGenerateResponseFromSource(
 		request.Context(),
-		handler.publicBaseURL,
+		handler.effectiveBaseURL(request),
 		handler.source,
 		payload,
 		handler.maxLongURLLength,
@@ -128,7 +125,7 @@ func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *ht
 
 	response, err := service.BuildShortLinkResponse(
 		request.Context(),
-		handler.publicBaseURL,
+		handler.effectiveBaseURL(request),
 		handler.shortLinkStore,
 		payload.LongURL,
 		handler.maxLongURLLength,
@@ -150,7 +147,7 @@ func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *ht
 
 	response, err := service.ResolveURLFromSource(
 		request.Context(),
-		handler.publicBaseURL,
+		handler.effectiveBaseURL(request),
 		handler.source,
 		handler.shortLinkStore,
 		payload.URL,
@@ -194,7 +191,11 @@ func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, reques
 }
 
 func subRoutePaths(publicBaseURL string) (string, string, error) {
-	parsedURL, err := url.Parse(strings.TrimSpace(publicBaseURL))
+	trimmed := strings.TrimSpace(publicBaseURL)
+	if trimmed == "" {
+		return "/sub", "/sub/", nil
+	}
+	parsedURL, err := url.Parse(trimmed)
 	if err != nil {
 		return "", "", fmt.Errorf("parse public base URL: %w", err)
 	}
@@ -208,6 +209,26 @@ func subRoutePaths(publicBaseURL string) (string, string, error) {
 	}
 	cleanBasePath := path.Clean(basePath)
 	return cleanBasePath + "/sub", cleanBasePath + "/sub/", nil
+}
+
+// effectiveBaseURL returns the public base URL to use for link generation.
+// If an explicit PUBLIC_BASE_URL is configured it is used as-is (highest priority).
+// Otherwise the URL is inferred from the incoming request: scheme from TLS state,
+// host from the Host header. This covers the common single-entry-point deployment
+// where frontend and backend are served from the same origin.
+func (handler *Handler) effectiveBaseURL(request *http.Request) string {
+	if handler.publicBaseURL != "" {
+		return handler.publicBaseURL
+	}
+	scheme := "http"
+	if request.TLS != nil {
+		scheme = "https"
+	}
+	host := request.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return scheme + "://" + host
 }
 
 func managedTemplateRoutePath(managedTemplateBaseURL string) (string, error) {

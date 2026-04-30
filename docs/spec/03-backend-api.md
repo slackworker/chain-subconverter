@@ -327,7 +327,7 @@
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
-- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的 `longUrl`
+- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `PUBLIC_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断（scheme 来自 TLS 状态，host 来自 `Host` 请求头），多入口访问场景下 host 部分可能随入口不同而变化
 - 请求体中的 `advancedOptions.config` 仍表示模板 URL，而不是最终订阅 YAML
 
 最小失败语义：
