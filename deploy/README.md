@@ -15,6 +15,8 @@
 
 首次部署时，复制下面整段命令到本地，先按设备实际情况修改顶部变量，再整段粘贴执行即可。
 
+若已部署过，且新版文档中的这段 Compose 命令或服务编排内容发生变化，也按同样方式复制最新整段命令重新执行，以刷新本地 `docker-compose.yml`。
+
 ```bash
 APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
