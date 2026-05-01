@@ -74,7 +74,7 @@ volumes:
 EOF
 
 docker compose pull
-docker compose up -d
+docker compose up -d --force-recreate
 ```
 
 检查状态：
