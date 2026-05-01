@@ -44,7 +44,7 @@
     {
       "label": "git: rebase current branch onto main",
       "type": "shell",
-      "command": "git fetch origin main && git rebase origin/main",
+      "command": "git fetch origin main && git rebase main",
       "options": {
         "cwd": "${workspaceFolder}"
       },
