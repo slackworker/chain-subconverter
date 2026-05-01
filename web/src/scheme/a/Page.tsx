@@ -21,8 +21,10 @@ import "./index.css";
 const DEFAULT_TEMPLATE_HINT =
 	"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
 const LOCALE_STORAGE_KEY = "chain-subconverter-ui.locale";
+const THEME_STORAGE_KEY = "chain-subconverter-ui.theme";
 
 type Locale = "zh" | "en";
+type ColorMode = "light" | "dark";
 
 const COPY = {
 	zh: {
@@ -34,7 +36,8 @@ const COPY = {
 		languageToggle: "切换界面语言",
 		languageZh: "中",
 		languageEn: "EN",
-		themeReserved: "切换亮暗主题（预留）",
+		themeToDark: "切换到暗色主题",
+		themeToLight: "切换到亮色主题",
 		githubRepo: "打开 GitHub 仓库",
 		blockingTitle: "需要处理的问题",
 		blockingSource: "来源：{stageLabel}",
@@ -138,7 +141,8 @@ const COPY = {
 		languageToggle: "Switch interface language",
 		languageZh: "中",
 		languageEn: "EN",
-		themeReserved: "Toggle light/dark theme (reserved)",
+		themeToDark: "Switch to dark theme",
+		themeToLight: "Switch to light theme",
 		githubRepo: "Open GitHub repository",
 		blockingTitle: "Issues to resolve",
 		blockingSource: "Source: {stageLabel}",
@@ -244,6 +248,17 @@ function getInitialLocale(): Locale {
 		return saved;
 	}
 	return window.navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
+}
+
+function getInitialColorMode(): ColorMode {
+	if (typeof window === "undefined") {
+		return "light";
+	}
+	const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+	if (saved === "light" || saved === "dark") {
+		return saved;
+	}
+	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function translate(template: string, values: Record<string, string> = {}) {
@@ -467,6 +482,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		handlePreferShortUrl,
 	} = workflow;
 	const [locale, setLocale] = useState<Locale>(getInitialLocale);
+	const [colorMode, setColorMode] = useState<ColorMode>(getInitialColorMode);
 	const copy = COPY[locale];
 
 	const stage1Id = useId();
@@ -515,6 +531,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
 		document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
 	}, [locale]);
+
+	useEffect(() => {
+		window.localStorage.setItem(THEME_STORAGE_KEY, colorMode);
+		document.documentElement.style.colorScheme = colorMode === "dark" ? "dark" : "light";
+	}, [colorMode]);
 
 	function submitSocks5() {
 		try {
@@ -615,8 +636,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		};
 	}, []);
 
+	const themeToggleLabel = colorMode === "dark" ? copy.themeToLight : copy.themeToDark;
+
 	return (
-		<div className="a-shell">
+		<div className={`a-shell${colorMode === "dark" ? " a-shell--dark" : ""}`}>
 			<header className="a-header">
 				<div className="a-header__brand">
 					<p className="a-eyebrow">{copy.headerEyebrow}</p>
@@ -645,18 +668,32 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					<button
 						type="button"
 						className="a-scheme-nav__link a-scheme-nav__link--icon"
-						aria-label={copy.themeReserved}
-						title={copy.themeReserved}
+						aria-label={themeToggleLabel}
+						title={themeToggleLabel}
+						aria-pressed={colorMode === "dark"}
+						onClick={() => setColorMode((current) => (current === "dark" ? "light" : "dark"))}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-							<path
-								d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M4.8 7.5h14.4M4.8 16.5h14.4M12 3a9 9 0 1 1 0 18a9 9 0 0 1 0-18Z"
-								stroke="currentColor"
-								strokeWidth="1.8"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
+						{colorMode === "dark" ? (
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+								<circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
+								<path
+									d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+									stroke="currentColor"
+									strokeWidth="1.8"
+									strokeLinecap="round"
+								/>
+							</svg>
+						) : (
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+								<path
+									d="M21 14.5A8.5 8.5 0 0 1 9.5 3a8.5 8.5 0 1 0 11.5 11.5Z"
+									stroke="currentColor"
+									strokeWidth="1.8"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+						)}
 					</button>
 					<a
 						className="a-scheme-nav__link a-scheme-nav__link--icon"
