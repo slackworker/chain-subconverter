@@ -658,7 +658,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					</button>
 					<button
 						type="button"
-						className="a-scheme-nav__link a-scheme-nav__link--icon"
+						className="a-scheme-nav__link a-scheme-nav__link--icon a-scheme-nav__theme-toggle"
 						aria-label={themeToggleLabel}
 						title={themeToggleLabel}
 						aria-pressed={colorMode === "dark"}

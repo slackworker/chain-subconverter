@@ -143,25 +143,44 @@
 	cursor: pointer;
 }
 
+/* 内联 SVG 默认按文字基线排版，在圆角按钮里会显得略偏；块级化便于与 flex 居中对齐 */
+.a-scheme-nav__link--icon svg {
+	display: block;
+}
+
+/* 主题切换：viewBox 内日月路径视觉重心略偏上，整体下移约 1px 与两侧对齐 */
+.a-scheme-nav__theme-toggle svg {
+	transform: translateY(1px);
+}
+
 .a-locale-switch {
+	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	flex-shrink: 0;
+	width: 2.25rem;
+	height: 2.25rem;
+	min-width: 2.25rem;
+	min-height: 2.25rem;
+	padding: 0;
 	border: none;
-	min-width: 2.5rem;
-	padding: 0.4rem 0.85rem;
 	border-radius: 999px;
-	background: var(--color-accent);
-	color: var(--color-on-accent);
+	background: transparent;
+	color: var(--color-muted);
 	font: inherit;
-	font-size: 0.82rem;
-	font-weight: 700;
+	font-size: 0.85rem;
+	font-weight: 600;
+	line-height: 1;
+	text-align: center;
+	white-space: nowrap;
 	cursor: pointer;
-	transition: background 0.15s ease, color 0.15s ease, filter 0.15s ease, transform 0.15s ease;
+	transition: background 0.15s ease, color 0.15s ease;
 }
 
 .a-locale-switch:hover {
-	filter: brightness(1.05);
+	color: var(--color-ink);
+	background: var(--color-accent-soft);
 }
 
 .a-locale-switch:focus-visible {
