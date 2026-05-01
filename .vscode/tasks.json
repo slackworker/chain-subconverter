@@ -40,6 +40,57 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "git: rebase current branch onto main",
+      "type": "shell",
+      "command": "git fetch origin main && git rebase origin/main",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "git: force push current branch",
+      "type": "shell",
+      "command": "git",
+      "args": [
+        "push",
+        "--force-with-lease",
+        "origin",
+        "HEAD"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "git: commit current changes to main (no push)",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/commit-current-changes-to-main.sh",
+      "args": [
+        "${input:mainCommitMessage}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ],
   "inputs": [
@@ -53,6 +104,11 @@
         "c"
       ],
       "default": "a"
+    },
+    {
+      "id": "mainCommitMessage",
+      "type": "promptString",
+      "description": "Commit message (commits to local main only; does not push)"
     }
   ]
 }
