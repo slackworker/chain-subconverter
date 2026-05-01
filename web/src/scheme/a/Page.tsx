@@ -647,24 +647,15 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					<p className="a-lede">{copy.headerLede}</p>
 				</div>
 				<nav className="a-scheme-nav" aria-label={copy.quickActions}>
-					<div className="a-locale-switch" role="group" aria-label={copy.languageToggle}>
-						<button
-							type="button"
-							className={`a-locale-switch__button ${locale === "zh" ? "a-locale-switch__button--active" : ""}`}
-							onClick={() => setLocale("zh")}
-							aria-pressed={locale === "zh"}
-						>
-							{copy.languageZh}
-						</button>
-						<button
-							type="button"
-							className={`a-locale-switch__button ${locale === "en" ? "a-locale-switch__button--active" : ""}`}
-							onClick={() => setLocale("en")}
-							aria-pressed={locale === "en"}
-						>
-							{copy.languageEn}
-						</button>
-					</div>
+					<button
+						type="button"
+						className="a-locale-switch"
+						onClick={() => setLocale((current) => (current === "zh" ? "en" : "zh"))}
+						aria-label={copy.languageToggle}
+						title={copy.languageToggle}
+					>
+						{locale === "zh" ? copy.languageZh : copy.languageEn}
+					</button>
 					<button
 						type="button"
 						className="a-scheme-nav__link a-scheme-nav__link--icon"

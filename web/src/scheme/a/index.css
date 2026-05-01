@@ -53,7 +53,6 @@
 	--color-pill-warn-fg: #8a4b10;
 	--color-secondary-hover-border: #c9c2b8;
 	--color-cell-text: #1a1a1a;
-	--color-locale-switch-bg: rgba(255, 255, 255, 0.65);
 	--color-modal-scrim: rgba(28, 25, 21, 0.45);
 	--shadow-rgb: 28, 25, 21;
 	--radius: 12px;
@@ -147,40 +146,27 @@
 .a-locale-switch {
 	display: inline-flex;
 	align-items: center;
-	padding: 0.2rem;
-	border: 1px solid var(--color-line);
-	border-radius: 999px;
-	background: var(--color-locale-switch-bg);
-	gap: 0.15rem;
-}
-
-.a-locale-switch__button {
+	justify-content: center;
 	border: none;
-	background: transparent;
-	color: var(--color-muted);
 	min-width: 2.5rem;
-	padding: 0.4rem 0.7rem;
+	padding: 0.4rem 0.85rem;
 	border-radius: 999px;
+	background: var(--color-accent);
+	color: var(--color-on-accent);
 	font: inherit;
 	font-size: 0.82rem;
 	font-weight: 700;
 	cursor: pointer;
-	transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+	transition: background 0.15s ease, color 0.15s ease, filter 0.15s ease, transform 0.15s ease;
 }
 
-.a-locale-switch__button:hover {
-	color: var(--color-ink);
-	background: var(--color-accent-soft);
+.a-locale-switch:hover {
+	filter: brightness(1.05);
 }
 
-.a-locale-switch__button:focus-visible {
+.a-locale-switch:focus-visible {
 	outline: 2px solid var(--color-accent);
 	outline-offset: 2px;
-}
-
-.a-locale-switch__button--active {
-	background: var(--color-accent);
-	color: var(--color-on-accent);
 }
 
 .a-scheme-nav__link:hover {
@@ -1477,7 +1463,6 @@ select.a-select {
 	--color-pill-warn-fg: #e8cf9f;
 	--color-secondary-hover-border: #5c554c;
 	--color-cell-text: #f2efe8;
-	--color-locale-switch-bg: rgba(42, 38, 34, 0.82);
 	--color-modal-scrim: rgba(0, 0, 0, 0.62);
 	--shadow-rgb: 0, 0, 0;
 	--shadow: 0 12px 40px rgba(var(--shadow-rgb), 0.35);
