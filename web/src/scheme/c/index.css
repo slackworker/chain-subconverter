@@ -1,1 +1,788 @@
-/* Scheme C owns its styling baseline from this file onward. */
+/* Scheme C — dark developer-tool theme */
+
+:root {
+	color-scheme: dark;
+	--c-bg: #0d1117;
+	--c-surface: #161b22;
+	--c-surface-2: #21262d;
+	--c-border: #30363d;
+	--c-border-subtle: rgba(48, 54, 61, 0.6);
+	--c-text: #c9d1d9;
+	--c-text-muted: #8b949e;
+	--c-text-strong: #e6edf3;
+	--c-accent: #388bfd;
+	--c-accent-dim: rgba(56, 139, 253, 0.14);
+	--c-success: #3fb950;
+	--c-success-dim: rgba(63, 185, 80, 0.14);
+	--c-warning: #d29922;
+	--c-warning-dim: rgba(210, 153, 34, 0.14);
+	--c-danger: #f85149;
+	--c-danger-dim: rgba(248, 81, 73, 0.14);
+	--c-radius: 6px;
+	--c-radius-lg: 8px;
+	--c-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ── reset ──────────────────────────────────────────────────────────────── */
+
+html,
+body,
+#root {
+	min-height: 100%;
+}
+
+body {
+	margin: 0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+	font-size: 14px;
+	line-height: 1.5;
+	background: var(--c-bg);
+	color: var(--c-text);
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+
+button {
+	cursor: pointer;
+}
+
+/* ── layout ─────────────────────────────────────────────────────────────── */
+
+.c-layout {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 20px 16px 80px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	box-sizing: border-box;
+}
+
+/* ── app header ─────────────────────────────────────────────────────────── */
+
+.c-appbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 16px 0 14px;
+	border-bottom: 1px solid var(--c-border);
+	margin-bottom: 4px;
+}
+
+.c-appbar-brand {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.c-brand-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--c-radius);
+	background: var(--c-accent);
+	color: #fff;
+	font-weight: 700;
+	font-size: 16px;
+	flex-shrink: 0;
+}
+
+.c-brand-name {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--c-text-strong);
+}
+
+.c-brand-sub {
+	margin: 1px 0 0;
+	font-size: 12px;
+	color: var(--c-text-muted);
+}
+
+.c-appbar-stages {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.c-stage-sep {
+	color: var(--c-text-muted);
+	font-size: 12px;
+}
+
+/* ── status pills ───────────────────────────────────────────────────────── */
+
+.c-pill {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 99px;
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.c-pill--neutral {
+	background: var(--c-surface-2);
+	color: var(--c-text-muted);
+	border: 1px solid var(--c-border);
+}
+
+.c-pill--warning {
+	background: var(--c-warning-dim);
+	color: var(--c-warning);
+	border: 1px solid rgba(210, 153, 34, 0.3);
+}
+
+.c-pill--success {
+	background: var(--c-success-dim);
+	color: var(--c-success);
+	border: 1px solid rgba(63, 185, 80, 0.3);
+}
+
+/* ── global notices ─────────────────────────────────────────────────────── */
+
+.c-global-notice {
+	padding: 12px 16px;
+	border-radius: var(--c-radius-lg);
+	border: 1px solid transparent;
+}
+
+.c-global-notice--error {
+	background: var(--c-danger-dim);
+	border-color: rgba(248, 81, 73, 0.3);
+}
+
+.c-global-notice--info {
+	background: var(--c-accent-dim);
+	border-color: rgba(56, 139, 253, 0.3);
+}
+
+.c-global-notice-title {
+	margin: 0 0 4px;
+	font-weight: 600;
+	font-size: 13px;
+	color: var(--c-text-strong);
+}
+
+.c-global-notice-body {
+	margin: 2px 0 0;
+	color: var(--c-text);
+}
+
+.c-global-notice--error .c-error-block {
+	color: var(--c-danger);
+}
+
+/* ── section card ───────────────────────────────────────────────────────── */
+
+.c-section {
+	background: var(--c-surface);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-radius-lg);
+	padding: 20px 24px 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.c-section-head {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.c-section-meta {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.c-stage-badge {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: var(--c-radius);
+	background: var(--c-surface-2);
+	border: 1px solid var(--c-border);
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--c-text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	white-space: nowrap;
+	font-family: var(--c-mono);
+}
+
+.c-section-title {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--c-text-strong);
+}
+
+.c-section-desc {
+	margin: 0;
+	font-size: 13px;
+	color: var(--c-text-muted);
+}
+
+.c-section-footer {
+	display: flex;
+	justify-content: flex-end;
+	padding-top: 4px;
+	border-top: 1px solid var(--c-border-subtle);
+}
+
+/* ── fields ─────────────────────────────────────────────────────────────── */
+
+.c-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.c-field label,
+.c-field-sub {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--c-text-muted);
+}
+
+.c-field-label-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.c-field-label-row label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--c-text-muted);
+}
+
+textarea,
+input[type="text"],
+select {
+	padding: 8px 10px;
+	background: var(--c-bg);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-radius);
+	color: var(--c-text);
+	font-size: 13px;
+	box-sizing: border-box;
+	width: 100%;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+textarea:focus,
+input[type="text"]:focus,
+select:focus {
+	outline: none;
+	border-color: var(--c-accent);
+	box-shadow: 0 0 0 3px var(--c-accent-dim);
+}
+
+textarea {
+	resize: vertical;
+	min-height: 80px;
+	overflow-x: auto;
+}
+
+select {
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 10px center;
+	padding-right: 28px;
+	cursor: pointer;
+}
+
+select:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.c-mono {
+	font-family: var(--c-mono);
+	font-size: 12px;
+}
+
+/* ── two-column input grid ───────────────────────────────────────────────── */
+
+.c-input-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+}
+
+@media (max-width: 680px) {
+	.c-input-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ── relay row ──────────────────────────────────────────────────────────── */
+
+.c-relay-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 10px 12px;
+	background: var(--c-surface-2);
+	border: 1px solid var(--c-border-subtle);
+	border-radius: var(--c-radius);
+}
+
+/* ── tag chips ──────────────────────────────────────────────────────────── */
+
+.c-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.c-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px;
+	background: var(--c-accent-dim);
+	border: 1px solid rgba(56, 139, 253, 0.25);
+	border-radius: 99px;
+	font-size: 12px;
+	color: var(--c-accent);
+	font-family: var(--c-mono);
+}
+
+.c-chip button {
+	background: none;
+	border: none;
+	padding: 0;
+	color: inherit;
+	font-size: 14px;
+	line-height: 1;
+	opacity: 0.7;
+	display: inline-flex;
+	align-items: center;
+}
+
+.c-chip button:hover {
+	opacity: 1;
+}
+
+.c-empty-label {
+	font-size: 12px;
+	color: var(--c-text-muted);
+	font-style: italic;
+}
+
+/* ── advanced options ───────────────────────────────────────────────────── */
+
+.c-advanced {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.c-adv-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: none;
+	border: none;
+	padding: 0;
+	color: var(--c-text-muted);
+	font-size: 13px;
+	font-weight: 500;
+	transition: color 120ms ease;
+}
+
+.c-adv-toggle:hover {
+	color: var(--c-text);
+}
+
+.c-adv-arrow {
+	font-size: 10px;
+	transition: transform 180ms ease;
+	display: inline-block;
+	color: var(--c-text-muted);
+}
+
+.c-adv-arrow--open {
+	transform: rotate(90deg);
+}
+
+.c-adv-body {
+	padding: 16px;
+	background: var(--c-surface-2);
+	border: 1px solid var(--c-border-subtle);
+	border-radius: var(--c-radius);
+}
+
+.c-adv-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+}
+
+@media (max-width: 680px) {
+	.c-adv-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.c-tag-input-row {
+	display: flex;
+	gap: 6px;
+}
+
+.c-tag-input-row input {
+	flex: 1;
+	min-width: 0;
+}
+
+.c-check-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 4px;
+}
+
+.c-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--c-text);
+	cursor: pointer;
+	user-select: none;
+}
+
+.c-check input[type="checkbox"] {
+	width: 14px;
+	height: 14px;
+	accent-color: var(--c-accent);
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+/* ── buttons ─────────────────────────────────────────────────────────────── */
+
+.c-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 14px;
+	border-radius: var(--c-radius);
+	border: 1px solid transparent;
+	font-size: 13px;
+	font-weight: 500;
+	transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+	white-space: nowrap;
+}
+
+.c-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.c-btn--primary {
+	background: var(--c-accent);
+	border-color: rgba(56, 139, 253, 0.4);
+	color: #fff;
+}
+
+.c-btn--primary:not(:disabled):hover {
+	background: #58a6ff;
+}
+
+.c-btn--ghost {
+	background: var(--c-surface-2);
+	border-color: var(--c-border);
+	color: var(--c-text);
+}
+
+.c-btn--ghost:not(:disabled):hover {
+	background: #2d333b;
+	border-color: #8b949e;
+}
+
+.c-btn--sm {
+	padding: 4px 10px;
+	font-size: 12px;
+	background: var(--c-surface-2);
+	border: 1px solid var(--c-border);
+	color: var(--c-text);
+	border-radius: var(--c-radius);
+}
+
+.c-btn--sm:not(:disabled):hover {
+	border-color: var(--c-text-muted);
+}
+
+.c-link-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font-size: 12px;
+	color: var(--c-accent);
+	cursor: pointer;
+}
+
+.c-link-btn:hover {
+	text-decoration: underline;
+}
+
+/* ── inline notices ─────────────────────────────────────────────────────── */
+
+.c-notice {
+	padding: 10px 14px;
+	border-radius: var(--c-radius);
+	font-size: 13px;
+	border: 1px solid transparent;
+}
+
+.c-notice--warning {
+	background: var(--c-warning-dim);
+	border-color: rgba(210, 153, 34, 0.3);
+	color: var(--c-warning);
+}
+
+.c-notice--error {
+	background: var(--c-danger-dim);
+	border-color: rgba(248, 81, 73, 0.3);
+	color: var(--c-danger);
+}
+
+/* ── error block ────────────────────────────────────────────────────────── */
+
+.c-error-block {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.c-error-block li {
+	font-size: 12px;
+	color: var(--c-danger);
+}
+
+.c-error-block li::before {
+	content: "✕ ";
+}
+
+/* ── empty state ────────────────────────────────────────────────────────── */
+
+.c-empty-state {
+	margin: 0;
+	padding: 24px 0;
+	text-align: center;
+	color: var(--c-text-muted);
+	font-size: 13px;
+}
+
+/* ── stage 2 row list ───────────────────────────────────────────────────── */
+
+.c-row-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.c-row-item {
+	padding: 14px 16px;
+	background: var(--c-surface-2);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-radius-lg);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.c-row-item--error {
+	border-color: rgba(248, 81, 73, 0.4);
+}
+
+.c-row-head {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+}
+
+.c-node-name {
+	font-weight: 600;
+	font-size: 13px;
+	color: var(--c-text-strong);
+	font-family: var(--c-mono);
+}
+
+.c-node-type {
+	font-size: 12px;
+	color: var(--c-text-muted);
+}
+
+.c-row-controls {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.c-mode-tabs {
+	display: flex;
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-radius);
+	overflow: hidden;
+}
+
+.c-mode-tab {
+	flex: 1;
+	padding: 5px 12px;
+	background: none;
+	border: none;
+	border-right: 1px solid var(--c-border);
+	color: var(--c-text-muted);
+	font-size: 12px;
+	font-weight: 500;
+	transition: background 100ms ease, color 100ms ease;
+	white-space: nowrap;
+}
+
+.c-mode-tab:last-child {
+	border-right: none;
+}
+
+.c-mode-tab:not(:disabled):hover {
+	background: var(--c-surface);
+	color: var(--c-text);
+}
+
+.c-mode-tab--active {
+	background: var(--c-accent) !important;
+	color: #fff !important;
+}
+
+.c-mode-tab:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.c-row-target {
+	flex: 1;
+	min-width: 180px;
+}
+
+.c-row-hint {
+	margin: 0;
+	font-size: 12px;
+	color: var(--c-warning);
+}
+
+/* ── stage 3 output ─────────────────────────────────────────────────────── */
+
+.c-output-controls {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.c-action-row {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+/* ── modal ──────────────────────────────────────────────────────────────── */
+
+.c-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+	padding: 16px;
+}
+
+.c-modal {
+	background: var(--c-surface);
+	border: 1px solid var(--c-border);
+	border-radius: var(--c-radius-lg);
+	width: 100%;
+	max-width: 520px;
+	max-height: 90vh;
+	overflow-y: auto;
+	box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+}
+
+.c-modal-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--c-border);
+}
+
+.c-modal-head h3 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--c-text-strong);
+}
+
+.c-icon-btn {
+	background: none;
+	border: none;
+	padding: 4px 8px;
+	font-size: 18px;
+	color: var(--c-text-muted);
+	border-radius: var(--c-radius);
+	line-height: 1;
+}
+
+.c-icon-btn:hover {
+	background: var(--c-surface-2);
+	color: var(--c-text);
+}
+
+.c-modal-body {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.c-modal-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.c-field--span2 {
+	grid-column: 1 / -1;
+}
+
+.c-modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding-top: 4px;
+}
+

@@ -4,7 +4,7 @@ import { CAppPage } from "./Page";
 export const cUIScheme: UIScheme = {
 	id: "c",
 	label: "UI C",
-	description: "C 方案页面壳已独立拆出，后续可在共享 workflow 之上单独开发。",
+	description: "深色开发者工具风格；三阶段工作流垂直平铺，双栏输入，紧凑行卡，GitHub Primer 配色。",
 	primaryBlockingFeedbackPlacement: "stage-local",
 	Page: CAppPage,
 };
