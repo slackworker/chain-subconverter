@@ -20,8 +20,8 @@
 ```bash
 APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
-# PUBLIC_BASE_URL 可选：未配置时服务端会自动按请求来源推断，适用于单入口部署。
-# 若要固定发布地址（多入口、反代、公网部署等），取消注释并改为实际可访问地址，例如 http://<设备IP>:11200。
+# PUBLIC_BASE_URL 可选：直连局域网或其他单入口部署通常无需配置，服务端会按请求来源自动推断。
+# 仅在 HTTPS 反代/公网域名、多入口或需要固定发布地址时填写，例如 https://example.com；若直接暴露端口，可用 http://<设备IP>:11200。
 # PUBLIC_BASE_URL=""
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
@@ -49,8 +49,8 @@ services:
         condition: service_healthy
     environment:
       CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
-      # PUBLIC_BASE_URL 可选，留空时服务端自动按请求来源推断发布地址。
-      # 若需固定发布地址，取消注释并填入实际可访问地址：
+      # PUBLIC_BASE_URL 可选；直连局域网通常留空，HTTPS 反代/公网域名或多入口场景再显式填写。
+      # 若需固定发布地址，取消注释并填入实际可访问地址（例如 https://example.com）：
       # CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
