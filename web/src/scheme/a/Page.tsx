@@ -20,15 +20,271 @@ import "./index.css";
 
 const DEFAULT_TEMPLATE_HINT =
 	"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
-const LOCAL_ERROR_ARIA_HINT = "该位置存在错误，请查看当前阶段反馈条。";
-const MODE_LABELS: Record<string, string> = {
-	none: "不配置",
-	chain: "链式代理",
-	port_forward: "端口转发",
-};
+const LOCALE_STORAGE_KEY = "chain-subconverter-ui.locale";
 
-function getModeLabel(mode: string) {
-	return MODE_LABELS[mode] ?? mode;
+type Locale = "zh" | "en";
+
+const COPY = {
+	zh: {
+		localErrorAriaHint: "该位置存在错误，请查看当前阶段反馈条。",
+		headerEyebrow: "Chain Subconverter",
+		headerTitle: "链式代理 · 订阅转换",
+		headerLede: "交互式 链式代理 · 订阅转换 for Mihomo",
+		quickActions: "快捷操作",
+		languageToggle: "切换界面语言",
+		languageZh: "中",
+		languageEn: "EN",
+		themeReserved: "切换亮暗主题（预留）",
+		githubRepo: "打开 GitHub 仓库",
+		blockingTitle: "需要处理的问题",
+		blockingSource: "来源：{stageLabel}",
+		currentStage: "当前阶段",
+		logToggle: "日志",
+		messageLog: "消息日志",
+		noLogs: "暂无日志",
+		noBadge: "无",
+		backendNoMessages: "当前阶段后端未返回 messages",
+		stage1Title: "阶段 1 · 输入",
+		stage1Desc: "输入落地与中转信息，执行转换以生成阶段 2 配置基底",
+		landingInfo: "落地信息",
+		transitInfo: "中转信息",
+		addSocks5: "+SOCKS5",
+		addPortForward: "+端口转发",
+		landingPlaceholder: "订阅 URL 或节点 URI，每行一条",
+		transitPlaceholder: "机场订阅、节点 URI 或 data:text/plain,...",
+		portForwardTags: "端口转发标签",
+		removeTag: "移除 {tag}",
+		advancedOptions: "高级选项",
+		templateUrl: "订阅转换模板",
+		templateUrlHint: `远程配置; 缺省模板：${DEFAULT_TEMPLATE_HINT}`,
+		templateUrlHintAria: "模板 URL 说明",
+		templatePlaceholder: "请输入带地域分组的模板URL，缺省将使用 Aethersailor 模板",
+		includeTags: "include 标签",
+		excludeTags: "exclude 标签",
+		tagPlaceholder: "输入后按 Enter 添加",
+		skipCertVerify: "跳过证书校验（scv）",
+		enablePortForward: "启用端口转发",
+		converting: "转换中…",
+		convertAndFill: "转换并自动填充",
+		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
+		stage2Title: "阶段 2 · 落地配置",
+		stage2Desc: "按落地节点逐行选择模式与目标",
+		conflictReadonly: "当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。",
+		colLanding: "落地节点",
+		colType: "节点类型",
+		colMode: "配置方式",
+		colTarget: "目标",
+		stage2Empty: "完成阶段 1 转换后，将在此列出各行配置。",
+		rowRestrictions: "本行存在模式限制，详见下拉禁用项提示。",
+		commonGroups: "区域策略组",
+		fixedNodes: "固定节点",
+		noCommonChoices: "暂无常用候选",
+		selectTarget: "请选择",
+		generating: "生成中…",
+		generateLink: "生成链接",
+		stage3Title: "阶段 3 · 输出",
+		stage3Desc: "打开、复制、下载生成的订阅链接；输入已有链接进行反向解析",
+		currentLink: "当前链接",
+		currentLinkPlaceholder: "生成或粘贴 longUrl / shortUrl",
+		shortLink: "短链接",
+		creatingShortLink: "（创建短链中…）",
+		openPreview: "打开预览",
+		copy: "复制",
+		downloadYaml: "下载 YAML",
+		restoring: "反向解析中…",
+		restore: "反向解析",
+		copyDone: "已复制到剪贴板",
+		copyFailed: "复制失败，请检查权限或手动复制",
+		addOrConvertSocks5: "添加 / 转换 SOCKS5 节点",
+		name: "名称",
+		server: "服务器",
+		port: "端口",
+		usernameOptional: "用户名（可选）",
+		passwordOptional: "密码（可选）",
+		socks5Uri: "SOCKS5 URI（转换为可解析格式）",
+		cancel: "取消",
+		add: "添加",
+		addPortForwardModal: "添加端口转发服务（实验性）",
+		forwardInfo: "转发信息",
+		forwardPlaceholder: "输入 server:port ，按 Enter 添加多个",
+		confirm: "确认",
+		socksFormValidationFailed: "表单校验失败",
+		socksParseFailed: "SOCKS5 URI 解析失败",
+		portForwardValidationFailed: "端口转发服务校验失败",
+		stage1Label: "阶段 1",
+		stage2Label: "阶段 2",
+		stage3Label: "阶段 3",
+		mode_none: "不配置",
+		mode_chain: "链式代理",
+		mode_port_forward: "端口转发",
+		statusAwaitingInput: "等待输入",
+		statusChanged: "已变更",
+		statusConverted: "已转换",
+		statusEditing: "编辑中",
+		statusConflict: "冲突",
+		statusStage2Stale: "阶段 2 已过期",
+		statusAwaitingInit: "等待初始化",
+		statusReady: "就绪",
+		statusAwaitingGenerate: "等待生成",
+		statusShortUrlReady: "短链接已就绪",
+		statusLongUrlReady: "长链接已就绪",
+	},
+	en: {
+		localErrorAriaHint: "There is an error here. Check the current stage feedback strip.",
+		headerEyebrow: "Chain Subconverter",
+		headerTitle: "Chain Proxy · Subscription Converter",
+		headerLede: "Interactive chain proxy subscription conversion for Mihomo",
+		quickActions: "Quick actions",
+		languageToggle: "Switch interface language",
+		languageZh: "中",
+		languageEn: "EN",
+		themeReserved: "Toggle light/dark theme (reserved)",
+		githubRepo: "Open GitHub repository",
+		blockingTitle: "Issues to resolve",
+		blockingSource: "Source: {stageLabel}",
+		currentStage: "Current stage",
+		logToggle: "Logs",
+		messageLog: "Message log",
+		noLogs: "No logs yet",
+		noBadge: "none",
+		backendNoMessages: "The backend returned no messages for the current stage.",
+		stage1Title: "Stage 1 · Input",
+		stage1Desc: "Provide landing and transit inputs, then convert them into the Stage 2 baseline.",
+		landingInfo: "Landing input",
+		transitInfo: "Transit input",
+		addSocks5: "+SOCKS5",
+		addPortForward: "+Port forward",
+		landingPlaceholder: "Subscription URL or node URI, one per line",
+		transitPlaceholder: "Airport subscription, node URI, or data:text/plain,...",
+		portForwardTags: "Port forward tags",
+		removeTag: "Remove {tag}",
+		advancedOptions: "Advanced options",
+		templateUrl: "Subscription template",
+		templateUrlHint: `Remote config; default template: ${DEFAULT_TEMPLATE_HINT}`,
+		templateUrlHintAria: "Template URL help",
+		templatePlaceholder: "Use a region-aware template URL, or leave empty to use the recommended Aethersailor template",
+		includeTags: "Include tags",
+		excludeTags: "Exclude tags",
+		tagPlaceholder: "Type and press Enter to add",
+		skipCertVerify: "Skip certificate verification (scv)",
+		enablePortForward: "Enable port forwarding",
+		converting: "Converting...",
+		convertAndFill: "Convert and autofill",
+		stageChangedNotice: "Inputs changed. Convert again before generating a link.",
+		stage2Title: "Stage 2 · Landing config",
+		stage2Desc: "Choose the mode and target for each landing node.",
+		conflictReadonly: "The restored snapshot references targets that no longer exist. The restored result is read-only. Go back to Stage 1 and run Convert and autofill again before continuing.",
+		colLanding: "Landing node",
+		colType: "Node type",
+		colMode: "Mode",
+		colTarget: "Target",
+		stage2Empty: "Run Stage 1 conversion to populate each configuration row here.",
+		rowRestrictions: "This row has mode restrictions. Check the disabled options for details.",
+		commonGroups: "Regional policy groups",
+		fixedNodes: "Fixed nodes",
+		noCommonChoices: "No common choices available",
+		selectTarget: "Select a target",
+		generating: "Generating...",
+		generateLink: "Generate link",
+		stage3Title: "Stage 3 · Output",
+		stage3Desc: "Open, copy, or download the generated subscription link, or paste an existing link to restore state.",
+		currentLink: "Current link",
+		currentLinkPlaceholder: "Generate or paste a longUrl / shortUrl",
+		shortLink: "Short link",
+		creatingShortLink: "(creating short link...)",
+		openPreview: "Open preview",
+		copy: "Copy",
+		downloadYaml: "Download YAML",
+		restoring: "Restoring...",
+		restore: "Restore",
+		copyDone: "Copied to clipboard",
+		copyFailed: "Copy failed. Check permissions or copy the link manually.",
+		addOrConvertSocks5: "Add / convert SOCKS5 node",
+		name: "Name",
+		server: "Server",
+		port: "Port",
+		usernameOptional: "Username (optional)",
+		passwordOptional: "Password (optional)",
+		socks5Uri: "SOCKS5 URI (convert to a parsable format)",
+		cancel: "Cancel",
+		add: "Add",
+		addPortForwardModal: "Add port forwarding service (experimental)",
+		forwardInfo: "Forwarding targets",
+		forwardPlaceholder: "Type server:port and press Enter to add multiple entries",
+		confirm: "Confirm",
+		socksFormValidationFailed: "Form validation failed",
+		socksParseFailed: "Failed to parse the SOCKS5 URI",
+		portForwardValidationFailed: "Port forwarding validation failed",
+		stage1Label: "Stage 1",
+		stage2Label: "Stage 2",
+		stage3Label: "Stage 3",
+		mode_none: "Do not configure",
+		mode_chain: "Chain proxy",
+		mode_port_forward: "Port forwarding",
+		statusAwaitingInput: "Awaiting input",
+		statusChanged: "Changed",
+		statusConverted: "Converted",
+		statusEditing: "Editing",
+		statusConflict: "Conflict",
+		statusStage2Stale: "Stage 2 stale",
+		statusAwaitingInit: "Awaiting init",
+		statusReady: "Ready",
+		statusAwaitingGenerate: "Awaiting generate",
+		statusShortUrlReady: "Short URL ready",
+		statusLongUrlReady: "Long URL ready",
+	},
+} as const satisfies Record<Locale, Record<string, string>>;
+
+function getInitialLocale(): Locale {
+	if (typeof window === "undefined") {
+		return "zh";
+	}
+	const saved = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+	if (saved === "zh" || saved === "en") {
+		return saved;
+	}
+	return window.navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
+}
+
+function translate(template: string, values: Record<string, string> = {}) {
+	return Object.entries(values).reduce(
+		(result, [key, value]) => result.split(`{${key}}`).join(value),
+		template,
+	);
+}
+
+function getModeLabel(mode: string, locale: Locale) {
+	const labels: Record<string, string> = {
+		none: COPY[locale].mode_none,
+		chain: COPY[locale].mode_chain,
+		port_forward: COPY[locale].mode_port_forward,
+	};
+	return labels[mode] ?? mode;
+}
+
+function getStageLabel(stage: "stage1" | "stage2" | "stage3" | null, locale: Locale) {
+	if (stage === null) {
+		return undefined;
+	}
+	return COPY[locale][`${stage}Label` as const];
+}
+
+function getStatusLabel(label: string, locale: Locale) {
+	const statusMap: Record<string, keyof typeof COPY.zh> = {
+		"Awaiting Input": "statusAwaitingInput",
+		Changed: "statusChanged",
+		Converted: "statusConverted",
+		Editing: "statusEditing",
+		Conflict: "statusConflict",
+		"Stage 2 Stale": "statusStage2Stale",
+		"Awaiting Init": "statusAwaitingInit",
+		Ready: "statusReady",
+		"Awaiting Generate": "statusAwaitingGenerate",
+		"Short URL Ready": "statusShortUrlReady",
+		"Long URL Ready": "statusLongUrlReady",
+	};
+	const copyKey = statusMap[label];
+	return copyKey ? COPY[locale][copyKey] : label;
 }
 
 function appendMultilineLine(currentValue: string, nextLine: string) {
@@ -45,18 +301,21 @@ function StatusPill({ label, tone }: { label: string; tone: "neutral" | "warning
 function BlockingPanel({
 	globalErrors,
 	stageLabel,
+	locale,
 }: {
 	globalErrors: { code: string; message: string }[];
 	stageLabel?: string;
+	locale: Locale;
 }) {
+	const copy = COPY[locale];
 	if (globalErrors.length === 0) {
 		return null;
 	}
 	return (
 		<div className="a-blocking-flyout">
 			<section className="a-panel a-panel--danger a-panel--blocking" aria-live="polite">
-				<h2 className="a-panel__title">需要处理的问题</h2>
-				{stageLabel ? <p className="a-panel__meta">来源：{stageLabel}</p> : null}
+				<h2 className="a-panel__title">{copy.blockingTitle}</h2>
+				{stageLabel ? <p className="a-panel__meta">{translate(copy.blockingSource, { stageLabel })}</p> : null}
 				<ul className="a-error-list">
 					{globalErrors.map((error) => (
 						<li key={`${error.code}:${error.message}`}>{error.message}</li>
@@ -71,16 +330,19 @@ function BlockingPanel({
 function OriginAnchoredBlockingStrip({
 	errors,
 	stageLabel,
+	locale,
 }: {
 	errors: { code: string; message: string }[];
 	stageLabel?: string;
+	locale: Locale;
 }) {
+	const copy = COPY[locale];
 	if (errors.length === 0) {
 		return null;
 	}
 	return (
 		<div className="a-stage-feedback-strip a-stage-feedback-strip--danger" role="status" aria-live="polite">
-			<span className="a-stage-feedback-strip__stage">{stageLabel ?? "当前阶段"}</span>
+			<span className="a-stage-feedback-strip__stage">{stageLabel ?? copy.currentStage}</span>
 			<span className="a-stage-feedback-strip__msg">
 				{errors.map((error) => (
 					<span key={`${error.code}:${error.message}`} className="a-stage-feedback-strip__line">
@@ -92,7 +354,8 @@ function OriginAnchoredBlockingStrip({
 	);
 }
 
-function MessagesPanel({ messages }: { messages: { level: string; message: string; code: string }[] }) {
+function MessagesPanel({ messages, locale }: { messages: { level: string; message: string; code: string }[]; locale: Locale }) {
+	const copy = COPY[locale];
 	const [open, setOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const latest = messages.length > 0 ? messages[messages.length - 1] : null;
@@ -136,23 +399,23 @@ function MessagesPanel({ messages }: { messages: { level: string; message: strin
 				aria-controls={panelId}
 				onClick={() => setOpen((current) => !current)}
 			>
-				<span className="a-log-hub__label">日志</span>
+				<span className="a-log-hub__label">{copy.logToggle}</span>
 				<span className="a-log-hub__count">{messages.length}</span>
 				{latest ? (
 					<span className={`a-messages__badge a-messages__badge--${latest.level}`}>{latest.level}</span>
 				) : (
-					<span className="a-messages__badge a-messages__badge--empty">none</span>
+					<span className="a-messages__badge a-messages__badge--empty">{copy.noBadge}</span>
 				)}
 			</button>
 
 			<section
 				id={panelId}
 				className={`a-messages a-log-hub__panel ${open ? "a-log-hub__panel--open" : ""}`}
-				aria-label="消息日志"
+				aria-label={copy.messageLog}
 				aria-hidden={!open}
 			>
-				<p className="a-log-hub__panel-title">消息日志</p>
-				{latest ? <p className="a-messages__preview">{latest.message}</p> : <p className="a-messages__preview a-messages__preview--muted">暂无日志</p>}
+				<p className="a-log-hub__panel-title">{copy.messageLog}</p>
+				{latest ? <p className="a-messages__preview">{latest.message}</p> : <p className="a-messages__preview a-messages__preview--muted">{copy.noLogs}</p>}
 				{messages.length > 0 ? (
 					<ul className="a-messages__list">
 						{messages.map((message) => (
@@ -162,7 +425,7 @@ function MessagesPanel({ messages }: { messages: { level: string; message: strin
 						))}
 					</ul>
 				) : (
-					<p className="a-messages__empty">当前阶段后端未返回 messages</p>
+					<p className="a-messages__empty">{copy.backendNoMessages}</p>
 				)}
 			</section>
 		</div>
@@ -174,7 +437,6 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		state,
 		stage2Rows,
 		modeOptions,
-		originStageLabel,
 		responseOriginStage,
 		visibleMessages,
 		shouldShowStage2StaleNotice,
@@ -204,6 +466,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		handleGenerate,
 		handlePreferShortUrl,
 	} = workflow;
+	const [locale, setLocale] = useState<Locale>(getInitialLocale);
+	const copy = COPY[locale];
 
 	const stage1Id = useId();
 	const [socksOpen, setSocksOpen] = useState(false);
@@ -227,6 +491,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const stage1PrimaryBlockingErrors = getPrimaryBlockingErrorsForStage("stage1");
 	const stage2PrimaryBlockingErrors = state.stage2Stale || isConflictReadonly ? [] : getPrimaryBlockingErrorsForStage("stage2");
 	const stage3PrimaryBlockingErrors = getPrimaryBlockingErrorsForStage("stage3");
+	const localizedOriginStageLabel = getStageLabel(responseOriginStage, locale);
 	const globalPrimaryBlockingErrors = getGlobalPrimaryBlockingErrors(
 		state.blockingErrors,
 		responseOriginStage,
@@ -242,6 +507,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const transitErrorId = `${stage1Id}-transit-error`;
 	const configErrorId = `${stage1Id}-config-error`;
 	const currentLinkErrorId = "a-current-link-error";
+	const localizedStage1Status = getStatusLabel(stage1Status.label, locale);
+	const localizedStage2Status = getStatusLabel(stage2Status.label, locale);
+	const localizedStage3Status = getStatusLabel(stage3Status.label, locale);
+
+	useEffect(() => {
+		window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+		document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+	}, [locale]);
 
 	function submitSocks5() {
 		try {
@@ -255,7 +528,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			setSocksError(null);
 			closeSocksModal();
 		} catch (error) {
-			setSocksError(error instanceof Error ? error.message : "表单校验失败");
+			setSocksError(error instanceof Error ? error.message : copy.socksFormValidationFailed);
 		}
 	}
 
@@ -271,7 +544,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			setSocksForm(parsed);
 			setSocksError(null);
 		} catch (error) {
-			setSocksError(error instanceof Error ? error.message : "SOCKS5 URI 解析失败");
+			setSocksError(error instanceof Error ? error.message : copy.socksParseFailed);
 		}
 	}
 
@@ -304,7 +577,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			setPortForwardError(null);
 			closePortForwardModal();
 		} catch (error) {
-			setPortForwardError(error instanceof Error ? error.message : "端口转发服务校验失败");
+			setPortForwardError(error instanceof Error ? error.message : copy.portForwardValidationFailed);
 		}
 	}
 
@@ -346,16 +619,34 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		<div className="a-shell">
 			<header className="a-header">
 				<div className="a-header__brand">
-					<p className="a-eyebrow">Chain Subconverter</p>
-					<h1 className="a-title">链式代理 · 订阅转换</h1>
-					<p className="a-lede">交互式 链式代理 · 订阅转换 for Mihomo</p>
+					<p className="a-eyebrow">{copy.headerEyebrow}</p>
+					<h1 className="a-title">{copy.headerTitle}</h1>
+					<p className="a-lede">{copy.headerLede}</p>
 				</div>
-				<nav className="a-scheme-nav" aria-label="快捷操作">
+				<nav className="a-scheme-nav" aria-label={copy.quickActions}>
+					<div className="a-locale-switch" role="group" aria-label={copy.languageToggle}>
+						<button
+							type="button"
+							className={`a-locale-switch__button ${locale === "zh" ? "a-locale-switch__button--active" : ""}`}
+							onClick={() => setLocale("zh")}
+							aria-pressed={locale === "zh"}
+						>
+							{copy.languageZh}
+						</button>
+						<button
+							type="button"
+							className={`a-locale-switch__button ${locale === "en" ? "a-locale-switch__button--active" : ""}`}
+							onClick={() => setLocale("en")}
+							aria-pressed={locale === "en"}
+						>
+							{copy.languageEn}
+						</button>
+					</div>
 					<button
 						type="button"
 						className="a-scheme-nav__link a-scheme-nav__link--icon"
-						aria-label="切换语言（预留）"
-						title="切换语言（预留）"
+						aria-label={copy.themeReserved}
+						title={copy.themeReserved}
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
 							<path
@@ -367,26 +658,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							/>
 						</svg>
 					</button>
-					<button
-						type="button"
-						className="a-scheme-nav__link a-scheme-nav__link--icon"
-						aria-label="切换亮暗主题（预留）"
-						title="切换亮暗主题（预留）"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-							<path
-								d="M21 12.8A8.8 8.8 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"
-								stroke="currentColor"
-								strokeWidth="1.8"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-					</button>
 					<a
 						className="a-scheme-nav__link a-scheme-nav__link--icon"
-						aria-label="打开 GitHub 仓库"
-						title="打开 GitHub 仓库"
+						aria-label={copy.githubRepo}
+						title={copy.githubRepo}
 						href="https://github.com/slackworker/chain-subconverter"
 						target="_blank"
 						rel="noopener noreferrer"
@@ -405,29 +680,29 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			</header>
 
 			{showGlobalBlockingFlyout ? (
-				<BlockingPanel globalErrors={globalPrimaryBlockingErrors} stageLabel={originStageLabel} />
+				<BlockingPanel globalErrors={globalPrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
 			) : null}
-			<MessagesPanel messages={visibleMessages} />
+			<MessagesPanel messages={visibleMessages} locale={locale} />
 
 			<main className="a-main">
 				<section className="a-stage" aria-labelledby={`${stage1Id}-h`}>
 					<div className="a-stage__head">
 						<div>
 							<h2 id={`${stage1Id}-h`} className="a-stage__title">
-								阶段 1 · 输入
+								{copy.stage1Title}
 							</h2>
-							<p className="a-stage__desc">输入落地与中转信息，执行转换以生成阶段 2 配置基底</p>
+							<p className="a-stage__desc">{copy.stage1Desc}</p>
 						</div>
-						<StatusPill label={stage1Status.label} tone={stage1Status.tone} />
+						<StatusPill label={localizedStage1Status} tone={stage1Status.tone} />
 					</div>
 
 					<div className="a-stage1-grid">
 						<LineNumberTextarea
 							id={`${stage1Id}-landing`}
-							label="落地信息"
+							label={copy.landingInfo}
 							labelAction={
 								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openSocksModal}>
-									+SOCKS5
+									{copy.addSocks5}
 								</button>
 							}
 							value={state.stage1Input.landingRawText}
@@ -437,17 +712,18 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									landingRawText: next,
 								}))
 							}
-							placeholder="订阅 URL 或节点 URI，每行一条"
+							placeholder={copy.landingPlaceholder}
 							hasError={landingFieldErrors.length > 0}
 							errorId={landingErrorId}
 							errorText={landingFieldErrors[0]?.message}
+							localErrorAriaHint={copy.localErrorAriaHint}
 						/>
 						<LineNumberTextarea
 							id={`${stage1Id}-transit`}
-							label="中转信息"
+							label={copy.transitInfo}
 							labelAction={portForwardEnabled ? (
 								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openPortForwardModal}>
-									+端口转发
+									{copy.addPortForward}
 								</button>
 							) : null}
 							value={state.stage1Input.transitRawText}
@@ -457,10 +733,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									transitRawText: next,
 								}))
 							}
-							placeholder="机场订阅、节点 URI 或 data:text/plain,..."
+							placeholder={copy.transitPlaceholder}
 							bottomLeftContent={
 								portForwardEnabled && state.stage1Input.forwardRelayItems.length > 0 ? (
-									<ul className={`a-tag-list ${forwardRelayErrors.length > 0 ? "a-tag-list--error" : ""}`} aria-label="端口转发标签">
+									<ul className={`a-tag-list ${forwardRelayErrors.length > 0 ? "a-tag-list--error" : ""}`} aria-label={copy.portForwardTags}>
 										{state.stage1Input.forwardRelayItems.map((item, index) => (
 											<li key={`${item}-${index}`} className="a-tag-chip">
 												<span className="a-tag-chip__text">{item}</span>
@@ -470,7 +746,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 													onClick={() =>
 														updateStage1Input((current) => removeForwardRelayItem(current, index))
 													}
-													aria-label={`移除 ${item}`}
+													aria-label={translate(copy.removeTag, { tag: item })}
 												>
 													×
 												</button>
@@ -482,20 +758,21 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							hasError={transitFieldErrors.length > 0}
 							errorId={transitErrorId}
 							errorText={transitFieldErrors[0]?.message}
+							localErrorAriaHint={copy.localErrorAriaHint}
 						/>
 					</div>
 
 					<div className="a-stage1-actions-wrap">
 						<button type="button" className="a-advanced__toggle" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
-							高级选项
+							{copy.advancedOptions}
 						</button>
 						{advancedOpen ? (
 							<div className="a-advanced">
 								<div className="a-advanced__body">
 								<label className="a-field a-field--inline">
 									<span className="a-field-label">
-										订阅转换模板{" "}
-										<span className="a-hint" title={`远程配置; 缺省模板：${DEFAULT_TEMPLATE_HINT}`} aria-label="模板 URL 说明">
+										{copy.templateUrl}{" "}
+										<span className="a-hint" title={copy.templateUrlHint} aria-label={copy.templateUrlHintAria}>
 											?
 										</span>
 									</span>
@@ -512,20 +789,20 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 												},
 											}))
 										}
-										placeholder="请输入带地域分组的模板URL，缺省将使用 Aethersailor 模板"
+										placeholder={copy.templatePlaceholder}
 										aria-invalid={configFieldErrors.length > 0 ? true : undefined}
 										aria-describedby={configFieldErrors.length > 0 ? configErrorId : undefined}
 									/>
 									{configFieldErrors.length > 0 ? (
 										<p id={configErrorId} className="a-sr-only" role="status">
-											{LOCAL_ERROR_ARIA_HINT}
+											{copy.localErrorAriaHint}
 										</p>
 									) : null}
 								</label>
 
 								<div className="a-advanced__row-tags">
 									<TagField
-										label="include 标签"
+										label={copy.includeTags}
 										values={state.stage1Input.advancedOptions.include}
 										onChange={(next) =>
 											updateStage1Input((current) => ({
@@ -533,10 +810,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 												advancedOptions: { ...current.advancedOptions, include: next },
 											}))
 										}
-										placeholder="输入后按 Enter 添加"
+										placeholder={copy.tagPlaceholder}
+										removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
 									/>
 									<TagField
-										label="exclude 标签"
+										label={copy.excludeTags}
 										values={state.stage1Input.advancedOptions.exclude}
 										onChange={(next) =>
 											updateStage1Input((current) => ({
@@ -544,7 +822,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 												advancedOptions: { ...current.advancedOptions, exclude: next },
 											}))
 										}
-										placeholder="输入后按 Enter 添加"
+										placeholder={copy.tagPlaceholder}
+										removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
 									/>
 								</div>
 
@@ -595,7 +874,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 												}))
 											}
 										/>
-										跳过证书校验（scv）
+										{copy.skipCertVerify}
 									</label>
 									<label className="a-check a-check--switch">
 										<input
@@ -611,7 +890,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 											}}
 										/>
 										<span className="a-switch" aria-hidden />
-										启用端口转发
+										{copy.enablePortForward}
 									</label>
 								</div>
 								</div>
@@ -620,17 +899,17 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 						<div className="a-stage-actions a-stage-actions--stage1">
 							<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
-								{isConverting ? "转换中…" : "转换并自动填充"}
+								{isConverting ? copy.converting : copy.convertAndFill}
 							</button>
 							{(stage1PrimaryBlockingErrors.length > 0 || shouldShowStage2StaleNotice) ? (
 								<div className="a-stage-actions__feedback">
 									{stage1PrimaryBlockingErrors.length > 0 ? (
-										<OriginAnchoredBlockingStrip errors={stage1PrimaryBlockingErrors} stageLabel={originStageLabel} />
+										<OriginAnchoredBlockingStrip errors={stage1PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
 									) : null}
 									{shouldShowStage2StaleNotice ? (
 										<div className="a-stage-feedback-strip a-stage-feedback-strip--warning" role="status">
-											<span className="a-stage-feedback-strip__stage">{getOriginStageLabel("stage1")}</span>
-											<span className="a-stage-feedback-strip__msg">已变更：请重新执行转换后再生成链接。</span>
+											<span className="a-stage-feedback-strip__stage">{getStageLabel("stage1", locale) ?? copy.currentStage}</span>
+											<span className="a-stage-feedback-strip__msg">{copy.stageChangedNotice}</span>
 										</div>
 									) : null}
 								</div>
@@ -643,16 +922,16 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					<div className="a-stage__head">
 						<div>
 							<h2 id="a-stage2-h" className="a-stage__title">
-								阶段 2 · 落地配置
+								{copy.stage2Title}
 							</h2>
-							<p className="a-stage__desc">按落地节点逐行选择模式与目标</p>
+							<p className="a-stage__desc">{copy.stage2Desc}</p>
 						</div>
-						<StatusPill label={stage2Status.label} tone={stage2Status.tone} />
+						<StatusPill label={localizedStage2Status} tone={stage2Status.tone} />
 					</div>
 
 					{isConflictReadonly ? (
 						<p className="a-conflict-banner">
-							当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。
+							{copy.conflictReadonly}
 						</p>
 					) : null}
 
@@ -660,17 +939,17 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						<table className="a-table">
 							<thead>
 								<tr>
-									<th scope="col">落地节点</th>
-									<th scope="col">节点类型</th>
-									<th scope="col">配置方式</th>
-									<th scope="col">目标</th>
+									<th scope="col">{copy.colLanding}</th>
+									<th scope="col">{copy.colType}</th>
+									<th scope="col">{copy.colMode}</th>
+									<th scope="col">{copy.colTarget}</th>
 								</tr>
 							</thead>
 							<tbody>
 								{stage2Rows.length === 0 ? (
 									<tr>
 										<td colSpan={4} className="a-table__empty">
-											完成阶段 1 转换后，将在此列出各行配置。
+											{copy.stage2Empty}
 										</td>
 									</tr>
 								) : (
@@ -700,11 +979,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 												<td>
 													<div className="a-cell-name">{row.landingNodeName}</div>
 													{meta?.restrictedModes && Object.keys(meta.restrictedModes).length > 0 ? (
-														<p className="a-cell-meta">本行存在模式限制，详见下拉禁用项提示。</p>
+														<p className="a-cell-meta">{copy.rowRestrictions}</p>
 													) : null}
 												</td>
 												<td>
-													<div className="a-cell-type">{meta?.landingNodeType ?? "—"}</div>
+													<div className="a-cell-type">{meta?.landingNodeType ?? "--"}</div>
 												</td>
 												<td>
 													<div className="a-mode-cell">
@@ -726,10 +1005,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																)
 															}
 														>
-															{modeOptions.map((mode) => {
+																{modeOptions.map((mode) => {
 																const restriction = meta?.restrictedModes?.[mode];
 																const modeWarn = meta?.modeWarnings?.[mode];
-																const label = getModeLabel(mode);
+																	const label = getModeLabel(mode, locale);
 																return (
 																	<option
 																		key={mode}
@@ -808,7 +1087,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																				aria-expanded={primaryOpen}
 																				onClick={() => setPrimaryOpen(row.landingNodeName, !primaryOpen)}
 																			>
-																				<span className="a-target-menu__group-label">区域策略组</span>
+																				<span className="a-target-menu__group-label">{copy.commonGroups}</span>
 																				<span className={`a-target-menu__group-icon ${primaryOpen ? "is-open" : ""}`} aria-hidden="true">
 																					▾
 																				</span>
@@ -833,7 +1112,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																						))}
 																					</ul>
 																				) : (
-																					<p className="a-picker-help">{primaryGroup?.emptyText ?? "暂无常用候选"}</p>
+																					<p className="a-picker-help">{primaryGroup?.emptyText ?? copy.noCommonChoices}</p>
 																				)
 																			) : null}
 																		</div>
@@ -846,7 +1125,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																					aria-expanded={supplementOpen}
 																					onClick={() => setSupplementOpen(row.landingNodeName, !supplementOpen)}
 																				>
-																					<span className="a-target-menu__group-label">固定节点</span>
+																					<span className="a-target-menu__group-label">{copy.fixedNodes}</span>
 																					<span className={`a-target-menu__group-icon ${supplementOpen ? "is-open" : ""}`} aria-hidden="true">
 																						▾
 																					</span>
@@ -891,7 +1170,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																	)
 																}
 															>
-																<option value="">{row.mode === "none" ? "—" : "请选择"}</option>
+																<option value="">{row.mode === "none" ? "--" : copy.selectTarget}</option>
 																{forwardRelayChoices.map((choice) => (
 																	<option key={choice.value} value={choice.value} disabled={choice.disabled}>
 																		{choice.label}
@@ -902,7 +1181,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 													)}
 													{rowErrors.length > 0 ? (
 														<p id={rowErrorId} className="a-sr-only" role="status">
-															{LOCAL_ERROR_ARIA_HINT}
+															{copy.localErrorAriaHint}
 														</p>
 													) : null}
 												</td>
@@ -916,11 +1195,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 					<div className="a-stage-actions">
 						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
-							{isGenerating ? "生成中…" : "生成链接"}
+							{isGenerating ? copy.generating : copy.generateLink}
 						</button>
 						{stage2PrimaryBlockingErrors.length > 0 ? (
 							<div className="a-stage-actions__feedback">
-								<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={originStageLabel} />
+								<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
 							</div>
 						) : null}
 					</div>
@@ -930,16 +1209,16 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					<div className="a-stage__head">
 						<div>
 							<h2 id="a-stage3-h" className="a-stage__title">
-								阶段 3 · 输出
+								{copy.stage3Title}
 							</h2>
-							<p className="a-stage__desc">打开、复制、下载 生成的订阅链接；输入已有链接进行反向解析</p>
+							<p className="a-stage__desc">{copy.stage3Desc}</p>
 						</div>
-						<StatusPill label={stage3Status.label} tone={stage3Status.tone} />
+						<StatusPill label={localizedStage3Status} tone={stage3Status.tone} />
 					</div>
 
 					<div className="a-field">
 						<label className="a-field-label" htmlFor="a-current-link">
-							当前链接
+							{copy.currentLink}
 						</label>
 						<div className="a-current-link-row">
 							<input
@@ -948,7 +1227,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								type="url"
 								value={state.currentLinkInput}
 								onChange={(event) => setCurrentLinkInput(event.target.value)}
-								placeholder="生成或粘贴 longUrl / shortUrl"
+								placeholder={copy.currentLinkPlaceholder}
 								autoComplete="off"
 								aria-invalid={currentLinkFieldErrors.length > 0 ? true : undefined}
 								aria-describedby={currentLinkFieldErrors.length > 0 ? currentLinkErrorId : undefined}
@@ -962,42 +1241,42 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									onChange={(event) => void handlePreferShortUrl(event.target.checked)}
 								/>
 								<span className="a-switch" aria-hidden />
-								短链接
-								{isCreatingShortUrl ? <span className="a-inline-muted">（创建短链中…）</span> : null}
+								{copy.shortLink}
+								{isCreatingShortUrl ? <span className="a-inline-muted">{copy.creatingShortLink}</span> : null}
 							</label>
 						</div>
 						{currentLinkFieldErrors.length > 0 ? (
 							<p id={currentLinkErrorId} className="a-sr-only" role="status">
-								{LOCAL_ERROR_ARIA_HINT}
+								{copy.localErrorAriaHint}
 							</p>
 						) : null}
 					</div>
 
 					<div className="a-output-actions">
 						<button type="button" className="a-btn a-btn--secondary" onClick={outputActions.openCurrentLink}>
-							打开预览
+							{copy.openPreview}
 						</button>
 						<button type="button" className="a-btn a-btn--secondary" onClick={() => void outputActions.copyCurrentLink()}>
-							复制
+							{copy.copy}
 						</button>
 						<button type="button" className="a-btn a-btn--secondary" onClick={outputActions.downloadCurrentLink}>
-							下载 YAML
+							{copy.downloadYaml}
 						</button>
 						<button type="button" className="a-btn a-btn--primary" disabled={isRestoring || state.currentLinkInput.trim() === ""} onClick={() => void handleRestore()}>
-							{isRestoring ? "反向解析中…" : "反向解析"}
+							{isRestoring ? copy.restoring : copy.restore}
 						</button>
 					</div>
 
 					{stage3PrimaryBlockingErrors.length > 0 ? (
 						<div className="a-stage-actions">
 							<div className="a-stage-actions__feedback">
-								<OriginAnchoredBlockingStrip errors={stage3PrimaryBlockingErrors} stageLabel={originStageLabel} />
+								<OriginAnchoredBlockingStrip errors={stage3PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
 							</div>
 						</div>
 					) : null}
 
-					{outputActions.copyState === "done" ? <p className="a-toast a-toast--ok">已复制到剪贴板</p> : null}
-					{outputActions.copyState === "failed" ? <p className="a-toast a-toast--err">复制失败，请检查权限或手动复制</p> : null}
+					{outputActions.copyState === "done" ? <p className="a-toast a-toast--ok">{copy.copyDone}</p> : null}
+					{outputActions.copyState === "failed" ? <p className="a-toast a-toast--err">{copy.copyFailed}</p> : null}
 				</section>
 			</main>
 
@@ -1011,11 +1290,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						onClick={(event) => event.stopPropagation()}
 					>
 						<h2 id="a-socks-title" className="a-modal__title">
-							添加 / 转换 SOCKS5 节点
+							{copy.addOrConvertSocks5}
 						</h2>
 						<div className="a-modal__grid">
 							<label className="a-field">
-								<span className="a-field-label">名称</span>
+								<span className="a-field-label">{copy.name}</span>
 								<input
 									className="a-input"
 									value={socksForm.name}
@@ -1024,7 +1303,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							</label>
 							<div className="a-modal__row-two">
 								<label className="a-field">
-									<span className="a-field-label">服务器</span>
+									<span className="a-field-label">{copy.server}</span>
 									<input
 										className="a-input"
 										value={socksForm.server}
@@ -1032,7 +1311,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									/>
 								</label>
 								<label className="a-field">
-									<span className="a-field-label">端口</span>
+									<span className="a-field-label">{copy.port}</span>
 									<input
 										className="a-input"
 										value={socksForm.port}
@@ -1042,7 +1321,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							</div>
 							<div className="a-modal__row-two">
 								<label className="a-field">
-									<span className="a-field-label">用户名（可选）</span>
+									<span className="a-field-label">{copy.usernameOptional}</span>
 									<input
 										className="a-input"
 										value={socksForm.username}
@@ -1050,7 +1329,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									/>
 								</label>
 								<label className="a-field">
-									<span className="a-field-label">密码（可选）</span>
+									<span className="a-field-label">{copy.passwordOptional}</span>
 									<input
 										className="a-input"
 										type="text"
@@ -1060,7 +1339,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								</label>
 							</div>
 							<label className="a-field a-field--socks-uri-divider">
-								<span className="a-field-label">SOCKS5 URI（转换为可解析格式）</span>
+								<span className="a-field-label">{copy.socks5Uri}</span>
 								<input
 									className="a-input"
 									value={socksURI}
@@ -1079,10 +1358,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						{socksError ? <p className="a-field-error">{socksError}</p> : null}
 						<div className="a-modal__actions">
 							<button type="button" className="a-btn a-btn--secondary" onClick={closeSocksModal}>
-								取消
+								{copy.cancel}
 							</button>
 							<button type="button" className="a-btn a-btn--primary" onClick={submitSocks5}>
-								添加
+								{copy.add}
 							</button>
 						</div>
 					</div>
@@ -1098,10 +1377,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						onClick={(event) => event.stopPropagation()}
 					>
 						<h2 id="a-port-forward-title" className="a-modal__title">
-							添加端口转发服务（实验性）
+							{copy.addPortForwardModal}
 						</h2>
 						<TagField
-							label="转发信息"
+							label={copy.forwardInfo}
 							values={portForwardDraftTags}
 							onChange={(next) => {
 								setPortForwardDraftTags(next);
@@ -1109,15 +1388,16 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									setPortForwardError(null);
 								}
 							}}
-							placeholder="输入 server:port ，按 Enter 添加多个"
+							placeholder={copy.forwardPlaceholder}
+							removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
 						/>
 						{portForwardError ? <p className="a-field-error">{portForwardError}</p> : null}
 						<div className="a-modal__actions">
 							<button type="button" className="a-btn a-btn--secondary" onClick={closePortForwardModal}>
-								取消
+								{copy.cancel}
 							</button>
 							<button type="button" className="a-btn a-btn--primary" onClick={submitPortForwardTags}>
-								确认
+								{copy.confirm}
 							</button>
 						</div>
 					</div>

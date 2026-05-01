@@ -12,6 +12,7 @@ interface LineNumberTextareaProps {
 	hasError?: boolean;
 	errorId?: string;
 	errorText?: string;
+	localErrorAriaHint?: string;
 }
 
 const LOCAL_ERROR_ARIA_HINT = "该位置存在错误，请查看当前阶段反馈条。";
@@ -28,6 +29,7 @@ export function LineNumberTextarea({
 	hasError,
 	errorId,
 	errorText,
+	localErrorAriaHint,
 }: LineNumberTextareaProps) {
 	const taRef = useRef<HTMLTextAreaElement>(null);
 	const gutterRef = useRef<HTMLDivElement>(null);
@@ -74,7 +76,7 @@ export function LineNumberTextarea({
 				{bottomLeftContent ? <div className="a-lined-input__bottom-left">{bottomLeftContent}</div> : null}
 				{hasError && errorId ? (
 					<p id={errorId} className="a-sr-only" role="status">
-						{LOCAL_ERROR_ARIA_HINT}
+						{localErrorAriaHint ?? LOCAL_ERROR_ARIA_HINT}
 					</p>
 				) : null}
 			</div>

@@ -6,9 +6,10 @@ interface TagFieldProps {
 	onChange: (next: string[] | null) => void;
 	disabled?: boolean;
 	placeholder?: string;
+	removeTagAriaLabel?: (tag: string) => string;
 }
 
-export function TagField({ label, values, onChange, disabled, placeholder }: TagFieldProps) {
+export function TagField({ label, values, onChange, disabled, placeholder, removeTagAriaLabel }: TagFieldProps) {
 	const [draft, setDraft] = useState("");
 
 	const list = values ?? [];
@@ -42,7 +43,7 @@ export function TagField({ label, values, onChange, disabled, placeholder }: Tag
 								className="a-tag-chip__remove"
 								onClick={() => removeAt(index)}
 								disabled={disabled}
-								aria-label={`移除 ${tag}`}
+								aria-label={removeTagAriaLabel ? removeTagAriaLabel(tag) : `移除 ${tag}`}
 							>
 								×
 							</button>
