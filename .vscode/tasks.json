@@ -78,7 +78,7 @@
       "problemMatcher": []
     },
     {
-      "label": "git: commit current changes to main (no push)",
+      "label": "git: commit staged changes to main (no push)",
       "type": "shell",
       "command": "${workspaceFolder}/scripts/commit-current-changes-to-main.sh",
       "args": [
@@ -110,7 +110,7 @@
     {
       "id": "mainCommitMessage",
       "type": "promptString",
-      "description": "Commit message (commits to local main only; does not push)"
+      "description": "Commit message (commits staged changes to local main only; does not push)"
     }
   ]
 }
