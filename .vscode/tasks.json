@@ -60,14 +60,12 @@
       "problemMatcher": []
     },
     {
-      "label": "git: force push current branch",
+      "label": "git: force push UI branches",
       "type": "shell",
-      "command": "git",
+      "command": "bash",
       "args": [
-        "push",
-        "--force-with-lease",
-        "origin",
-        "HEAD"
+        "-lc",
+        "set -euo pipefail\nfor branch in UI-A UI-B UI-C; do\n  echo \"==> Force pushing ${branch} to origin/${branch}\"\n  git push --force-with-lease origin \"${branch}:${branch}\"\ndone"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
