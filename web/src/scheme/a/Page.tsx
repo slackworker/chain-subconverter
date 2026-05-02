@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
+import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import {
 	getGlobalPrimaryBlockingErrors,
 	getOriginStageLabel,
@@ -18,8 +19,6 @@ import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
 import "./index.css";
 
-const DEFAULT_TEMPLATE_HINT =
-	"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
 const LOCALE_STORAGE_KEY = "chain-subconverter-ui.locale";
 const THEME_STORAGE_KEY = "chain-subconverter-ui.theme";
 
@@ -59,9 +58,10 @@ const COPY = {
 		removeTag: "移除 {tag}",
 		advancedOptions: "高级选项",
 		templateUrl: "订阅转换模板",
-		templateUrlHint: `远程配置; 缺省模板：${DEFAULT_TEMPLATE_HINT}`,
+		templateUrlHint: `远程配置; 初始值来自部署默认模板：${DEFAULT_TEMPLATE_URL}`,
 		templateUrlHintAria: "模板 URL 说明",
-		templatePlaceholder: "请输入带地域分组的模板URL，缺省将使用 Aethersailor 模板",
+		templatePlaceholder: "请输入带地域分组的模板 URL",
+		templateResetDefault: "恢复默认",
 		includeTags: "include 标签",
 		excludeTags: "exclude 标签",
 		tagPlaceholder: "输入后按 Enter 添加",
@@ -164,9 +164,10 @@ const COPY = {
 		removeTag: "Remove {tag}",
 		advancedOptions: "Advanced options",
 		templateUrl: "Subscription template",
-		templateUrlHint: `Remote config; default template: ${DEFAULT_TEMPLATE_HINT}`,
+		templateUrlHint: `Remote config; initial value comes from the deployment default template: ${DEFAULT_TEMPLATE_URL}`,
 		templateUrlHintAria: "Template URL help",
-		templatePlaceholder: "Use a region-aware template URL, or leave empty to use the recommended Aethersailor template",
+		templatePlaceholder: "Use a region-aware template URL",
+		templateResetDefault: "Reset default",
 		includeTags: "Include tags",
 		excludeTags: "Exclude tags",
 		tagPlaceholder: "Type and press Enter to add",
@@ -447,7 +448,7 @@ function MessagesPanel({ messages, locale }: { messages: { level: string; messag
 	);
 }
 
-export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlacement }: AppPageProps) {
+export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlacement, runtimeConfig }: AppPageProps) {
 	const {
 		state,
 		stage2Rows,
@@ -526,6 +527,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const localizedStage1Status = getStatusLabel(stage1Status.label, locale);
 	const localizedStage2Status = getStatusLabel(stage2Status.label, locale);
 	const localizedStage3Status = getStatusLabel(stage3Status.label, locale);
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
+	const currentTemplateURL = state.stage1Input.advancedOptions.config ?? "";
 
 	useEffect(() => {
 		window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
@@ -804,23 +807,51 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 											?
 										</span>
 									</span>
-									<input
-										className={`a-input ${configFieldErrors.length > 0 ? "a-input--error" : ""}`}
-										type="text"
-										value={state.stage1Input.advancedOptions.config ?? ""}
-										onChange={(event) =>
-											updateStage1Input((current) => ({
-												...current,
-												advancedOptions: {
-													...current.advancedOptions,
-													config: event.target.value.trim() === "" ? null : event.target.value,
-												},
-											}))
-										}
-										placeholder={copy.templatePlaceholder}
-										aria-invalid={configFieldErrors.length > 0 ? true : undefined}
-										aria-describedby={configFieldErrors.length > 0 ? configErrorId : undefined}
-									/>
+									<div className="a-template-url-row">
+										<input
+											className={`a-input ${configFieldErrors.length > 0 ? "a-input--error" : ""}`}
+											type="text"
+											value={currentTemplateURL}
+											onChange={(event) =>
+												updateStage1Input((current) => ({
+													...current,
+													advancedOptions: {
+														...current.advancedOptions,
+														config: event.target.value.trim() === "" ? null : event.target.value,
+													},
+												}))
+											}
+											placeholder={copy.templatePlaceholder}
+											aria-invalid={configFieldErrors.length > 0 ? true : undefined}
+											aria-describedby={configFieldErrors.length > 0 ? configErrorId : undefined}
+										/>
+										<button
+											type="button"
+											className="a-template-url-row__reset"
+											disabled={currentTemplateURL.trim() === templateDefaultURL}
+											aria-label={copy.templateResetDefault}
+											title={copy.templateResetDefault}
+											onClick={() =>
+												updateStage1Input((current) => ({
+													...current,
+													advancedOptions: {
+														...current.advancedOptions,
+														config: templateDefaultURL,
+													},
+												}))
+											}
+										>
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+												<path
+													d="M4 7v5h5M5.5 12a6.5 6.5 0 1 0 2-4.7L4 10.8"
+													stroke="currentColor"
+													strokeWidth="1.8"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+												/>
+											</svg>
+										</button>
+									</div>
 									{configFieldErrors.length > 0 ? (
 										<p id={configErrorId} className="a-sr-only" role="status">
 											{copy.localErrorAriaHint}
