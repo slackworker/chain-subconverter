@@ -18,6 +18,7 @@ const (
 	DefaultMaxURLsPerField              = 20
 	DefaultShortLinkDBPath              = "data/short-links.sqlite3"
 	DefaultShortLinkCapacity            = 1000
+	DefaultDefaultTemplateURL           = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 
@@ -30,6 +31,7 @@ const (
 	EnvMaxURLsPerField              = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
 	EnvShortLinkDBPath              = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
 	EnvShortLinkCapacity            = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
+	EnvDefaultTemplateURL           = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL"
 	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 )
@@ -44,6 +46,7 @@ type Server struct {
 	MaxURLsPerField              int
 	ShortLinkDBPath              string
 	ShortLinkCapacity            int
+	DefaultTemplateURL           string
 	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL        time.Duration
 }
@@ -59,6 +62,7 @@ func DefaultServer() Server {
 		MaxURLsPerField:              DefaultMaxURLsPerField,
 		ShortLinkDBPath:              DefaultShortLinkDBPath,
 		ShortLinkCapacity:            DefaultShortLinkCapacity,
+		DefaultTemplateURL:           DefaultDefaultTemplateURL,
 		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 	}
@@ -110,6 +114,9 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.ShortLinkCapacity = shortLinkCapacity
 	}
+	if value, ok := lookupTrimmedEnv(EnvDefaultTemplateURL); ok {
+		cfg.DefaultTemplateURL = value
+	}
 	if value, ok := lookupTrimmedEnv(EnvDefaultTemplateFetchCacheTTL); ok {
 		defaultTemplateFetchCacheTTL, err := time.ParseDuration(value)
 		if err != nil {
@@ -158,6 +165,17 @@ func (cfg Server) Validate() error {
 	}
 	if cfg.TemplateFetchCacheTTL < 0 {
 		return fmt.Errorf("template fetch cache TTL must not be negative")
+	}
+
+	defaultTemplateURL, err := url.Parse(strings.TrimSpace(cfg.DefaultTemplateURL))
+	if err != nil {
+		return fmt.Errorf("parse default template URL: %w", err)
+	}
+	if defaultTemplateURL.Scheme != "http" && defaultTemplateURL.Scheme != "https" {
+		return fmt.Errorf("default template URL must be HTTP(S)")
+	}
+	if defaultTemplateURL.Host == "" {
+		return fmt.Errorf("default template URL must include host")
 	}
 
 	if strings.TrimSpace(cfg.PublicBaseURL) != "" {

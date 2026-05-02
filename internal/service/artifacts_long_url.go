@@ -304,6 +304,24 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
+	if payload.Stage1Input.AdvancedOptions.Config == nil {
+		return fmt.Errorf("advancedOptions.config must not be empty")
+	}
+	configURL := strings.TrimSpace(*payload.Stage1Input.AdvancedOptions.Config)
+	if configURL == "" {
+		return fmt.Errorf("advancedOptions.config must not be empty")
+	}
+	parsedConfigURL, err := url.Parse(configURL)
+	if err != nil {
+		return fmt.Errorf("advancedOptions.config must be a valid HTTP(S) URL: %w", err)
+	}
+	if parsedConfigURL.Scheme != "http" && parsedConfigURL.Scheme != "https" {
+		return fmt.Errorf("advancedOptions.config must use HTTP(S)")
+	}
+	if parsedConfigURL.Host == "" {
+		return fmt.Errorf("advancedOptions.config must include host")
+	}
+
 	rowsByLanding := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
 	for _, row := range payload.Stage2Snapshot.Rows {
 		landingNodeName := strings.TrimSpace(row.LandingNodeName)

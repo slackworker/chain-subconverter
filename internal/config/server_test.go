@@ -35,6 +35,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvMaxLongURLLength:             " 4096 ",
 				EnvShortLinkDBPath:              "  tmp/short-links.sqlite3  ",
 				EnvShortLinkCapacity:            " 2048 ",
+				EnvDefaultTemplateURL:           "  https://templates.example.com/default.ini  ",
 				EnvDefaultTemplateFetchCacheTTL: " 30m ",
 				EnvTemplateFetchCacheTTL:        " 5m ",
 			},
@@ -48,6 +49,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				MaxURLsPerField:              DefaultMaxURLsPerField,
 				ShortLinkDBPath:              "tmp/short-links.sqlite3",
 				ShortLinkCapacity:            2048,
+				DefaultTemplateURL:           "https://templates.example.com/default.ini",
 				DefaultTemplateFetchCacheTTL: 30 * time.Minute,
 				TemplateFetchCacheTTL:        5 * time.Minute,
 			},
@@ -93,6 +95,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvManagedTemplateBaseURL: "localhost:11200",
 			},
 			wantErr: "managed template base URL must include scheme and host",
+		},
+		{
+			name: "invalid default template url",
+			env: map[string]string{
+				EnvDefaultTemplateURL: "localhost/default.ini",
+			},
+			wantErr: "default template URL must be HTTP(S)",
 		},
 	}
 
@@ -146,6 +155,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "HTTP address must not be empty",
 		},
@@ -161,6 +171,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "frontend dist dir must not be empty",
 		},
@@ -176,6 +187,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "max long URL length must be greater than zero",
 		},
@@ -191,6 +203,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        " ",
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "short link DB path must not be empty",
 		},
@@ -206,6 +219,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      0,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "short link capacity must be greater than zero",
 		},
@@ -221,6 +235,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "public base URL must include scheme and host",
 		},
@@ -236,6 +251,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:        DefaultMaxURLsPerField,
 				ShortLinkDBPath:        DefaultShortLinkDBPath,
 				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "managed template base URL must include scheme and host",
 		},
@@ -251,6 +267,7 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:              DefaultMaxURLsPerField,
 				ShortLinkDBPath:              DefaultShortLinkDBPath,
 				ShortLinkCapacity:            DefaultShortLinkCapacity,
+				DefaultTemplateURL:           DefaultDefaultTemplateURL,
 				DefaultTemplateFetchCacheTTL: -1 * time.Second,
 			},
 			wantErr: "default template fetch cache TTL must not be negative",
@@ -267,10 +284,28 @@ func TestServerValidate(t *testing.T) {
 				MaxURLsPerField:              DefaultMaxURLsPerField,
 				ShortLinkDBPath:              DefaultShortLinkDBPath,
 				ShortLinkCapacity:            DefaultShortLinkCapacity,
+				DefaultTemplateURL:           DefaultDefaultTemplateURL,
 				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 				TemplateFetchCacheTTL:        -1 * time.Second,
 			},
 			wantErr: "template fetch cache TTL must not be negative",
+		},
+		{
+			name: "empty default template url",
+			cfg: Server{
+				HTTPAddress:                  DefaultHTTPAddress,
+				PublicBaseURL:                DefaultPublicBaseURL,
+				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				FrontendDistDir:              DefaultFrontendDistDir,
+				MaxLongURLLength:             DefaultMaxLongURLLength,
+				MaxInputSize:                 DefaultMaxInputSize,
+				MaxURLsPerField:              DefaultMaxURLsPerField,
+				ShortLinkDBPath:              DefaultShortLinkDBPath,
+				ShortLinkCapacity:            DefaultShortLinkCapacity,
+				DefaultTemplateURL:           " ",
+				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
+			},
+			wantErr: "default template URL must be HTTP(S)",
 		},
 	}
 
@@ -306,6 +341,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvMaxURLsPerField, "")
 	t.Setenv(EnvShortLinkDBPath, "")
 	t.Setenv(EnvShortLinkCapacity, "")
+	t.Setenv(EnvDefaultTemplateURL, "")
 	t.Setenv(EnvDefaultTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateFetchCacheTTL, "")
 

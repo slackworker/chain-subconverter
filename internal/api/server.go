@@ -25,12 +25,21 @@ type Handler struct {
 	templateStore       service.TemplateContentReader
 	shortLinkStore      service.ShortLinkStore
 	publicBaseURL       string
+	defaultTemplateURL  string
 	maxLongURLLength    int
 	inputLimits         service.InputLimits
 	managedTemplatePath string
 	shortSubPath        string
 	subPath             string
 	mux                 *http.ServeMux
+}
+
+type defaultTemplateURLProvider interface {
+	DefaultTemplateURL() string
+}
+
+type runtimeConfigResponse struct {
+	DefaultTemplateURL string `json:"defaultTemplateURL"`
 }
 
 func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits) (*Handler, error) {
@@ -48,12 +57,17 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	if err != nil {
 		return nil, err
 	}
+	defaultTemplateURL := ""
+	if provider, ok := source.(defaultTemplateURLProvider); ok {
+		defaultTemplateURL = provider.DefaultTemplateURL()
+	}
 
 	handler := &Handler{
 		source:              source,
 		templateStore:       templateStore,
 		shortLinkStore:      shortLinkStore,
 		publicBaseURL:       publicBaseURL,
+		defaultTemplateURL:  defaultTemplateURL,
 		maxLongURLLength:    maxLongURLLength,
 		inputLimits:         inputLimits,
 		managedTemplatePath: managedTemplatePath,
@@ -66,6 +80,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
 	mux.HandleFunc("POST /api/short-links", handler.handleShortLinks)
 	mux.HandleFunc("POST /api/resolve-url", handler.handleResolveURL)
+	mux.HandleFunc("GET /api/runtime-config", handler.handleRuntimeConfig)
 	mux.HandleFunc(managedTemplatePath, handler.handleManagedTemplate)
 	mux.HandleFunc("GET "+shortSubPath, handler.handleShortSubscription)
 	mux.HandleFunc("GET "+subPath, handler.handleSubscription)
@@ -92,6 +107,12 @@ func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request 
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
+}
+
+func (handler *Handler) handleRuntimeConfig(writer http.ResponseWriter, request *http.Request) {
+	writeJSON(writer, http.StatusOK, runtimeConfigResponse{
+		DefaultTemplateURL: handler.defaultTemplateURL,
+	})
 }
 
 func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http.Request) {

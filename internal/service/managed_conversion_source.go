@@ -10,23 +10,24 @@ import (
 	"sync"
 	"time"
 
+	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
-const defaultTemplateConfigURL = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
-
 type ManagedConversionSourceOptions struct {
+	DefaultTemplateURL           string
 	DefaultTemplateFetchCacheTTL time.Duration
-	TemplateFetchCacheTTL time.Duration
+	TemplateFetchCacheTTL        time.Duration
 }
 
 type ManagedConversionSource struct {
-	client                 *subconverter.Client
-	templateStore          TemplateContentStore
-	managedTemplateBaseURL *url.URL
-	httpClient             *http.Client
+	client                    *subconverter.Client
+	templateStore             TemplateContentStore
+	managedTemplateBaseURL    *url.URL
+	httpClient                *http.Client
+	defaultTemplateURL        string
 	defaultTemplateFetchCache *templateFetchCache
-	templateFetchCache     *templateFetchCache
+	templateFetchCache        *templateFetchCache
 }
 
 func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, managedTemplateBaseURL string, templateTimeout time.Duration, options ManagedConversionSourceOptions) (*ManagedConversionSource, error) {
@@ -46,14 +47,29 @@ func NewManagedConversionSource(client *subconverter.Client, templateStore Templ
 	if templateTimeout <= 0 {
 		templateTimeout = 15 * time.Second
 	}
+	defaultTemplateURL := strings.TrimSpace(options.DefaultTemplateURL)
+	if defaultTemplateURL == "" {
+		defaultTemplateURL = config.DefaultDefaultTemplateURL
+	}
+	parsedDefaultTemplateURL, err := url.Parse(defaultTemplateURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse default template URL: %w", err)
+	}
+	if parsedDefaultTemplateURL.Scheme != "http" && parsedDefaultTemplateURL.Scheme != "https" {
+		return nil, fmt.Errorf("default template URL must be HTTP(S)")
+	}
+	if parsedDefaultTemplateURL.Host == "" {
+		return nil, fmt.Errorf("default template URL must include host")
+	}
 
 	return &ManagedConversionSource{
-		client:                 client,
-		templateStore:          templateStore,
-		managedTemplateBaseURL: parsedBaseURL,
-		httpClient:             &http.Client{Timeout: templateTimeout},
+		client:                    client,
+		templateStore:             templateStore,
+		managedTemplateBaseURL:    parsedBaseURL,
+		httpClient:                &http.Client{Timeout: templateTimeout},
+		defaultTemplateURL:        parsedDefaultTemplateURL.String(),
 		defaultTemplateFetchCache: newTemplateFetchCache(options.DefaultTemplateFetchCacheTTL),
-		templateFetchCache:     newTemplateFetchCache(options.TemplateFetchCacheTTL),
+		templateFetchCache:        newTemplateFetchCache(options.TemplateFetchCacheTTL),
 	}, nil
 }
 
@@ -61,13 +77,17 @@ func (source *ManagedConversionSource) Convert(ctx context.Context, request subc
 	return source.client.Convert(ctx, request)
 }
 
+func (source *ManagedConversionSource) DefaultTemplateURL() string {
+	return source.defaultTemplateURL
+}
+
 func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, stage1Input Stage1Input) (PreparedConversion, error) {
-	effectiveTemplateURL, err := resolveEffectiveTemplateURL(stage1Input)
+	effectiveTemplateURL, isDefaultTemplate, err := source.resolveEffectiveTemplateURL(stage1Input)
 	if err != nil {
 		return PreparedConversion{}, err
 	}
 
-	templateConfig, err := source.fetchTemplateConfig(ctx, effectiveTemplateURL)
+	templateConfig, usedStaleTemplate, err := source.fetchTemplateConfig(ctx, effectiveTemplateURL, isDefaultTemplate)
 	if err != nil {
 		return PreparedConversion{}, err
 	}
@@ -99,46 +119,78 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		EffectiveTemplateURL:       effectiveTemplateURL,
 		ManagedTemplateURL:         managedTemplateURL,
 		RecognizedRegionGroupNames: recognizedRegionGroupNames,
+		Messages:                   templateFetchMessages(usedStaleTemplate),
 		Cleanup: func() {
 			source.templateStore.Delete(id)
 		},
 	}, nil
 }
 
-func resolveEffectiveTemplateURL(stage1Input Stage1Input) (string, error) {
+func (source *ManagedConversionSource) resolveEffectiveTemplateURL(stage1Input Stage1Input) (string, bool, error) {
 	if stage1Input.AdvancedOptions.Config == nil {
-		return defaultTemplateConfigURL, nil
+		return "", false, newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("missing template URL"))
 	}
 
 	rawURL := strings.TrimSpace(*stage1Input.AdvancedOptions.Config)
+	if rawURL == "" {
+		return "", false, newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("empty template URL"))
+	}
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
+		return "", false, newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
 	}
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("unsupported scheme %q", parsedURL.Scheme))
+		return "", false, newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("unsupported scheme %q", parsedURL.Scheme))
 	}
 	if parsedURL.Host == "" {
-		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("missing host"))
+		return "", false, newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", fmt.Errorf("missing host"))
 	}
-	return parsedURL.String(), nil
+	effectiveTemplateURL := parsedURL.String()
+	return effectiveTemplateURL, effectiveTemplateURL == source.defaultTemplateURL, nil
 }
 
-func (source *ManagedConversionSource) fetchTemplateConfig(ctx context.Context, templateURL string) (string, error) {
-	if cache := source.templateFetchCacheForURL(templateURL); cache != nil {
-		return cache.LoadOrFetch(ctx, templateURL, func(ctx context.Context) (string, error) {
-			return source.fetchTemplateConfigFromUpstream(ctx, templateURL)
-		})
+func (source *ManagedConversionSource) fetchTemplateConfig(ctx context.Context, templateURL string, isDefaultTemplate bool) (string, bool, error) {
+	fetch := func(ctx context.Context) (string, error) {
+		content, err := source.fetchTemplateConfigFromUpstream(ctx, templateURL)
+		if err != nil {
+			return "", err
+		}
+		if _, err := parseRegionMatchers(content); err != nil {
+			return "", newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
+		}
+		return content, nil
 	}
 
-	return source.fetchTemplateConfigFromUpstream(ctx, templateURL)
+	if cache := source.templateFetchCacheForURL(isDefaultTemplate); cache != nil {
+		if isDefaultTemplate {
+			return cache.LoadOrFetchStaleOnError(ctx, templateURL, fetch)
+		}
+		content, err := cache.LoadOrFetch(ctx, templateURL, fetch)
+		return content, false, err
+	}
+
+	content, err := fetch(ctx)
+	return content, false, err
 }
 
-func (source *ManagedConversionSource) templateFetchCacheForURL(templateURL string) *templateFetchCache {
-	if templateURL == defaultTemplateConfigURL && source.defaultTemplateFetchCache != nil {
+func (source *ManagedConversionSource) templateFetchCacheForURL(isDefaultTemplate bool) *templateFetchCache {
+	if isDefaultTemplate && source.defaultTemplateFetchCache != nil {
 		return source.defaultTemplateFetchCache
 	}
 	return source.templateFetchCache
+}
+
+func templateFetchMessages(usedStaleTemplate bool) []Message {
+	if !usedStaleTemplate {
+		return nil
+	}
+	return []Message{
+		{
+			Level:   "warning",
+			Code:    "DEFAULT_TEMPLATE_CACHE_USED",
+			Message: "默认模板暂时无法从上游刷新，已使用本服务此前验证通过的缓存模板",
+		},
+	}
 }
 
 func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx context.Context, templateURL string) (string, error) {
@@ -256,4 +308,62 @@ func (cache *templateFetchCache) LoadOrFetch(ctx context.Context, key string, fe
 	cache.mu.Unlock()
 
 	return content, err
+}
+
+func (cache *templateFetchCache) LoadOrFetchStaleOnError(ctx context.Context, key string, fetch func(context.Context) (string, error)) (string, bool, error) {
+	cache.mu.Lock()
+	var staleEntry *templateFetchCacheEntry
+	if cache.entries != nil {
+		if entry, ok := cache.entries[key]; ok {
+			if cache.now().Before(entry.expiresAt) {
+				cache.mu.Unlock()
+				return entry.content, false, nil
+			}
+			entryCopy := entry
+			staleEntry = &entryCopy
+		}
+	}
+	if cache.inflight != nil {
+		if call, ok := cache.inflight[key]; ok {
+			cache.mu.Unlock()
+			select {
+			case <-call.done:
+				if call.err != nil && staleEntry != nil {
+					return staleEntry.content, true, nil
+				}
+				return call.content, false, call.err
+			case <-ctx.Done():
+				return "", false, ctx.Err()
+			}
+		}
+	} else {
+		cache.inflight = make(map[string]*templateFetchCall)
+	}
+
+	call := &templateFetchCall{done: make(chan struct{})}
+	cache.inflight[key] = call
+	cache.mu.Unlock()
+
+	content, err := fetch(ctx)
+
+	cache.mu.Lock()
+	delete(cache.inflight, key)
+	if err == nil {
+		if cache.entries == nil {
+			cache.entries = make(map[string]templateFetchCacheEntry)
+		}
+		cache.entries[key] = templateFetchCacheEntry{
+			content:   content,
+			expiresAt: cache.now().Add(cache.ttl),
+		}
+	}
+	call.content = content
+	call.err = err
+	close(call.done)
+	cache.mu.Unlock()
+
+	if err != nil && staleEntry != nil {
+		return staleEntry.content, true, nil
+	}
+	return content, false, err
 }

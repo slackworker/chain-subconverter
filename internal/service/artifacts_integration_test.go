@@ -9,6 +9,12 @@ import (
 	"testing"
 )
 
+func stage1InputWithTemplate(input Stage1Input) Stage1Input {
+	templateURL := "https://templates.example.com/default.ini"
+	input.AdvancedOptions.Config = &templateURL
+	return input
+}
+
 func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
@@ -76,7 +82,7 @@ func TestDecodeLongURLPayload_RejectsDecodedStage1InputOverLimit(t *testing.T) {
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
-			Stage1Input{LandingRawText: strings.Repeat("a", 16)},
+			stage1InputWithTemplate(Stage1Input{LandingRawText: strings.Repeat("a", 16)}),
 			Stage2Snapshot{},
 		),
 		0,
@@ -94,11 +100,30 @@ func TestDecodeLongURLPayload_RejectsDecodedStage1InputOverLimit(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsMissingTemplateURL(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(Stage1Input{}, Stage2Snapshot{}),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: advancedOptions.config must not be empty") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
 func TestDecodeLongURLPayload_RejectsUnsupportedMode(t *testing.T) {
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
-			Stage1Input{},
+			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
 					LandingNodeName: "HK 01",
@@ -126,7 +151,7 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
-			Stage1Input{},
+			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
 					LandingNodeName: "HK 01",
@@ -155,7 +180,7 @@ func TestDecodeLongURLPayload_AppliesCompatibleOuterQueryOverride(t *testing.T) 
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
-			Stage1Input{AdvancedOptions: AdvancedOptions{Emoji: &emoji}},
+			stage1InputWithTemplate(Stage1Input{AdvancedOptions: AdvancedOptions{Emoji: &emoji}}),
 			Stage2Snapshot{},
 		),
 		0,

@@ -120,6 +120,10 @@ export interface ResolveURLResponse {
 	blockingErrors: BlockingError[];
 }
 
+export interface RuntimeConfigResponse {
+	defaultTemplateURL: string;
+}
+
 export interface ErrorResponse {
 	messages: Message[];
 	blockingErrors: BlockingError[];

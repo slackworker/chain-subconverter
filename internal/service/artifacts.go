@@ -60,7 +60,7 @@ func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixt
 
 	return Stage1ConvertResponse{
 		Stage2Init:     stage2Init,
-		Messages:       []Message{},
+		Messages:       append([]Message{}, fixtures.Messages...),
 		BlockingErrors: []BlockingError{},
 	}, nil
 }
@@ -78,7 +78,7 @@ func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtur
 
 	return GenerateResponse{
 		LongURL:        longURL,
-		Messages:       []Message{},
+		Messages:       append([]Message{}, fixtures.Messages...),
 		BlockingErrors: []BlockingError{},
 	}, nil
 }

@@ -150,6 +150,7 @@ type ConversionFixtures struct {
 	EffectiveTemplateURL       string
 	ManagedTemplateURL         string
 	RecognizedRegionGroupNames []string
+	Messages                   []Message
 }
 
 type inlineProxy struct {

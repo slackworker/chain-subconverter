@@ -8,7 +8,7 @@
 
 - 当前 spec 定义的所有对外 HTTP 端点都不需要鉴权
 - 服务端按匿名请求处理，不校验登录态、`Authorization` 头、API Key、签名或其他认证凭据
-- `POST /api/*`、`GET /sub/<id>` 与 `GET /sub?...` 都按匿名请求处理
+- `GET /api/runtime-config`、`POST /api/*`、`GET /sub/<id>` 与 `GET /sub?...` 都按匿名请求处理
 - 可额外暴露 `GET /healthz` 作为部署侧健康检查端点；该端点只用于存活/就绪探测，不承载业务契约，也不改变本文对 `/api/*` 与 `/sub*` 的定义范围
 
 ## 通用数据模型
@@ -25,7 +25,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": null,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": null
     }
@@ -38,10 +38,10 @@
 - `forwardRelayItems` 始终是字符串数组；是否录入过端口转发服务只由该数组自身表达，空数组表示当前未录入任何端口转发服务项
 - `forwardRelayItems[]` 的每个元素对应一个独立端口转发输入项；数组顺序保留用户输入顺序，不使用连续文本序列化
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
-- 接口接受层中，`advancedOptions` 采用显式三态快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config` 使用 `非空字符串 | null`；`include`、`exclude` 使用 `非空字符串数组 | null`
+- 接口接受层中，`advancedOptions` 采用显式快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config` 使用非空字符串；`include`、`exclude` 使用 `非空字符串数组 | null`
 - `advancedOptions.config` 的字段名保留 `config`，用于兼容 `subconverter` 的既有 `config` 查询参数；其业务语义固定为“模板 URL”或“外部配置（模板）URL”，不得理解为最终 Mihomo YAML
-- 三态语义为：复选框 `true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；`config = null` 表示该字段留空；`include = null`、`exclude = null` 表示对应 Tag 列表留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
-- `config` 表示用户填写的模板 URL；`include` 与 `exclude` 为透传 Tag 列表。为兼容空输入，服务端可接受 `config = ""`、`include = []`、`exclude = []`，但必须在入站归一化为 `null`
+- 复选框语义为：`true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；`include = null`、`exclude = null` 表示对应 Tag 列表留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
+- `config` 表示当前快照使用的模板 URL，必须是非空 HTTP(S) URL；`include` 与 `exclude` 为透传 Tag 列表。为兼容空输入，服务端可接受 `include = []`、`exclude = []`，但必须在入站归一化为 `null`
 - 当前 Web 前端若以 TagInput 承载 `include`、`exclude`，接口接受层收到的必须是按输入顺序排列的字符串数组，不使用连续文本序列化
 - `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`；参数默认值与具体传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 - 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
@@ -199,7 +199,29 @@
 
 ## API 端点
 
-### 1. `POST /api/stage1/convert`
+### 1. `GET /api/runtime-config`
+
+用途：返回前端展示所需的运行时公开配置。
+
+请求：
+
+- 不需要请求体
+
+成功响应：
+
+```json
+{
+  "defaultTemplateURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
+}
+```
+
+约束：
+
+- `defaultTemplateURL` 表示前端阶段 1 模板 URL 输入框的部署默认初始值
+- 前端必须把该值作为普通模板 URL 写入 `advancedOptions.config`，并随阶段 1 请求、生成请求与长链接载荷提交
+- 该接口不承载鉴权、转换、模板拉取或健康检查语义
+
+### 2. `POST /api/stage1/convert`
 
 用途：接收阶段 1 输入，并返回本次转换得到的 `stage2Init`。
 
@@ -215,7 +237,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": null,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": ["TagX"]
     }
@@ -264,7 +286,7 @@
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 2. `POST /api/generate`
+### 3. `POST /api/generate`
 
 用途：接收阶段 1 快照与阶段 2 快照，完成最终校验并返回可消费的长链接。
 
@@ -347,7 +369,7 @@
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 3. `POST /api/short-links`
+### 4. `POST /api/short-links`
 
 用途：为既有 `longUrl` 创建或获取其确定性短链接。
 
@@ -401,7 +423,7 @@
 - `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 4. `POST /api/resolve-url`
+### 5. `POST /api/resolve-url`
 
 用途：输入长链接或短链接，返回规范化长链接、页面恢复所需快照，以及该快照当前是否允许继续编辑和继续生成。
 
@@ -448,7 +470,7 @@
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 5. `GET /sub/<id>`
+### 6. `GET /sub/<id>`
 
 用途：供 Mihomo 客户端拉取 YAML。
 
@@ -461,7 +483,7 @@
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
 - 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
 
-### 6. `GET /sub?...`
+### 7. `GET /sub?...`
 
 用途：长链接对应的订阅资源地址；访问时返回 YAML。
 
@@ -508,7 +530,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": null,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": null
     }
@@ -528,7 +550,7 @@
 规则：
 
 - `v` 是长链接编码版本字段，当前固定为 `1`
-- 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`
+- 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
 ### 3. 额外 query 兼容层

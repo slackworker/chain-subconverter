@@ -61,7 +61,7 @@
 | `udp` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `scv` | 展示 | 不勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
-| `config` | 展示 | 见下方补充 | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端只提交用户输入的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
+| `config` | 展示 | 前端初始值来自部署默认模板 URL | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端提交当前快照中的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
 | `exclude` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
 | `expand` | 隐藏 | `false` | 必传，固定传 `false` |
@@ -70,15 +70,17 @@
 补充规则：
 
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
-- `config` 的默认行为为：留空时，由 `chain-subconverter` 先拉取 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini` 作为本次有效模板
-- 若用户显式填写 `config`，该值必须是远程 HTTP(S) 模板 URL；`chain-subconverter` 必须先拉取该模板，再把后端托管的内部模板 URL 传给 `subconverter`
+- `config` 必须是阶段 1 快照中显式保存的远程 HTTP(S) 模板 URL；前端初始值来自部署默认模板 URL，部署默认模板 URL 必须可配置，默认值为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
+- `chain-subconverter` 必须先拉取 `config` 指向的模板，再把后端托管的内部模板 URL 传给 `subconverter`
 - `chain-subconverter` 不得把用户提供的远程模板 URL 直接透传给 `subconverter`
+- 当 `config` 等于部署默认模板 URL 时，其成功拉取结果必须先通过模板解析校验，只有校验通过的内容才允许写入默认模板缓存
+- 当 `config` 等于部署默认模板 URL 且刷新失败时，若当前服务进程中存在此前校验通过的默认模板缓存，可以继续使用该缓存完成本次转换，并在支持 `messages[]` 的响应中返回 warning；若不存在可用缓存，当前请求必须在调用 `subconverter` 前失败
 - `include`、`exclude` 若存在多个 Tag，后端必须基于阶段 1 快照中的数组值，按输入顺序用 `|` 拼接原始值，再整体做 URL 编码后传给 `subconverter`；例如 `["TagA", "TagB", "TagC"]` 最终形成 `include=TagA%7CTagB%7CTagC`
 - 模板拉取返回非成功 HTTP 状态、请求失败或空内容时，当前请求必须在调用 `subconverter` 前失败
 - 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
 - 模板可正常拉取但未识别出任何地域策略组时，请求仍可继续；此时只是不支持基于地域策略组的自动填充
-- 阶段 1 高级选项快照进入 query 构造前，先按 [03-backend-api](03-backend-api.md) 的接口接受层模型完成入站归一化
-- query 构造逐项保持该语义：复选框 `null` 不传、显式 `true/false` 按值传递；`config` 仅在非空字符串时传；`include`、`exclude` 仅在非空数组时参与 query 构造，并在传给上游前按输入顺序用 `|` 拼接为单个参数（`config` 由后端模板准备流程统一处理）
+- 阶段 1 高级选项快照进入 query 构造前，先按 [03-backend-api](03-backend-api.md) 的接口接受层模型完成入站归一化；`config` 缺失、为空或不是 HTTP(S) URL 时必须阻断当前请求
+- query 构造逐项保持该语义：复选框 `null` 不传、显式 `true/false` 按值传递；`config` 必须由后端模板准备流程统一处理；`include`、`exclude` 仅在非空数组时参与 query 构造，并在传给上游前按输入顺序用 `|` 拼接为单个参数
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 

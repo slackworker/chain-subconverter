@@ -145,12 +145,16 @@
   - `emoji`、`udp`、`skipCertVerify`：checkbox
   - `enablePortForward`：switch
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
-- “模板 URL”输入框默认留空，placeholder：`请使用带地域分组的模板，留空将使用推荐的 Aethersailor 模板`
-- 方案层Tooltip向用户提示当前默认推荐模板 URL 为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`，并说明上游更新可能导致规则变化；具体使用提示 icon、说明文本或其他呈现方式由方案层决定
+- “模板 URL”输入框默认填入 `GET /api/runtime-config` 返回的 `defaultTemplateURL`
+- 前端必须把默认模板 URL 作为普通输入值写入 `advancedOptions.config`；该值随阶段 1 请求、生成请求与长链接状态载荷一起提交
+- 模板 URL 输入框右侧必须提供“恢复默认”动作；触发后将输入框值改回当前 `defaultTemplateURL`
+- 前端不得在输入框外重复展示“当前默认模板”URL 文本块；用户复制默认 URL 时直接从输入框选中文本复制
+- 若运行时配置读取失败，方案层可回退到内置推荐 Aethersailor 模板 URL 并写入 `advancedOptions.config`
+- 方案层Tooltip可说明该初始值来自部署默认模板 URL，且上游更新可能导致规则变化；具体使用提示 icon、说明文本或其他呈现方式由方案层决定
 - 前端默认状态：`emoji` 与 `udp` 默认勾选，`skipCertVerify` 默认不勾选
 - 当前 Web 前端默认状态：`enablePortForward` 默认关闭
 - `include`、`exclude` 使用 TagInput 时，多标签值必须以字符串数组写入阶段 1 快照，数组顺序保留输入顺序；例如前端填写 `TagA`、`TagB`、`TagC`，快照值应为 `["TagA", "TagB", "TagC"]`
-- 当前 Web 前端产出层提交值规则：`emoji`、`udp`、`skipCertVerify` 的 checkbox 只提交 `true | null`（勾选 `true`，未勾选 `null`）；`config` 留空提交 `null`；`include`、`exclude` 在无标签时提交 `null`，有标签时提交按输入顺序组成的字符串数组
+- 当前 Web 前端产出层提交值规则：`emoji`、`udp`、`skipCertVerify` 的 checkbox 只提交 `true | null`（勾选 `true`，未勾选 `null`）；`config` 提交当前输入框中的非空模板 URL；`include`、`exclude` 在无标签时提交 `null`，有标签时提交按输入顺序组成的字符串数组
 - `enablePortForward` 开启后，前端才展示“中转信息输入区”周边的端口转发入口与 Tag 列表；关闭后必须隐藏这些控件，并清空 `forwardRelayItems`
 - 前端只负责渲染与提交高级选项快照；接口接受层的三态模型与入站归一化规则以 [03-backend-api](03-backend-api.md) 为准；参数默认值与 `GET /sub` 传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 

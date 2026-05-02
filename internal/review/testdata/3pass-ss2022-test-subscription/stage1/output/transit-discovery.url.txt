@@ -1,1 +1,1 @@
-http://localhost:25500/sub?target=clash&emoji=true&udp=true&expand=false&classic=true&url=http%3A%2F%2F198.51.100.20%3A3001%2Fdownload%2Ftest-subscription&list=true
+http://localhost:25500/sub?target=clash&emoji=true&udp=true&expand=false&classic=true&url=http%3A%2F%2F198.51.100.20%3A3001%2Fdownload%2Ftest-subscription&list=true&config=https%3A%2F%2Fraw.githubusercontent.com%2FAethersailor%2FCustom_OpenClash_Rules%2Frefs%2Fheads%2Fmain%2Fcfg%2FCustom_Clash.ini

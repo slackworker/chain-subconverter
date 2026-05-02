@@ -33,7 +33,7 @@ func TestDeterministicShortID_IsStable(t *testing.T) {
 }
 
 func TestCanonicalShortLinkStateKey_IgnoresBaseURL(t *testing.T) {
-	payload := BuildLongURLPayload(Stage1Input{LandingRawText: "a", TransitRawText: "b"}, Stage2Snapshot{})
+	payload := BuildLongURLPayload(stage1InputWithTemplate(Stage1Input{LandingRawText: "a", TransitRawText: "b"}), Stage2Snapshot{})
 	firstLongURL, err := EncodeLongURL("https://a.example.com/base", payload, 0)
 	if err != nil {
 		t.Fatalf("EncodeLongURL() first error = %v", err)
@@ -62,7 +62,7 @@ func TestCanonicalShortLinkStateKey_IgnoresBaseURL(t *testing.T) {
 
 func TestBuildShortLinkResponse_KeepsShortIDStableAcrossBaseURLs(t *testing.T) {
 	store := NewInMemoryShortLinkStore()
-	payload := BuildLongURLPayload(Stage1Input{LandingRawText: "a", TransitRawText: "b"}, Stage2Snapshot{})
+	payload := BuildLongURLPayload(stage1InputWithTemplate(Stage1Input{LandingRawText: "a", TransitRawText: "b"}), Stage2Snapshot{})
 	rawLongURL, err := EncodeLongURL("https://legacy.example.com/base", payload, 0)
 	if err != nil {
 		t.Fatalf("EncodeLongURL() error = %v", err)

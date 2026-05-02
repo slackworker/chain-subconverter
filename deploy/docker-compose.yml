@@ -20,6 +20,7 @@ services:
     environment:
       CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
+      CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3

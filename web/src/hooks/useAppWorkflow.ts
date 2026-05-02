@@ -66,6 +66,7 @@ export interface AppWorkflowViewModel {
 	stage1Status: WorkflowStatus;
 	stage2Status: WorkflowStatus;
 	stage3Status: WorkflowStatus;
+	applyDefaultTemplateURL: (templateURL: string) => void;
 	setCurrentLinkInput: (value: string) => void;
 	updateStage1Input: (updater: (current: Stage1Input) => Stage1Input) => void;
 	getStage1FieldErrors: (field: string) => BlockingError[];
@@ -317,6 +318,25 @@ export function useAppWorkflow() {
 		: state.generatedUrls.shortUrl
 			? { label: "Short URL Ready", tone: "success" }
 			: { label: "Long URL Ready", tone: "success" };
+
+	function applyDefaultTemplateURL(templateURL: string) {
+		const normalizedTemplateURL = templateURL.trim();
+		if (normalizedTemplateURL === "") {
+			return;
+		}
+		updateStage1Input((current) => {
+			if ((current.advancedOptions.config ?? "").trim() !== "") {
+				return current;
+			}
+			return {
+				...current,
+				advancedOptions: {
+					...current.advancedOptions,
+					config: normalizedTemplateURL,
+				},
+			};
+		});
+	}
 
 	function setCurrentLinkInput(value: string) {
 		setState((current) => ({
@@ -691,6 +711,7 @@ export function useAppWorkflow() {
 		stage1Status,
 		stage2Status,
 		stage3Status,
+		applyDefaultTemplateURL,
 		setCurrentLinkInput,
 		updateStage1Input,
 		getStage1FieldErrors,

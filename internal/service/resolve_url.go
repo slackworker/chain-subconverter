@@ -56,6 +56,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	if err != nil {
 		return ResolveURLResponse{}, err
 	}
+	messages = append(append([]Message{}, fixtures.Messages...), messages...)
 
 	return ResolveURLResponse{
 		LongURL:        resolved,

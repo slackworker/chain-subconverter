@@ -67,6 +67,9 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 	stage1Input := Stage1Input{
 		LandingRawText: "ss://landing",
 		TransitRawText: "ss://transit",
+		AdvancedOptions: AdvancedOptions{
+			Config: stringPtr("https://templates.example.com/default.ini"),
+		},
 	}
 	targetName := "🇭🇰 香港节点"
 	snapshot := Stage2Snapshot{
@@ -203,7 +206,7 @@ func TestResolveURLFromSource_RejectsSchemaInvalidLongURLPayload(t *testing.T) {
 	invalidLongURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
-			Stage1Input{},
+			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
 					LandingNodeName: "HK 01",

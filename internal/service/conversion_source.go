@@ -18,6 +18,7 @@ type PreparedConversion struct {
 	EffectiveTemplateURL       string
 	ManagedTemplateURL         string
 	RecognizedRegionGroupNames []string
+	Messages                   []Message
 	Cleanup                    func()
 }
 
@@ -97,6 +98,7 @@ func ExecuteConversionWithExtraQuery(ctx context.Context, source ConversionSourc
 	fixtures.EffectiveTemplateURL = prepared.EffectiveTemplateURL
 	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
 	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
+	fixtures.Messages = append([]Message(nil), prepared.Messages...)
 	return result, fixtures, nil
 }
 

@@ -20,14 +20,19 @@ import (
 )
 
 type fakeConversionSource struct {
-	gotRequest subconverter.Request
-	result     subconverter.ThreePassResult
-	err        error
+	gotRequest         subconverter.Request
+	result             subconverter.ThreePassResult
+	err                error
+	defaultTemplateURL string
 }
 
 func (source *fakeConversionSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
 	source.gotRequest = request
 	return source.result, source.err
+}
+
+func (source *fakeConversionSource) DefaultTemplateURL() string {
+	return source.defaultTemplateURL
 }
 
 func TestStage1ConvertHandler_HappyPath(t *testing.T) {
@@ -59,7 +64,7 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	}
 }
 
-func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionStrings(t *testing.T) {
+func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	source := &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -69,7 +74,7 @@ func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionStrings(t *testing.T)
 	request := httptest.NewRequest(
 		http.MethodPost,
 		"/api/stage1/convert",
-		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":null,"udp":null,"skipCertVerify":null,"config":"","include":[],"exclude":[]}}}`),
+		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":null,"udp":null,"skipCertVerify":null,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}}}`),
 	)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
@@ -77,9 +82,9 @@ func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionStrings(t *testing.T)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
 	}
-	if source.gotRequest.Options.Config != nil || source.gotRequest.Options.Include != nil || source.gotRequest.Options.Exclude != nil {
+	if source.gotRequest.Options.Config == nil || *source.gotRequest.Options.Config != "https://templates.example.com/default.ini" || source.gotRequest.Options.Include != nil || source.gotRequest.Options.Exclude != nil {
 		t.Fatalf(
-			"expected empty advanced option strings to normalize to nil: got config=%v include=%v exclude=%v",
+			"expected config to stay explicit and empty advanced option lists to normalize to nil: got config=%v include=%v exclude=%v",
 			source.gotRequest.Options.Config,
 			source.gotRequest.Options.Include,
 			source.gotRequest.Options.Exclude,
@@ -377,7 +382,7 @@ func TestShortLinksHandler_MapsShortLinkStoreUnavailableToSpecModel(t *testing.T
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, failingShortLinkStore{err: errors.New("store unavailable")})
 	validLongURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
-		service.BuildLongURLPayload(service.Stage1Input{}, service.Stage2Snapshot{}),
+		service.BuildLongURLPayload(service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}}, service.Stage2Snapshot{}),
 		0,
 	)
 	if err != nil {
@@ -629,7 +634,7 @@ func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 		result: singleLandingResult("HK Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[" relay.example.com:80"],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":[],"exclude":[]}}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[" relay.example.com:80"],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -647,7 +652,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -684,7 +689,7 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 		result: singleLandingResult("Unknown Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -703,6 +708,9 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 		service.BuildLongURLPayload(
 			service.Stage1Input{
 				ForwardRelayItems: []string{targetName},
+				AdvancedOptions: service.AdvancedOptions{
+					Config: stringPtr("https://templates.example.com/default.ini"),
+				},
 			},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
@@ -750,7 +758,12 @@ func TestSubscriptionHandler_RejectsDecodedInputLimitFailureAsInvalidLongURL(t *
 	longURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
 		service.BuildLongURLPayload(
-			service.Stage1Input{LandingRawText: strings.Repeat("a", 16)},
+			service.Stage1Input{
+				LandingRawText: strings.Repeat("a", 16),
+				AdvancedOptions: service.AdvancedOptions{
+					Config: stringPtr("https://templates.example.com/default.ini"),
+				},
+			},
 			service.Stage2Snapshot{},
 		),
 		0,
@@ -775,7 +788,7 @@ func TestSubscriptionHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *test
 	longURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
 		service.BuildLongURLPayload(
-			service.Stage1Input{},
+			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
 					LandingNodeName: "HK 01",
@@ -807,7 +820,7 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 	longURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
 		service.BuildLongURLPayload(
-			service.Stage1Input{},
+			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
 					LandingNodeName: "HK 01",
@@ -885,6 +898,30 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 	}
 	if strings.TrimSpace(recorder.Body.String()) != strings.TrimSpace(templateConfig) {
 		t.Fatalf("managed template body mismatch: got %q want %q", recorder.Body.String(), templateConfig)
+	}
+}
+
+func TestRuntimeConfigHandler_ReturnsDefaultTemplateURL(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		defaultTemplateURL: "https://templates.example.com/default.ini",
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/api/runtime-config", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response struct {
+		DefaultTemplateURL string `json:"defaultTemplateURL"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode runtime config JSON: %v", err)
+	}
+	if response.DefaultTemplateURL != "https://templates.example.com/default.ini" {
+		t.Fatalf("defaultTemplateURL = %q", response.DefaultTemplateURL)
 	}
 }
 

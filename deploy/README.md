@@ -26,6 +26,7 @@ HOST_PORT="11200"
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 SHORT_LINK_CAPACITY="1000"
+DEFAULT_TEMPLATE_URL="https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 
 mkdir -p "$APP_DIR"
 cd "$APP_DIR"
@@ -53,6 +54,7 @@ services:
       # 若需固定发布地址，取消注释并填入实际可访问地址（例如 https://example.com）：
       # CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
+      CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: "${DEFAULT_TEMPLATE_URL}"
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
@@ -172,6 +174,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
 - `APP_IMAGE`：主应用镜像；`alpha-latest` 由 `UI-A` 分支 push 自动更新，内测稳定后可改成明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:0.1.0-alpha.1`
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
+- `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
 
 生成后的 `docker-compose.yml` 当前涉及两类配置：
 
@@ -179,6 +182,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
   - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源推断，适用于直连局域网或 DDNS 等单入口部署。若前端有反代做 HTTPS 终止，或需固定发布地址，按实际可访问地址填入（`https://` 或 `http://`），不要填容器内地址
   - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
+  - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值，同时通过 `/api/runtime-config` 供前端填入 `advancedOptions.config`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`
   - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL=http://subconverter:25500/sub?`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3`
@@ -196,7 +200,9 @@ docker compose -f deploy/docker-compose.yml up --build -d
 
 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 不是同一个概念：前者给浏览器和最终链接使用，后者只给容器内的 `subconverter` 回连托管模板使用。第三方设备部署时，不要把前者写成 `http://app:11200`，也不要把后者改成宿主机 IP。
 
-`CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` 控制内置默认模板的上游抓取缓存 TTL；默认即为非零值，用于降低默认路径在公开部署或意外暴露场景下对模板上游的重复请求压力。当前 Compose preview 显式设为 `5m`。
+`CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL` 必须是 HTTP(S) URL。前端会把它作为普通模板 URL 写入阶段 1 输入快照、生成请求与长链接载荷。当请求中的模板 URL 等于该部署默认值时，模板成功拉取并通过解析后会进入默认模板缓存；后续刷新失败时，服务可使用此前验证通过的缓存继续完成转换，并在支持 `messages[]` 的接口响应中返回 warning。若没有可用缓存，仍会返回 `TEMPLATE_CONFIG_UNAVAILABLE`。
+
+`CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` 控制显式模板 URL 等于部署默认模板 URL 时的上游抓取缓存 TTL；默认即为非零值，用于降低默认路径在公开部署或意外暴露场景下对模板上游的重复请求压力。当前 Compose preview 显式设为 `5m`。
 
 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL` 控制其他模板 URL 的上游抓取缓存 TTL；留空或设为 `0` 表示关闭。若同时设置两个变量，内置默认模板优先使用 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL`，其他模板使用 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL`。
 

@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { AppWorkflowViewModel } from "../hooks/useAppWorkflow";
 import type { ResponseOriginStage } from "./state";
-import type { BlockingError, ChainTarget, Message } from "../types/api";
+import type { BlockingError, ChainTarget, Message, RuntimeConfigResponse } from "../types/api";
 
 export type PrimaryBlockingFeedbackPlacement = "global" | "stage-local";
 
@@ -44,6 +44,7 @@ export interface AppPageProps {
 	workflow: AppWorkflowViewModel;
 	outputActions: OutputActions;
 	primaryBlockingFeedbackPlacement: PrimaryBlockingFeedbackPlacement;
+	runtimeConfig: RuntimeConfigResponse | null;
 }
 
 export interface UIScheme {

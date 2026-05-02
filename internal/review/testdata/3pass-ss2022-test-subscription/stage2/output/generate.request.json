@@ -7,7 +7,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": null,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": null,
 	      "exclude": null
     }

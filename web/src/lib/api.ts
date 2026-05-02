@@ -3,6 +3,7 @@ import type {
 	GenerateRequest,
 	GenerateResponse,
 	ResolveURLResponse,
+	RuntimeConfigResponse,
 	ShortLinkResponse,
 	Stage1ConvertRequest,
 	Stage1ConvertResponse,
@@ -102,6 +103,34 @@ async function postJSON<TResponse, TRequest>(path: string, payload: TRequest): P
 	return (await response.json()) as TResponse;
 }
 
+async function getJSON<TResponse>(path: string): Promise<TResponse> {
+	let response: Response;
+	try {
+		response = await fetch(`${apiBase}${path}`, {
+			method: "GET",
+		});
+	} catch (error) {
+		const requestError = new Error(error instanceof Error ? error.message : "请求失败") as APIRequestError;
+		Object.assign(requestError, {
+			requestPath: path,
+		});
+		throw requestError;
+	}
+
+	if (!response.ok) {
+		const errorBody = await readErrorResponse(response);
+		const error = new Error(errorBody?.blockingErrors[0]?.message ?? `request failed with status ${response.status}`) as APIRequestError;
+		Object.assign(error, {
+			status: response.status,
+			errorBody,
+			requestPath: path,
+		});
+		throw error;
+	}
+
+	return (await response.json()) as TResponse;
+}
+
 export function getErrorResponse(error: unknown): ErrorResponse | null {
 	if (typeof error !== "object" || error === null) {
 		return null;
@@ -124,4 +153,8 @@ export function postResolveURL(url: string) {
 
 export function postShortLink(longUrl: string) {
 	return postJSON<ShortLinkResponse, { longUrl: string }>("/api/short-links", { longUrl });
+}
+
+export function getRuntimeConfig() {
+	return getJSON<RuntimeConfigResponse>("/api/runtime-config");
 }

@@ -297,7 +297,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 
-	newSource := func(t *testing.T, defaultTTL time.Duration, ttl time.Duration) *ManagedConversionSource {
+	newSource := func(t *testing.T, defaultURL string, defaultTTL time.Duration, ttl time.Duration) *ManagedConversionSource {
 		t.Helper()
 
 		dummySubconverter := httptest.NewServer(http.NotFoundHandler())
@@ -313,6 +313,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}
 
 		source, err := NewManagedConversionSource(client, NewInMemoryTemplateContentStore(), "http://internal.example.com", time.Second, ManagedConversionSourceOptions{
+			DefaultTemplateURL:           defaultURL,
 			DefaultTemplateFetchCacheTTL: defaultTTL,
 			TemplateFetchCacheTTL:        ttl,
 		})
@@ -331,7 +332,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}))
 		defer templateServer.Close()
 
-		source := newSource(t, 0, 0)
+		source := newSource(t, "", 0, 0)
 		stage1Input := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
 
 		first, err := source.PrepareConversion(context.Background(), stage1Input)
@@ -351,6 +352,30 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}
 	})
 
+	t.Run("requires explicit template URL", func(t *testing.T) {
+		source := newSource(t, "", 0, 0)
+		for _, input := range []Stage1Input{
+			{},
+			{AdvancedOptions: AdvancedOptions{Config: stringPtr("   ")}},
+		} {
+			if _, err := source.PrepareConversion(context.Background(), input); err == nil {
+				t.Fatalf("PrepareConversion() error = nil, want invalid request for missing template URL")
+			} else {
+				responseErr, ok := AsResponseError(err)
+				if !ok {
+					t.Fatalf("PrepareConversion() error = %T, want ResponseError", err)
+				}
+				if responseErr.StatusCode() != http.StatusBadRequest {
+					t.Fatalf("status code = %d, want %d", responseErr.StatusCode(), http.StatusBadRequest)
+				}
+				blockingError := responseErr.BlockingError()
+				if blockingError.Code != "INVALID_REQUEST" || blockingError.Scope != "stage1_field" || blockingError.Context["field"] != "config" {
+					t.Fatalf("blocking error = %+v, want INVALID_REQUEST stage1_field config", blockingError)
+				}
+			}
+		}
+	})
+
 	t.Run("reuses cached custom template until ttl expires", func(t *testing.T) {
 		var hits atomic.Int32
 		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -359,7 +384,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}))
 		defer templateServer.Close()
 
-		source := newSource(t, 0, time.Minute)
+		source := newSource(t, "", 0, time.Minute)
 		currentTime := time.Unix(1700000000, 0)
 		source.templateFetchCache.now = func() time.Time {
 			return currentTime
@@ -395,20 +420,26 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 	})
 
 	t.Run("reuses default template with dedicated ttl while custom template stays uncached", func(t *testing.T) {
-		var hits atomic.Int32
-		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			hits.Add(1)
+		var defaultHits atomic.Int32
+		defaultTemplateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			defaultHits.Add(1)
 			_, _ = writer.Write([]byte(templateConfig))
 		}))
-		defer templateServer.Close()
+		defer defaultTemplateServer.Close()
+		var customHits atomic.Int32
+		customTemplateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			customHits.Add(1)
+			_, _ = writer.Write([]byte(templateConfig))
+		}))
+		defer customTemplateServer.Close()
 
-		source := newSource(t, 10*time.Minute, 0)
+		source := newSource(t, defaultTemplateServer.URL, 10*time.Minute, 0)
 		currentTime := time.Unix(1700000000, 0)
 		source.defaultTemplateFetchCache.now = func() time.Time {
 			return currentTime
 		}
 
-		defaultInput := Stage1Input{}
+		defaultInput := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(defaultTemplateServer.URL)}}
 		firstDefault, err := source.PrepareConversion(context.Background(), defaultInput)
 		if err != nil {
 			t.Fatalf("PrepareConversion() first default error = %v", err)
@@ -421,11 +452,15 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}
 		defer secondDefault.Cleanup()
 
-		if cache := source.templateFetchCacheForURL(defaultTemplateConfigURL); cache != source.defaultTemplateFetchCache {
+		if cache := source.templateFetchCacheForURL(true); cache != source.defaultTemplateFetchCache {
 			t.Fatalf("default template cache mismatch")
 		}
 
-		customInput := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
+		if got := defaultHits.Load(); got != 1 {
+			t.Fatalf("default template fetch count = %d, want 1", got)
+		}
+
+		customInput := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(customTemplateServer.URL)}}
 		firstCustom, err := source.PrepareConversion(context.Background(), customInput)
 		if err != nil {
 			t.Fatalf("PrepareConversion() first custom error = %v", err)
@@ -438,8 +473,77 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		}
 		defer secondCustom.Cleanup()
 
-		if got := hits.Load(); got != 2 {
+		if got := customHits.Load(); got != 2 {
 			t.Fatalf("custom template fetch count = %d, want 2 when only default cache is enabled", got)
+		}
+	})
+
+	t.Run("uses stale default template when refresh fails", func(t *testing.T) {
+		var fail atomic.Bool
+		var hits atomic.Int32
+		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			hits.Add(1)
+			if fail.Load() {
+				http.Error(writer, "upstream unavailable", http.StatusBadGateway)
+				return
+			}
+			_, _ = writer.Write([]byte(templateConfig))
+		}))
+		defer templateServer.Close()
+
+		source := newSource(t, templateServer.URL, time.Minute, 0)
+		currentTime := time.Unix(1700000000, 0)
+		source.defaultTemplateFetchCache.now = func() time.Time {
+			return currentTime
+		}
+
+		defaultInput := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
+		first, err := source.PrepareConversion(context.Background(), defaultInput)
+		if err != nil {
+			t.Fatalf("PrepareConversion() first error = %v", err)
+		}
+		defer first.Cleanup()
+		if len(first.Messages) != 0 {
+			t.Fatalf("first conversion messages = %v, want none", first.Messages)
+		}
+
+		fail.Store(true)
+		currentTime = currentTime.Add(2 * time.Minute)
+		second, err := source.PrepareConversion(context.Background(), defaultInput)
+		if err != nil {
+			t.Fatalf("PrepareConversion() stale fallback error = %v", err)
+		}
+		defer second.Cleanup()
+		if second.TemplateConfig != strings.TrimSpace(templateConfig) {
+			t.Fatalf("stale template mismatch: got %q", second.TemplateConfig)
+		}
+		if len(second.Messages) != 1 || second.Messages[0].Code != "DEFAULT_TEMPLATE_CACHE_USED" {
+			t.Fatalf("stale fallback messages = %v, want DEFAULT_TEMPLATE_CACHE_USED", second.Messages)
+		}
+		if got := hits.Load(); got != 2 {
+			t.Fatalf("template fetch count = %d, want 2", got)
+		}
+	})
+
+	t.Run("does not cache invalid template content", func(t *testing.T) {
+		var hits atomic.Int32
+		templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			hits.Add(1)
+			_, _ = writer.Write([]byte("custom_proxy_group=🇺🇸 美国节点`url-test`(\n"))
+		}))
+		defer templateServer.Close()
+
+		source := newSource(t, "", 0, time.Minute)
+		stage1Input := Stage1Input{AdvancedOptions: AdvancedOptions{Config: stringPtr(templateServer.URL)}}
+
+		if _, err := source.PrepareConversion(context.Background(), stage1Input); err == nil {
+			t.Fatalf("PrepareConversion() first error = nil, want invalid template")
+		}
+		if _, err := source.PrepareConversion(context.Background(), stage1Input); err == nil {
+			t.Fatalf("PrepareConversion() second error = nil, want invalid template")
+		}
+		if got := hits.Load(); got != 2 {
+			t.Fatalf("invalid template fetch count = %d, want 2", got)
 		}
 	})
 }
