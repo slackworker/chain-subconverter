@@ -1312,13 +1312,13 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					</div>
 
 					<div className="a-output-actions">
-						<button type="button" className="a-btn a-btn--secondary" onClick={outputActions.openCurrentLink}>
+						<button type="button" className="a-btn a-btn--secondary" disabled={state.currentLinkInput.trim() === ""} onClick={outputActions.openCurrentLink}>
 							{copy.openPreview}
 						</button>
-						<button type="button" className="a-btn a-btn--secondary" onClick={() => void outputActions.copyCurrentLink()}>
+						<button type="button" className="a-btn a-btn--secondary" disabled={state.currentLinkInput.trim() === ""} onClick={() => void outputActions.copyCurrentLink()}>
 							{copy.copy}
 						</button>
-						<button type="button" className="a-btn a-btn--secondary" onClick={outputActions.downloadCurrentLink}>
+						<button type="button" className="a-btn a-btn--secondary" disabled={state.currentLinkInput.trim() === ""} onClick={outputActions.downloadCurrentLink}>
 							{copy.downloadYaml}
 						</button>
 						<button type="button" className="a-btn a-btn--primary" disabled={isRestoring || state.currentLinkInput.trim() === ""} onClick={() => void handleRestore()}>
