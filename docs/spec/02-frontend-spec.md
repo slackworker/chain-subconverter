@@ -272,6 +272,7 @@
 | 反向解析 | 对「用于本次反向解析的 URL」调用 `POST /api/resolve-url` |
 
 - 前端不主动 fetch YAML；“打开”与“下载”都直接消费当前选中的订阅链接
+- “打开”与“下载”触发前必须先确认当前输入是完整 HTTP(S) 绝对 URL；不合法时必须阻止浏览器跳转或下载，并以 `scope = stage3_field`、`context.field = currentLinkInput` 展示阶段 3 错误
 - 最终订阅 YAML 由后端在链接实际被打开或下载时即时生成并交付
 - 当前架构下，“打开”与“下载”不承诺把订阅渲染失败自动回流为页面内 `blockingErrors[]`；若未来需要该能力，应另行设计 preflight 或受控代理链路
 - 反向解析输入只接受本系统生成的 `longUrl` 或 `shortUrl`

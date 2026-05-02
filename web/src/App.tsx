@@ -8,14 +8,27 @@ import type { OutputActions } from "./lib/composition";
 import type { RuntimeConfigResponse } from "./types/api";
 import { useUIScheme } from "./lib/scheme-context";
 
-function withDownloadFlag(urlString: string) {
+const INVALID_CURRENT_LINK_MESSAGE = "请输入完整的 HTTP(S) 订阅链接后再打开或下载。";
+
+function getConsumableHTTPURL(urlString: string) {
 	try {
-		const url = new URL(urlString, window.location.href);
-		url.searchParams.set("download", "1");
-		return url.toString();
+		const url = new URL(urlString);
+		if (url.protocol !== "http:" && url.protocol !== "https:") {
+			return null;
+		}
+		return url;
 	} catch {
-		return urlString;
+		return null;
 	}
+}
+
+function withDownloadFlag(urlString: string) {
+	const url = getConsumableHTTPURL(urlString);
+	if (url === null) {
+		return null;
+	}
+	url.searchParams.set("download", "1");
+	return url.toString();
 }
 
 export default function App() {
@@ -66,7 +79,12 @@ export default function App() {
 		if (trimmedCurrentLinkValue === "") {
 			return;
 		}
-		window.open(trimmedCurrentLinkValue, "_blank", "noopener,noreferrer");
+		const url = getConsumableHTTPURL(trimmedCurrentLinkValue);
+		if (url === null) {
+			workflow.reportCurrentLinkInputError(INVALID_CURRENT_LINK_MESSAGE, "打开预览");
+			return;
+		}
+		window.open(url.toString(), "_blank", "noopener,noreferrer");
 	}
 
 	async function copyCurrentLink() {
@@ -85,8 +103,14 @@ export default function App() {
 		if (trimmedCurrentLinkValue === "") {
 			return;
 		}
+		const downloadURL = withDownloadFlag(trimmedCurrentLinkValue);
+		if (downloadURL === null) {
+			workflow.reportCurrentLinkInputError(INVALID_CURRENT_LINK_MESSAGE, "下载 YAML");
+			return;
+		}
 		const anchor = document.createElement("a");
-		anchor.href = withDownloadFlag(trimmedCurrentLinkValue);
+		anchor.href = downloadURL;
+		anchor.download = "subscription.yaml";
 		anchor.rel = "noopener noreferrer";
 		document.body.appendChild(anchor);
 		anchor.click();

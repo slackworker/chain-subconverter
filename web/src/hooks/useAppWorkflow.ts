@@ -68,6 +68,7 @@ export interface AppWorkflowViewModel {
 	stage3Status: WorkflowStatus;
 	applyDefaultTemplateURL: (templateURL: string) => void;
 	setCurrentLinkInput: (value: string) => void;
+	reportCurrentLinkInputError: (message: string, actionLabel: string) => void;
 	updateStage1Input: (updater: (current: Stage1Input) => Stage1Input) => void;
 	getStage1FieldErrors: (field: string) => BlockingError[];
 	getStage3FieldErrors: (field: string) => BlockingError[];
@@ -343,6 +344,25 @@ export function useAppWorkflow() {
 			...current,
 			currentLinkInput: value,
 			blockingErrors: clearStage3ActionErrors(clearStage3FieldErrors(current.blockingErrors, "currentLinkInput")),
+		}));
+	}
+
+	function reportCurrentLinkInputError(message: string, actionLabel: string) {
+		setState((current) => ({
+			...current,
+			responseOriginStage: "stage3",
+			blockingErrors: [
+				...clearStage3ActionErrors(clearStage3FieldErrors(current.blockingErrors, "currentLinkInput")),
+				{
+					code: "INVALID_CURRENT_LINK",
+					message,
+					scope: "stage3_field",
+					context: {
+						field: "currentLinkInput",
+						action: actionLabel,
+					},
+				},
+			],
 		}));
 	}
 
@@ -713,6 +733,7 @@ export function useAppWorkflow() {
 		stage3Status,
 		applyDefaultTemplateURL,
 		setCurrentLinkInput,
+		reportCurrentLinkInputError,
 		updateStage1Input,
 		getStage1FieldErrors,
 		getStage3FieldErrors: getStage3FieldErrorsForField,
