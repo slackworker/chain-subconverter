@@ -42,9 +42,13 @@
       "problemMatcher": []
     },
     {
-      "label": "git: rebase current branch onto main",
+      "label": "git: rebase UI branches onto local main",
       "type": "shell",
-      "command": "git fetch origin main && git rebase main",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "set -euo pipefail\ncurrent_branch=$(git branch --show-current)\nif ! git diff --quiet || ! git diff --cached --quiet; then\n  echo \"Working tree has uncommitted changes; commit or stash before rebasing UI branches.\" >&2\n  exit 1\nfi\nfor branch in UI-A UI-B UI-C; do\n  echo \"==> Rebasing ${branch} onto local main\"\n  git switch \"${branch}\"\n  git rebase main\ndone\nif [ -n \"${current_branch}\" ]; then\n  git switch \"${current_branch}\"\nfi"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
