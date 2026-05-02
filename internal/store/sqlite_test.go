@@ -27,7 +27,7 @@ func TestCreateAndResolve(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	entry, err := store.CreateOrGet(ctx, "7NpK2mQx9a", "http://example.com/sub?data=payload1")
+	entry, err := store.CreateOrGet(ctx, "state1", "7NpK2mQx9a", "http://example.com/sub?data=payload1")
 	if err != nil {
 		t.Fatalf("CreateOrGet() error = %v", err)
 	}
@@ -63,13 +63,13 @@ func TestCreateOrGet_Idempotent(t *testing.T) {
 
 	longURL := "http://example.com/sub?data=same-payload"
 
-	entry1, err := store.CreateOrGet(ctx, "id1", longURL)
+	entry1, err := store.CreateOrGet(ctx, "state-same", "id1", longURL)
 	if err != nil {
 		t.Fatalf("first CreateOrGet() error = %v", err)
 	}
 
 	// Same longURL, different shortID proposed — should return existing.
-	entry2, err := store.CreateOrGet(ctx, "id2", longURL)
+	entry2, err := store.CreateOrGet(ctx, "state-same", "id2", longURL)
 	if err != nil {
 		t.Fatalf("second CreateOrGet() error = %v", err)
 	}
@@ -86,7 +86,7 @@ func TestCreateOrGet_ExistingRecordRefreshesLastAccessedAt(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	entry, err := store.CreateOrGet(ctx, "id1", "http://example.com/sub?data=same-payload")
+	entry, err := store.CreateOrGet(ctx, "state-refresh", "id1", "http://example.com/sub?data=same-payload")
 	if err != nil {
 		t.Fatalf("first CreateOrGet() error = %v", err)
 	}
@@ -94,7 +94,7 @@ func TestCreateOrGet_ExistingRecordRefreshesLastAccessedAt(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	if _, err := store.CreateOrGet(ctx, "id2", entry.LongURL); err != nil {
+	if _, err := store.CreateOrGet(ctx, "state-refresh", "id2", entry.LongURL); err != nil {
 		t.Fatalf("second CreateOrGet() error = %v", err)
 	}
 	after := mustLastAccessedAt(t, store, entry.ShortID)
@@ -107,11 +107,11 @@ func TestCreateOrGet_ShortIDCollision(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	if _, err := store.CreateOrGet(ctx, "sameid", "http://example.com/sub?data=payload1"); err != nil {
+	if _, err := store.CreateOrGet(ctx, "state-1", "sameid", "http://example.com/sub?data=payload1"); err != nil {
 		t.Fatalf("first CreateOrGet() error = %v", err)
 	}
 
-	_, err := store.CreateOrGet(ctx, "sameid", "http://example.com/sub?data=payload2")
+	_, err := store.CreateOrGet(ctx, "state-2", "sameid", "http://example.com/sub?data=payload2")
 	if !errors.Is(err, service.ErrShortIDCollision) {
 		t.Fatalf("CreateOrGet() error = %v, want ErrShortIDCollision", err)
 	}
@@ -122,6 +122,7 @@ func TestCreateOrGet_ConcurrentIdempotent(t *testing.T) {
 	ctx := context.Background()
 	const workers = 12
 	longURL := "http://example.com/sub?data=concurrent"
+	stateKey := "state-concurrent"
 
 	type result struct {
 		entry ShortLinkEntry
@@ -136,7 +137,7 @@ func TestCreateOrGet_ConcurrentIdempotent(t *testing.T) {
 		go func(index int) {
 			defer wg.Done()
 			<-start
-			entry, err := store.CreateOrGet(ctx, string(rune('a'+index)), longURL)
+			entry, err := store.CreateOrGet(ctx, stateKey, string(rune('a'+index)), longURL)
 			results[index] = result{entry: entry, err: err}
 		}(i)
 	}
@@ -178,7 +179,7 @@ func TestLRUEviction(t *testing.T) {
 	for i := range 3 {
 		shortID := string(rune('a' + i))
 		longURL := "http://example.com/sub?data=" + shortID
-		if _, err := store.CreateOrGet(ctx, shortID, longURL); err != nil {
+		if _, err := store.CreateOrGet(ctx, longURL, shortID, longURL); err != nil {
 			t.Fatalf("CreateOrGet(%q) error = %v", shortID, err)
 		}
 	}
@@ -195,7 +196,7 @@ func TestLRUEviction(t *testing.T) {
 	_, _ = store.ResolveShortID(ctx, "a")
 
 	// Insert a 4th record — should evict the LRU (which is "b", since "a" was just accessed).
-	if _, err := store.CreateOrGet(ctx, "d", "http://example.com/sub?data=d"); err != nil {
+	if _, err := store.CreateOrGet(ctx, "http://example.com/sub?data=d", "d", "http://example.com/sub?data=d"); err != nil {
 		t.Fatalf("CreateOrGet(d) error = %v", err)
 	}
 
@@ -217,7 +218,7 @@ func TestResolveShortID_RefreshesLastAccessedAt(t *testing.T) {
 	store := newTestStore(t, 100)
 	ctx := context.Background()
 
-	entry, err := store.CreateOrGet(ctx, "refresh1", "http://example.com/refresh")
+	entry, err := store.CreateOrGet(ctx, "state-refresh-2", "refresh1", "http://example.com/refresh")
 	if err != nil {
 		t.Fatalf("CreateOrGet() error = %v", err)
 	}
@@ -243,7 +244,7 @@ func TestPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	if _, err := store1.CreateOrGet(ctx, "persist1", "http://example.com/persistent"); err != nil {
+	if _, err := store1.CreateOrGet(ctx, "state-persist", "persist1", "http://example.com/persistent"); err != nil {
 		t.Fatalf("CreateOrGet() error = %v", err)
 	}
 	_ = store1.Close()

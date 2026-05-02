@@ -43,7 +43,7 @@ func BuildShortLinkResponse(ctx context.Context, publicBaseURL string, shortLink
 		)
 	}
 
-	canonicalLongURL, err := canonicalizeLongURL(publicBaseURL, rawLongURL, maxLongURLLength, limits)
+	canonicalTarget, err := canonicalizeShortLinkTarget(publicBaseURL, rawLongURL, maxLongURLLength, limits)
 	if err != nil {
 		if _, ok := AsResponseError(err); ok {
 			return ShortLinkResponse{}, err
@@ -51,7 +51,7 @@ func BuildShortLinkResponse(ctx context.Context, publicBaseURL string, shortLink
 		return ShortLinkResponse{}, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
 	}
 
-	entry, err := shortLinkStore.CreateOrGet(ctx, DeterministicShortID(canonicalLongURL), canonicalLongURL)
+	entry, err := shortLinkStore.CreateOrGet(ctx, canonicalTarget.StateKey, DeterministicShortID(canonicalTarget.StateKey), canonicalTarget.LongURL)
 	if err != nil {
 		if errors.Is(err, ErrShortIDCollision) {
 			return ShortLinkResponse{}, newInternalResponseError("short link ID collision detected", err)
@@ -74,15 +74,15 @@ func BuildShortLinkResponse(ctx context.Context, publicBaseURL string, shortLink
 	}
 
 	return ShortLinkResponse{
-		LongURL:        canonicalLongURL,
+		LongURL:        canonicalTarget.LongURL,
 		ShortURL:       shortURL,
 		Messages:       []Message{},
 		BlockingErrors: []BlockingError{},
 	}, nil
 }
 
-func DeterministicShortID(longURL string) string {
-	sum := sha256.Sum256([]byte(longURL))
+func DeterministicShortID(stateKey string) string {
+	sum := sha256.Sum256([]byte(stateKey))
 	return encodeBase62Uint64(binary.BigEndian.Uint64(sum[:8]))
 }
 
@@ -124,7 +124,12 @@ func BuildShortURL(publicBaseURL string, shortID string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-func canonicalizeLongURL(publicBaseURL string, rawLongURL string, maxLongURLLength int, limits InputLimits) (string, error) {
+type canonicalShortLinkTarget struct {
+	LongURL  string
+	StateKey string
+}
+
+func CanonicalShortLinkStateKey(rawLongURL string, limits InputLimits) (string, error) {
 	input, err := parseResolveURLInput(rawLongURL)
 	if err != nil {
 		return "", err
@@ -138,5 +143,36 @@ func canonicalizeLongURL(publicBaseURL string, rawLongURL string, maxLongURLLeng
 		return "", err
 	}
 
-	return EncodeLongURL(publicBaseURL, BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot), maxLongURLLength)
+	return encodeLongURLStateKey(BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot))
+}
+
+func canonicalizeShortLinkTarget(publicBaseURL string, rawLongURL string, maxLongURLLength int, limits InputLimits) (canonicalShortLinkTarget, error) {
+	input, err := parseResolveURLInput(rawLongURL)
+	if err != nil {
+		return canonicalShortLinkTarget{}, err
+	}
+	if !input.IsLong {
+		return canonicalShortLinkTarget{}, fmt.Errorf("URL is not a long subscription URL")
+	}
+
+	payload, err := DecodeLongURLPayload(rawLongURL, limits)
+	if err != nil {
+		return canonicalShortLinkTarget{}, err
+	}
+
+	canonicalPayload := BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot)
+	stateKey, err := encodeLongURLStateKey(canonicalPayload)
+	if err != nil {
+		return canonicalShortLinkTarget{}, fmt.Errorf("encode canonical short link state key: %w", err)
+	}
+
+	canonicalLongURL, err := EncodeLongURL(publicBaseURL, canonicalPayload, maxLongURLLength)
+	if err != nil {
+		return canonicalShortLinkTarget{}, err
+	}
+
+	return canonicalShortLinkTarget{
+		LongURL:  canonicalLongURL,
+		StateKey: stateKey,
+	}, nil
 }

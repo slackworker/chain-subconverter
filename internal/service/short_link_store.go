@@ -17,7 +17,7 @@ type ShortLinkResolver interface {
 
 type ShortLinkStore interface {
 	ShortLinkResolver
-	CreateOrGet(context.Context, string, string) (ShortLinkEntry, error)
+	CreateOrGet(context.Context, string, string, string) (ShortLinkEntry, error)
 }
 
 type ShortLinkEntry struct {
@@ -31,21 +31,23 @@ type ShortLinkRecord struct {
 }
 
 type InMemoryShortLinkStore struct {
-	mu               sync.Mutex
-	records          map[string]ShortLinkRecord
-	shortIDByLongURL map[string]string
+	mu                sync.Mutex
+	records           map[string]ShortLinkRecord
+	shortIDByStateKey map[string]string
 }
 
 func NewInMemoryShortLinkStore() *InMemoryShortLinkStore {
 	return &InMemoryShortLinkStore{
-		records:          make(map[string]ShortLinkRecord),
-		shortIDByLongURL: make(map[string]string),
+		records:           make(map[string]ShortLinkRecord),
+		shortIDByStateKey: make(map[string]string),
 	}
 }
 
 func (store *InMemoryShortLinkStore) Save(shortID string, longURL string) {
 	store.mu.Lock()
-	store.shortIDByLongURL[longURL] = shortID
+	if stateKey, err := CanonicalShortLinkStateKey(longURL, InputLimits{}); err == nil {
+		store.shortIDByStateKey[stateKey] = shortID
+	}
 	store.records[shortID] = ShortLinkRecord{
 		LongURL:        longURL,
 		LastAccessedAt: time.Now().UTC(),
@@ -53,12 +55,13 @@ func (store *InMemoryShortLinkStore) Save(shortID string, longURL string) {
 	store.mu.Unlock()
 }
 
-func (store *InMemoryShortLinkStore) CreateOrGet(_ context.Context, shortID string, longURL string) (ShortLinkEntry, error) {
+func (store *InMemoryShortLinkStore) CreateOrGet(_ context.Context, stateKey string, shortID string, longURL string) (ShortLinkEntry, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	if existingShortID, ok := store.shortIDByLongURL[longURL]; ok {
+	if existingShortID, ok := store.shortIDByStateKey[stateKey]; ok {
 		record := store.records[existingShortID]
+		record.LongURL = longURL
 		record.LastAccessedAt = time.Now().UTC()
 		store.records[existingShortID] = record
 		return ShortLinkEntry{ShortID: existingShortID, LongURL: longURL}, nil
@@ -68,7 +71,7 @@ func (store *InMemoryShortLinkStore) CreateOrGet(_ context.Context, shortID stri
 		return ShortLinkEntry{}, fmt.Errorf("%w for %q", ErrShortIDCollision, shortID)
 	}
 
-	store.shortIDByLongURL[longURL] = shortID
+	store.shortIDByStateKey[stateKey] = shortID
 	store.records[shortID] = ShortLinkRecord{
 		LongURL:        longURL,
 		LastAccessedAt: time.Now().UTC(),

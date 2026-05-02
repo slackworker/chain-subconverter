@@ -390,7 +390,7 @@
 
 - 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
-- 对同一 `longUrl` 的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；并发下不得出现同一 `longUrl` 对应多条可解析的不同短链（「一长多短」）。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
+- 对同一份规范状态的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；即使 `PUBLIC_BASE_URL` 或请求入口变化导致规范化 `longUrl` 的 scheme / host / base path 变化，只要状态载荷相同，`shortUrl` 中的 `<id>` 也必须保持一致。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
 - 若输入 `longUrl` 带有额外兼容 query，后端必须先按本文“长链接编码规范”完成解码与规范化；成功响应中的 `longUrl` 只保留规范状态载荷，不保留仅用于本次订阅读取的额外透传参数
 - 成功响应的 `messages[]` 可包含短链接存储淘汰相关 warning
 
@@ -590,7 +590,7 @@ gzip 规则：
 
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
-- 长链接编码必须 URL-safe 且具确定性；同一份快照必须生成相同的长链接
+- 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
 - 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 1`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
@@ -600,17 +600,18 @@ gzip 规则：
 - 长链接是唯一规范化状态源
 - 短链接是长链接的不透明别名，不单独承载状态源语义
 - 短链接公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
-- 短链接 ID 必须由规范化 `longUrl` 通过确定性算法生成；同一个 `longUrl` 必须得到同一个 `shortUrl`
-- 当前默认短链接 ID 生成算法为：对规范化 `longUrl` 计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
-- 短链接索引在逻辑上是 `longUrl ↔ shortId` 的双射子集：除淘汰导致的失效外，同一 `longUrl` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`longUrl`（或与其一一对应的规范化键）唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立
-- 在当前默认 `64` bit 设计下，允许仅实现极简碰撞防御：若检测到 `shortId` 已被另一条 `longUrl` 占用，后端必须 fail closed，并保持「一短一长」映射关系
-- 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为对应 `longUrl`
+- 短链接 ID 必须由**规范状态键**通过确定性算法生成；规范状态键由规范化状态载荷唯一导出，等价于与公开基地址无关的 canonical data key；同一份规范状态必须得到同一个 `<id>`
+- 当前默认短链接 ID 生成算法为：对规范状态键计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
+- 规范状态键不得包含 `PUBLIC_BASE_URL`、请求来源 host、scheme 或 base path 等发布入口信息；这些信息只能影响返回给用户的 `longUrl` / `shortUrl` 前缀，不得影响 `<id>`
+- 短链接索引在逻辑上是 `canonicalStateKey ↔ shortId` 的双射子集，并额外维护 `shortId -> longUrl` 的当前反查值：除淘汰导致的失效外，同一 `canonicalStateKey` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`canonicalStateKey` 唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立
+- 在当前默认 `64` bit 设计下，允许仅实现极简碰撞防御：若检测到 `shortId` 已被另一条 `canonicalStateKey` 占用，后端必须 fail closed，并保持「一短一状态」映射关系
+- 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为可解码的 `longUrl`；该 `longUrl` 可随当前发布基地址变化而更新，但其对应的规范状态不得变化
 - 短链接索引的默认持久化实现使用本地 SQLite 文件
-- 短链接索引记录至少包含 `shortId`、`longUrl` 与 `lastAccessedAt`
+- 短链接索引记录至少包含 `canonicalStateKey`、`shortId`、`longUrl` 与 `lastAccessedAt`
 - 短链接索引容量必须可配置；早期原型默认上限为 `1000` 条记录
 - 单条 `longUrl` 存储长度必须可配置；当前默认上限为 `8192` bytes
 - 设计目标支持约 `100` 到 `100000` 条记录、约 `100KB` 到 `100MB` 存储规模
-- `POST /api/short-links` 命中既有 `longUrl` 时，必须返回既有 `shortUrl`，并刷新其 `lastAccessedAt`
+- `POST /api/short-links` 命中既有 `canonicalStateKey` 时，必须返回与既有记录相同 `<id>` 的 `shortUrl`；其前缀按当前发布基地址构造，并刷新其 `lastAccessedAt`
 - 短链接被后端成功解析时，必须刷新其 `lastAccessedAt`
 - 短链接索引存在容量上限；达到上限后创建新的不同 `longUrl` 映射时，必须淘汰 `lastAccessedAt` 最早的一条记录，再写入新记录
 - 因淘汰而失去索引记录的短链接不再保证可解析

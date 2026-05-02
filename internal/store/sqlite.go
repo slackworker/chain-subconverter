@@ -49,10 +49,15 @@ func NewSQLiteShortLinkStore(dbPath string, maxCapacity int) (*SQLiteShortLinkSt
 }
 
 func initSchema(db *sql.DB) error {
+	if err := recreateLegacySchema(db); err != nil {
+		return err
+	}
+
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS short_links (
+			state_key        TEXT NOT NULL UNIQUE,
 			short_id         TEXT PRIMARY KEY,
-			long_url         TEXT NOT NULL UNIQUE,
+			long_url         TEXT NOT NULL,
 			last_accessed_at TEXT NOT NULL
 		);
 		CREATE INDEX IF NOT EXISTS idx_short_links_last_accessed ON short_links(last_accessed_at);
@@ -60,10 +65,47 @@ func initSchema(db *sql.DB) error {
 	return err
 }
 
+func recreateLegacySchema(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(short_links)`)
+	if err != nil {
+		return fmt.Errorf("inspect short_links schema: %w", err)
+	}
+	defer rows.Close()
+
+	hasTable := false
+	hasStateKey := false
+	for rows.Next() {
+		hasTable = true
+		var cid int
+		var name string
+		var columnType string
+		var notNull int
+		var defaultValue sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &pk); err != nil {
+			return fmt.Errorf("scan short_links schema: %w", err)
+		}
+		if name == "state_key" {
+			hasStateKey = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("read short_links schema: %w", err)
+	}
+	if !hasTable || hasStateKey {
+		return nil
+	}
+	if _, err := db.Exec(`DROP TABLE IF EXISTS short_links`); err != nil {
+		return fmt.Errorf("drop legacy short_links table: %w", err)
+	}
+	return nil
+}
+
 // CreateOrGet atomically upserts a short-link mapping. If a record with the
-// same long_url already exists, it returns the existing record and refreshes
-// its last_accessed_at. If the store is at capacity, it evicts the LRU record.
-func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, shortID string, longURL string) (ShortLinkEntry, error) {
+// same state_key already exists, it returns the existing record, refreshes its
+// last_accessed_at, and updates the stored long_url to the current canonical
+// long URL. If the store is at capacity, it evicts the LRU record.
+func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, stateKey string, shortID string, longURL string) (ShortLinkEntry, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 
@@ -75,10 +117,14 @@ func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, shortID string, 
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	// Check if a record for this longURL already exists.
-	existingShortID, err := lookupShortIDByLongURL(ctx, tx, longURL)
+	// Check if a record for this canonical state already exists.
+	existingShortID, existingLongURL, err := lookupByStateKey(ctx, tx, stateKey)
 	if err == nil {
-		// Record exists — refresh last_accessed_at and return existing.
+		if existingLongURL != longURL {
+			if err := updateLongURL(ctx, tx, existingShortID, longURL); err != nil {
+				return ShortLinkEntry{}, err
+			}
+		}
 		if err := refreshLastAccessedAt(ctx, tx, existingShortID, now); err != nil {
 			return ShortLinkEntry{}, err
 		}
@@ -88,7 +134,7 @@ func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, shortID string, 
 		return ShortLinkEntry{ShortID: existingShortID, LongURL: longURL}, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
-		return ShortLinkEntry{}, fmt.Errorf("lookup existing long url: %w", err)
+		return ShortLinkEntry{}, fmt.Errorf("lookup existing state key: %w", err)
 	}
 
 	// Evict LRU if at capacity.
@@ -109,13 +155,18 @@ func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, shortID string, 
 
 	// Insert new record.
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO short_links (short_id, long_url, last_accessed_at) VALUES (?, ?, ?)
-	`, shortID, longURL, now)
+		INSERT INTO short_links (state_key, short_id, long_url, last_accessed_at) VALUES (?, ?, ?, ?)
+	`, stateKey, shortID, longURL, now)
 	if err != nil {
-		if isLongURLConstraintError(err) {
-			existingShortID, lookupErr := lookupShortIDByLongURL(ctx, tx, longURL)
+		if isStateKeyConstraintError(err) {
+			existingShortID, existingLongURL, lookupErr := lookupByStateKey(ctx, tx, stateKey)
 			if lookupErr != nil {
-				return ShortLinkEntry{}, fmt.Errorf("lookup existing long url after conflict: %w", lookupErr)
+				return ShortLinkEntry{}, fmt.Errorf("lookup existing state key after conflict: %w", lookupErr)
+			}
+			if existingLongURL != longURL {
+				if err := updateLongURL(ctx, tx, existingShortID, longURL); err != nil {
+					return ShortLinkEntry{}, err
+				}
 			}
 			if err := refreshLastAccessedAt(ctx, tx, existingShortID, now); err != nil {
 				return ShortLinkEntry{}, err
@@ -176,13 +227,29 @@ func ensureParentDir(dbPath string) error {
 	return os.MkdirAll(parentDir, 0o755)
 }
 
-func lookupShortIDByLongURL(ctx context.Context, tx *sql.Tx, longURL string) (string, error) {
+func lookupByStateKey(ctx context.Context, tx *sql.Tx, stateKey string) (string, string, error) {
 	var shortID string
-	err := tx.QueryRowContext(ctx, `SELECT short_id FROM short_links WHERE long_url = ?`, longURL).Scan(&shortID)
+	var longURL string
+	err := tx.QueryRowContext(ctx, `SELECT short_id, long_url FROM short_links WHERE state_key = ?`, stateKey).Scan(&shortID, &longURL)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return shortID, nil
+	return shortID, longURL, nil
+}
+
+func updateLongURL(ctx context.Context, tx *sql.Tx, shortID string, longURL string) error {
+	result, err := tx.ExecContext(ctx, `UPDATE short_links SET long_url = ? WHERE short_id = ?`, longURL, shortID)
+	if err != nil {
+		return fmt.Errorf("update long url: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected for long url update: %w", err)
+	}
+	if affected != 1 {
+		return fmt.Errorf("update long url: expected 1 row, got %d", affected)
+	}
+	return nil
 }
 
 func refreshLastAccessedAt(ctx context.Context, tx *sql.Tx, shortID string, lastAccessedAt string) error {
@@ -200,7 +267,7 @@ func refreshLastAccessedAt(ctx context.Context, tx *sql.Tx, shortID string, last
 	return nil
 }
 
-func isLongURLConstraintError(err error) bool {
+func isStateKeyConstraintError(err error) bool {
 	var sqliteErr sqlite3.Error
 	if !errors.As(err, &sqliteErr) {
 		return false
@@ -208,7 +275,7 @@ func isLongURLConstraintError(err error) bool {
 	if sqliteErr.Code != sqlite3.ErrConstraint {
 		return false
 	}
-	return strings.Contains(err.Error(), "short_links.long_url")
+	return strings.Contains(err.Error(), "short_links.state_key")
 }
 
 func isShortIDConstraintError(err error) bool {

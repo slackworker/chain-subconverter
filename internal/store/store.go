@@ -14,9 +14,9 @@ import (
 // Implementations must be safe for concurrent use.
 type ShortLinkStore interface {
 	// CreateOrGet atomically stores a short-link mapping, or returns the existing record
-	// if a mapping for the same longURL already exists. It must also evict the least
-	// recently accessed record if the store is at capacity.
-	CreateOrGet(ctx context.Context, shortID string, longURL string) (ShortLinkEntry, error)
+	// if a mapping for the same canonical state key already exists. It must also evict
+	// the least recently accessed record if the store is at capacity.
+	CreateOrGet(ctx context.Context, stateKey string, shortID string, longURL string) (ShortLinkEntry, error)
 
 	// ResolveShortID looks up the longURL for the given shortID.
 	// Returns service.ErrShortURLNotFound if the shortID does not exist.

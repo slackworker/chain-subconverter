@@ -455,6 +455,18 @@ func marshalCanonicalLongURLPayload(payload LongURLPayload) ([]byte, error) {
 	return json.Marshal(newLongURLPayloadSchema(payload))
 }
 
+func encodeLongURLStateKey(payload LongURLPayload) (string, error) {
+	payloadJSON, err := marshalCanonicalLongURLPayload(payload)
+	if err != nil {
+		return "", fmt.Errorf("marshal long URL payload: %w", err)
+	}
+	encodedData, err := encodeCompressedData(payloadJSON)
+	if err != nil {
+		return "", fmt.Errorf("encode long URL payload: %w", err)
+	}
+	return encodedData, nil
+}
+
 func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {

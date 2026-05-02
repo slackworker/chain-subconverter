@@ -283,7 +283,11 @@ func TestShortLinksHandler_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncodeLongURL() error = %v", err)
 	}
-	wantShortURL, err := service.BuildShortURL("http://localhost:11200", service.DeterministicShortID(wantLongURL))
+	stateKey, err := service.CanonicalShortLinkStateKey(wantLongURL, service.InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() error = %v", err)
+	}
+	wantShortURL, err := service.BuildShortURL("http://localhost:11200", service.DeterministicShortID(stateKey))
 	if err != nil {
 		t.Fatalf("BuildShortURL() error = %v", err)
 	}
@@ -943,7 +947,7 @@ type failingShortLinkStore struct {
 	err error
 }
 
-func (store failingShortLinkStore) CreateOrGet(_ context.Context, _ string, _ string) (service.ShortLinkEntry, error) {
+func (store failingShortLinkStore) CreateOrGet(_ context.Context, _ string, _ string, _ string) (service.ShortLinkEntry, error) {
 	return service.ShortLinkEntry{}, store.err
 }
 
