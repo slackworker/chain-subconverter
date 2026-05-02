@@ -90,7 +90,7 @@
     {
       "id": "mainCommitMessage",
       "type": "promptString",
-      "description": "Commit message (commits staged changes to local main only; does not push)"
+      "description": "Commit message (commits staged changes to local main, clears matching current-branch changes; does not push)"
     }
   ]
 }
