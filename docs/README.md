@@ -51,7 +51,6 @@
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 启动与 smoke runbook：固定入口、最小检查项与常见排障 |
 | [testing/alpha-release](testing/alpha-release.md) | 3.0 Alpha 发布与回归 runbook：当前内测口径、发布前检查、第三方设备回归与反馈记录模板 |
-| [testing/live-review-artifacts](testing/live-review-artifacts.md) | live 订阅 review 产物说明：如何生成 `stage1/stage2` 中间文件并逐项审查 |
 
 ## 临时区规则
 

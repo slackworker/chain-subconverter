@@ -8,7 +8,6 @@
 - 对外发布说明与相对 2.0 的功能更新摘要统一见 [../../RELEASES.md](../../RELEASES.md)。
 - 部署命令与环境变量以 [../../deploy/README.md](../../deploy/README.md) 为准。
 - 本地 HMR 联调入口以 [local-dev-smoke](local-dev-smoke.md) 为准。
-- live 中间产物审查方法以 [live-review-artifacts](live-review-artifacts.md) 为准。
 
 ## 当前 Alpha 口径
 
@@ -31,7 +30,6 @@
 - 对外访问端口
 - 是否显式设置 `PUBLIC_BASE_URL`
 - 本轮要求回归的 UI `scheme`；默认固定为 `a`
-- 本轮用于 live smoke 的输入来源
 
 若本轮只是刷新 `alpha-latest`，仍要记录镜像 tag、提交来源和发布时间。
 
@@ -59,14 +57,6 @@ docker compose -f deploy/docker-compose.yml config
 - 可打开 `http://localhost:5173/ui/a`
 - `stage1/convert` 可完成一次“转换并自动填充”
 - Stage 3 可执行打开、复制、下载、`resolve-url`、`short-links`
-
-3. 按需导出 live review 中间产物
-
-```bash
-go run ./cmd/frontend-review -case-dir .tmp/review/manual
-```
-
-若本轮改动涉及模板回取、自动填充、链式组或订阅读取，必须补这一步。
 
 ## 第三方设备发布
 
@@ -99,7 +89,7 @@ go run ./cmd/frontend-review -case-dir .tmp/review/manual
 - 部署设备
 - 访问入口
 - 是否设置 `PUBLIC_BASE_URL`
-- 回归范围：自动化 / 本地 smoke / 第三方设备 / live review
+- 回归范围：自动化 / 本地 smoke / 第三方设备
 - 结果：通过 / 失败 / 有风险通过
 - 失败点归类：Docker、`subconverter`、backend、frontend、外部模板、外部订阅源
 - 后续动作

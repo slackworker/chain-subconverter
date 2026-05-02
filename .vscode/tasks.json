@@ -22,26 +22,6 @@
       "problemMatcher": []
     },
     {
-      "label": "review: live subscriptions",
-      "type": "shell",
-      "command": "go",
-      "args": [
-        "run",
-        "./cmd/frontend-review",
-        "-case-dir",
-        ".tmp/review/manual"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "git: rebase UI branches onto local main",
       "type": "shell",
       "command": "bash",

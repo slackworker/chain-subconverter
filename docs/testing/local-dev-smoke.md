@@ -61,30 +61,13 @@ http://localhost:5173/ui/<scheme>
 - Stage 3 可执行打开、复制、下载、`resolve-url`、`short-links`
 - `resolve-url` / `short-links` 输入非法 URL 时，错误回到 Stage 3，而不是误落到全局
 
-### 4. Live review（按需）
-
-当前 live 输入仍只用于单机 smoke，不替代固定 fixture。
-
-若要导出可审查的中间产物目录：
-
-```bash
-go run ./cmd/frontend-review -case-dir .tmp/review/manual
-```
-
-运行前先写入：
-
-- `.tmp/review/manual/stage1/input/landing.txt`
-- `.tmp/review/manual/stage1/input/transit.txt`
-
-详细审查顺序见 [live-review-artifacts](live-review-artifacts.md)。
-
 ## 高频排障
 
 - `subconverter` 启动失败：先检查 Docker Desktop、镜像拉取与 `GET /version`
 - backend 启动失败：先看 `.tmp/dev-up/backend.log`
 - 报 `backend-from-subconverter did not become ready`：优先确认 backend 以 IPv4 暴露，且 `MANAGED_TEMPLATE_BASE_URL` 仍是 `http://host.docker.internal:<backend-port>`
 - 固定端口冲突：先释放 `5173` 或 `11200`，不要改用相邻端口继续调试
-- live 输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
+- UI-A 主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
 - 若出现 `SUBCONVERTER_UNAVAILABLE` 且提示 `missing recognized region proxy-group`：先检查当前 frontend 代理到哪一份 backend，以及该 backend 是否向容器注入了可回连的模板地址
 
 ## Compose 预览

@@ -10,7 +10,7 @@
 - 面向第三方局域网 / 家庭设备：`Docker Compose` 冷启动部署
 - 让前端开发者能独立拉起 `frontend + backend + subconverter`
 - 让浏览器可直接访问 A/B/C 任一 `scheme` 并跑完整主线
-- 让自动化基线、live smoke、人工签收与第三方设备部署职责分层清晰
+- 让自动化基线、UI-A 主流程 smoke、人工签收与第三方设备部署职责分层清晰
 
 ## 当前已验证基线
 
@@ -19,7 +19,7 @@
 - `npm run build:b`：2026-04-18 通过
 - `docker compose -f deploy/docker-compose.yml config`：2026-04-18 通过
 - `deploy/docker-compose.yml` 已对 `subconverter` 与 `app` 配置健康检查
-- `.vscode/tasks.json` 已提供 `dev: up` 与 `review: live subscriptions` 正式任务入口
+- `.vscode/tasks.json` 已提供 `dev: up` 正式任务入口
 - `deploy/README.md` 已提供第三方设备部署所需的单段复制命令
 - `web/` 已具备 `/ui/a`、`/ui/b`、`/ui/c` 方案入口骨架
 
@@ -27,7 +27,7 @@
 
 - Compose 可做最终预览 / 集成验证，但不适合作为前端日常 HMR 主路径
 - 本地 Go 后端运行路径与 Compose 第三方设备路径仍缺少一套统一的冷启动验收记录
-- 现有自动化测试未明确分层为 stable unit / contract 与 live smoke；用户手动确认路径未形成固定清单
+- 现有自动化测试未明确分层为 stable unit / contract 与 UI-A 主流程 smoke；用户手动确认路径未形成固定清单
 - 模板调用、参数传递、接口功能的“真实跑通 + 人工签收”还没有固定成统一矩阵
 - Alpha（内测）发布已具备第三方设备 Compose 冷启动入口，但仍缺少持续回归记录与反馈闭环模板
 
@@ -129,30 +129,25 @@
 任务：
 
 - 维持稳定自动化基线：`go test ./...`、`npm run build`、`npm run build:b`
-- 增加或整理 live smoke 分层：`CHAIN_SUBCONVERTER_SMOKE=1 go test ./internal/subconverter/...` 与基于真实 `subconverter` + 模板服务的端到端 smoke
+- 增加或整理 UI-A 主流程 smoke 分层：`CHAIN_SUBCONVERTER_SMOKE=1 go test ./internal/subconverter/...` 与基于真实 `subconverter` + 模板服务的端到端 smoke
 - 针对以下主题逐项跑通并补用例：模板调用与托管模板回取、Stage 1 参数传递到 `subconverter` query、`stage1/convert` / `generate` / `resolve-url` / `short-links` 行为、`subscription` 下载链路
-- 记录每一类失败属于：共享业务层回退、外部模板漂移、live `subconverter` 镜像漂移、本地网络或 Docker 问题
+- 记录每一类失败属于：共享业务层回退、外部模板漂移、`subconverter` 镜像漂移、本地网络或 Docker 问题
 
 完成口径：
 
 - ABC UI 开发不再被“到底是 UI 坏了还是服务链路坏了”阻塞
-- 自动化失败和 live 失败能分开定位
+- 自动化失败和真实链路失败能分开定位
 
 ### P4-R3：人工签收矩阵
 
 目标：
 
 - 让你可以按固定顺序手动一项项确认
-- 把当前单机环境的真实订阅链接纳入 smoke 输入集
-
-固定 live 输入：
-
-- `Landing-Subscription`：`http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Landing-Subscription`
-- `Airport-Subscription`：`http://192.168.100.1:3001/7xK9pLm2Qr4vB6yN8sT3/download/Airport-Subscription`
+- 以 UI-A 当前主流程作为人工 smoke 入口
 
 约束：
 
-- 上述输入只作为当前单机环境下的 live smoke，不纳入 stable fixture 裁决
+- 人工输入只作为当前单机环境下的 UI-A 主流程 smoke，不纳入 stable fixture 裁决
 - 自动化 fixture 仍以 [testing/3pass-ss2022-test-subscription](../testing/3pass-ss2022-test-subscription.md) 为准
 
 任务：
@@ -197,7 +192,7 @@
 1. 先完成 P4-R0，冻结端口与 env contract
 2. 再完成 P4-R1，形成正式启动机制
 3. 持续执行 P4-R1.5 的内测回归与反馈收口（首轮冷启动入口已具备）
-4. 再完成 P4-R2，清理自动化与 live smoke 缺口
+4. 再完成 P4-R2，清理自动化与 UI-A 主流程 smoke 缺口
 5. 最后完成 P4-R3 与 P4-R4，再把 A/B/C 分支开发视为真正解阻
 
 ## 解阻定义
@@ -206,5 +201,5 @@
 - 本地 dev path 可启动并完成健康检查
 - 第三方设备 Compose path 可冷启动并完成健康检查
 - 稳定自动化基线持续通过
-- live smoke 与人工签收矩阵有固定入口并可复用
+- UI-A 主流程 smoke 与人工签收矩阵有固定入口并可复用
 - 前端开发者可直接按文档在浏览器中跑完整主线
