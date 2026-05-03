@@ -643,8 +643,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		<div className={`a-shell${colorMode === "dark" ? " a-shell--dark" : ""}`}>
 			<header className="a-header">
 				<div className="a-header__brand">
-					<p className="a-eyebrow">{copy.headerEyebrow}</p>
 					<h1 className="a-title">{copy.headerTitle}</h1>
+					<p className="a-eyebrow">{copy.headerEyebrow}</p>
 				</div>
 				<nav className="a-scheme-nav" aria-label={copy.quickActions}>
 					<button
