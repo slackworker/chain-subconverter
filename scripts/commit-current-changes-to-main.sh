@@ -160,15 +160,13 @@ log "removing staged changes from '$ORIGINAL_BRANCH' after saving them"
 git -C "$ROOT_DIR" stash push --staged --message "commit-staged-to-main staged $STASH_SUFFIX" >/dev/null
 STAGED_STASHED=1
 
-log "updating '$MAIN_BRANCH' from '$REMOTE/$MAIN_BRANCH'"
-git -C "$ROOT_DIR" fetch "$REMOTE" "$MAIN_BRANCH"
+log "using local '$MAIN_BRANCH' without fetching from '$REMOTE'"
 MAIN_WORKTREE="$TEMP_DIR/$MAIN_BRANCH-worktree"
 if git -C "$ROOT_DIR" show-ref --verify --quiet "refs/heads/$MAIN_BRANCH"; then
   git -C "$ROOT_DIR" worktree add "$MAIN_WORKTREE" "$MAIN_BRANCH" >/dev/null
 else
-  git -C "$ROOT_DIR" worktree add -b "$MAIN_BRANCH" "$MAIN_WORKTREE" "$REMOTE/$MAIN_BRANCH" >/dev/null
+  fail "local '$MAIN_BRANCH' branch does not exist; create it before committing without network access"
 fi
-git -C "$MAIN_WORKTREE" pull --ff-only "$REMOTE" "$MAIN_BRANCH"
 
 log "applying staged changes onto '$MAIN_BRANCH'"
 if ! git -C "$MAIN_WORKTREE" apply --index "$STAGED_PATCH"; then
