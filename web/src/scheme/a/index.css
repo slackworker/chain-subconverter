@@ -582,6 +582,30 @@
 	flex: 0 0 auto;
 }
 
+/* 与 Scheme B/C 一致的标签行「添加」操作：无边框、强调色文字链接 */
+.a-link-btn {
+	margin: 0;
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	font-size: 0.75rem;
+	font-weight: 500;
+	line-height: 1.2;
+	color: var(--color-accent);
+	cursor: pointer;
+	transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.a-link-btn:hover:not(:disabled) {
+	text-decoration: underline;
+}
+
+.a-link-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 .a-lined-input-wrap {
 	display: flex;
 	flex-direction: column;

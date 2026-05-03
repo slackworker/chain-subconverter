@@ -49,8 +49,8 @@ const COPY = {
 		stage1Desc: "输入落地与中转信息，执行转换以生成阶段 2 配置基底",
 		landingInfo: "落地信息",
 		transitInfo: "中转信息",
-		addSocks5: "+SOCKS5",
-		addPortForward: "+端口转发",
+		addSocks5: "+ 添加 SOCKS5",
+		addPortForward: "+ 添加 端口转发",
 		landingPlaceholder: "订阅 URL 或节点 URI，每行一条",
 		transitPlaceholder: "机场订阅、节点 URI 或 data:text/plain,...",
 		portForwardTags: "端口转发标签",
@@ -731,7 +731,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							id={`${stage1Id}-landing`}
 							label={copy.landingInfo}
 							labelAction={
-								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openSocksModal}>
+								<button type="button" className="a-link-btn" onClick={openSocksModal}>
 									{copy.addSocks5}
 								</button>
 							}
@@ -752,7 +752,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							id={`${stage1Id}-transit`}
 							label={copy.transitInfo}
 							labelAction={portForwardEnabled ? (
-								<button type="button" className="a-btn a-btn--secondary a-btn--compact" onClick={openPortForwardModal}>
+								<button type="button" className="a-link-btn" onClick={openPortForwardModal}>
 									{copy.addPortForward}
 								</button>
 							) : null}
