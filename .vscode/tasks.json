@@ -4,10 +4,10 @@
     {
       "label": "dev: up",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/dev-up-vscode-task.sh",
+      "command": "bash",
       "args": [
-        "${input:uiScheme}",
-        "${input:devPortOffset}"
+        "${workspaceFolder}/scripts/dev-up-vscode-task.sh",
+        "${input:uiScheme}"
       ],
       "runOptions": {
         "instanceLimit": 1
@@ -25,7 +25,10 @@
     {
       "label": "git: rebase UI branches onto local main",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/rebase-ui-branches.sh",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/rebase-ui-branches.sh"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -39,7 +42,10 @@
     {
       "label": "git: force push UI branches",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/force-push-ui-branches.sh",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/force-push-ui-branches.sh"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -53,8 +59,9 @@
     {
       "label": "git: commit staged changes to main (no push)",
       "type": "shell",
-      "command": "${workspaceFolder}/scripts/commit-current-changes-to-main.sh",
+      "command": "bash",
       "args": [
+        "${workspaceFolder}/scripts/commit-current-changes-to-main.sh",
         "${input:mainCommitMessage}"
       ],
       "options": {
@@ -79,18 +86,6 @@
         "c"
       ],
       "default": "a"
-    },
-    {
-      "id": "devPortOffset",
-      "type": "pickString",
-      "description": "Port offset for concurrent worktrees: 0 uses 25500/11200/5173-5175; 10 uses 25510/11210/5183-5185",
-      "options": [
-        "0",
-        "10",
-        "20",
-        "30"
-      ],
-      "default": "0"
     },
     {
       "id": "mainCommitMessage",

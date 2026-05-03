@@ -3,6 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+WEB_DIR="$ROOT_DIR/web"
 TMP_DIR="$ROOT_DIR/.tmp/dev-up"
 RUNTIME_FILE="$TMP_DIR/runtime.env"
 BACKEND_LOG="$TMP_DIR/backend.log"
@@ -47,6 +48,23 @@ require_command() {
   if ! command -v "$command_name" >/dev/null 2>&1; then
     fail "missing required command: $command_name"
   fi
+}
+
+ensure_frontend_dependencies() {
+  if [[ -x "$WEB_DIR/node_modules/.bin/vite" ]]; then
+    return 0
+  fi
+
+  if [[ -f "$WEB_DIR/package-lock.json" ]]; then
+    log "frontend dependencies missing in $WEB_DIR; running npm ci for this worktree"
+    (cd "$WEB_DIR" && npm ci)
+  else
+    log "frontend dependencies missing in $WEB_DIR; running npm install for this worktree"
+    (cd "$WEB_DIR" && npm install)
+  fi
+
+  [[ -x "$WEB_DIR/node_modules/.bin/vite" ]] ||
+    fail "frontend dependencies are still incomplete in $WEB_DIR after install"
 }
 
 is_port_busy() {
@@ -481,6 +499,7 @@ require_command npm
 require_command docker
 require_command curl
 require_command ss
+ensure_frontend_dependencies
 
 log "preparing local UI dev flow for scheme '$SCHEME'"
 
@@ -550,6 +569,6 @@ fi
 
 log "close this terminal or stop the VS Code task to stop the local frontend/backend for this run"
 
-cd "$ROOT_DIR/web"
+cd "$WEB_DIR"
 VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET="http://127.0.0.1:${BACKEND_PORT}" \
   npm run dev -- --host 0.0.0.0 --port "$FRONTEND_PORT" --strictPort
