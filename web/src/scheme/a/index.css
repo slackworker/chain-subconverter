@@ -96,7 +96,23 @@
 }
 
 .a-header__brand {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
 	max-width: 42rem;
+}
+
+.a-header__brand-icon {
+	display: block;
+	width: 2.25rem;
+	height: 2.25rem;
+	flex-shrink: 0;
+	border-radius: 0.3rem;
+	object-fit: contain;
+}
+
+.a-header__brand-text {
+	min-width: 0;
 }
 
 .a-eyebrow {

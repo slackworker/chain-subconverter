@@ -11,9 +11,16 @@ export function BAppPage({ workflow, outputActions }: AppPageProps) {
 			<header className="border-b border-zinc-800/80 bg-zinc-950/50 backdrop-blur-md sticky top-0 z-40">
 				<div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
 					<div className="flex items-center gap-3">
-						<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold tracking-tighter">
-							CS
-						</div>
+						<img
+							className="w-8 h-8 rounded-lg object-contain shrink-0"
+							src={`${import.meta.env.BASE_URL}logo.svg`}
+							alt=""
+							width={32}
+							height={32}
+							decoding="async"
+							fetchPriority="low"
+							aria-hidden="true"
+						/>
 						<h1 className="text-lg font-medium text-zinc-100 tracking-tight">Chain Subconverter</h1>
 					</div>
 					<div className="flex items-center gap-4 text-sm font-medium">

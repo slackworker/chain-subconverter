@@ -279,7 +279,16 @@ export function CAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			{/* ── App header ── */}
 			<header className="c-appbar">
 				<div className="c-appbar-brand">
-					<span className="c-brand-badge">C</span>
+					<img
+						className="c-brand-logo"
+						src={`${import.meta.env.BASE_URL}logo.svg`}
+						alt=""
+						width={36}
+						height={36}
+						decoding="async"
+						fetchPriority="low"
+						aria-hidden="true"
+					/>
 					<div>
 						<p className="c-brand-name">Chain Sub Converter</p>
 						<p className="c-brand-sub">订阅链转换与中转配置工具</p>

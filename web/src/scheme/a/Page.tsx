@@ -669,8 +669,20 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		<div className={`a-shell${colorMode === "dark" ? " a-shell--dark" : ""}`}>
 			<header className="a-header">
 				<div className="a-header__brand">
-					<h1 className="a-title">{copy.headerTitle}</h1>
-					<p className="a-eyebrow">{copy.headerEyebrow}</p>
+					<img
+						className="a-header__brand-icon"
+						src={`${import.meta.env.BASE_URL}logo.svg`}
+						alt=""
+						width={36}
+						height={36}
+						decoding="async"
+						fetchPriority="low"
+						aria-hidden="true"
+					/>
+					<div className="a-header__brand-text">
+						<h1 className="a-title">{copy.headerTitle}</h1>
+						<p className="a-eyebrow">{copy.headerEyebrow}</p>
+					</div>
 				</div>
 				<nav className="a-scheme-nav" aria-label={copy.quickActions}>
 					<button

@@ -82,17 +82,12 @@ button {
 	gap: 12px;
 }
 
-.c-brand-badge {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+.c-brand-logo {
+	display: block;
 	width: 36px;
 	height: 36px;
 	border-radius: var(--c-radius);
-	background: var(--c-accent);
-	color: #fff;
-	font-weight: 700;
-	font-size: 16px;
+	object-fit: contain;
 	flex-shrink: 0;
 }
 
