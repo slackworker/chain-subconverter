@@ -23,13 +23,15 @@ Phase 4 前端工程目录。
 - `<scheme>` 当前支持 `a`、`b`、`c`
 - 该脚本会处理：
 	- 固定端口 `25500 / 11200 / 5173` 上的 `subconverter`、backend、frontend 复用或拉起
-	- 清理当前工作区遗留的旧 frontend / backend 开发实例
+	- VS Code `dev: up` 按 scheme 使用 `a=5173`、`b=5174`、`c=5175`
+	- 多 worktree / 多分支并行预览时，VS Code `dev: up` 可选择端口 offset：`10` 对应 `25510 / 11210 / 5183-5185`
+	- 清理当前工作区遗留的旧 frontend / backend 开发实例，但不清理当前允许并存的 A/B/C frontend 端口
 	- 固定端口冲突检查；若被非当前工作区进程占用则直接报错，不再自动跳到相邻端口
 	- `.tmp/dev-up/runtime.env` 运行时地址输出
-- 若 `5173` 上已有当前工作区的 Vite dev server，脚本会直接复用它，不再额外启动 `5174` / `5175` 等新端口
+- 若当前 scheme 对应端口上已有当前工作区且代理目标一致的 Vite dev server，脚本会直接复用它
 - 关闭当前任务终端即可结束本次启动脚本拉起的本地 frontend / backend；`subconverter` 容器默认保留以便下次复用
 
-默认从 Windows 宿主机浏览器访问时，也只应打开脚本打印出的固定 `SCHEME_URL`，即 `http://localhost:5173/ui/<scheme>`；不要手工改成相邻端口试探，否则通常只是在访问旧实例。
+默认从 Windows 宿主机浏览器访问时，只应打开脚本打印出的 `SCHEME_URL`，例如 `http://localhost:5173/ui/a`、`http://localhost:5174/ui/b` 或带 offset 的 `http://localhost:5185/ui/c`；不要手工改成未由任务分配的相邻端口试探，否则通常只是在访问旧实例。
 
 完整 smoke 顺序见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
 

@@ -58,6 +58,7 @@
 任务：
 
 - 固定本地默认端口：backend `11200`、frontend dev `5173`、compose app `11200`、compose subconverter `25500`
+- 多 worktree / 多分支并行预览通过端口 offset 隔离，默认 offset `0`；offset `10` 时使用 backend `11210`、frontend dev `5183-5185`、subconverter `25510`
 - 固定本地 `scheme` 访问方式：`/ui/a`、`/ui/b`、`/ui/c`
 - 固定 `VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET=http://localhost:11200`
 - 固定 backend env 最小集合：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`、`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`、`CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR`、`CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH`；`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 改为可选覆盖项
@@ -85,7 +86,7 @@
 - 加入 readiness checks：`subconverter` 用 `GET /version`，`app` 用 `GET /healthz`
 - 视需要增加 `managed-templates` 拉取 smoke，避免只检查进程存活
 - 本地 Go backend 在 WSL 开发路径必须显式使用 IPv4 listener，避免 Docker Desktop 只能看到 `*:port` 时无法从容器回连托管模板 URL
-- 启动结果需打印可直接打开的 URL：frontend dev `http://localhost:5173/ui/<scheme>`，compose preview `http://localhost:11200/ui/<scheme>`
+- 启动结果需打印可直接打开的 URL：frontend dev `http://localhost:<frontend-port>/ui/<scheme>`，compose preview `http://localhost:11200/ui/<scheme>`
 - 明确 `subconverter` 允许直接复用已运行容器，不强制每次重建
 
 完成口径：

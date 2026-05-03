@@ -7,9 +7,10 @@
       "command": "bash",
       "args": [
         "-lc",
-        "set -euo pipefail\nscheme=\"$1\"\ncase \"$scheme\" in\n  a) frontend_port=5173 ;;\n  b) frontend_port=5174 ;;\n  c) frontend_port=5175 ;;\n  *) echo \"Unsupported UI scheme: $scheme\" >&2; exit 1 ;;\nesac\nCHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT=\"$frontend_port\" \"${workspaceFolder}/scripts/dev-up.sh\" \"$scheme\"",
+        "set -euo pipefail\nscheme=\"$1\"\nport_offset=\"$2\"\ncase \"$port_offset\" in\n  ''|*[!0-9]*) echo \"Unsupported dev port offset: $port_offset\" >&2; exit 1 ;;\nesac\ncase \"$scheme\" in\n  a) frontend_base=5173 ;;\n  b) frontend_base=5174 ;;\n  c) frontend_base=5175 ;;\n  *) echo \"Unsupported UI scheme: $scheme\" >&2; exit 1 ;;\nesac\nfrontend_port=$((frontend_base + port_offset))\nbackend_port=$((11200 + port_offset))\nsubconverter_port=$((25500 + port_offset))\nCHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT=\"$frontend_port\" \\\nCHAIN_SUBCONVERTER_DEV_UP_BACKEND_PORT=\"$backend_port\" \\\nCHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_PORT=\"$subconverter_port\" \\\n\"${workspaceFolder}/scripts/dev-up.sh\" \"$scheme\"",
         "--",
-        "${input:uiScheme}"
+        "${input:uiScheme}",
+        "${input:devPortOffset}"
       ],
       "runOptions": {
         "instanceLimit": 1
@@ -85,6 +86,18 @@
         "c"
       ],
       "default": "a"
+    },
+    {
+      "id": "devPortOffset",
+      "type": "pickString",
+      "description": "Port offset for concurrent worktrees: 0 uses 25500/11200/5173-5175; 10 uses 25510/11210/5183-5185",
+      "options": [
+        "0",
+        "10",
+        "20",
+        "30"
+      ],
+      "default": "0"
     },
     {
       "id": "mainCommitMessage",
