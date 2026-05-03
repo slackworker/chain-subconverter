@@ -26,7 +26,7 @@
 
 - `subconverter`: `25500`
 - `backend`: `11200`
-- `frontend`: `5173`
+- `frontend`: 脚本默认 `5173`；VS Code `dev: up` 按 scheme 指定为 `a=5173`、`b=5174`、`c=5175`
 
 运行结果写入：`.tmp/dev-up/runtime.env`
 
@@ -48,10 +48,10 @@ cd web && npm run build && npm run build:b && npm run build:c
 浏览器只看脚本输出的 `SCHEME_URL`，日常应为：
 
 ```text
-http://localhost:5173/ui/<scheme>
+http://localhost:<frontend-port>/ui/<scheme>
 ```
 
-若实际只能通过 `5174`、`5175` 等相邻端口访问，优先判断为旧开发实例残留，不视为正常行为。
+除 VS Code `dev: up` 为 `b`/`c` 明确指定的端口外，若实际只能通过相邻端口访问，优先判断为旧开发实例残留，不视为正常行为。
 
 ### 3. 手动检查
 
@@ -66,7 +66,7 @@ http://localhost:5173/ui/<scheme>
 - `subconverter` 启动失败：先检查 Docker Desktop、镜像拉取与 `GET /version`
 - backend 启动失败：先看 `.tmp/dev-up/backend.log`
 - 报 `backend-from-subconverter did not become ready`：优先确认 backend 以 IPv4 暴露，且 `MANAGED_TEMPLATE_BASE_URL` 仍是 `http://host.docker.internal:<backend-port>`
-- 固定端口冲突：先释放 `5173` 或 `11200`，不要改用相邻端口继续调试
+- 固定端口冲突：先释放当前 scheme 指定的 frontend 端口或 `11200`，不要临时改用其他相邻端口继续调试
 - UI-A 主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
 - 若出现 `SUBCONVERTER_UNAVAILABLE` 且提示 `missing recognized region proxy-group`：先检查当前 frontend 代理到哪一份 backend，以及该 backend 是否向容器注入了可回连的模板地址
 
