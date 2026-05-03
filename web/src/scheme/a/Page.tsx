@@ -135,7 +135,7 @@ const COPY = {
 	en: {
 		localErrorAriaHint: "There is an error here. Check the current stage feedback strip.",
 		headerEyebrow: "Chain Subconverter for Mihomo",
-		headerTitle: "Chain Proxy · Subscription Converter",
+		headerTitle: "Chain Proxy · Subconverter",
 		quickActions: "Quick actions",
 		languageToggle: "Switch interface language",
 		languageZh: "中",
