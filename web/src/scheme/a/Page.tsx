@@ -828,6 +828,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 					<div className="a-stage1-actions-wrap">
 						<button type="button" className="a-advanced__toggle" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
+							<span className={`a-adv-arrow${advancedOpen ? " a-adv-arrow--open" : ""}`} aria-hidden="true">
+								▶
+							</span>
 							{copy.advancedOptions}
 						</button>
 						{advancedOpen ? (
@@ -989,10 +992,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							</div>
 						) : null}
 
-						<div className="a-stage-actions a-stage-actions--stage1">
-							<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
-								{isConverting ? copy.converting : copy.convertAndFill}
-							</button>
+						<div className="a-stage-actions a-stage-actions--primary-end">
 							{(stage1PrimaryBlockingErrors.length > 0 || shouldShowStage2StaleNotice) ? (
 								<div className="a-stage-actions__feedback">
 									{stage1PrimaryBlockingErrors.length > 0 ? (
@@ -1006,6 +1006,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 									) : null}
 								</div>
 							) : null}
+							<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
+								{isConverting ? copy.converting : copy.convertAndFill}
+							</button>
 						</div>
 					</div>
 				</section>
@@ -1283,15 +1286,15 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						</table>
 					</div>
 
-					<div className="a-stage-actions">
-						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
-							{isGenerating ? copy.generating : copy.generateLink}
-						</button>
+					<div className="a-stage-actions a-stage-actions--primary-end">
 						{stage2PrimaryBlockingErrors.length > 0 ? (
 							<div className="a-stage-actions__feedback">
 								<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
 							</div>
 						) : null}
+						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
+							{isGenerating ? copy.generating : copy.generateLink}
+						</button>
 					</div>
 				</section>
 
