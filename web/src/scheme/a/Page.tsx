@@ -69,7 +69,7 @@ const COPY = {
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
 		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
-		stage2Title: "落地配置",
+		stage2Title: "配置",
 		stage2Desc: "按落地节点逐行选择模式与目标",
 		conflictReadonly: "当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。",
 		colLanding: "落地节点",
