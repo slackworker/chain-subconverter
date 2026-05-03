@@ -1,6 +1,6 @@
 # Phase 4 本地预览与联调就绪计划
 
-本文定义在 A/B/C UI 分支开发前，必须先收口的本地运行、联通性检测、测试与人工验收任务。
+本文定义在 A/B/C 方案持续集成到 `ui-lab` 前，必须先收口的本地运行、联通性检测、测试与人工验收任务。
 
 实时状态统一维护在 [progress/STATUS](../progress/STATUS.md)。
 
@@ -10,7 +10,7 @@
 - 面向第三方局域网 / 家庭设备：`Docker Compose` 冷启动部署
 - 让前端开发者能独立拉起 `frontend + backend + subconverter`
 - 让浏览器可直接访问 A/B/C 任一 `scheme` 并跑完整主线
-- 让自动化基线、UI-A 主流程 smoke、人工签收与第三方设备部署职责分层清晰
+- 让自动化基线、A 方案主流程 smoke、人工签收与第三方设备部署职责分层清晰
 
 ## 当前已验证基线
 
@@ -27,7 +27,7 @@
 
 - Compose 可做最终预览 / 集成验证，但不适合作为前端日常 HMR 主路径
 - 本地 Go 后端运行路径与 Compose 第三方设备路径仍缺少一套统一的冷启动验收记录
-- 现有自动化测试未明确分层为 stable unit / contract 与 UI-A 主流程 smoke；用户手动确认路径未形成固定清单
+- 现有自动化测试未明确分层为 stable unit / contract 与 A 方案主流程 smoke；用户手动确认路径未形成固定清单
 - 模板调用、参数传递、接口功能的“真实跑通 + 人工签收”还没有固定成统一矩阵
 - Alpha（内测）发布已具备第三方设备 Compose 冷启动入口，但仍缺少持续回归记录与反馈闭环模板
 
@@ -117,7 +117,7 @@
 当前状态（Alpha 同步）：
 
 - 部署入口与默认镜像标签已在 [deploy/README.md](../../deploy/README.md) 固定
-- Alpha 发布基线已固定为 `UI-A`，默认回归入口为 `/ui/a`
+- Alpha 发布分支已固定为 `alpha`，默认回归入口为 `/ui/a`
 - 后续重点从“能否首轮冷启动”转为“内测期间持续回归与反馈收口”
 
 ### P4-R2：测试收口
@@ -130,7 +130,7 @@
 任务：
 
 - 维持稳定自动化基线：`go test ./...`、`npm run build`、`npm run build:b`
-- 增加或整理 UI-A 主流程 smoke 分层：`CHAIN_SUBCONVERTER_SMOKE=1 go test ./internal/subconverter/...` 与基于真实 `subconverter` + 模板服务的端到端 smoke
+- 增加或整理 A 方案主流程 smoke 分层：`CHAIN_SUBCONVERTER_SMOKE=1 go test ./internal/subconverter/...` 与基于真实 `subconverter` + 模板服务的端到端 smoke
 - 针对以下主题逐项跑通并补用例：模板调用与托管模板回取、Stage 1 参数传递到 `subconverter` query、`stage1/convert` / `generate` / `resolve-url` / `short-links` 行为、`subscription` 下载链路
 - 记录每一类失败属于：共享业务层回退、外部模板漂移、`subconverter` 镜像漂移、本地网络或 Docker 问题
 
@@ -144,11 +144,11 @@
 目标：
 
 - 让你可以按固定顺序手动一项项确认
-- 以 UI-A 当前主流程作为人工 smoke 入口
+- 以 A 方案当前主流程作为人工 smoke 入口
 
 约束：
 
-- 人工输入只作为当前单机环境下的 UI-A 主流程 smoke，不纳入 stable fixture 裁决
+- 人工输入只作为当前单机环境下的 A 方案主流程 smoke，不纳入 stable fixture 裁决
 - 自动化 fixture 仍以 [testing/3pass-ss2022-test-subscription](../testing/3pass-ss2022-test-subscription.md) 为准
 
 任务：
@@ -193,7 +193,7 @@
 1. 先完成 P4-R0，冻结端口与 env contract
 2. 再完成 P4-R1，形成正式启动机制
 3. 持续执行 P4-R1.5 的内测回归与反馈收口（首轮冷启动入口已具备）
-4. 再完成 P4-R2，清理自动化与 UI-A 主流程 smoke 缺口
+4. 再完成 P4-R2，清理自动化与 A 方案主流程 smoke 缺口
 5. 最后完成 P4-R3 与 P4-R4，再把 A/B/C 分支开发视为真正解阻
 
 ## 解阻定义
@@ -202,5 +202,5 @@
 - 本地 dev path 可启动并完成健康检查
 - 第三方设备 Compose path 可冷启动并完成健康检查
 - 稳定自动化基线持续通过
-- UI-A 主流程 smoke 与人工签收矩阵有固定入口并可复用
+- A 方案主流程 smoke 与人工签收矩阵有固定入口并可复用
 - 前端开发者可直接按文档在浏览器中跑完整主线

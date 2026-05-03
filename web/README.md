@@ -37,6 +37,21 @@ Phase 4 前端工程目录。
 
 完整 smoke 顺序见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
 
+## 分支工作流
+
+- `main`：公共改动的稳定主干。共享业务层、后端、脚本、部署、文档等不属于单一方案的改动，先提交到这里。
+- `ui-lab`：A/B/C 三套方案并存的日常开发分支。`web/src/scheme/a`、`b`、`c` 的实现演进和相互参考都集中在这里。
+- `alpha`：对外 Alpha 发布分支。它只承接经过回归确认、准备发出去的快照，默认入口仍是 `/ui/a`。
+
+推荐提交流程：
+
+- 纯公共改动：直接提交到 `main`，然后把 `ui-lab` rebase 到最新 `main`。
+- 纯方案改动：直接提交到 `ui-lab`。
+- 同一轮同时包含公共改动和方案改动：先把公共部分单独提交到 `main`，同步 `ui-lab` 后，再把方案部分提交到 `ui-lab`；不要把两类改动混成一个提交。
+- `alpha` 不作为日常开发分支，也不建议例行 rebase 到 `main`；它只在准备发布或更新 `alpha-latest` 时，从 `ui-lab` 选定快照后更新。
+
+当前仓库已支持在同一分支同时预览三个方案：启动本地开发实例后，可直接同时打开 `/ui/a`、`/ui/b`、`/ui/c`；如果要在多个 worktree 并行跑，再依赖 `dev: up` 的端口 offset。
+
 ## 部署相关环境变量
 
 - `VITE_CHAIN_SUBCONVERTER_BASE_PATH`: 配置构建产物的静态资源基础路径，例如 `/chain-subconverter/`

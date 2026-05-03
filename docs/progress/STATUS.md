@@ -9,7 +9,8 @@
 - `Phase 4` 进行中，当前已进入 Alpha（内测）发布与反馈收口阶段。
 - 当前对外内测版本口径统一按 `3.0 Alpha` 描述。
 - `G1` 前端共享业务层已签收；共享边界以 [spec/02-frontend-spec](../spec/02-frontend-spec.md) 为准，不再单独维护一份 G1 验收说明。
-- Alpha 对外口径已统一为 `UI-A` 基线：`ghcr.io/slackworker/chain-subconverter:alpha-latest` + `/ui/a` + Compose 单段部署命令。
+- 当前长期分支已收口为 `main`、`ui-lab`、`alpha`：共享改动先回 `main`，A/B/C 并行实现集中在 `ui-lab`，对外 Alpha 发布由 `alpha` 承担。
+- Alpha 对外口径已统一为 `alpha` 分支 + `ghcr.io/slackworker/chain-subconverter:alpha-latest` + `/ui/a` + Compose 单段部署命令。
 
 ## Phase 进度
 
@@ -34,7 +35,7 @@
 
 ## 当前缺口
 
-- A/B/C 方案评审尚未完成；当前 Alpha 发布基线固定为 UI-A，但仍不把任一方案视为最终 UI。
+- A/B/C 方案评审尚未完成；当前 Alpha 默认入口固定为 `/ui/a`，但仍不把任一方案视为最终 UI。
 - 正式本地预览 / Compose 单入口验收仍需持续回归，尚未形成稳定的版本化发布节奏。
 - Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。

@@ -7,11 +7,11 @@ MAIN_BRANCH=${CHAIN_SUBCONVERTER_MAIN_BRANCH:-main}
 TEMP_DIR=
 
 log() {
-  printf '[rebase-ui] %s\n' "$*"
+  printf '[rebase-branch] %s\n' "$*"
 }
 
 fail() {
-  printf '[rebase-ui] ERROR: %s\n' "$*" >&2
+  printf '[rebase-branch] ERROR: %s\n' "$*" >&2
   exit 1
 }
 
@@ -101,7 +101,7 @@ git -C "$ROOT_DIR" show-ref --verify --quiet "refs/heads/$MAIN_BRANCH" ||
 
 branches=("$@")
 if [[ "${#branches[@]}" -eq 0 ]]; then
-  branches=(UI-A UI-B UI-C)
+  branches=(ui-lab)
 fi
 
 for branch in "${branches[@]}"; do

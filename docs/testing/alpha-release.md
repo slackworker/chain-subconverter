@@ -12,13 +12,14 @@
 ## 当前 Alpha 口径
 
 - 当前对外版本阶段：`3.0 Alpha`
-- Alpha 发布基线：`UI-A`
+- Alpha 发布分支：`alpha`
+- Alpha 默认 UI 基线：`scheme a`
 - 主应用镜像：`ghcr.io/slackworker/chain-subconverter:alpha-latest`
 - `subconverter` 镜像：`ghcr.io/slackworker/subconverter:integration-chain-subconverter`
 - 第三方设备部署入口：`deploy/README.md` 中的单段 Compose 命令
 - 默认 UI 访问入口：`/ui/a`
 
-其中 `alpha-latest` 由 `UI-A` 分支 push 自动刷新；未形成新的明确发布决议前，Alpha 回归、问题收集与对外分发都以 `UI-A` 对应构建为准。
+其中 `alpha-latest` 由 `alpha` 分支 push 自动刷新；`ui-lab` 只作为 A/B/C 并行实现与交叉比对的集成线，不直接承担对外发布。
 
 仅当存在明确回归结论时，才允许替换默认镜像 tag 或默认入口。
 

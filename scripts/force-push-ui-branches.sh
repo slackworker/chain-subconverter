@@ -9,11 +9,11 @@ PUSH_TIMEOUT_SECONDS=${CHAIN_SUBCONVERTER_PUSH_TIMEOUT_SECONDS:-30}
 PUSH_RETRY_COUNT=${CHAIN_SUBCONVERTER_PUSH_RETRY_COUNT:-2}
 
 log() {
-  printf '[force-push-ui] %s\n' "$*"
+  printf '[force-push-branch] %s\n' "$*"
 }
 
 fail() {
-  printf '[force-push-ui] ERROR: %s\n' "$*" >&2
+  printf '[force-push-branch] ERROR: %s\n' "$*" >&2
   exit 1
 }
 
@@ -108,7 +108,7 @@ main() {
   git -C "$ROOT_DIR" remote get-url "$REMOTE_NAME" >/dev/null || fail "remote '${REMOTE_NAME}' does not exist"
 
   if [[ "${#branches[@]}" -eq 0 ]]; then
-    branches=(UI-A UI-B UI-C)
+    branches=(ui-lab)
   fi
 
   host=$(github_host_for_remote)

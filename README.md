@@ -4,7 +4,7 @@
 
 ## 状态
 
-当前对外内测线已进入 **3.0 Alpha** 阶段，发布基线固定为 **UI-A**：默认镜像标签 `ghcr.io/slackworker/chain-subconverter:alpha-latest`，默认入口为 `/ui/a`。
+当前对外内测线已进入 **3.0 Alpha** 阶段，发布基线固定为 `alpha` 分支：默认镜像标签 `ghcr.io/slackworker/chain-subconverter:alpha-latest`，默认入口仍为 `/ui/a`。
 
 相对 2.0，3.0 Alpha 对用户最重要的变化：
 
@@ -37,6 +37,12 @@
 - 开发治理与 spec 入口见 [docs/spec/00-governance.md](docs/spec/00-governance.md)
 - 当前实现状态与阶段缺口见 [docs/progress/STATUS.md](docs/progress/STATUS.md)
 - 本地开发与联调入口见 [docs/testing/local-dev-smoke.md](docs/testing/local-dev-smoke.md)
+
+当前长期分支口径：
+
+- `main`：共享层、后端、脚本、部署、文档等公共改动的稳定主干
+- `ui-lab`：A/B/C 三套 UI 实现并存的日常集成线
+- `alpha`：对外 Alpha 发布线；默认仍以 `/ui/a` 作为回归入口
 
 ## License
 

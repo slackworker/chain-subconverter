@@ -70,7 +70,7 @@ http://localhost:<frontend-port>/ui/<scheme>
 - backend 启动失败：先看 `.tmp/dev-up/backend.log`
 - 报 `backend-from-subconverter did not become ready`：优先确认 backend 以 IPv4 暴露，且 `MANAGED_TEMPLATE_BASE_URL` 仍是 `http://host.docker.internal:<backend-port>`
 - 固定端口冲突：同一 worktree 内先释放当前 scheme 指定的 frontend 端口或 `11200`；不同 worktree 并行预览时，优先依赖 `dev: up` 自动分配 offset，只有在需要固定到特定端口组时才手工设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`
-- UI-A 主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
+- A 方案主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
 - 若出现 `SUBCONVERTER_UNAVAILABLE` 且提示 `missing recognized region proxy-group`：先检查当前 frontend 代理到哪一份 backend，以及该 backend 是否向容器注入了可回连的模板地址
 
 ## Compose 预览

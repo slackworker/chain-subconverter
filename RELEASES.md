@@ -7,7 +7,8 @@
 ### 发布信息
 
 - 当前对外版本阶段：`3.0 Alpha`
-- 当前发布基线：`UI-A`
+- 当前发布分支：`alpha`
+- 当前默认 UI 基线：`scheme a`
 - 默认应用镜像：`ghcr.io/slackworker/chain-subconverter:alpha-latest`
 - 默认访问入口：`/ui/a`
 
