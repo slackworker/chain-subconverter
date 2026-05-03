@@ -28,9 +28,8 @@ type ColorMode = "light" | "dark";
 const COPY = {
 	zh: {
 		localErrorAriaHint: "该位置存在错误，请查看当前阶段反馈条。",
-		headerEyebrow: "Chain Subconverter",
+		headerEyebrow: "Chain Subconverter for Mihomo",
 		headerTitle: "链式代理 · 订阅转换",
-		headerLede: "交互式 链式代理 · 订阅转换 for Mihomo",
 		quickActions: "快捷操作",
 		languageToggle: "切换界面语言",
 		languageZh: "中",
@@ -134,9 +133,8 @@ const COPY = {
 	},
 	en: {
 		localErrorAriaHint: "There is an error here. Check the current stage feedback strip.",
-		headerEyebrow: "Chain Subconverter",
+		headerEyebrow: "Chain Subconverter for Mihomo",
 		headerTitle: "Chain Proxy · Subscription Converter",
-		headerLede: "Interactive chain proxy subscription conversion for Mihomo",
 		quickActions: "Quick actions",
 		languageToggle: "Switch interface language",
 		languageZh: "中",
@@ -647,7 +645,6 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<div className="a-header__brand">
 					<p className="a-eyebrow">{copy.headerEyebrow}</p>
 					<h1 className="a-title">{copy.headerTitle}</h1>
-					<p className="a-lede">{copy.headerLede}</p>
 				</div>
 				<nav className="a-scheme-nav" aria-label={copy.quickActions}>
 					<button

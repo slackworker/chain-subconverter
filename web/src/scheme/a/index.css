@@ -102,12 +102,6 @@
 	letter-spacing: -0.02em;
 }
 
-.a-lede {
-	margin: 0;
-	color: var(--color-muted);
-	font-size: 0.98rem;
-}
-
 .a-scheme-nav {
 	display: flex;
 	align-items: center;
