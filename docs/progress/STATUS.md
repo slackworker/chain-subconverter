@@ -28,7 +28,7 @@
 - 后端主线已具备 `stage1/convert`、`generate`、`resolve-url`、`short-links`、`GET /sub`、`GET /sub/<id>` 的完整契约与实现。
 - 前端共享业务层已接通恢复、转换、生成、短链切换等主流程；入口按 `/ui/<scheme>` 装配，A/B/C 方案继续在共享契约之上演进。
 - 本地开发主入口已固定为 `./scripts/dev-up.sh <scheme>`，默认端口为 `25500 / 11200 / 5173`。
-- VS Code `dev: up` 已改为按当前 worktree 自动分配端口 offset，减少多 worktree 并行预览时的手工选择成本。
+- VS Code `dev: up` 与 `./scripts/dev-up.sh` 默认共用固定端口；多 worktree 并行需显式设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（或任务包装脚本的第二参数 / `auto`），冲突时由 `dev-up.sh` 复用、清理本工作区残留实例或报错退出。
 - Docker 镜像已接入前端构建，后端也已具备 SPA 静态资源托管能力。
 - `deploy/README.md` 已将第三方设备部署改为单段可复制命令，由用户修改顶部变量后生成并启动本地 `docker-compose.yml`。
 - Alpha（内测）发布默认镜像标签与部署入口已固定，可直接用于第三方设备冷启动。

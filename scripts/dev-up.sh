@@ -512,7 +512,14 @@ if http_ready "http://127.0.0.1:${SUBCONVERTER_PORT}/version"; then
 elif ! is_port_busy "$SUBCONVERTER_PORT"; then
   start_subconverter_container "$SUBCONVERTER_PORT"
 else
-  fail_fixed_port_conflict "subconverter" "$SUBCONVERTER_PORT"
+  SUBCONVERTER_CONFLICT_NAME=$(find_subconverter_container_name "$SUBCONVERTER_PORT")
+  if [[ -n "$SUBCONVERTER_CONFLICT_NAME" ]] && [[ "$SUBCONVERTER_CONFLICT_NAME" == chain-subconverter-dev-subconverter-* ]]; then
+    log "subconverter port ${SUBCONVERTER_PORT} is busy and /version is not ready; replacing dev container ${SUBCONVERTER_CONFLICT_NAME}"
+    docker rm -f "$SUBCONVERTER_CONFLICT_NAME" >/dev/null 2>&1 || true
+    start_subconverter_container "$SUBCONVERTER_PORT"
+  else
+    fail_fixed_port_conflict "subconverter" "$SUBCONVERTER_PORT"
+  fi
 fi
 
 SUBCONVERTER_CONTAINER_NAME=$(find_subconverter_container_name "$SUBCONVERTER_PORT")

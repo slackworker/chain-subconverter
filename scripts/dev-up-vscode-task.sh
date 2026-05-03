@@ -6,7 +6,9 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 scheme="${1:-}"
-port_offset_input="${2:-${CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET:-auto}}"
+# Default fixed ports (offset 0). Set CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=auto for
+# legacy per-worktree auto offset, or a numeric offset for parallel worktrees.
+port_offset_input="${2:-${CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET:-0}}"
 
 worktree_auto_port_offset() {
   local current_root
@@ -72,8 +74,10 @@ frontend_port=$((frontend_base + port_offset))
 backend_port=$((11200 + port_offset))
 subconverter_port=$((25500 + port_offset))
 
-if [[ "$port_offset_input" == "auto" || -z "$port_offset_input" ]]; then
+if [[ "$port_offset_input" == "auto" ]]; then
   printf '[dev-up-task] auto-selected port offset %s for worktree %s\n' "$port_offset" "$ROOT_DIR"
+elif [[ "$port_offset" != "0" ]]; then
+  printf '[dev-up-task] using port offset %s (worktree %s)\n' "$port_offset" "$ROOT_DIR"
 fi
 
 export CHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT="$frontend_port"

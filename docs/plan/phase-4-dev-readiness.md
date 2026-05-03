@@ -58,7 +58,7 @@
 任务：
 
 - 固定本地默认端口：backend `11200`、frontend dev `5173`、compose app `11200`、compose subconverter `25500`
-- 多 worktree / 多分支并行预览通过端口 offset 隔离；VS Code `dev: up` 默认按当前 worktree 自动分配 offset，必要时允许用 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET` 显式覆盖
+- 本地默认固定端口组 `25500 / 11200 / 5173`（VS Code `dev: up` 与根目录脚本默认一致）；多 worktree 并行预览需自行设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=<n>`（或 `=auto` 恢复按 worktree 顺序自动 offset），避免在不知情的情况下重复起多套服务
 - 固定本地 `scheme` 访问方式：`/ui/a`、`/ui/b`、`/ui/c`
 - 固定 `VITE_CHAIN_SUBCONVERTER_API_PROXY_TARGET=http://localhost:11200`
 - 固定 backend env 最小集合：`CHAIN_SUBCONVERTER_HTTP_ADDRESS`、`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`、`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`、`CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR`、`CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH`；`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 改为可选覆盖项

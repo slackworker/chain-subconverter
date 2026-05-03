@@ -22,18 +22,18 @@ Phase 4 前端工程目录。
 - 推荐入口：在仓库根目录执行 `./scripts/dev-up.sh <scheme>`，或直接运行 VS Code 任务 `dev: up`
 - `<scheme>` 当前支持 `a`、`b`、`c`
 - 该脚本会处理：
-	- 固定端口 `25500 / 11200 / 5173` 上的 `subconverter`、backend、frontend 复用或拉起
-	- VS Code `dev: up` 按 scheme 使用 `a=5173`、`b=5174`、`c=5175`
-	- 多 worktree / 多分支并行预览时，VS Code `dev: up` 默认按当前 worktree 自动分配端口 offset；第二个 worktree 默认对应 `25510 / 11210 / 5183-5185`
+	- 默认一整组端口为 `25500 / 11200 / 5173`（VS Code `dev: up`）；`dev-up-vscode-task.sh` 在换 scheme 时只调整前端 dev 端口（`a=5173`、`b=5174`、`c=5175`，并与 subconverter/backend 共用同一数值 offset）
+	- VS Code `dev: up` 当前固定为 scheme `a`、offset `0`
+	- 多 worktree 并行预览时不要共用默认端口：为第二个 worktree 设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=10`（或 `auto` 按 `git worktree list` 顺序自动算 offset），否则脚本会对非本工作区占用报错，避免误起多套服务
 	- 新 worktree 首次运行若缺少 `web/node_modules`，脚本会先自动执行一次 `npm ci`
 	- 清理当前工作区遗留的旧 frontend / backend 开发实例，但不清理当前允许并存的 A/B/C frontend 端口
 	- 固定端口冲突检查；若被非当前工作区进程占用则直接报错，不再自动跳到相邻端口
 	- `.tmp/dev-up/runtime.env` 运行时地址输出
 - 若当前 scheme 对应端口上已有当前工作区且代理目标一致的 Vite dev server，脚本会直接复用它
 - 关闭当前任务终端即可结束本次启动脚本拉起的本地 frontend / backend；`subconverter` 容器默认保留以便下次复用
-- 如需显式覆盖自动分配，可先设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=<n>` 再运行任务或脚本
+- 需要非默认端口组时，设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=<n>`（数值）或 `auto` 后再运行任务或 `./scripts/dev-up-vscode-task.sh <scheme> [offset|auto]`
 
-默认从 Windows 宿主机浏览器访问时，只应打开脚本打印出的 `SCHEME_URL`，例如 `http://localhost:5173/ui/a`、`http://localhost:5174/ui/b` 或带 offset 的 `http://localhost:5185/ui/c`；不要手工改成未由任务分配的相邻端口试探，否则通常只是在访问旧实例。
+默认从 Windows 宿主机浏览器访问时，只应打开脚本打印出的 `SCHEME_URL`（默认任务为 `http://localhost:5173/ui/a`）；使用 offset 时以 `runtime.env` 为准；不要手工改成未由本次启动分配的端口试探，否则通常只是在访问旧实例。
 
 完整 smoke 顺序见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
 
@@ -50,7 +50,7 @@ Phase 4 前端工程目录。
 - 同一轮同时包含公共改动和方案改动：先把公共部分单独提交到 `main`，同步 `ui-lab` 后，再把方案部分提交到 `ui-lab`；不要把两类改动混成一个提交。
 - `alpha` 不作为日常开发分支，也不建议例行 rebase 到 `main`；它只在准备发布或更新 `alpha-latest` 时，从 `ui-lab` 选定快照后更新。
 
-当前仓库已支持在同一分支同时预览三个方案：启动本地开发实例后，可直接同时打开 `/ui/a`、`/ui/b`、`/ui/c`；如果要在多个 worktree 并行跑，再依赖 `dev: up` 的端口 offset。
+当前仓库已支持在同一分支同时预览三个方案：启动本地开发实例后，可直接同时打开 `/ui/a`、`/ui/b`、`/ui/c`。多个 worktree 并行跑时请显式设置端口 offset（或 `auto`），不要依赖多套默认端口并存。
 
 ## 部署相关环境变量
 
