@@ -42,11 +42,7 @@
     {
       "label": "git: force push UI branches",
       "type": "shell",
-      "command": "bash",
-      "args": [
-        "-lc",
-        "set -euo pipefail\nfor branch in UI-A UI-B UI-C; do\n  echo \"==> Force pushing ${branch} to origin/${branch}\"\n  git push --force-with-lease origin \"${branch}:${branch}\"\ndone"
-      ],
+      "command": "${workspaceFolder}/scripts/force-push-ui-branches.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
