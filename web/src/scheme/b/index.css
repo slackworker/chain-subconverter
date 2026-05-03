@@ -1,1 +1,4 @@
 /* Scheme B owns its styling baseline from this file onward. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
