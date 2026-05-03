@@ -57,8 +57,9 @@ const COPY = {
 		removeTag: "移除 {tag}",
 		advancedOptions: "高级选项",
 		templateUrl: "订阅转换模板",
-		templateUrlHint: `远程配置; 初始值来自部署默认模板：${DEFAULT_TEMPLATE_URL}`,
-		templateUrlHintAria: "模板 URL 说明",
+		templateUrlHint:
+			"请填入包含地域（区域）策略分组的订阅转换模板 URL。未自定义时由服务端使用部署默认模板。",
+		templateUrlHintAria: "订阅转换模板说明",
 		templatePlaceholder: "请输入带地域分组的模板 URL",
 		templateResetDefault: "恢复默认",
 		includeTags: "include 标签",
@@ -163,8 +164,9 @@ const COPY = {
 		removeTag: "Remove {tag}",
 		advancedOptions: "Advanced options",
 		templateUrl: "Subscription template",
-		templateUrlHint: `Remote config; initial value comes from the deployment default template: ${DEFAULT_TEMPLATE_URL}`,
-		templateUrlHintAria: "Template URL help",
+		templateUrlHint:
+			"Use a subconverter template URL that defines regional policy groups. If unchanged, the deployment default applies.",
+		templateUrlHintAria: "Subscription template help",
 		templatePlaceholder: "Use a region-aware template URL",
 		templateResetDefault: "Reset default",
 		includeTags: "Include tags",
