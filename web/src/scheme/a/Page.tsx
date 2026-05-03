@@ -45,7 +45,7 @@ const COPY = {
 		noLogs: "暂无日志",
 		noBadge: "无",
 		backendNoMessages: "当前阶段后端未返回 messages",
-		stage1Title: "阶段 1 · 输入",
+		stage1Title: "输入",
 		stage1Desc: "输入落地与中转信息，执行转换以生成阶段 2 配置基底",
 		landingInfo: "落地信息",
 		transitInfo: "中转信息",
@@ -69,7 +69,7 @@ const COPY = {
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
 		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
-		stage2Title: "阶段 2 · 落地配置",
+		stage2Title: "落地配置",
 		stage2Desc: "按落地节点逐行选择模式与目标",
 		conflictReadonly: "当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。",
 		colLanding: "落地节点",
@@ -84,7 +84,7 @@ const COPY = {
 		selectTarget: "请选择",
 		generating: "生成中…",
 		generateLink: "生成链接",
-		stage3Title: "阶段 3 · 输出",
+		stage3Title: "输出",
 		stage3Desc: "打开、复制、下载生成的订阅链接；输入已有链接进行反向解析",
 		currentLink: "当前链接",
 		currentLinkPlaceholder: "生成或粘贴 longUrl / shortUrl",
@@ -151,7 +151,7 @@ const COPY = {
 		noLogs: "No logs yet",
 		noBadge: "none",
 		backendNoMessages: "The backend returned no messages for the current stage.",
-		stage1Title: "Stage 1 · Input",
+		stage1Title: "Input",
 		stage1Desc: "Provide landing and transit inputs, then convert them into the Stage 2 baseline.",
 		landingInfo: "Landing input",
 		transitInfo: "Transit input",
@@ -175,7 +175,7 @@ const COPY = {
 		converting: "Converting...",
 		convertAndFill: "Convert and autofill",
 		stageChangedNotice: "Inputs changed. Convert again before generating a link.",
-		stage2Title: "Stage 2 · Landing config",
+		stage2Title: "Landing config",
 		stage2Desc: "Choose the mode and target for each landing node.",
 		conflictReadonly: "The restored snapshot references targets that no longer exist. The restored result is read-only. Go back to Stage 1 and run Convert and autofill again before continuing.",
 		colLanding: "Landing node",
@@ -190,7 +190,7 @@ const COPY = {
 		selectTarget: "Select a target",
 		generating: "Generating...",
 		generateLink: "Generate link",
-		stage3Title: "Stage 3 · Output",
+		stage3Title: "Output",
 		stage3Desc: "Open, copy, or download the generated subscription link, or paste an existing link to restore state.",
 		currentLink: "Current link",
 		currentLinkPlaceholder: "Generate or paste a longUrl / shortUrl",
@@ -718,8 +718,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<section className="a-stage" aria-labelledby={`${stage1Id}-h`}>
 					<div className="a-stage__head">
 						<div>
-							<h2 id={`${stage1Id}-h`} className="a-stage__title">
-								{copy.stage1Title}
+							<h2 id={`${stage1Id}-h`} className="a-stage__headline">
+								<span className="a-stage-badge">{copy.stage1Label}</span>
+								<span className="a-stage__title">{copy.stage1Title}</span>
 							</h2>
 							<p className="a-stage__desc">{copy.stage1Desc}</p>
 						</div>
@@ -979,8 +980,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<section className="a-stage" aria-labelledby="a-stage2-h">
 					<div className="a-stage__head">
 						<div>
-							<h2 id="a-stage2-h" className="a-stage__title">
-								{copy.stage2Title}
+							<h2 id="a-stage2-h" className="a-stage__headline">
+								<span className="a-stage-badge">{copy.stage2Label}</span>
+								<span className="a-stage__title">{copy.stage2Title}</span>
 							</h2>
 							<p className="a-stage__desc">{copy.stage2Desc}</p>
 						</div>
@@ -1266,8 +1268,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<section className="a-stage" aria-labelledby="a-stage3-h">
 					<div className="a-stage__head">
 						<div>
-							<h2 id="a-stage3-h" className="a-stage__title">
-								{copy.stage3Title}
+							<h2 id="a-stage3-h" className="a-stage__headline">
+								<span className="a-stage-badge">{copy.stage3Label}</span>
+								<span className="a-stage__title">{copy.stage3Title}</span>
 							</h2>
 							<p className="a-stage__desc">{copy.stage3Desc}</p>
 						</div>

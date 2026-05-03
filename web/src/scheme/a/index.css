@@ -501,9 +501,40 @@
 	margin-bottom: 1.15rem;
 }
 
-.a-stage__title {
+.a-stage__headline {
 	margin: 0 0 0.35rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.65rem;
+	line-height: 1.25;
+}
+
+.a-stage-badge {
+	display: inline-block;
+	padding: 0.2rem 0.58rem;
+	border-radius: calc(var(--radius) - 4px);
+	background: var(--color-muted-fill);
+	border: 1px solid var(--color-line);
+	font-size: 0.875rem;
+	line-height: 1;
+	font-weight: 700;
+	color: var(--color-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	white-space: nowrap;
+	font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "Liberation Mono", monospace;
+	/* 等宽小号字相对标题字体的视觉中心略偏上，略下移与标题对齐 */
+	transform: translateY(1px);
+}
+
+.a-stage__title {
+	margin: 0;
 	font-size: 1.2rem;
+	line-height: 1.25;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: var(--color-ink);
 }
 
 .a-stage__desc {
