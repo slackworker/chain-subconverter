@@ -130,6 +130,7 @@ const COPY = {
 		statusAwaitingGenerate: "等待生成",
 		statusShortUrlReady: "短链接已就绪",
 		statusLongUrlReady: "长链接已就绪",
+		footerCredit: "Chain Subconverter © {year} - 采用 Scheme A 设计",
 	},
 	en: {
 		localErrorAriaHint: "There is an error here. Check the current stage feedback strip.",
@@ -235,6 +236,7 @@ const COPY = {
 		statusAwaitingGenerate: "Awaiting generate",
 		statusShortUrlReady: "Short URL ready",
 		statusLongUrlReady: "Long URL ready",
+		footerCredit: "Chain Subconverter © {year} - Designed with Scheme A",
 	},
 } as const satisfies Record<Locale, Record<string, string>>;
 
@@ -1335,6 +1337,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					{outputActions.copyState === "failed" ? <p className="a-toast a-toast--err">{copy.copyFailed}</p> : null}
 				</section>
 			</main>
+
+			<footer className="a-footer">
+				<p>{translate(copy.footerCredit, { year: String(new Date().getFullYear()) })}</p>
+			</footer>
 
 			{socksOpen ? (
 				<div className="a-modal-backdrop" role="presentation" onClick={closeSocksModal}>

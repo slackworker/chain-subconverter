@@ -60,7 +60,7 @@
 
 	min-height: 100vh;
 	box-sizing: border-box;
-	padding: 1.75rem clamp(1rem, 4vw, 2.5rem) 5.5rem;
+	padding: 1.75rem clamp(1rem, 4vw, 2.5rem) 1.75rem;
 	background: radial-gradient(1200px 600px at 10% -10%, var(--shell-radial-1) 0%, transparent 55%),
 		radial-gradient(900px 500px at 100% 0%, var(--shell-radial-2) 0%, transparent 50%), var(--color-canvas);
 	color: var(--color-ink);
@@ -116,16 +116,18 @@
 	letter-spacing: -0.02em;
 }
 
+/* 顶栏已为 sticky + blur，快捷操作仅作内联排布，不再套药丸形容器 */
 .a-scheme-nav {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 0.35rem;
-	padding: 0.25rem;
-	background: var(--color-surface);
-	border: 1px solid var(--color-line);
-	border-radius: 999px;
-	box-shadow: var(--shadow);
+	gap: 0.5rem;
+	padding: 0;
+	margin: 0;
+	background: none;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
 }
 
 .a-scheme-nav__link {
@@ -467,6 +469,19 @@
 	display: flex;
 	flex-direction: column;
 	gap: 1.5rem;
+}
+
+.a-footer {
+	margin-top: 3rem;
+	padding-block: 2rem;
+	text-align: center;
+	font-size: 0.875rem;
+	line-height: 1.45;
+	color: var(--color-muted);
+}
+
+.a-footer p {
+	margin: 0;
 }
 
 .a-stage {
