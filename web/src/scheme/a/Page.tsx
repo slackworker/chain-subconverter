@@ -314,6 +314,30 @@ function StatusPill({ label, tone }: { label: string; tone: "neutral" | "warning
 	return <span className={`a-pill a-pill--${tone}`}>{label}</span>;
 }
 
+/** 视觉为「步骤号 · 标题」；完整阶段名保留在 aria-label / title 供读屏与错误上下文沿用 copy.stageNLabel */
+function StageHeadline({
+	id,
+	step,
+	stageLabel,
+	title,
+}: {
+	id: string;
+	step: 1 | 2 | 3;
+	stageLabel: string;
+	title: string;
+}) {
+	return (
+		<h2 id={id} className="a-stage__headline" aria-label={`${stageLabel} — ${title}`}>
+			<span className="a-stage-headline__visual" aria-hidden="true">
+				<span className="a-stage-step" title={stageLabel}>
+					{step}
+				</span>
+				<span className="a-stage__title">{title}</span>
+			</span>
+		</h2>
+	);
+}
+
 function BlockingPanel({
 	globalErrors,
 	stageLabel,
@@ -718,10 +742,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<section className="a-stage" aria-labelledby={`${stage1Id}-h`}>
 					<div className="a-stage__head">
 						<div>
-							<h2 id={`${stage1Id}-h`} className="a-stage__headline">
-								<span className="a-stage-badge">{copy.stage1Label}</span>
-								<span className="a-stage__title">{copy.stage1Title}</span>
-							</h2>
+							<StageHeadline id={`${stage1Id}-h`} step={1} stageLabel={copy.stage1Label} title={copy.stage1Title} />
 							<p className="a-stage__desc">{copy.stage1Desc}</p>
 						</div>
 						<StatusPill label={localizedStage1Status} tone={stage1Status.tone} />
@@ -980,10 +1001,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<section className="a-stage" aria-labelledby="a-stage2-h">
 					<div className="a-stage__head">
 						<div>
-							<h2 id="a-stage2-h" className="a-stage__headline">
-								<span className="a-stage-badge">{copy.stage2Label}</span>
-								<span className="a-stage__title">{copy.stage2Title}</span>
-							</h2>
+							<StageHeadline id="a-stage2-h" step={2} stageLabel={copy.stage2Label} title={copy.stage2Title} />
 							<p className="a-stage__desc">{copy.stage2Desc}</p>
 						</div>
 						<StatusPill label={localizedStage2Status} tone={stage2Status.tone} />
@@ -1268,10 +1286,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 				<section className="a-stage" aria-labelledby="a-stage3-h">
 					<div className="a-stage__head">
 						<div>
-							<h2 id="a-stage3-h" className="a-stage__headline">
-								<span className="a-stage-badge">{copy.stage3Label}</span>
-								<span className="a-stage__title">{copy.stage3Title}</span>
-							</h2>
+							<StageHeadline id="a-stage3-h" step={3} stageLabel={copy.stage3Label} title={copy.stage3Title} />
 							<p className="a-stage__desc">{copy.stage3Desc}</p>
 						</div>
 						<StatusPill label={localizedStage3Status} tone={stage3Status.tone} />

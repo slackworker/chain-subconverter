@@ -503,29 +503,34 @@
 
 .a-stage__headline {
 	margin: 0 0 0.35rem;
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.65rem;
 	line-height: 1.25;
 }
 
-.a-stage-badge {
-	display: inline-block;
-	padding: 0.2rem 0.58rem;
-	border-radius: calc(var(--radius) - 4px);
-	background: var(--color-muted-fill);
-	border: 1px solid var(--color-line);
-	font-size: 0.875rem;
-	line-height: 1;
+.a-stage-headline__visual {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.55rem;
+}
+
+/* 步骤序号：方框线框，与右侧圆角状态胶囊区分 */
+.a-stage-step {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-width: 1.55rem;
+	height: 1.55rem;
+	padding: 0 0.3rem;
+	border-radius: 0.4rem;
+	border: 1.5px solid color-mix(in srgb, var(--color-ink) 20%, var(--color-line));
+	background: var(--color-surface);
+	font-size: 0.9rem;
 	font-weight: 700;
-	color: var(--color-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	white-space: nowrap;
-	font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "Liberation Mono", monospace;
-	/* 等宽小号字相对标题字体的视觉中心略偏上，略下移与标题对齐 */
-	transform: translateY(1px);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	color: var(--color-ink);
+	cursor: default;
 }
 
 .a-stage__title {
@@ -554,7 +559,9 @@
 }
 
 .a-pill--neutral {
-	background: var(--color-pill-neutral-bg);
+	/* 描边 + 透底：与左侧方框步骤号区分，避免两个「灰填充胶囊」并列混淆 */
+	background: transparent;
+	border: 1px solid var(--color-line);
 	color: var(--color-muted);
 }
 
