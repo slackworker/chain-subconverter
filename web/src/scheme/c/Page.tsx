@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { AppPageProps } from "../../lib/composition";
 import { getGlobalPrimaryBlockingErrors } from "../../lib/notices";
 import {
-	addForwardRelayItem,
+	appendForwardRelayItems,
 	appendManualSocks5ToStage1Input,
 	initialManualSocks5FormState,
 	parseSocks5URIToManualSocks5FormState,
@@ -197,7 +197,8 @@ export function CAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 	function handleRelayAdd() {
 		try {
-			workflow.updateStage1Input((cur) => addForwardRelayItem(cur, relayDraft.trim()));
+			const nextStage1Input = appendForwardRelayItems(workflow.state.stage1Input, [relayDraft.trim()]);
+			workflow.updateStage1Input(() => nextStage1Input);
 			setRelayDraft("");
 			setRelayErr(null);
 			setShowRelayModal(false);
@@ -275,7 +276,8 @@ export function CAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const { stage1Input } = workflow.state;
 
 	return (
-		<div className="c-layout">
+		<div className="c-shell">
+			<div className="c-layout">
 			{/* ── App header ── */}
 			<header className="c-appbar">
 				<div className="c-appbar-brand">
@@ -786,6 +788,7 @@ export function CAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					</div>
 				</Modal>
 			) : null}
+			</div>
 		</div>
 	);
 }

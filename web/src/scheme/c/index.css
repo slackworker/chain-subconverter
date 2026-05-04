@@ -1,6 +1,6 @@
 /* Scheme C — dark developer-tool theme */
 
-:root {
+.c-shell {
 	color-scheme: dark;
 	--c-bg: #0d1117;
 	--c-surface: #161b22;
@@ -25,13 +25,9 @@
 
 /* ── reset ──────────────────────────────────────────────────────────────── */
 
-html,
-body,
-#root {
-	min-height: 100%;
-}
 
-body {
+.c-shell {
+	min-height: 100vh;
 	margin: 0;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 	font-size: 14px;
@@ -40,14 +36,14 @@ body {
 	color: var(--c-text);
 }
 
-button,
-input,
-select,
-textarea {
+.c-shell button,
+.c-shell input,
+.c-shell select,
+.c-shell textarea {
 	font: inherit;
 }
 
-button {
+.c-shell button {
 	cursor: pointer;
 }
 
@@ -265,9 +261,9 @@ button {
 	color: var(--c-text-muted);
 }
 
-textarea,
-input[type="text"],
-select {
+.c-shell textarea,
+.c-shell input[type="text"],
+.c-shell select {
 	padding: 8px 10px;
 	background: var(--c-bg);
 	border: 1px solid var(--c-border);
@@ -279,21 +275,21 @@ select {
 	transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
-textarea:focus,
-input[type="text"]:focus,
-select:focus {
+.c-shell textarea:focus,
+.c-shell input[type="text"]:focus,
+.c-shell select:focus {
 	outline: none;
 	border-color: var(--c-accent);
 	box-shadow: 0 0 0 3px var(--c-accent-dim);
 }
 
-textarea {
+.c-shell textarea {
 	resize: vertical;
 	min-height: 80px;
 	overflow-x: auto;
 }
 
-select {
+.c-shell select {
 	appearance: none;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b949e'/%3E%3C/svg%3E");
 	background-repeat: no-repeat;
@@ -302,7 +298,7 @@ select {
 	cursor: pointer;
 }
 
-select:disabled {
+.c-shell select:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }

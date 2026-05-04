@@ -243,17 +243,17 @@
 	background: var(--color-danger-surface);
 }
 
-/* 全局阻断错误：sticky 承载，初始参与文档流（不遮挡主内容），滚动后吸顶保持可见（spec 仅要求承载区，不固定形态） */
+/* 全局阻断错误：sticky 承载，初始参与文档流（不遮挡主内容），滚动后吸顶保持可见（spec 仅要求承载区，不固定形态）；宽度与 main/.a-stage 同列，避免宽屏下比阶段卡牌窄 */
 .a-blocking-flyout {
-        position: sticky;
-        top: max(1rem, env(safe-area-inset-top, 0px));
-        z-index: 2000;
-        width: min(52rem, calc(100vw - 2rem));
-        max-width: 100%;
-        max-height: min(40vh, 20rem);
-        overflow: auto;
-        pointer-events: auto;
-        margin: 0 auto 1rem;
+	position: sticky;
+	top: max(1rem, env(safe-area-inset-top, 0px));
+	z-index: 2000;
+	width: 100%;
+	max-width: 100%;
+	max-height: min(40vh, 20rem);
+	overflow: auto;
+	pointer-events: auto;
+	margin: 0 0 1rem;
 }
 
 .a-panel--blocking {

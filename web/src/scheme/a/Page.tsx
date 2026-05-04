@@ -7,7 +7,7 @@ import {
 	getOriginStageLabel,
 } from "../../lib/notices";
 import {
-	addForwardRelayItem,
+	appendForwardRelayItems,
 	buildManualSocks5URI,
 	initialManualSocks5FormState,
 	parseSocks5URIToManualSocks5FormState,
@@ -623,7 +623,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	function submitPortForwardTags() {
 		const nextTags = portForwardDraftTags ?? [];
 		try {
-			updateStage1Input((current) => nextTags.reduce((acc, tag) => addForwardRelayItem(acc, tag), current));
+			const nextStage1Input = appendForwardRelayItems(state.stage1Input, nextTags);
+			updateStage1Input(() => nextStage1Input);
 			setPortForwardError(null);
 			closePortForwardModal();
 		} catch (error) {
