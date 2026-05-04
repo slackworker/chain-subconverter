@@ -1224,6 +1224,11 @@
 	border-bottom: 1px solid var(--color-line);
 }
 
+/* 避免与 .a-table-wrap 的底边叠成双线 */
+.a-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
 .a-table__row--error td {
 	background: var(--color-danger-surface);
 }
