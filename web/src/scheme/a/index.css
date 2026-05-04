@@ -826,35 +826,78 @@
 }
 
 .a-template-url-row {
+	--a-template-url-inner-r: calc(10px - 1px);
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.65rem;
 	width: 100%;
+	padding-right: 0;
+	border: 1px solid var(--color-line);
+	border-radius: 10px;
+	background: var(--color-elevated);
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.a-template-url-row:focus-within {
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.a-template-url-row--error {
+	border-color: var(--color-input-error-border);
+	background: var(--color-danger-surface);
+}
+
+.a-template-url-row--error:focus-within {
+	border-color: var(--color-danger);
+	box-shadow: 0 0 0 3px var(--color-input-error-focus-shadow);
 }
 
 .a-template-url-row .a-input {
 	flex: 1 1 auto;
 	min-width: 0;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.a-template-url-row .a-input:focus,
+.a-template-url-row .a-input:focus-visible {
+	border-color: transparent;
+	box-shadow: none;
+	/* 与 .a-current-link-row 一致：聚焦环由整行承担 */
+	outline: none;
+}
+
+.a-template-url-row .a-input.a-input--error,
+.a-template-url-row .a-input.a-input--error:focus {
+	border: none;
+	background: transparent;
+	box-shadow: none;
 }
 
 .a-template-url-row__reset {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	flex: 0 0 auto;
-	width: 1.5rem;
-	height: 1.5rem;
-	padding: 0;
-	border: 1px solid transparent;
-	border-radius: 999px;
+	flex-shrink: 0;
+	align-self: stretch;
+	box-sizing: border-box;
+	min-width: 2.25rem;
+	/* 与行同高，hover 底色贴齐上下内缘；右侧圆角与外壳 inner radius 一致 */
+	padding: 0 0.55rem;
+	margin: 0;
+	border: none;
+	border-left: 1px solid var(--color-line);
+	border-radius: 0 var(--a-template-url-inner-r) var(--a-template-url-inner-r) 0;
 	background: transparent;
 	color: var(--color-muted);
 	cursor: pointer;
-	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+	transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .a-template-url-row__reset:hover:not(:disabled) {
-	border-color: var(--color-line);
 	background: var(--color-toggle-bg);
 	color: var(--color-ink);
 }
@@ -1640,6 +1683,24 @@ select.a-select {
 		border-left: none;
 		border-top: 1px solid var(--color-line);
 		justify-content: space-between;
+	}
+
+	.a-template-url-row {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+		padding-right: 0;
+	}
+
+	.a-template-url-row__reset {
+		width: 100%;
+		align-self: stretch;
+		min-height: 2.25rem;
+		padding: 0.5rem 0.65rem 0.55rem;
+		border-left: none;
+		border-top: 1px solid var(--color-line);
+		border-radius: 0 0 var(--a-template-url-inner-r) var(--a-template-url-inner-r);
+		justify-content: flex-end;
 	}
 }
 

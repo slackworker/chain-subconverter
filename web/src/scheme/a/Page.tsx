@@ -847,7 +847,9 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 											?
 										</span>
 									</span>
-									<div className="a-template-url-row">
+									<div
+										className={`a-template-url-row ${configFieldErrors.length > 0 ? "a-template-url-row--error" : ""}`}
+									>
 										<input
 											className={`a-input ${configFieldErrors.length > 0 ? "a-input--error" : ""}`}
 											type="text"
