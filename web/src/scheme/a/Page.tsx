@@ -541,12 +541,10 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
-	const [targetMenuPanelLayout, setTargetMenuPanelLayout] = useState<ReturnType<
-		typeof computeChainTargetMenuPanelLayout
-	> | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
 	const chainTargetMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+	const chainTargetMenuPanelRef = useRef<HTMLDivElement | null>(null);
 	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
 	const stage2TableWrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -673,7 +671,6 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 	useEffect(() => {
 		if (openTargetMenuRow === null) {
-			setTargetMenuPanelLayout(null);
 			chainTargetMenuTriggerRef.current = null;
 		}
 	}, [openTargetMenuRow]);
@@ -682,27 +679,35 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		if (!openTargetMenuRow) {
 			return;
 		}
-		const updateLayout = () => {
+		/** 滚动/缩放时直接写 DOM，避免 setState 重渲染带来的跟随延迟 */
+		const syncPanelToTrigger = () => {
 			const trigger = chainTargetMenuTriggerRef.current;
-			if (!trigger) {
+			const panel = chainTargetMenuPanelRef.current;
+			if (!trigger || !panel) {
 				return;
 			}
-			setTargetMenuPanelLayout(computeChainTargetMenuPanelLayout(trigger));
+			const { top, left, width, maxHeight } = computeChainTargetMenuPanelLayout(trigger);
+			panel.style.top = `${top}px`;
+			panel.style.left = `${left}px`;
+			panel.style.width = `${width}px`;
+			panel.style.maxHeight = `${maxHeight}px`;
 		};
-		updateLayout();
+		syncPanelToTrigger();
 		const wrap = stage2TableWrapRef.current;
-		window.addEventListener("resize", updateLayout);
-		window.addEventListener("scroll", updateLayout, true);
-		wrap?.addEventListener("scroll", updateLayout);
+		const windowScrollOpts: AddEventListenerOptions = { capture: true, passive: true };
+		const passiveScrollOpts: AddEventListenerOptions = { passive: true };
+		window.addEventListener("resize", syncPanelToTrigger);
+		window.addEventListener("scroll", syncPanelToTrigger, windowScrollOpts);
+		wrap?.addEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
 		const vv = window.visualViewport;
-		vv?.addEventListener("resize", updateLayout);
-		vv?.addEventListener("scroll", updateLayout);
+		vv?.addEventListener("resize", syncPanelToTrigger);
+		vv?.addEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
 		return () => {
-			window.removeEventListener("resize", updateLayout);
-			window.removeEventListener("scroll", updateLayout, true);
-			wrap?.removeEventListener("scroll", updateLayout);
-			vv?.removeEventListener("resize", updateLayout);
-			vv?.removeEventListener("scroll", updateLayout);
+			window.removeEventListener("resize", syncPanelToTrigger);
+			window.removeEventListener("scroll", syncPanelToTrigger, windowScrollOpts);
+			wrap?.removeEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
+			vv?.removeEventListener("resize", syncPanelToTrigger);
+			vv?.removeEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
 		};
 	}, [openTargetMenuRow]);
 
@@ -1239,30 +1244,21 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																		const trigger = event.currentTarget;
 																		if (openTargetMenuRow === row.landingNodeName) {
 																			chainTargetMenuTriggerRef.current = null;
-																			setTargetMenuPanelLayout(null);
 																			setOpenTargetMenuRow(null);
 																			return;
 																		}
 																		chainTargetMenuTriggerRef.current = trigger;
-																		setTargetMenuPanelLayout(computeChainTargetMenuPanelLayout(trigger));
 																		setOpenTargetMenuRow(row.landingNodeName);
 																	}}
 																>
 																	{selectedTargetLabel}
 																</button>
-																{openTargetMenuRow === row.landingNodeName &&
-																targetMenuPanelLayout &&
-																chainTargetMenuPortalEl
+																{openTargetMenuRow === row.landingNodeName && chainTargetMenuPortalEl
 																	? createPortal(
 																			<div className="a-target-menu a-target-menu--portal">
 																				<div
+																					ref={chainTargetMenuPanelRef}
 																					className="a-target-menu__panel a-target-menu__panel--anchored"
-																					style={{
-																						top: targetMenuPanelLayout.top,
-																						left: targetMenuPanelLayout.left,
-																						width: targetMenuPanelLayout.width,
-																						maxHeight: targetMenuPanelLayout.maxHeight,
-																					}}
 																				>
 																					<div className="a-target-menu__section">
 																						<button
