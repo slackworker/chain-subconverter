@@ -1394,6 +1394,31 @@
 	box-shadow: var(--shadow);
 }
 
+/* Portal 挂在 .a-shell 内，继承主题 CSS 变量；仍脱离 .a-table-wrap，避免 overflow 撑出纵向滚动条 */
+.a-scheme-a-portal-mount {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	/* 高于粘性顶栏 .a-header(40)，低于 .a-modal-backdrop(50) */
+	z-index: 45;
+}
+
+.a-target-menu--portal {
+	position: static;
+	pointer-events: auto;
+}
+
+.a-target-menu__panel.a-target-menu__panel--anchored {
+	position: fixed;
+	z-index: 60;
+	top: 0;
+	left: 0;
+	min-width: unset;
+	width: auto;
+	max-width: calc(100vw - 4rem);
+	box-sizing: border-box;
+}
+
 .a-target-menu__section {
 	display: flex;
 	flex-direction: column;

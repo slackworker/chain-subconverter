@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { AppPageProps } from "../../lib/composition";
 import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
@@ -22,6 +23,23 @@ import "./index.css";
 
 const LOCALE_STORAGE_KEY = "chain-subconverter-ui.locale";
 const THEME_STORAGE_KEY = "chain-subconverter-ui.theme";
+
+/** 链式目标自定义菜单：Portal + fixed，避免落在 .a-table-wrap（overflow-x: auto → y 为 auto）内撑出纵向滚动条 */
+function computeChainTargetMenuPanelLayout(trigger: HTMLButtonElement) {
+	const rect = trigger.getBoundingClientRect();
+	const gap = 5;
+	const top = rect.bottom + gap;
+	const edge = 12;
+	const maxHeight = Math.min(
+		window.innerHeight * 0.65,
+		Math.max(120, window.innerHeight - top - edge),
+		32 * 16,
+	);
+	const maxPanelWidth = window.innerWidth - edge * 2;
+	const width = Math.min(Math.max(rect.width, 8), maxPanelWidth);
+	const left = Math.min(Math.max(edge, rect.left), window.innerWidth - width - edge);
+	return { top, left, width, maxHeight };
+}
 
 type Locale = "zh" | "en";
 type ColorMode = "light" | "dark";
@@ -523,8 +541,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
+	const [targetMenuPanelLayout, setTargetMenuPanelLayout] = useState<ReturnType<
+		typeof computeChainTargetMenuPanelLayout
+	> | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
+	const chainTargetMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
+	const stage2TableWrapRef = useRef<HTMLDivElement | null>(null);
 
 	const preferShort = state.preferShortUrl;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
@@ -648,6 +672,41 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	}
 
 	useEffect(() => {
+		if (openTargetMenuRow === null) {
+			setTargetMenuPanelLayout(null);
+			chainTargetMenuTriggerRef.current = null;
+		}
+	}, [openTargetMenuRow]);
+
+	useLayoutEffect(() => {
+		if (!openTargetMenuRow) {
+			return;
+		}
+		const updateLayout = () => {
+			const trigger = chainTargetMenuTriggerRef.current;
+			if (!trigger) {
+				return;
+			}
+			setTargetMenuPanelLayout(computeChainTargetMenuPanelLayout(trigger));
+		};
+		updateLayout();
+		const wrap = stage2TableWrapRef.current;
+		window.addEventListener("resize", updateLayout);
+		window.addEventListener("scroll", updateLayout, true);
+		wrap?.addEventListener("scroll", updateLayout);
+		const vv = window.visualViewport;
+		vv?.addEventListener("resize", updateLayout);
+		vv?.addEventListener("scroll", updateLayout);
+		return () => {
+			window.removeEventListener("resize", updateLayout);
+			window.removeEventListener("scroll", updateLayout, true);
+			wrap?.removeEventListener("scroll", updateLayout);
+			vv?.removeEventListener("resize", updateLayout);
+			vv?.removeEventListener("scroll", updateLayout);
+		};
+	}, [openTargetMenuRow]);
+
+	useEffect(() => {
 		function handlePointerDown(event: PointerEvent) {
 			const target = event.target;
 			if (!(target instanceof Node)) {
@@ -668,6 +727,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 	}, []);
 
 	const themeToggleLabel = colorMode === "dark" ? copy.themeToLight : copy.themeToDark;
+	const chainTargetMenuPortalEl = chainTargetMenuPortalRef.current;
 
 	return (
 		<div className={`a-shell${colorMode === "dark" ? " a-shell--dark" : ""}`}>
@@ -1041,7 +1101,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 						</p>
 					) : null}
 
-					<div className="a-table-wrap">
+					<div className="a-table-wrap" ref={stage2TableWrapRef}>
 						<table className="a-table">
 							<thead>
 								<tr>
@@ -1175,90 +1235,112 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 																	className={`a-select a-target-menu__trigger ${editable ? "" : "a-target-menu__summary--disabled"}`}
 																	disabled={!editable}
 																	aria-expanded={openTargetMenuRow === row.landingNodeName}
-																	onClick={() =>
-																		setOpenTargetMenuRow((current) =>
-																			current === row.landingNodeName ? null : row.landingNodeName,
-																		)
-																	}
+																	onClick={(event) => {
+																		const trigger = event.currentTarget;
+																		if (openTargetMenuRow === row.landingNodeName) {
+																			chainTargetMenuTriggerRef.current = null;
+																			setTargetMenuPanelLayout(null);
+																			setOpenTargetMenuRow(null);
+																			return;
+																		}
+																		chainTargetMenuTriggerRef.current = trigger;
+																		setTargetMenuPanelLayout(computeChainTargetMenuPanelLayout(trigger));
+																		setOpenTargetMenuRow(row.landingNodeName);
+																	}}
 																>
 																	{selectedTargetLabel}
 																</button>
-																{openTargetMenuRow === row.landingNodeName ? (
-																	<div className="a-target-menu__panel">
-																		<div className="a-target-menu__section">
-																			<button
-																				type="button"
-																				className="a-target-menu__group-toggle"
-																				disabled={!editable}
-																				aria-expanded={primaryOpen}
-																				onClick={() => setPrimaryOpen(row.landingNodeName, !primaryOpen)}
-																			>
-																				<span className="a-target-menu__group-label">{copy.commonGroups}</span>
-																				<span className={`a-target-menu__group-icon ${primaryOpen ? "is-open" : ""}`} aria-hidden="true">
-																					▾
-																				</span>
-																			</button>
-																			{primaryOpen ? (
-																				primaryGroup?.choices.length ? (
-																					<ul className="a-target-menu__list">
-																						{primaryGroup.choices.map((choice) => (
-																							<li key={choice.value}>
-																								<button
-																									type="button"
-																									className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
-																									disabled={!editable || choice.disabled}
-																									onClick={() => {
-																										handleTargetChange(row.landingNodeName, choice.value);
-																										setOpenTargetMenuRow(null);
-																									}}
-																								>
-																									{choice.label}
-																								</button>
-																							</li>
-																						))}
-																					</ul>
-																				) : (
-																					<p className="a-picker-help">{primaryGroup?.emptyText ?? copy.noCommonChoices}</p>
-																				)
-																			) : null}
-																		</div>
-																		{supplementGroup ? (
-																			<div className="a-target-menu__section">
-																				<button
-																					type="button"
-																					className="a-target-menu__group-toggle"
-																					disabled={!editable}
-																					aria-expanded={supplementOpen}
-																					onClick={() => setSupplementOpen(row.landingNodeName, !supplementOpen)}
+																{openTargetMenuRow === row.landingNodeName &&
+																targetMenuPanelLayout &&
+																chainTargetMenuPortalEl
+																	? createPortal(
+																			<div className="a-target-menu a-target-menu--portal">
+																				<div
+																					className="a-target-menu__panel a-target-menu__panel--anchored"
+																					style={{
+																						top: targetMenuPanelLayout.top,
+																						left: targetMenuPanelLayout.left,
+																						width: targetMenuPanelLayout.width,
+																						maxHeight: targetMenuPanelLayout.maxHeight,
+																					}}
 																				>
-																					<span className="a-target-menu__group-label">{copy.fixedNodes}</span>
-																					<span className={`a-target-menu__group-icon ${supplementOpen ? "is-open" : ""}`} aria-hidden="true">
-																						▾
-																					</span>
-																				</button>
-																				{supplementOpen ? (
-																					<ul className="a-target-menu__list">
-																						{supplementGroup.choices.map((choice) => (
-																							<li key={choice.value}>
-																								<button
-																									type="button"
-																									className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
-																									disabled={!editable || choice.disabled}
-																									onClick={() => {
-																										handleTargetChange(row.landingNodeName, choice.value);
-																										setOpenTargetMenuRow(null);
-																									}}
-																								>
-																									{choice.label}
-																								</button>
-																							</li>
-																						))}
-																					</ul>
-																				) : null}
-																			</div>
-																		) : null}
-																	</div>
-																) : null}
+																					<div className="a-target-menu__section">
+																						<button
+																							type="button"
+																							className="a-target-menu__group-toggle"
+																							disabled={!editable}
+																							aria-expanded={primaryOpen}
+																							onClick={() => setPrimaryOpen(row.landingNodeName, !primaryOpen)}
+																						>
+																							<span className="a-target-menu__group-label">{copy.commonGroups}</span>
+																							<span className={`a-target-menu__group-icon ${primaryOpen ? "is-open" : ""}`} aria-hidden="true">
+																								▾
+																							</span>
+																						</button>
+																						{primaryOpen ? (
+																							primaryGroup?.choices.length ? (
+																								<ul className="a-target-menu__list">
+																									{primaryGroup.choices.map((choice) => (
+																										<li key={choice.value}>
+																											<button
+																												type="button"
+																												className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
+																												disabled={!editable || choice.disabled}
+																												onClick={() => {
+																													handleTargetChange(row.landingNodeName, choice.value);
+																													setOpenTargetMenuRow(null);
+																												}}
+																											>
+																												{choice.label}
+																											</button>
+																										</li>
+																									))}
+																								</ul>
+																							) : (
+																								<p className="a-picker-help">{primaryGroup?.emptyText ?? copy.noCommonChoices}</p>
+																							)
+																						) : null}
+																					</div>
+																					{supplementGroup ? (
+																						<div className="a-target-menu__section">
+																							<button
+																								type="button"
+																								className="a-target-menu__group-toggle"
+																								disabled={!editable}
+																								aria-expanded={supplementOpen}
+																								onClick={() => setSupplementOpen(row.landingNodeName, !supplementOpen)}
+																							>
+																								<span className="a-target-menu__group-label">{copy.fixedNodes}</span>
+																								<span className={`a-target-menu__group-icon ${supplementOpen ? "is-open" : ""}`} aria-hidden="true">
+																									▾
+																								</span>
+																							</button>
+																							{supplementOpen ? (
+																								<ul className="a-target-menu__list">
+																									{supplementGroup.choices.map((choice) => (
+																										<li key={choice.value}>
+																											<button
+																												type="button"
+																												className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
+																												disabled={!editable || choice.disabled}
+																												onClick={() => {
+																													handleTargetChange(row.landingNodeName, choice.value);
+																													setOpenTargetMenuRow(null);
+																												}}
+																											>
+																												{choice.label}
+																											</button>
+																										</li>
+																									))}
+																								</ul>
+																							) : null}
+																						</div>
+																					) : null}
+																				</div>
+																			</div>,
+																			chainTargetMenuPortalEl,
+																		)
+																	: null}
 															</div>
 														</div>
 													) : (
@@ -1527,6 +1609,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 					</div>
 				</div>
 			) : null}
+			<div ref={chainTargetMenuPortalRef} className="a-scheme-a-portal-mount" />
 		</div>
 	);
 }
