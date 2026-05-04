@@ -131,7 +131,7 @@ const COPY = {
 		statusAwaitingGenerate: "等待生成",
 		statusShortUrlReady: "短链接已就绪",
 		statusLongUrlReady: "长链接已就绪",
-		footerCredit: "Chain Subconverter © {year} - 采用 Scheme A 设计",
+		footerCredit: "Chain Subconverter © {year}",
 	},
 	en: {
 		localErrorAriaHint: "There is an error here. Check the current stage feedback strip.",
@@ -238,7 +238,7 @@ const COPY = {
 		statusAwaitingGenerate: "Awaiting generate",
 		statusShortUrlReady: "Short URL ready",
 		statusLongUrlReady: "Long URL ready",
-		footerCredit: "Chain Subconverter © {year} - Designed with Scheme A",
+		footerCredit: "Chain Subconverter © {year}",
 	},
 } as const satisfies Record<Locale, Record<string, string>>;
 
