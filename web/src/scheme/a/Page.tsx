@@ -16,7 +16,7 @@ import {
 	removeForwardRelayItem,
 	setPortForwardEnabled,
 } from "../../lib/stage1";
-import { ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
 import "./index.css";
@@ -1461,7 +1461,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							{copy.downloadYaml}
 						</button>
 						<button type="button" className="a-btn a-btn--primary" disabled={isRestoring || state.currentLinkInput.trim() === ""} onClick={() => void handleRestore()}>
-							{isRestoring ? copy.restoring : copy.restore}
+							{isRestoring ? (
+								copy.restoring
+							) : (
+								<>
+									{copy.restore}
+									<ArrowLeftIcon className="a-icon" aria-hidden />
+								</>
+							)}
 						</button>
 					</div>
 
