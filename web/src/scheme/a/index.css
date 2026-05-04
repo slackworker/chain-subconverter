@@ -1493,13 +1493,15 @@ select.a-select {
 	width: 100%;
 	gap: 0.5rem;
 	margin-top: 0.75rem;
-	--a-output-secondary-max-width: 6.5rem;
+}
+
+.a-output-actions > .a-btn {
+	white-space: nowrap;
 }
 
 .a-output-actions > .a-btn--secondary {
-	flex: 1 1 0;
-	min-width: 0;
-	max-width: var(--a-output-secondary-max-width);
+	flex: 1 1 auto;
+	min-width: 7.5rem;
 }
 
 .a-output-actions > :last-child {
@@ -1511,6 +1513,17 @@ select.a-select {
 	font-size: 0.85rem;
 	color: var(--color-muted);
 	font-weight: 400;
+}
+
+.a-icon {
+	display: block;
+	width: 1rem;
+	height: 1rem;
+	flex-shrink: 0;
+}
+
+.a-icon--success {
+	color: var(--color-success);
 }
 
 .a-btn {

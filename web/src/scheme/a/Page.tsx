@@ -15,6 +15,7 @@ import {
 	removeForwardRelayItem,
 	setPortForwardEnabled,
 } from "../../lib/stage1";
+import { ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
 import "./index.css";
@@ -92,8 +93,8 @@ const COPY = {
 		shortLink: "短链接",
 		creatingShortLink: "（创建短链中…）",
 		openPreview: "打开预览",
-		copy: "复制",
-		downloadYaml: "下载 YAML",
+		copy: "复制链接",
+		downloadYaml: "下载配置",
 		restoring: "反向解析中…",
 		restore: "反向解析",
 		copyDone: "已复制到剪贴板",
@@ -199,8 +200,8 @@ const COPY = {
 		shortLink: "Short link",
 		creatingShortLink: "(creating short link...)",
 		openPreview: "Open preview",
-		copy: "Copy",
-		downloadYaml: "Download YAML",
+		copy: "Copy link",
+		downloadYaml: "Download config",
 		restoring: "Restoring...",
 		restore: "Restore",
 		copyDone: "Copied to clipboard",
@@ -1010,7 +1011,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								</div>
 							) : null}
 							<button type="button" className="a-btn a-btn--primary" disabled={isConverting || stage1Empty} onClick={() => void handleStage1Convert()}>
-								{isConverting ? copy.converting : copy.convertAndFill}
+								{isConverting ? (
+									copy.converting
+								) : (
+									<>
+										{copy.convertAndFill}
+										<ArrowRightIcon className="a-icon" aria-hidden />
+									</>
+								)}
 							</button>
 						</div>
 					</div>
@@ -1296,7 +1304,14 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 							</div>
 						) : null}
 						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
-							{isGenerating ? copy.generating : copy.generateLink}
+							{isGenerating ? (
+								copy.generating
+							) : (
+								<>
+									{copy.generateLink}
+									<ArrowRightIcon className="a-icon" aria-hidden />
+								</>
+							)}
 						</button>
 					</div>
 				</section>
@@ -1350,12 +1365,19 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 
 					<div className="a-output-actions">
 						<button type="button" className="a-btn a-btn--secondary" disabled={state.currentLinkInput.trim() === ""} onClick={outputActions.openCurrentLink}>
+							<ExternalLinkIcon className="a-icon" aria-hidden />
 							{copy.openPreview}
 						</button>
 						<button type="button" className="a-btn a-btn--secondary" disabled={state.currentLinkInput.trim() === ""} onClick={() => void outputActions.copyCurrentLink()}>
+							{outputActions.copyState === "done" ? (
+								<CheckIcon className="a-icon a-icon--success" aria-hidden />
+							) : (
+								<CopyIcon className="a-icon" aria-hidden />
+							)}
 							{copy.copy}
 						</button>
 						<button type="button" className="a-btn a-btn--secondary" disabled={state.currentLinkInput.trim() === ""} onClick={outputActions.downloadCurrentLink}>
+							<DownloadIcon className="a-icon" aria-hidden />
 							{copy.downloadYaml}
 						</button>
 						<button type="button" className="a-btn a-btn--primary" disabled={isRestoring || state.currentLinkInput.trim() === ""} onClick={() => void handleRestore()}>
