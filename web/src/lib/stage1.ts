@@ -241,6 +241,10 @@ export function addForwardRelayItem(stage1Input: Stage1Input, draft: string): St
 	};
 }
 
+export function appendForwardRelayItems(stage1Input: Stage1Input, drafts: readonly string[]): Stage1Input {
+	return drafts.reduce((current, draft) => addForwardRelayItem(current, draft), stage1Input);
+}
+
 export function removeForwardRelayItem(stage1Input: Stage1Input, index: number): Stage1Input {
 	return {
 		...stage1Input,
