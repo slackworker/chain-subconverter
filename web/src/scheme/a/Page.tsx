@@ -1465,8 +1465,8 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 								copy.restoring
 							) : (
 								<>
-									{copy.restore}
 									<ArrowLeftIcon className="a-icon" aria-hidden />
+									{copy.restore}
 								</>
 							)}
 						</button>
