@@ -747,11 +747,50 @@
 .a-current-link-row {
 	display: flex;
 	align-items: center;
-	gap: 0.75rem;
+	gap: 0.65rem;
+	padding-right: 0.6rem;
+	border: 1px solid var(--color-line);
+	border-radius: 10px;
+	background: var(--color-elevated);
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.a-current-link-row .a-input {
+.a-current-link-row:focus-within {
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.a-current-link-row--error {
+	border-color: var(--color-input-error-border);
+	background: var(--color-danger-surface);
+}
+
+.a-current-link-row--error:focus-within {
+	border-color: var(--color-danger);
+	box-shadow: 0 0 0 3px var(--color-input-error-focus-shadow);
+}
+
+.a-current-link-row .a-input--current-link {
 	flex: 1 1 auto;
+	min-width: 0;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.a-current-link-row .a-input--current-link:focus,
+.a-current-link-row .a-input--current-link:focus-visible {
+	border-color: transparent;
+	box-shadow: none;
+	/* 避免浏览器默认 outline 只包住 input，造成「半框」高亮；整框由 .a-current-link-row:focus-within 承担 */
+	outline: none;
+}
+
+.a-current-link-row .a-check--switch {
+	flex-shrink: 0;
+	padding-left: 0.55rem;
+	border-left: 1px solid var(--color-line);
 }
 
 .a-input:focus {
@@ -767,6 +806,13 @@
 .a-input--error:focus {
 	border-color: var(--color-danger);
 	box-shadow: 0 0 0 3px var(--color-input-error-focus-shadow);
+}
+
+.a-current-link-row .a-input--current-link.a-input--error,
+.a-current-link-row .a-input--current-link.a-input--error:focus {
+	border: none;
+	background: transparent;
+	box-shadow: none;
 }
 
 .a-inline-actions {
@@ -1572,6 +1618,15 @@ select.a-select {
 	.a-current-link-row {
 		flex-direction: column;
 		align-items: stretch;
+		gap: 0;
+		padding-right: 0;
+	}
+
+	.a-current-link-row .a-check--switch {
+		padding: 0.5rem 0.65rem 0.55rem;
+		border-left: none;
+		border-top: 1px solid var(--color-line);
+		justify-content: space-between;
 	}
 }
 
