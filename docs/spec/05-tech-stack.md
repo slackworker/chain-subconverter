@@ -14,7 +14,7 @@
 
 ## 1. 默认实现方向
 
-当对应阶段进入实现时，默认按以下方向推进；若届时治理结论调整，以更新后的 spec 为准。
+在当前收口与微调阶段，默认按以下方向对齐实现与文档；若治理结论调整，以最新确认文档为准。
 
 - 项目统一采用 `Go + Gin + React + TypeScript + Vite + Tailwind CSS + SQLite + Docker Compose`
 - `subconverter` 以**同一 Compose 部署内的内部容器**形式集成
