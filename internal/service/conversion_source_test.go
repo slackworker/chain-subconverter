@@ -548,6 +548,42 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 	})
 }
 
+func TestBuildTemplateConfigUnavailableMessage(t *testing.T) {
+	t.Run("surfaces timeout for default template", func(t *testing.T) {
+		message := buildTemplateConfigUnavailableMessage(
+			"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+			true,
+			timeoutErr{},
+		)
+
+		for _, want := range []string{"默认模板 URL 当前不可用", "raw.githubusercontent.com", "超时", "连通性可能存在波动"} {
+			if !strings.Contains(message, want) {
+				t.Fatalf("message = %q, want substring %q", message, want)
+			}
+		}
+	})
+
+	t.Run("surfaces generic timeout for custom template", func(t *testing.T) {
+		message := buildTemplateConfigUnavailableMessage(
+			"https://example.com/template.ini",
+			false,
+			timeoutErr{},
+		)
+
+		for _, want := range []string{"模板 URL 当前不可用", "example.com", "超时", "连通性可能存在波动"} {
+			if !strings.Contains(message, want) {
+				t.Fatalf("message = %q, want substring %q", message, want)
+			}
+		}
+	})
+}
+
+type timeoutErr struct{}
+
+func (timeoutErr) Error() string   { return "timeout" }
+func (timeoutErr) Timeout() bool   { return true }
+func (timeoutErr) Temporary() bool { return true }
+
 func loadThreePassResult(t *testing.T, fixtureDir string) subconverter.ThreePassResult {
 	t.Helper()
 

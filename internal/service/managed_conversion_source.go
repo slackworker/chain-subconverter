@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -151,7 +153,7 @@ func (source *ManagedConversionSource) resolveEffectiveTemplateURL(stage1Input S
 
 func (source *ManagedConversionSource) fetchTemplateConfig(ctx context.Context, templateURL string, isDefaultTemplate bool) (string, bool, error) {
 	fetch := func(ctx context.Context) (string, error) {
-		content, err := source.fetchTemplateConfigFromUpstream(ctx, templateURL)
+		content, err := source.fetchTemplateConfigFromUpstream(ctx, templateURL, isDefaultTemplate)
 		if err != nil {
 			return "", err
 		}
@@ -193,7 +195,7 @@ func templateFetchMessages(usedStaleTemplate bool) []Message {
 	}
 }
 
-func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx context.Context, templateURL string) (string, error) {
+func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx context.Context, templateURL string, isDefaultTemplate bool) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, templateURL, nil)
 	if err != nil {
 		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
@@ -201,25 +203,62 @@ func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx conte
 
 	resp, err := source.httpClient.Do(req)
 	if err != nil {
-		retryable := true
-		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template content is unavailable", "global", nil, &retryable, err)
+		return "", newTemplateConfigUnavailableError(templateURL, isDefaultTemplate, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		retryable := true
-		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template content is unavailable", "global", nil, &retryable, fmt.Errorf("unexpected HTTP status %d", resp.StatusCode))
+		return "", newTemplateConfigUnavailableError(templateURL, isDefaultTemplate, fmt.Errorf("unexpected HTTP status %d", resp.StatusCode))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", newResponseError(http.StatusServiceUnavailable, "TEMPLATE_CONFIG_UNAVAILABLE", "template content is unavailable", "global", nil, nil, err)
+		return "", newTemplateConfigUnavailableError(templateURL, isDefaultTemplate, err)
 	}
 	trimmed := strings.TrimSpace(string(body))
 	if trimmed == "" {
 		return "", newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is empty", "config", fmt.Errorf("empty response body"))
 	}
 	return trimmed, nil
+}
+
+func newTemplateConfigUnavailableError(templateURL string, isDefaultTemplate bool, cause error) error {
+	retryable := true
+	return newResponseError(
+		http.StatusServiceUnavailable,
+		"TEMPLATE_CONFIG_UNAVAILABLE",
+		buildTemplateConfigUnavailableMessage(templateURL, isDefaultTemplate, cause),
+		"global",
+		nil,
+		&retryable,
+		cause,
+	)
+}
+
+func buildTemplateConfigUnavailableMessage(templateURL string, isDefaultTemplate bool, cause error) string {
+	host := templateURL
+	if parsedURL, err := url.Parse(templateURL); err == nil {
+		if parsedHost := strings.TrimSpace(parsedURL.Hostname()); parsedHost != "" {
+			host = parsedHost
+		}
+	}
+
+	if isNetworkTimeout(cause) {
+		if isDefaultTemplate {
+			return fmt.Sprintf("默认模板 URL 当前不可用：访问 %s 超时。当前环境对模板相关公网 URL 的连通性可能存在波动，请稍后重试，或改用当前环境更稳定的模板 URL。", host)
+		}
+		return fmt.Sprintf("模板 URL 当前不可用：访问 %s 超时。当前环境到该上游的连通性可能存在波动，请稍后重试。", host)
+	}
+
+	if isDefaultTemplate {
+		return fmt.Sprintf("默认模板 URL 当前不可用：无法从 %s 拉取模板内容。", host)
+	}
+	return fmt.Sprintf("模板 URL 当前不可用：无法从 %s 拉取模板内容。", host)
+}
+
+func isNetworkTimeout(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 func (source *ManagedConversionSource) buildManagedTemplateURL(id string) (string, error) {
@@ -290,22 +329,7 @@ func (cache *templateFetchCache) LoadOrFetch(ctx context.Context, key string, fe
 	cache.mu.Unlock()
 
 	content, err := fetch(ctx)
-
-	cache.mu.Lock()
-	delete(cache.inflight, key)
-	if err == nil {
-		if cache.entries == nil {
-			cache.entries = make(map[string]templateFetchCacheEntry)
-		}
-		cache.entries[key] = templateFetchCacheEntry{
-			content:   content,
-			expiresAt: cache.now().Add(cache.ttl),
-		}
-	}
-	call.content = content
-	call.err = err
-	close(call.done)
-	cache.mu.Unlock()
+	cache.finishFetch(key, call, content, err)
 
 	return content, err
 }
@@ -345,7 +369,15 @@ func (cache *templateFetchCache) LoadOrFetchStaleOnError(ctx context.Context, ke
 	cache.mu.Unlock()
 
 	content, err := fetch(ctx)
+	cache.finishFetch(key, call, content, err)
 
+	if err != nil && staleEntry != nil {
+		return staleEntry.content, true, nil
+	}
+	return content, false, err
+}
+
+func (cache *templateFetchCache) finishFetch(key string, call *templateFetchCall, content string, err error) {
 	cache.mu.Lock()
 	delete(cache.inflight, key)
 	if err == nil {
@@ -361,9 +393,4 @@ func (cache *templateFetchCache) LoadOrFetchStaleOnError(ctx context.Context, ke
 	call.err = err
 	close(call.done)
 	cache.mu.Unlock()
-
-	if err != nil && staleEntry != nil {
-		return staleEntry.content, true, nil
-	}
-	return content, false, err
 }
