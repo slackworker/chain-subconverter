@@ -2,6 +2,7 @@ import type { AppPageProps } from "../../lib/composition";
 import { Stage1 } from "./Stage1";
 import { Stage2 } from "./Stage2";
 import { Stage3 } from "./Stage3";
+import { LogPanel } from "./LogPanel";
 import "./index.css";
 
 export function BAppPage({ workflow, outputActions }: AppPageProps) {
@@ -49,6 +50,9 @@ export function BAppPage({ workflow, outputActions }: AppPageProps) {
 			<footer className="border-t border-zinc-800/80 mt-12 py-8 text-center text-sm text-zinc-500">
 				<p>Chain Subconverter &copy; {new Date().getFullYear()} - Designed with Scheme B</p>
 			</footer>
+
+			{/* Log Area */}
+			<LogPanel entries={workflow.workflowLog} />
 		</div>
 	);
 }
