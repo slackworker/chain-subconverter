@@ -101,7 +101,7 @@ git -C "$ROOT_DIR" show-ref --verify --quiet "refs/heads/$MAIN_BRANCH" ||
 
 branches=("$@")
 if [[ "${#branches[@]}" -eq 0 ]]; then
-  branches=(ui-lab)
+  branches=(dev)
 fi
 
 for branch in "${branches[@]}"; do

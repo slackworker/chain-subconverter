@@ -108,7 +108,7 @@ main() {
   git -C "$ROOT_DIR" remote get-url "$REMOTE_NAME" >/dev/null || fail "remote '${REMOTE_NAME}' does not exist"
 
   if [[ "${#branches[@]}" -eq 0 ]]; then
-    branches=(ui-lab)
+    branches=(dev)
   fi
 
   host=$(github_host_for_remote)

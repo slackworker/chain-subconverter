@@ -23,12 +23,12 @@
       "problemMatcher": []
     },
     {
-      "label": "git: rebase ui-lab onto local main",
+      "label": "git: rebase dev onto local main",
       "type": "shell",
       "command": "bash",
       "args": [
         "${workspaceFolder}/scripts/rebase-ui-branches.sh",
-        "ui-lab"
+        "dev"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -41,12 +41,12 @@
       "problemMatcher": []
     },
     {
-      "label": "git: force push ui-lab",
+      "label": "git: force push dev",
       "type": "shell",
       "command": "bash",
       "args": [
         "${workspaceFolder}/scripts/force-push-ui-branches.sh",
-        "ui-lab"
+        "dev"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -77,17 +77,17 @@
       "problemMatcher": []
     },
     {
-      "label": "git: commit staged changes to ui-lab (no push)",
+      "label": "git: commit staged changes to dev (no push)",
       "type": "shell",
       "command": "bash",
       "args": [
         "${workspaceFolder}/scripts/commit-current-changes-to-main.sh",
-        "${input:uiLabCommitMessage}"
+        "${input:devCommitMessage}"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {
-          "CHAIN_SUBCONVERTER_MAIN_BRANCH": "ui-lab",
+          "CHAIN_SUBCONVERTER_MAIN_BRANCH": "dev",
           "CHAIN_SUBCONVERTER_MAIN_REMOTE": "origin"
         }
       },
@@ -106,9 +106,9 @@
       "description": "Commit message (commits staged changes to local main, clears matching current-branch changes; does not push)"
     },
     {
-      "id": "uiLabCommitMessage",
+      "id": "devCommitMessage",
       "type": "promptString",
-      "description": "Commit message (commits staged changes to local ui-lab, clears matching current-branch changes; does not push)"
+      "description": "Commit message (commits staged changes to local dev, clears matching current-branch changes; does not push)"
     }
   ]
 }
