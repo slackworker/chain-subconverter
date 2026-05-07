@@ -16,6 +16,7 @@ import {
 	removeForwardRelayItem,
 	setPortForwardEnabled,
 } from "../../lib/stage1";
+import type { WorkflowLogEntry } from "../../lib/state";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
@@ -60,10 +61,14 @@ const COPY = {
 		blockingSource: "来源：{stageLabel}",
 		currentStage: "当前阶段",
 		logToggle: "日志",
-		messageLog: "消息日志",
+		messageLog: "工作流日志",
 		noLogs: "暂无日志",
 		noBadge: "无",
-		backendNoMessages: "当前阶段后端未返回 messages",
+		backendNoMessages: "当前会话尚未记录日志。",
+		logLevelInfo: "提示",
+		logLevelWarning: "警告",
+		logLevelSuccess: "成功",
+		logLevelError: "失败",
 		stage1Title: "输入",
 		stage1Desc: "输入落地与中转信息，执行转换以生成阶段 2 配置基底",
 		landingInfo: "落地信息",
@@ -167,10 +172,14 @@ const COPY = {
 		blockingSource: "Source: {stageLabel}",
 		currentStage: "Current stage",
 		logToggle: "Logs",
-		messageLog: "Message log",
+		messageLog: "Workflow log",
 		noLogs: "No logs yet",
 		noBadge: "none",
-		backendNoMessages: "The backend returned no messages for the current stage.",
+		backendNoMessages: "No workflow log entries have been recorded for this session.",
+		logLevelInfo: "Info",
+		logLevelWarning: "Warning",
+		logLevelSuccess: "Success",
+		logLevelError: "Error",
 		stage1Title: "Input",
 		stage1Desc: "Provide landing and transit inputs, then convert them into the Stage 2 baseline.",
 		landingInfo: "Landing input",
@@ -306,6 +315,26 @@ function getStageLabel(stage: "stage1" | "stage2" | "stage3" | null, locale: Loc
 	return COPY[locale][`${stage}Label` as const];
 }
 
+function getWorkflowLogLevelLabel(level: WorkflowLogEntry["level"], locale: Locale) {
+	const map = {
+		info: "logLevelInfo",
+		warning: "logLevelWarning",
+		success: "logLevelSuccess",
+		error: "logLevelError",
+	} satisfies Record<WorkflowLogEntry["level"], keyof typeof COPY.zh>;
+	return COPY[locale][map[level]];
+}
+
+function formatWorkflowLogTime(createdAt: string, locale: Locale) {
+	const formatter = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		hour12: false,
+	});
+	return formatter.format(new Date(createdAt));
+}
+
 function getStatusLabel(label: string, locale: Locale) {
 	const statusMap: Record<string, keyof typeof COPY.zh> = {
 		"Awaiting Input": "statusAwaitingInput",
@@ -415,80 +444,71 @@ function OriginAnchoredBlockingStrip({
 	);
 }
 
-function MessagesPanel({ messages, locale }: { messages: { level: string; message: string; code: string }[]; locale: Locale }) {
+function WorkflowLogPanel({ entries, locale, footerCredit }: { entries: WorkflowLogEntry[]; locale: Locale; footerCredit: string }) {
 	const copy = COPY[locale];
 	const [open, setOpen] = useState(false);
-	const containerRef = useRef<HTMLDivElement | null>(null);
-	const latest = messages.length > 0 ? messages[messages.length - 1] : null;
-	const panelId = "a-log-drawer";
+	const latest = entries.length > 0 ? entries[entries.length - 1] : null;
+	const panelId = "a-workflow-log-panel";
+	const collapsedAriaLabel = latest
+		? `${copy.logToggle} ${entries.length} ${getWorkflowLogLevelLabel(latest.level, locale)} ${latest.message}`
+		: `${copy.logToggle} ${entries.length} ${copy.noLogs}`;
+	const containerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		function handlePointerDown(event: PointerEvent) {
-			const target = event.target;
-			if (!(target instanceof Node)) {
-				return;
-			}
-			if (!containerRef.current?.contains(target)) {
+		if (!open) return;
+		const handleClickOutside = (event: MouseEvent) => {
+			if (!containerRef.current) return;
+			if (!containerRef.current.contains(event.target as Node)) {
 				setOpen(false);
 			}
-		}
-
-		function handleKeyDown(event: KeyboardEvent) {
-			if (event.key === "Escape") {
-				setOpen(false);
-			}
-		}
-
-		document.addEventListener("pointerdown", handlePointerDown, true);
-		document.addEventListener("keydown", handleKeyDown);
-		return () => {
-			document.removeEventListener("pointerdown", handlePointerDown, true);
-			document.removeEventListener("keydown", handleKeyDown);
 		};
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, [open]);
 
-	return (
-		<div className="a-log-hub" ref={containerRef}>
-			<button
-				type="button"
-				className="a-log-hub__toggle"
-				aria-expanded={open}
-				aria-controls={panelId}
-				onClick={() => setOpen((current) => !current)}
-			>
-				<span className="a-log-hub__label">{copy.logToggle}</span>
-				<span className="a-log-hub__count">{messages.length}</span>
-				{latest ? (
-					<span className={`a-messages__badge a-messages__badge--${latest.level}`}>{latest.level}</span>
-				) : (
-					<span className="a-messages__badge a-messages__badge--empty">{copy.noBadge}</span>
-				)}
-			</button>
+	if (entries.length === 0) {
+		return (
+			<div className="a-footer__inner a-footer__inner--solo">
+				<p className="a-footer__credit">{footerCredit}</p>
+			</div>
+		);
+	}
 
+	return (
+		<div className="a-log-footer-wrap" aria-label={copy.messageLog} ref={containerRef}>
 			<section
 				id={panelId}
-				className={`a-messages a-log-hub__panel ${open ? "a-log-hub__panel--open" : ""}`}
-				aria-label={copy.messageLog}
+				className={`a-messages a-log-footer__panel ${open ? "a-log-footer__panel--open" : ""}`}
 				aria-hidden={!open}
 			>
-				<p className="a-log-hub__panel-title">{copy.messageLog}</p>
-				{latest ? <p className="a-messages__preview">{latest.message}</p> : <p className="a-messages__preview a-messages__preview--muted">{copy.noLogs}</p>}
-				{messages.length > 0 ? (
-					<ul className="a-messages__list">
-						{messages.map((message) => (
-							<li key={`${message.code}:${message.message}:${message.level}`} className={`a-messages__item a-messages__item--${message.level}`}>
-								{message.message}
-							</li>
-						))}
-					</ul>
-				) : (
-					<p className="a-messages__empty">{copy.backendNoMessages}</p>
-				)}
+				<ul className="a-messages__list a-messages__list--timeline">
+					{entries.slice().reverse().map((entry) => (
+						<li key={entry.id} className={`a-messages__item a-messages__item--${entry.level}`}>
+							<time className="a-messages__time" dateTime={entry.createdAt}>
+								{formatWorkflowLogTime(entry.createdAt, locale)}
+							</time>
+							<span className="a-messages__stage" {...(entry.originStage ? {} : { "aria-hidden": true })}>
+								{entry.originStage ? getStageLabel(entry.originStage, locale) : "\u00a0"}
+							</span>
+							<span className={`a-messages__badge a-messages__badge--${entry.level}`}>{getWorkflowLogLevelLabel(entry.level, locale)}</span>
+							<p className="a-messages__body">{entry.message}</p>
+						</li>
+					))}
+				</ul>
 			</section>
+			<div className="a-footer__inner">
+				<p className="a-footer__credit">{footerCredit}</p>
+				<button
+					type="button"
+					className="a-log-footer__toggle"
+					aria-expanded={open}
+					aria-controls={panelId}
+					aria-label={collapsedAriaLabel}
+					onClick={() => setOpen((current) => !current)}
+				>
+					{copy.logToggle}
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -499,7 +519,7 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 		stage2Rows,
 		modeOptions,
 		responseOriginStage,
-		visibleMessages,
+		workflowLog,
 		shouldShowStage2StaleNotice,
 		isConverting,
 		isRestoring,
@@ -817,7 +837,6 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			{showGlobalBlockingFlyout ? (
 				<BlockingPanel globalErrors={globalPrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
 			) : null}
-			<MessagesPanel messages={visibleMessages} locale={locale} />
 
 			<main className="a-main">
 				<section className="a-stage" aria-labelledby={`${stage1Id}-h`}>
@@ -1486,7 +1505,11 @@ export function AAppPage({ workflow, outputActions, primaryBlockingFeedbackPlace
 			</main>
 
 			<footer className="a-footer">
-				<p>{translate(copy.footerCredit, { year: String(new Date().getFullYear()) })}</p>
+				<WorkflowLogPanel
+					entries={workflowLog}
+					locale={locale}
+					footerCredit={translate(copy.footerCredit, { year: String(new Date().getFullYear()) })}
+				/>
 			</footer>
 
 			{socksOpen ? (
