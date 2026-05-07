@@ -50,8 +50,10 @@ REGION_KEYWORD_CONFIG = [
     {"id": "SG", "name": "Singapore", "keywords": ["SG", "Singapore", "新加坡", "🇸🇬"]},
     {"id": "TW", "name": "Taiwan", "keywords": ["TW", "Taiwan", "台湾", "🇼🇸"]},
     {"id": "KR", "name": "Korea", "keywords": ["KR", "Korea", "韩国", "🇰🇷"]},
+    {"id": "VN", "name": "Vietnam", "keywords": ["VN", "Vietnam", "越南", "🇻🇳"]},
 ]
 LANDING_NODE_KEYWORDS = ["Landing", "落地"]
+FRONT_NODE_KEYWORDS = ["前置"]
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -154,7 +156,7 @@ def _keyword_match(text_to_search, keyword_to_find):
             return True
     return False
 
-def perform_auto_detection(config_object, region_keyword_config, landing_node_keywords_config):
+def perform_auto_detection(config_object, region_keyword_config, landing_node_keywords_config, front_node_keywords_config):
     logs = []
     _add_log_entry(logs, "info", "开始自动节点对检测。")
     suggested_pairs = []
@@ -222,8 +224,22 @@ def perform_auto_detection(config_object, region_keyword_config, landing_node_ke
                 found_dialer_name = matching_groups[0]
                 _add_log_entry(logs, "info", f"落地节点 '{proxy_name}': 在区域 '{target_region_id}' 找到唯一匹配的前置组: '{found_dialer_name}'.")
             elif len(matching_groups) > 1:
-                _add_log_entry(logs, "error", f"落地节点 '{proxy_name}': 在区域 '{target_region_id}' 找到多个匹配的前置组 {matching_groups}，无法自动选择。跳过此节点。")
-                continue
+                _add_log_entry(logs, "info", f"落地节点 '{proxy_name}': 找到多个匹配的前置组 {matching_groups}。尝试根据优先关键字“{','.join(front_node_keywords_config)}”进行选择。")
+                preferred_groups = []
+                for group_name in matching_groups:
+                    for pref_kw in front_node_keywords_config:
+                        if _keyword_match(group_name, pref_kw):
+                            preferred_groups.append(group_name)
+                            break
+                if len(preferred_groups) == 1:
+                    found_dialer_name = preferred_groups[0]
+                    _add_log_entry(logs, "info", f"落地节点 '{proxy_name}': 从多个匹配中，已优先选择带关键字的组: '{found_dialer_name}'.")
+                elif len(preferred_groups) > 1:
+                    found_dialer_name = preferred_groups[0]
+                    _add_log_entry(logs, "warn", f"落地节点 '{proxy_name}': 找到多个带优先关键字的前置组 {preferred_groups}。将默认使用第一个: '{found_dialer_name}'.")
+                else:
+                    found_dialer_name = matching_groups[0]
+                    _add_log_entry(logs, "warn", f"落地节点 '{proxy_name}': 找到多个匹配的前置组 {matching_groups}，但无一带有优先关键字。将默认使用第一个匹配项: '{found_dialer_name}'.")
             else:
                 _add_log_entry(logs, "info", f"落地节点 '{proxy_name}': 在区域 '{target_region_id}' 未找到匹配的前置组。将尝试查找节点。")
         else:
@@ -443,7 +459,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
                 }, 400)
                 return
 
-            suggested_pairs, detect_logs = perform_auto_detection(config_object, REGION_KEYWORD_CONFIG, LANDING_NODE_KEYWORDS)
+            suggested_pairs, detect_logs = perform_auto_detection(config_object, REGION_KEYWORD_CONFIG, LANDING_NODE_KEYWORDS, FRONT_NODE_KEYWORDS)
             request_logs.extend(detect_logs)
 
             success_flag = True if suggested_pairs else False
