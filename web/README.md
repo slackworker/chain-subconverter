@@ -20,7 +20,7 @@ Phase 4 前端工程目录。
 ## 本地 UI 开发入口
 
 - 推荐入口：在仓库根目录执行 `./scripts/dev-up.sh <scheme>`，或直接运行 VS Code 任务 `dev: up`
-- `<scheme>` 当前支持 `a`、`b`、`c`
+- `<scheme>` 当前支持 `default`、`a`、`b`、`c`
 - 该脚本会处理：
 	- 默认一整组端口为 `25500 / 11200 / 5173`（VS Code `dev: up`）；`dev-up-vscode-task.sh` 在换 scheme 时只调整前端 dev 端口（`a=5173`、`b=5174`、`c=5175`，并与 subconverter/backend 共用同一数值 offset）
 	- VS Code `dev: up` 当前固定为 scheme `a`、offset `0`
@@ -33,22 +33,22 @@ Phase 4 前端工程目录。
 - 关闭当前任务终端即可结束本次启动脚本拉起的本地 frontend / backend；`subconverter` 容器默认保留以便下次复用
 - 需要非默认端口组时，设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=<n>`（数值）或 `auto` 后再运行任务或 `./scripts/dev-up-vscode-task.sh <scheme> [offset|auto]`
 
-默认从 Windows 宿主机浏览器访问时，只应打开脚本打印出的 `SCHEME_URL`（默认任务为 `http://localhost:5173/ui/a`）；使用 offset 时以 `runtime.env` 为准；不要手工改成未由本次启动分配的端口试探，否则通常只是在访问旧实例。
+默认从 Windows 宿主机浏览器访问时，只应打开脚本打印出的 `SCHEME_URL`（scheme=default 时为 `http://localhost:5173/`；scheme=a/b/c 时为 `http://localhost:5173/ui/<scheme>`）；使用 offset 时以 `runtime.env` 为准；不要手工改成未由本次启动分配的端口试探，否则通常只是在访问旧实例。
 
 完整 smoke 顺序见 [../docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
 
 ## 分支工作流
 
 - `main`：公共改动的稳定主干。共享业务层、后端、脚本、部署、文档等不属于单一方案的改动，先提交到这里。
-- `ui-lab`：A/B/C 三套方案并存的日常开发分支。`web/src/scheme/a`、`b`、`c` 的实现演进和相互参考都集中在这里。
-- `alpha`：对外 Alpha 发布分支。它只承接经过回归确认、准备发出去的快照，默认入口仍是 `/ui/a`。
+- `dev`：A/B/C 三套方案并存的日常开发分支（原 `ui-lab`）。`web/src/scheme/a`、`b`、`c` 的实现演进和相互参考都集中在这里。
+- `alpha`：对外 Alpha 发布分支。它只承接经过回归确认、准备发出去的快照，默认入口为 `/`（scheme=default），并保留 `/ui/a|/ui/b|/ui/c` 供对照验证。
 
 推荐提交流程：
 
-- 纯公共改动：直接提交到 `main`，然后把 `ui-lab` rebase 到最新 `main`。
-- 纯方案改动：直接提交到 `ui-lab`。
-- 同一轮同时包含公共改动和方案改动：先把公共部分单独提交到 `main`，同步 `ui-lab` 后，再把方案部分提交到 `ui-lab`；不要把两类改动混成一个提交。
-- `alpha` 不作为日常开发分支，也不建议例行 rebase 到 `main`；它只在准备发布或更新 `alpha-latest` 时，从 `ui-lab` 选定快照后更新。
+- 纯公共改动：直接提交到 `main`，然后把 `dev` rebase 到最新 `main`。
+- 纯方案改动：直接提交到 `dev`。
+- 同一轮同时包含公共改动和方案改动：先把公共部分单独提交到 `main`，同步 `dev` 后，再把方案部分提交到 `dev`；不要把两类改动混成一个提交。
+- `alpha` 不作为日常开发分支，也不建议例行 rebase 到 `main`；它只在准备发布或更新 `alpha-latest` 时，从 `dev` 选定快照后更新。
 
 当前仓库已支持在同一分支同时预览三个方案：启动本地开发实例后，可直接同时打开 `/ui/a`、`/ui/b`、`/ui/c`。多个 worktree 并行跑时请显式设置端口 offset（或 `auto`），不要依赖多套默认端口并存。
 
@@ -56,7 +56,7 @@ Phase 4 前端工程目录。
 
 - `VITE_CHAIN_SUBCONVERTER_BASE_PATH`: 配置构建产物的静态资源基础路径，例如 `/chain-subconverter/`
 - `VITE_CHAIN_SUBCONVERTER_API_BASE`: 配置前端调用 API 的基础前缀，例如 `/chain-subconverter` 或 `https://example.com/chain-subconverter`
-- `VITE_CHAIN_SUBCONVERTER_UI_SCHEME`: 当访问路径未显式指定 scheme 时的默认方案；当前可用 `a`、`b`、`c`
+- `VITE_CHAIN_SUBCONVERTER_UI_SCHEME`: 当访问路径未显式指定 scheme 时的默认方案；当前可用 `default`、`a`、`b`、`c`
 
 若运行时需要覆盖 API 前缀，可在页面加载前注入 `window.__CHAIN_SUBCONVERTER_API_BASE__`。
 
@@ -66,9 +66,9 @@ Phase 4 前端工程目录。
 
 ## 方案路由
 
-- 当前方案入口统一为 `/ui/<scheme>`
+- 默认入口：`/`（scheme=default，根路径保持原 URL 不跳转）
+- 方案入口：`/ui/<scheme>`
 - 现有内建方案：`/ui/a`、`/ui/b`、`/ui/c`
-- 未显式指定方案时，入口默认回落到 `a`
 
 ## 方案层装配
 

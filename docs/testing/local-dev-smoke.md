@@ -20,7 +20,7 @@
 
 或运行 VS Code 任务：`dev: up`
 
-支持的 `scheme`：`a`、`b`、`c`
+支持的 `scheme`：`default`、`a`、`b`、`c`
 
 固定端口：
 
@@ -47,10 +47,11 @@ cd web && npm run build && npm run build:b && npm run build:c
 ./scripts/dev-up.sh a
 ```
 
-浏览器只看脚本输出的 `SCHEME_URL`，日常应为：
+浏览器只看脚本输出的 `SCHEME_URL`：
 
 ```text
-http://localhost:<frontend-port>/ui/<scheme>
+http://localhost:<frontend-port>/            （scheme = default 时）
+http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b|c 时）
 ```
 
 除本次启动写入 `runtime.env` 的端口（或你显式设置的 offset 端口组）外，若只能通过其他端口访问，优先判断为旧开发实例残留，不视为正常行为。
