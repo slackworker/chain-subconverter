@@ -1,10 +1,11 @@
 import type { UIScheme } from "../lib/composition";
+import { defaultUIScheme } from "./default";
 import { aUIScheme } from "./a";
 import { bUIScheme } from "./b";
 import { cUIScheme } from "./c";
 
-const fallbackUIScheme = aUIScheme;
-const orderedSchemes = [aUIScheme, bUIScheme, cUIScheme];
+const fallbackUIScheme = defaultUIScheme;
+const orderedSchemes = [defaultUIScheme, aUIScheme, bUIScheme, cUIScheme];
 const schemes: Record<string, UIScheme> = Object.fromEntries(orderedSchemes.map((scheme) => [scheme.id, scheme]));
 
 function normalizeBasePath(basePath: string | undefined) {
@@ -43,8 +44,17 @@ export function getUISchemePath(name: string, basePath: string | undefined) {
 }
 
 export function resolveUISchemeRoute(pathname: string, basePath: string | undefined, fallbackName: string | undefined) {
+	const normalizedBasePath = normalizeBasePath(basePath);
 	const relativePathname = getRelativePathname(pathname, basePath);
 	const segments = relativePathname.split("/").filter(Boolean);
+
+	// 根路径保持原 URL（不强制规范化到 /ui/<scheme>），但仍按默认 scheme 渲染
+	if (segments.length === 0) {
+		const scheme = resolveUIScheme(fallbackName);
+		const canonicalRoot = normalizedBasePath === "" ? "/" : `${normalizedBasePath}/`;
+		return { scheme, canonicalPath: canonicalRoot };
+	}
+
 	const requestedSchemeName = segments[0] === "ui" && segments[1] ? segments[1] : fallbackName;
 	const scheme = resolveUIScheme(requestedSchemeName);
 

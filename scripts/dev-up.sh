@@ -7,7 +7,7 @@ WEB_DIR="$ROOT_DIR/web"
 TMP_DIR="$ROOT_DIR/.tmp/dev-up"
 RUNTIME_FILE="$TMP_DIR/runtime.env"
 BACKEND_LOG="$TMP_DIR/backend.log"
-SCHEME=${1:-a}
+SCHEME=${1:-default}
 
 SUBCONVERTER_IMAGE=${CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE:-ghcr.io/slackworker/subconverter:integration-chain-subconverter}
 SUBCONVERTER_PORT=${CHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_PORT:-25500}
@@ -469,6 +469,13 @@ write_runtime_file() {
   local subconverter_port=$2
   local backend_port=$3
   local frontend_port=$4
+  local scheme_url=""
+
+  if [[ "$scheme" == "default" ]]; then
+    scheme_url="http://localhost:${frontend_port}/"
+  else
+    scheme_url="http://localhost:${frontend_port}/ui/${scheme}"
+  fi
 
   cat >"$RUNTIME_FILE" <<EOF
 SCHEME=${scheme}
@@ -476,16 +483,16 @@ SUBCONVERTER_BASE_URL=http://127.0.0.1:${subconverter_port}/sub?
 BACKEND_URL=http://localhost:${backend_port}
 MANAGED_TEMPLATE_BASE_URL=http://host.docker.internal:${backend_port}
 FRONTEND_URL=http://localhost:${frontend_port}
-SCHEME_URL=http://localhost:${frontend_port}/ui/${scheme}
+SCHEME_URL=${scheme_url}
 BACKEND_LOG=${BACKEND_LOG}
 EOF
 }
 
 case "$SCHEME" in
-  a|b|c)
+  default|a|b|c)
     ;;
   *)
-    fail "unsupported scheme '$SCHEME' (expected one of: a, b, c)"
+    fail "unsupported scheme '$SCHEME' (expected one of: default, a, b, c)"
     ;;
 esac
 
@@ -561,7 +568,11 @@ write_runtime_file "$SCHEME" "$SUBCONVERTER_PORT" "$BACKEND_PORT" "$FRONTEND_POR
 log "runtime file written to $RUNTIME_FILE"
 log "backend: http://localhost:${BACKEND_PORT}"
 log "frontend: http://localhost:${FRONTEND_PORT}"
-log "scheme:   http://localhost:${FRONTEND_PORT}/ui/${SCHEME}"
+if [[ "$SCHEME" == "default" ]]; then
+  log "scheme:   http://localhost:${FRONTEND_PORT}/"
+else
+  log "scheme:   http://localhost:${FRONTEND_PORT}/ui/${SCHEME}"
+fi
 log "subconv:  http://127.0.0.1:${SUBCONVERTER_PORT}/sub?"
 log "template: http://host.docker.internal:${BACKEND_PORT}"
 log "backend log: $BACKEND_LOG"
