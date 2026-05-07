@@ -1,6 +1,17 @@
 import type { BlockingError, Message, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
 
 export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
+export type WorkflowLogLevel = Message["level"] | "success" | "error";
+
+export interface WorkflowLogEntry {
+	id: string;
+	createdAt: string;
+	level: WorkflowLogLevel;
+	code: string;
+	message: string;
+	source: "backend" | "frontend";
+	originStage: ResponseOriginStage | null;
+}
 
 export interface GeneratedUrls {
 	longUrl: string;
@@ -18,6 +29,7 @@ export interface AppState {
 	restoreStatus: "idle" | "replayable" | "conflicted";
 	responseOriginStage: ResponseOriginStage | null;
 	messages: Message[];
+	workflowLog: WorkflowLogEntry[];
 	blockingErrors: BlockingError[];
 }
 
@@ -70,5 +82,6 @@ export const initialAppState: AppState = {
 	restoreStatus: "idle",
 	responseOriginStage: null,
 	messages: [],
+	workflowLog: [],
 	blockingErrors: [],
 };

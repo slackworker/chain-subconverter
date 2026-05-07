@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-05-01
+> 最近更新：2026-05-05
 
 ## 当前结论
 
@@ -27,6 +27,7 @@
 
 - 后端主线已具备 `stage1/convert`、`generate`、`resolve-url`、`short-links`、`GET /sub`、`GET /sub/<id>` 的完整契约与实现。
 - 前端共享业务层已接通恢复、转换、生成、短链切换等主流程；入口按 `/ui/<scheme>` 装配，A/B/C 方案继续在共享契约之上演进。
+- 前端共享层已把日志语义从“当前请求 messages 槽”收口为 append-only workflow log；默认 `/ui/a` 已改为页面底部折叠日志区，保留当前会话内的动作与消息历史。
 - 本地开发主入口已固定为 `./scripts/dev-up.sh <scheme>`，默认端口为 `25500 / 11200 / 5173`。
 - VS Code `dev: up` 与 `./scripts/dev-up.sh` 默认共用固定端口；多 worktree 并行需显式设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（或任务包装脚本的第二参数 / `auto`），冲突时由 `dev-up.sh` 复用、清理本工作区残留实例或报错退出。
 - Docker 镜像已接入前端构建，后端也已具备 SPA 静态资源托管能力。
@@ -36,6 +37,7 @@
 ## 当前缺口
 
 - A/B/C 方案评审尚未完成；当前 Alpha 默认入口固定为 `/ui/a`，但仍不把任一方案视为最终 UI。
+- B/C 方案尚未把新的 workflow log 视觉形态统一到与默认 `/ui/a` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
 - 正式本地预览 / Compose 单入口验收仍需持续回归，尚未形成稳定的版本化发布节奏。
 - Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
@@ -44,6 +46,8 @@
 
 ## 最近验证
 
+- `2026-05-05`: `cd web && npm run build:a`
+- `2026-05-05`: `cd web && npm run build:b && npm run build:c`
 - `2026-05-01`: `cd web && npm run build:b`
 - `2026-04-28`: `docker compose -f deploy/docker-compose.yml config`
 - `2026-04-28`: 单段部署命令生成的 `docker-compose.yml` 通过 `docker compose -f - config`

@@ -58,6 +58,7 @@ docker compose -f deploy/docker-compose.yml config
 - 可打开 `http://localhost:5173/ui/a`
 - `stage1/convert` 可完成一次“转换并自动填充”
 - Stage 3 可执行打开、复制、下载、`resolve-url`、`short-links`
+- `/ui/a` 页面底部 workflow log 可查看本次会话内的开始/成功/失败历史，不退化为只显示最近一条消息
 
 ## 第三方设备发布
 
@@ -74,6 +75,7 @@ docker compose -f deploy/docker-compose.yml config
 - 浏览器可打开 `/ui/a`
 - `POST /api/stage1/convert` 可跑通一次真实输入
 - 可生成 `longUrl`
+- 页面底部 workflow log 可展开，并能看到本轮主流程的动作与结果历史
 - `GET /sub?...` 或 `GET /sub/<id>` 至少成功一条
 
 若启用了短链，还要额外确认：

@@ -81,9 +81,11 @@ export default function App() {
 		}
 		const url = getConsumableHTTPURL(trimmedCurrentLinkValue);
 		if (url === null) {
+			workflow.recordWorkflowEvent("warning", "OPEN_PREVIEW_INVALID_URL", INVALID_CURRENT_LINK_MESSAGE, "stage3");
 			workflow.reportCurrentLinkInputError(INVALID_CURRENT_LINK_MESSAGE, "打开预览");
 			return;
 		}
+		workflow.recordWorkflowEvent("info", "OPEN_PREVIEW", "已在新标签页打开当前链接。", "stage3");
 		window.open(url.toString(), "_blank", "noopener,noreferrer");
 	}
 
@@ -94,8 +96,10 @@ export default function App() {
 		const copied = await copyTextToClipboard(trimmedCurrentLinkValue);
 		if (copied) {
 			setCopyState("done");
+			workflow.recordWorkflowEvent("success", "COPY_LINK_SUCCEEDED", "已复制当前链接。", "stage3");
 		} else {
 			setCopyState("failed");
+			workflow.recordWorkflowEvent("error", "COPY_LINK_FAILED", "复制当前链接失败。", "stage3");
 		}
 	}
 
@@ -105,9 +109,11 @@ export default function App() {
 		}
 		const downloadURL = withDownloadFlag(trimmedCurrentLinkValue);
 		if (downloadURL === null) {
+			workflow.recordWorkflowEvent("warning", "DOWNLOAD_INVALID_URL", INVALID_CURRENT_LINK_MESSAGE, "stage3");
 			workflow.reportCurrentLinkInputError(INVALID_CURRENT_LINK_MESSAGE, "下载 YAML");
 			return;
 		}
+		workflow.recordWorkflowEvent("info", "DOWNLOAD_YAML", "已触发当前链接的 YAML 下载。", "stage3");
 		const anchor = document.createElement("a");
 		anchor.href = downloadURL;
 		anchor.download = "subscription.yaml";

@@ -402,8 +402,10 @@
 ## 4. 共享通知生命周期
 
 - 本章只定义共享层通知语义的创建、压制、降级与清除规则；具体 UI 容器与视觉表现以 [02-frontend-spec](02-frontend-spec.md) 为准
-- `blockingErrors[]` 属于请求结果的阻断反馈；`messages[]` 属于非阻断消息日志；`stage2Stale` 与 `restoreStatus = conflicted` 属于工作流状态提示；`scope = stage1_field | stage2_row | stage3_field | stage3_action` 额外承担局部定位语义
+- `blockingErrors[]` 属于请求结果的阻断反馈；`messages[]` 属于可追加进 workflow log 的后端消息源；`stage2Stale` 与 `restoreStatus = conflicted` 属于工作流状态提示；`scope = stage1_field | stage2_row | stage3_field | stage3_action` 额外承担局部定位语义
 - `blockingErrors[]` 的清除、压制、降级规则只约束通知语义，不约束方案层把唯一主阻断反馈承载位放在阶段操作区还是单一全局位置
+- workflow log 以当前页面会话为范围维护追加历史；共享层允许追加本地用户可读事件与后端 `messages[]`，但不得因发起新请求、输入变化或切换阶段而自动清空既有历史
+- workflow log 可设置有限保留条数，但必须保持顺序并允许查看最近保留历史；共享层不得退化为只保留最近一条消息
 - 修改阶段 1 任一输入后，若阶段 2 当前已有行快照，则阶段 2 必须标记为 `stale`；该状态直接驱动“生成链接”禁用，不依赖某条正文提示是否正在显示
 - 用户点击“转换并自动填充”后，`stage2Stale` 的正文提示应立即隐藏；若转换成功，`stage2Stale` 清除；若转换失败，`stage2Stale` 作为数据状态保留，但不要求继续以主提示与本次失败反馈并列显示
 - `stage1_field` 错误在对应字段值发生变化时必须清除；若某字段因交互联动被隐藏并清空，其历史 `stage1_field` 错误也必须同步清除
@@ -412,5 +414,5 @@
 - `stage3_action` 错误在同一动作被重新触发，或其依赖的 Stage 3 当前链接来源发生变化时必须清除
 - 当阶段 2 进入 `stale` 或 `conflicted` 时，已有 `stage2_row` 错误必须隐藏或降级，不再作为当前主提示与工作流状态提示竞争
 - 字段/行级局部定位提示继续作为修复引导保留；它们不得升级为与主阻断反馈承载位同权重的第二主反馈堆栈
-- `messages[]` 进入共享消息日志后，不参与阻断优先级竞争；当前存在阻断反馈时，日志仍可保留，但不得取代阻断反馈的主提示地位
+- 进入 workflow log 的后端 `messages[]` 与本地事件都不参与阻断优先级竞争；当前存在阻断反馈时，日志仍可保留，但不得取代阻断反馈的主提示地位
 

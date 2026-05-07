@@ -17,7 +17,7 @@ import {
 	shouldPromoteStage2StaleNotice,
 } from "../lib/notices";
 import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
-import type { ResponseOriginStage } from "../lib/state";
+import type { ResponseOriginStage, WorkflowLogEntry, WorkflowLogLevel } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetGroup } from "../lib/chainTargets";
@@ -55,6 +55,7 @@ export interface AppWorkflowViewModel {
 	responseOriginStage: ResponseOriginStage | null;
 	originStageLabel?: string;
 	visibleMessages: Message[];
+	workflowLog: WorkflowLogEntry[];
 	shouldShowStage2StaleNotice: boolean;
 	isConverting: boolean;
 	isRestoring: boolean;
@@ -84,7 +85,12 @@ export interface AppWorkflowViewModel {
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
+	recordWorkflowEvent: (level: WorkflowLogLevel, code: string, message: string, originStage?: ResponseOriginStage | null) => void;
 }
+
+const MAX_WORKFLOW_LOG_ENTRIES = 200;
+
+let workflowLogSequence = 0;
 
 function snapshotRowsFromInit(stage2Init: Stage2Init) {
 	return stage2Init.rows.map((row) => ({
@@ -121,6 +127,46 @@ function mergeMessages(...messageGroups: Message[][]): Message[] {
 		seen.add(key);
 		return true;
 	});
+}
+
+function nextWorkflowLogID() {
+	workflowLogSequence += 1;
+	return `workflow-log-${Date.now()}-${workflowLogSequence}`;
+}
+
+function buildWorkflowLogEntry(
+	level: WorkflowLogLevel,
+	code: string,
+	message: string,
+	source: WorkflowLogEntry["source"],
+	originStage: ResponseOriginStage | null,
+): WorkflowLogEntry {
+	return {
+		id: nextWorkflowLogID(),
+		createdAt: new Date().toISOString(),
+		level,
+		code,
+		message,
+		source,
+		originStage,
+	};
+}
+
+function appendWorkflowLogEntries(current: WorkflowLogEntry[], entries: WorkflowLogEntry[]) {
+	if (entries.length === 0) {
+		return current;
+	}
+
+	const next = current.concat(entries);
+	return next.length > MAX_WORKFLOW_LOG_ENTRIES ? next.slice(-MAX_WORKFLOW_LOG_ENTRIES) : next;
+}
+
+function backendMessagesToWorkflowLog(messages: Message[], originStage: ResponseOriginStage | null) {
+	return messages.map((message) => buildWorkflowLogEntry(message.level, message.code, message.message, "backend", originStage));
+}
+
+function summarizeBlockingErrors(errors: BlockingError[], fallback: string) {
+	return errors[0]?.message ?? fallback;
 }
 
 function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined) {
@@ -289,6 +335,7 @@ export function useAppWorkflow() {
 	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating;
 	const originStageLabel = getOriginStageLabel(state.responseOriginStage);
 	const visibleMessages = getVisibleMessages(state.messages, state.responseOriginStage);
+	const workflowLog = state.workflowLog;
 	const shouldShowStage2StaleNotice = shouldPromoteStage2StaleNotice({
 		stage2Stale: state.stage2Stale,
 		hasStage2Rows: stage2Rows.length > 0,
@@ -366,6 +413,16 @@ export function useAppWorkflow() {
 		}));
 	}
 
+	function recordWorkflowEvent(level: WorkflowLogLevel, code: string, message: string, originStage: ResponseOriginStage | null = state.responseOriginStage) {
+		setState((current) => ({
+			...current,
+			workflowLog: appendWorkflowLogEntries(
+				current.workflowLog,
+				[buildWorkflowLogEntry(level, code, message, "frontend", originStage)],
+			),
+		}));
+	}
+
 	function updateStage1Input(updater: (current: Stage1Input) => Stage1Input) {
 		setState((current) => {
 			const nextStage1Input = updater(current.stage1Input);
@@ -431,29 +488,49 @@ export function useAppWorkflow() {
 			...current,
 			responseOriginStage: "stage1",
 			messages: [],
+			workflowLog: appendWorkflowLogEntries(
+				current.workflowLog,
+				[buildWorkflowLogEntry("info", "STAGE1_CONVERT_STARTED", "开始转换并自动填充。", "frontend", "stage1")],
+			),
 			blockingErrors: [],
 		}));
 
 		try {
 			const response = await postStage1Convert({ stage1Input: toStage1InputPayload(stage1Input) });
 			applyStage2Init(response.stage2Init);
+			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage1").concat(
+				buildWorkflowLogEntry("success", "STAGE1_CONVERT_SUCCEEDED", "已完成转换并更新 Stage 2 初始化结果。", "frontend", "stage1"),
+			);
 			setState((current) => ({
 				...current,
 				responseOriginStage: "stage1",
 				messages: response.messages,
+				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 				blockingErrors: response.blockingErrors,
 			}));
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
+			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+				stageLabel: "Stage 1 / 输入区",
+				actionLabel: "转换并自动填充",
+				requestPath: "POST /api/stage1/convert",
+			})];
+			const messages = errorResponse?.messages ?? [];
+			const logEntries = backendMessagesToWorkflowLog(messages, "stage1").concat(
+				buildWorkflowLogEntry(
+					"error",
+					"STAGE1_CONVERT_FAILED",
+					`转换并自动填充失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+					"frontend",
+					"stage1",
+				),
+			);
 			setState((current) => ({
 				...current,
 				responseOriginStage: "stage1",
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
-					stageLabel: "Stage 1 / 输入区",
-					actionLabel: "转换并自动填充",
-					requestPath: "POST /api/stage1/convert",
-				})],
+				messages,
+				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				blockingErrors,
 			}));
 		} finally {
 			setIsConverting(false);
@@ -471,6 +548,10 @@ export function useAppWorkflow() {
 			...current,
 			responseOriginStage: "stage3",
 			messages: [],
+			workflowLog: appendWorkflowLogEntries(
+				current.workflowLog,
+				[buildWorkflowLogEntry("info", "RESTORE_STARTED", "开始反向解析并恢复页面状态。", "frontend", "stage3")],
+			),
 			blockingErrors: [],
 		}));
 
@@ -478,6 +559,9 @@ export function useAppWorkflow() {
 			const restoreResponse = await postResolveURL(restoreInput);
 			const restoredStage1Input = hydrateStage1Input(restoreResponse.stage1Input);
 			if (restoreResponse.restoreStatus === "conflicted") {
+				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3").concat(
+					buildWorkflowLogEntry("warning", "RESTORE_CONFLICTED", "恢复结果进入只读冲突态，请重新执行转换并自动填充。", "frontend", "stage3"),
+				);
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
@@ -490,6 +574,7 @@ export function useAppWorkflow() {
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
 					messages: restoreResponse.messages,
+					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 					blockingErrors: restoreResponse.blockingErrors.filter((error) => error.scope !== "stage2_row"),
 				}));
 				return;
@@ -497,6 +582,10 @@ export function useAppWorkflow() {
 
 			try {
 				const convertResponse = await postStage1Convert({ stage1Input: restoreResponse.stage1Input });
+				const mergedMessages = mergeMessages(restoreResponse.messages, convertResponse.messages);
+				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage3").concat(
+					buildWorkflowLogEntry("success", "RESTORE_SUCCEEDED", "已恢复页面状态，可继续编辑和生成。", "frontend", "stage3"),
+				);
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
@@ -508,11 +597,26 @@ export function useAppWorkflow() {
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
-					messages: mergeMessages(restoreResponse.messages, convertResponse.messages),
+					messages: mergedMessages,
+					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 					blockingErrors: restoreResponse.blockingErrors.length > 0 ? restoreResponse.blockingErrors : convertResponse.blockingErrors,
 				}));
 			} catch (convertError) {
 				const errorResponse = getErrorResponse(convertError);
+				const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError, {
+					stageLabel: "Stage 3 / 输出区",
+					actionLabel: "恢复后的转换并自动填充",
+					requestPath: "POST /api/stage1/convert",
+				})];
+				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3").concat(
+					buildWorkflowLogEntry(
+						"error",
+						"RESTORE_REINIT_FAILED",
+						`恢复后的转换并自动填充失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+						"frontend",
+						"stage3",
+					),
+				);
 				setState((current) => ({
 					...current,
 					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
@@ -525,24 +629,33 @@ export function useAppWorkflow() {
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
 					messages: restoreResponse.messages,
-					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError, {
-						stageLabel: "Stage 3 / 输出区",
-						actionLabel: "恢复后的转换并自动填充",
-						requestPath: "POST /api/stage1/convert",
-					})],
+					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+					blockingErrors,
 				}));
 			}
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
+			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+				stageLabel: "Stage 3 / 输出区",
+				actionLabel: "反向解析",
+				requestPath: "POST /api/resolve-url",
+			})];
+			const messages = errorResponse?.messages ?? [];
+			const logEntries = backendMessagesToWorkflowLog(messages, "stage3").concat(
+				buildWorkflowLogEntry(
+					"error",
+					"RESTORE_FAILED",
+					`反向解析失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+					"frontend",
+					"stage3",
+				),
+			);
 			setState((current) => ({
 				...current,
 				responseOriginStage: "stage3",
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
-					stageLabel: "Stage 3 / 输出区",
-					actionLabel: "反向解析",
-					requestPath: "POST /api/resolve-url",
-				})],
+				messages,
+				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				blockingErrors,
 			}));
 		} finally {
 			setIsRestoring(false);
@@ -585,6 +698,10 @@ export function useAppWorkflow() {
 			...current,
 			responseOriginStage: "stage2",
 			messages: [],
+			workflowLog: appendWorkflowLogEntries(
+				current.workflowLog,
+				[buildWorkflowLogEntry("info", "GENERATE_STARTED", "开始生成链接。", "frontend", "stage2")],
+			),
 			blockingErrors: [],
 		}));
 
@@ -594,12 +711,16 @@ export function useAppWorkflow() {
 				stage2Snapshot,
 			});
 			if (!preferShortUrl) {
+				const logEntries = backendMessagesToWorkflowLog(response.messages, "stage2").concat(
+					buildWorkflowLogEntry("success", "GENERATE_SUCCEEDED", "已生成长链接。", "frontend", "stage2"),
+				);
 				setState((current) => ({
 					...current,
 					generatedUrls: buildGeneratedUrls(response.longUrl, null),
 					currentLinkInput: response.longUrl,
 					responseOriginStage: "stage2",
 					messages: response.messages,
+					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 					blockingErrors: response.blockingErrors,
 				}));
 				return;
@@ -608,43 +729,72 @@ export function useAppWorkflow() {
 			setIsCreatingShortUrl(true);
 			try {
 				const shortLinkResponse = await postShortLink(response.longUrl);
+				const mergedMessages = mergeMessages(response.messages, shortLinkResponse.messages);
+				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage2").concat(
+					buildWorkflowLogEntry("success", "SHORT_URL_READY", "已生成短链接。", "frontend", "stage2"),
+				);
 				setState((current) => ({
 					...current,
 					generatedUrls: buildGeneratedUrls(shortLinkResponse.longUrl, shortLinkResponse.shortUrl),
 					currentLinkInput: shortLinkResponse.shortUrl,
 					responseOriginStage: "stage2",
-					messages: mergeMessages(response.messages, shortLinkResponse.messages),
+					messages: mergedMessages,
+					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 					blockingErrors: shortLinkResponse.blockingErrors,
 				}));
 			} catch (error) {
 				const errorResponse = getErrorResponse(error);
+				const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+					stageLabel: "Stage 3 / 输出区",
+					actionLabel: "创建短链接",
+					requestPath: "POST /api/short-links",
+				})];
+				const mergedMessages = mergeMessages(response.messages, errorResponse?.messages ?? []);
+				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage3").concat(
+					buildWorkflowLogEntry(
+						"error",
+						"SHORT_URL_FAILED",
+						`创建短链接失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+						"frontend",
+						"stage3",
+					),
+				);
 				setState((current) => ({
 					...current,
 					preferShortUrl: false,
 					generatedUrls: buildGeneratedUrls(response.longUrl, null),
 					currentLinkInput: response.longUrl,
 					responseOriginStage: "stage3",
-					messages: mergeMessages(response.messages, errorResponse?.messages ?? []),
-					blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
-						stageLabel: "Stage 3 / 输出区",
-						actionLabel: "创建短链接",
-						requestPath: "POST /api/short-links",
-					})],
+					messages: mergedMessages,
+					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+					blockingErrors,
 				}));
 			} finally {
 				setIsCreatingShortUrl(false);
 			}
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
+			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+				stageLabel: "Stage 2 / 配置区",
+				actionLabel: "生成链接",
+				requestPath: "POST /api/generate",
+			})];
+			const messages = errorResponse?.messages ?? [];
+			const logEntries = backendMessagesToWorkflowLog(messages, "stage2").concat(
+				buildWorkflowLogEntry(
+					"error",
+					"GENERATE_FAILED",
+					`生成链接失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+					"frontend",
+					"stage2",
+				),
+			);
 			setState((current) => ({
 				...current,
 				responseOriginStage: "stage2",
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
-					stageLabel: "Stage 2 / 配置区",
-					actionLabel: "生成链接",
-					requestPath: "POST /api/generate",
-				})],
+				messages,
+				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				blockingErrors,
 			}));
 		} finally {
 			setIsGenerating(false);
@@ -682,31 +832,51 @@ export function useAppWorkflow() {
 			preferShortUrl: true,
 			responseOriginStage: "stage3",
 			messages: [],
+			workflowLog: appendWorkflowLogEntries(
+				current.workflowLog,
+				[buildWorkflowLogEntry("info", "SHORT_URL_STARTED", "开始创建短链接。", "frontend", "stage3")],
+			),
 			blockingErrors: [],
 		}));
 
 		try {
 			const response = await postShortLink(state.generatedUrls.longUrl);
+			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage3").concat(
+				buildWorkflowLogEntry("success", "SHORT_URL_READY", "已生成短链接。", "frontend", "stage3"),
+			);
 			setState((current) => ({
 				...current,
 				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl),
 				currentLinkInput: response.shortUrl,
 				responseOriginStage: "stage3",
 				messages: response.messages,
+				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 				blockingErrors: response.blockingErrors,
 			}));
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
+			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+				stageLabel: "Stage 3 / 输出区",
+				actionLabel: "创建短链接",
+				requestPath: "POST /api/short-links",
+			})];
+			const messages = errorResponse?.messages ?? [];
+			const logEntries = backendMessagesToWorkflowLog(messages, "stage3").concat(
+				buildWorkflowLogEntry(
+					"error",
+					"SHORT_URL_FAILED",
+					`创建短链接失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+					"frontend",
+					"stage3",
+				),
+			);
 			setState((current) => ({
 				...current,
 				preferShortUrl: false,
 				responseOriginStage: "stage3",
-				messages: errorResponse?.messages ?? [],
-				blockingErrors: errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
-					stageLabel: "Stage 3 / 输出区",
-					actionLabel: "创建短链接",
-					requestPath: "POST /api/short-links",
-				})],
+				messages,
+				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				blockingErrors,
 			}));
 		} finally {
 			setIsCreatingShortUrl(false);
@@ -720,6 +890,7 @@ export function useAppWorkflow() {
 		responseOriginStage: state.responseOriginStage,
 		originStageLabel,
 		visibleMessages,
+		workflowLog,
 		shouldShowStage2StaleNotice,
 		isConverting,
 		isRestoring,
@@ -749,6 +920,7 @@ export function useAppWorkflow() {
 		handleTargetChange,
 		handleGenerate,
 		handlePreferShortUrl,
+		recordWorkflowEvent,
 	};
 
 	return workflow;
