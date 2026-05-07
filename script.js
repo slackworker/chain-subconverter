@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const customizeServiceUrlCheckbox = document.getElementById('customizeServiceUrlSwitchInput');
     const generateLinkButton = document.getElementById('generateLinkButton');
     const copyUrlButton = document.getElementById('copyUrlButton');
+    const shortenUrlButton = document.getElementById('shortenUrlButton');
     const openUrlButton = document.getElementById('openUrlButton');
     const downloadConfigButton = document.getElementById('downloadConfigButton');
     const autoDetectButton = document.getElementById('autoDetectButton'); 
@@ -60,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (serviceUrlInput) serviceUrlInput.disabled = true;
     if (customizeServiceUrlCheckbox) customizeServiceUrlCheckbox.checked = false;
 
-    actionButtons = [copyUrlButton, openUrlButton, downloadConfigButton];
+    actionButtons = [copyUrlButton, shortenUrlButton, openUrlButton, downloadConfigButton];
     actionButtons.forEach(btn => { if(btn) btn.disabled = true; });
     if(document.getElementById('generatedUrl')) document.getElementById('generatedUrl').value = '';
 
@@ -74,13 +75,14 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Service address configuration section is enabled by environment variable.");
     } 
 
-    if (generateLinkButton) { 
-        generateLinkButton.addEventListener('click', validateConfigurationAndGenerateUrl); 
+    if (generateLinkButton) {
+        generateLinkButton.addEventListener('click', validateConfigurationAndGenerateUrl);
     }
-    if (autoDetectButton) { 
+    if (autoDetectButton) {
         autoDetectButton.addEventListener('click', handleAutoDetectPairs);
     }
     if (copyUrlButton) copyUrlButton.addEventListener('click', copyUrl);
+    if (shortenUrlButton) shortenUrlButton.addEventListener('click', shortenUrl);
     if (openUrlButton) openUrlButton.addEventListener('click', precheckAndOpenUrl);
     if (downloadConfigButton) downloadConfigButton.addEventListener('click', downloadConfig);
 
@@ -652,5 +654,35 @@ async function downloadConfig() {
         showFeedback(`下载配置文件出错: ${error.message}`, 'error', 7000);
     } finally {
         renderLogs(); // Ensure all logs, including potential final errors, are rendered
+    }
+}
+
+async function shortenUrl() {
+    const generatedUrlInput = document.getElementById('generatedUrl');
+    if (!generatedUrlInput || !generatedUrlInput.value) {
+        showFeedback('没有可缩短的链接。', 'error', 3000);
+        return;
+    }
+    const longUrl = generatedUrlInput.value;
+    addActionStartLog("生成短链接");
+    showFeedback('正在生成短链接...', 'info', 0);
+    const serviceUrl = getServiceUrl();
+    if (!serviceUrl) return;
+
+    try {
+        const apiEndpoint = `${serviceUrl}/api/shorten?url=${encodeURIComponent(longUrl)}`;
+        const response = await fetch(apiEndpoint);
+        const responseData = await response.json();
+
+        showFeedback(responseData.message || (responseData.success ? '短链接生成成功。' : '短链接生成失败。'), responseData.success ? 'success' : 'error', 5000);
+
+        if (responseData.success && responseData.short_url) {
+            generatedUrlInput.value = responseData.short_url;
+        }
+    } catch (error) {
+        console.error('生成短链接时出错:', error);
+        showFeedback(`生成短链接出错: ${error.message}`, 'error', 7000);
+    } finally {
+        renderLogs();
     }
 }

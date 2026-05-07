@@ -53,6 +53,9 @@ REGION_KEYWORD_CONFIG = [
 ]
 LANDING_NODE_KEYWORDS = ["Landing", "落地"]
 
+# 短链接服务配置
+SHORTENER_API_URL = os.getenv("SHORTENER_API_URL", "https://v1.mk")
+
 yaml = YAML()
 yaml.preserve_quotes = True
 yaml.indent(mapping=2, sequence=4, offset=2)
@@ -424,7 +427,46 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
         query_params = parse_qs(parsed_url.query)
         request_logs = []
 
-        if parsed_url.path == "/api/auto_detect_pairs":
+        if parsed_url.path == "/api/shorten":
+            # 获取前端传过来的长链接
+            long_url = query_params.get('url', [None])[0]
+            if not long_url:
+                self.send_json_response({"success": False, "message": "缺少 url 参数"}, 400)
+                return
+
+            _add_log_entry(request_logs, "info", f"收到缩短链接请求: {long_url[:50]}...")
+
+            try:
+                # 调用短链接服务 (v1.mk 需要 POST 请求，参数需 base64 编码)
+                import base64
+                data = {
+                    'longUrl': base64.b64encode(long_url.encode('utf-8')).decode('utf-8'),
+                    'shortKey': ''
+                }
+                shortener_res = requests.post(f"{SHORTENER_API_URL}/short", data=data, timeout=10)
+
+                if shortener_res.status_code == 200:
+                    response_data = shortener_res.json()
+                    if response_data.get('Code') == 1 and response_data.get('ShortUrl'):
+                        short_url = response_data['ShortUrl']
+                        _add_log_entry(request_logs, "info", f"短链接生成成功: {short_url}")
+                        self.send_json_response({
+                            "success": True,
+                            "short_url": short_url
+                        }, 200)
+                    else:
+                        raise Exception(f"短链服务返回错误: {response_data.get('Message', '未知错误')}")
+                else:
+                    raise Exception(f"短链服务返回状态码: {shortener_res.status_code}")
+
+            except Exception as e:
+                _add_log_entry(request_logs, "error", f"缩短链接失败: {e}")
+                self.send_json_response({
+                    "success": False,
+                    "message": f"短链接服务不可用: {str(e)}"
+                }, 500)
+
+        elif parsed_url.path == "/api/auto_detect_pairs":
             remote_url = query_params.get('remote_url', [None])[0]
             _add_log_entry(request_logs, "info", f"收到 /api/auto_detect_pairs 请求 (URL provided).")
 
