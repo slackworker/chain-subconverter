@@ -41,14 +41,14 @@ Phase 4 前端工程目录。
 
 - `main`：公共改动的稳定主干。共享业务层、后端、脚本、部署、文档等不属于单一方案的改动，先提交到这里。
 - `dev`：A/B/C 三套方案并存的日常开发分支（原 `ui-lab`）。`web/src/scheme/a`、`b`、`c` 的实现演进和相互参考都集中在这里。
-- `alpha`：对外 Alpha 发布分支。它只承接经过回归确认、准备发出去的快照，默认入口为 `/`（scheme=default），并保留 `/ui/a|/ui/b|/ui/c` 供对照验证。
+- `release/3.0`：3.0 发布分支。它承接经过回归确认、准备发出去的快照；Alpha、Beta、正式版统一通过版本 tag 区分，默认入口为 `/`（scheme=default），并保留 `/ui/a|/ui/b|/ui/c` 供对照验证。
 
 推荐提交流程：
 
 - 纯公共改动：直接提交到 `main`，然后把 `dev` rebase 到最新 `main`。
 - 纯方案改动：直接提交到 `dev`。
 - 同一轮同时包含公共改动和方案改动：先把公共部分单独提交到 `main`，同步 `dev` 后，再把方案部分提交到 `dev`；不要把两类改动混成一个提交。
-- `alpha` 不作为日常开发分支，也不建议例行 rebase 到 `main`；它只在准备发布或更新 `alpha-latest` 时，从 `dev` 选定快照后更新。
+- `release/3.0` 不作为日常方案开发分支；它只在准备发布或更新当前 3.0 阶段镜像时，从 `main`/`dev` 选定已回归快照后更新。
 
 当前仓库已支持在同一分支同时预览三个方案：启动本地开发实例后，可直接同时打开 `/ui/a`、`/ui/b`、`/ui/c`。多个 worktree 并行跑时请显式设置端口 offset（或 `auto`），不要依赖多套默认端口并存。
 
@@ -78,8 +78,8 @@ Phase 4 前端工程目录。
 - `src/App.tsx` 只负责共享 workflow 与浏览器动作桥接，不再持有默认方案页面结构
 - `src/scheme/a`、`src/scheme/b`、`src/scheme/c` 分别承载三个方案自己的页面与样式入口
 - 共享层不再提供 `index.css` 这类全局 UI baseline；每个方案从自己的 `index.css` 起步
-- `npm run build:a`、`npm run build:b`、`npm run build:c` 可用于验证不同方案在同一共享业务层上的可构建性
+- `npm run build:default`、`npm run build:a`、`npm run build:b`、`npm run build:c` 可用于验证不同方案在同一共享业务层上的可构建性
 
 当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。
 
-Phase 4 的实施顺序见 [../docs/plan/phase-4-breakdown.md](../docs/plan/phase-4-breakdown.md)。
+当前实施顺序见 [../docs/plan/3.0-alpha-cutover.md](../docs/plan/3.0-alpha-cutover.md)。

@@ -80,7 +80,7 @@ flowchart LR
 
 **目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（进行中，Alpha 内测发布已到位）
 
-细化实施顺序见 [plan/phase-4-breakdown](plan/phase-4-breakdown.md)。
+当前执行入口见 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)；`phase-4-*` 文档仅保留为历史形成过程参考。
 
 | 任务 | 说明 |
 |------|------|
@@ -88,7 +88,7 @@ flowchart LR
 | 三阶段主线 UI | 当前共享主线已接入 `stage1/convert -> stage2 -> generate -> longUrl`，仍待 UI 方案评审与细节收口 |
 | 恢复与短链 | 共享主线已接入 `resolve-url` 与 `short-links`，仍待与最终 UI 方案合并验收 |
 | `cmd/server/` | HTTP 启动、静态资源分发与运行形态收口 |
-| `deploy/` | Docker Compose 单入口路径（`app + subconverter`）；Alpha 内测发布默认走 `alpha-latest` 镜像标签 |
+| `deploy/` | Docker Compose 单入口路径（`app + subconverter`）；3.0 当前由 `release/3.0` 配合 Alpha tag 与 `alpha-latest` 便捷标签承载 |
 
 > 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 
@@ -96,7 +96,7 @@ flowchart LR
 
 按最小增量推进：
 
-1. 先按 [plan/phase-4-dev-readiness](plan/phase-4-dev-readiness.md) 收口本地预览、联调、连通性检测与 smoke 入口，先把前端开发与手动签收路径固定下来。
-2. 在共享业务层和本地运行基线稳定后，于同一仓库内并行推进 A/B/C 三套 UI 方案实现，完成评审选型。
-3. 在统一 smoke 场景下收口恢复、短链与长链接主线，并把结论合并到胜出方案。
-4. 最后收口后端静态资源托管与 Compose 单入口部署路径。
+1. 先按 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) 收口发布线、文档、CI 与 Alpha runbook，使 `release/3.0` 成为 3.0 唯一发布线。
+2. 在默认 `/` 已冻结的前提下，继续把 B/C 方案作为实验入口推进，不把其视觉收口阻塞 Alpha 发布。
+3. 在统一 smoke 场景下收口恢复、短链与长链接主线，并形成第三方设备回归记录。
+4. 再根据 Alpha 反馈决定 Beta 候选冻结与后续 tag 节奏。

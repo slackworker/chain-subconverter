@@ -12,14 +12,15 @@
 ## 当前 Alpha 口径
 
 - 当前对外版本阶段：`3.0 Alpha`
-- Alpha 发布分支：`alpha`
+- 当前发布线：`release/3.0`
 - Alpha 默认 UI 基线：`scheme default`
 - 主应用镜像：`ghcr.io/slackworker/chain-subconverter:alpha-latest`
+- 推荐回归记录：`v3.0.0-alpha.N` 等不可变 tag
 - `subconverter` 镜像：`ghcr.io/slackworker/subconverter:integration-chain-subconverter`
 - 第三方设备部署入口：`deploy/README.md` 中的单段 Compose 命令
 - 默认 UI 访问入口：`/`（保持根路径不跳转；`/ui/a|/ui/b|/ui/c` 用于并行方案开发与对照）
 
-其中 `alpha-latest` 由 `alpha` 分支 push 自动刷新；`dev` 只作为 A/B/C 并行实现与交叉比对的集成线，不直接承担对外发布。
+其中 `release/3.0` 承担 3.0 的 Alpha、Beta、正式版发布；`alpha-latest` 仅作为 Alpha 阶段便捷镜像标签，后续应由不可变 tag 承担正式回归记录。`dev` 只作为 A/B/C 并行实现与交叉比对的集成线，不直接承担对外发布。
 
 仅当存在明确回归结论时，才允许替换默认镜像 tag 或默认入口。
 

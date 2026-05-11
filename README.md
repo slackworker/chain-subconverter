@@ -4,7 +4,7 @@
 
 ## 状态
 
-当前对外内测线已进入 **3.0 Alpha** 阶段，发布基线固定为 `alpha` 分支：默认镜像标签 `ghcr.io/slackworker/chain-subconverter:alpha-latest`，默认入口仍为 `/ui/a`。
+当前对外内测线已进入 **3.0 Alpha** 阶段，3.0 发布基线固定为 `release/3.0` 分支配合版本 tag：默认入口为 `/`，`ghcr.io/slackworker/chain-subconverter:alpha-latest` 继续作为 Alpha 阶段便捷镜像标签。
 
 相对 2.0，3.0 Alpha 对用户最重要的变化：
 
@@ -19,15 +19,16 @@
 ## 快速开始
 
 1. 按 [deploy/README.md](deploy/README.md) 的第三方设备单段命令部署。
-2. 打开 `http://<device-ip>:<host-port>/ui/a`。
+2. 打开 `http://<device-ip>:<host-port>/`。
 3. 按页面流程完成落地节点 / 中转节点配置并生成结果。
-4. 按需要使用长链接、短链接或反向解析继续编辑。
+4. 按需要使用长链接、短链接或反向解析继续编辑；如需对照实验方案，再访问 `/ui/a`、`/ui/b`、`/ui/c`。
 
 ## 文档
 
 完整文档入口与索引见 [docs/README.md](docs/README.md)。
 
 - 用户部署与访问入口见 [deploy/README.md](deploy/README.md)
+- 当前安全边界与部署假设见 [SECURITY.md](SECURITY.md)
 - Alpha 发布与回归说明见 [docs/testing/alpha-release.md](docs/testing/alpha-release.md)
 - 当前版本发布说明见 [RELEASES.md](RELEASES.md)
 - 历史版本发布说明见 [_legacy/RELEASES.md](_legacy/RELEASES.md)
@@ -42,7 +43,7 @@
 
 - `main`：共享层、后端、脚本、部署、文档等公共改动的稳定主干
 - `dev`：A/B/C 三套 UI 实现并存的日常集成线（原 `ui-lab`）
-- `alpha`：对外 Alpha 发布线；默认仍以 `/ui/a` 作为回归入口
+- `release/3.0`：3.0 的 Alpha、Beta、正式版发布线；默认入口固定为 `/`，A/B/C 保留为实验入口
 
 ## License
 

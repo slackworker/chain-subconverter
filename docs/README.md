@@ -13,7 +13,8 @@
 
 1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
 2. 按主题进入前端、API、业务规则、技术约束。
-3. 只有在需要了解推进顺序、当前缺口或本地联调流程时，再读 [ROADMAP](ROADMAP.md)、[progress/STATUS](progress/STATUS.md) 与 `testing/` 文档。
+3. 需要了解当前执行计划、发布节奏或阶段缺口时，先读 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) 与 [progress/STATUS](progress/STATUS.md)。
+4. 只有在需要了解整体历史阶段划分或本地联调流程时，再读 [ROADMAP](ROADMAP.md) 与 `testing/` 文档。
 
 ## 目录约定
 
@@ -44,13 +45,21 @@
 
 | 文档 | 说明 |
 |------|------|
+| [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) | 当前执行计划：`release/3.0` 发布线、Alpha 收口工作流、后续 Beta/GA 预埋 |
+| [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已稳定范围、当前缺口与最近验证 |
 | [ROADMAP](ROADMAP.md) | 推进路线图：Phase 划分、依赖关系与推荐下一步 |
-| [plan/phase-4-breakdown](plan/phase-4-breakdown.md) | Phase 4 细化计划：前端主线、非目标与建议推进顺序 |
-| [plan/phase-4-dev-readiness](plan/phase-4-dev-readiness.md) | Phase 4 本地预览与联调就绪计划：ABC UI 开发前的运行、测试与 smoke 收口 |
-| [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已完成范围、已知缺口 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 启动与 smoke runbook：固定入口、最小检查项与常见排障 |
 | [testing/alpha-release](testing/alpha-release.md) | 3.0 Alpha 发布与回归 runbook：当前内测口径、发布前检查、第三方设备回归与反馈记录模板 |
+
+## 历史参考
+
+以下文档仍可用于理解 Phase 4 形成过程，但不再作为当前执行计划：
+
+| 文档 | 说明 |
+|------|------|
+| [plan/phase-4-breakdown](plan/phase-4-breakdown.md) | Phase 4 细化计划：前端主线、非目标与建议推进顺序 |
+| [plan/phase-4-dev-readiness](plan/phase-4-dev-readiness.md) | Phase 4 本地预览与联调就绪计划：ABC UI 开发前的运行、测试与 smoke 收口 |
 
 ## 临时区规则
 

@@ -23,6 +23,7 @@ HOST_PORT="11200"
 # PUBLIC_BASE_URL 可选：直连局域网或其他单入口部署通常无需配置，服务端会按请求来源自动推断。
 # 仅在 HTTPS 反代/公网域名、多入口或需要固定发布地址时填写，例如 https://example.com；若直接暴露端口，可用 http://<设备IP>:11200。
 # PUBLIC_BASE_URL=""
+# 推荐在正式记录里同时记下本次实际使用的不可变版本 tag，例如 v3.0.0-alpha.1。
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 SHORT_LINK_CAPACITY="1000"
@@ -90,7 +91,7 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 局域网内其他终端应访问：
 
 ```text
-http://<device-ip>:<host-port>/ui/a
+http://<device-ip>:<host-port>/
 ```
 
 ### 仓库内 Compose 预览
@@ -114,7 +115,7 @@ curl http://localhost:11200/healthz
 
 ### 第三方设备 / 局域网设备
 
-如果只是刷新同一份 `docker-compose.yml` 中引用的镜像 tag，例如 `alpha-latest` 已有新内容，可在设备上执行：
+如果只是刷新同一份 `docker-compose.yml` 中引用的镜像 tag，例如 `alpha-latest` 已有新内容，或你已经把 `APP_IMAGE` 固定成某个明确的 `v3.0.0-alpha.N`，可在设备上执行：
 
 ```bash
 cd "$HOME/chain-subconverter"
@@ -141,7 +142,7 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 
 - `docker compose ps` 中 `app` 与 `subconverter` 为健康状态
 - `GET /healthz` 成功
-- 浏览器可打开 `http://<device-ip>:<host-port>/ui/a`
+- 浏览器可打开 `http://<device-ip>:<host-port>/`
 - 至少跑通一条 `POST /api/stage1/convert` 与最终订阅读取路径
 
 ### 仓库内 Compose 预览
@@ -171,7 +172,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
 - `APP_DIR`：本机保存 Compose 文件的位置
 - `HOST_PORT`：宿主机对外暴露的端口
 - `PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源（`Host` 请求头与 TLS 状态）推断，适用于直连局域网或 DDNS 等单入口部署。**若前端有 Nginx/Caddy 等反代做 HTTPS 终止**，服务端看不到 TLS，自动推断会产生 `http://` 链接，此时必须显式填入 `https://<域名>` 才能生成正确的订阅链接。多入口或固定发布地址场景同理
-- `APP_IMAGE`：主应用镜像；`alpha-latest` 由 `alpha` 分支 push 自动更新，内测稳定后可改成明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:0.1.0-alpha.1`
+- `APP_IMAGE`：主应用镜像；当前可使用 `alpha-latest` 作为便捷入口，但推荐在正式发布记录和第三方设备回归时固定为明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:v3.0.0-alpha.1`
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
 - `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
@@ -212,9 +213,11 @@ docker compose -f deploy/docker-compose.yml up --build -d
 
 ## Alpha 部署建议
 
-- 第三方设备内测优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建；当前默认 `alpha-latest` 对应 `alpha` 分支最新成功构建
-- 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/ui/a`、`POST /api/stage1/convert` 与一条最终订阅读取路径
+- 第三方设备内测优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建；3.0 发布线统一以 `release/3.0` 配合版本 tag 管理
+- `alpha-latest` 只适合作为便捷入口；每轮正式回归都应记录实际对应的不可变 tag 或 commit 来源
+- 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/`、`POST /api/stage1/convert` 与一条最终订阅读取路径；如需对照，再额外验证 `/ui/a`、`/ui/b`、`/ui/c`
 - 内测设备建议保留默认命名卷 `short-link-data`，并在容器重启后确认短链仍可恢复
+- 当前 Alpha 安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
 - 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/alpha-release.md](../docs/testing/alpha-release.md)
 
 ## 边界

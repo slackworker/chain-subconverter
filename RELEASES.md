@@ -7,12 +7,13 @@
 ### 发布信息
 
 - 当前对外版本阶段：`3.0 Alpha`
-- 当前发布分支：`alpha`
-- 当前默认 UI 基线：`scheme a`
+- 当前发布线：`release/3.0`
+- 当前默认 UI 基线：`scheme default`
 - 默认应用镜像：`ghcr.io/slackworker/chain-subconverter:alpha-latest`
-- 默认访问入口：`/ui/a`
+- 推荐发布记录：`v3.0.0-alpha.N` 等不可变 tag
+- 默认访问入口：`/`
 
-`3.0 Alpha` 是当前对外内测发布线，用于收口第三方设备部署、前端主流程和恢复链路；该阶段仍不是 Beta 或正式版。
+`3.0 Alpha` 是当前对外内测发布线，用于收口第三方设备部署、前端主流程和恢复链路；该阶段仍不是 Beta 或正式版。`alpha-latest` 可继续作为便捷镜像入口，但回归记录与反馈应逐步绑定到不可变版本 tag。
 
 ### 主要变更（相对 2.0）
 
@@ -27,7 +28,7 @@
 
 ### 已知限制与边界
 
-- A/B/C UI 方案评审尚未结束，当前不把任一方案视为最终 UI。
+- 默认 `/` 已固定为 Alpha 当前对外入口；`/ui/a`、`/ui/b`、`/ui/c` 继续保留用于实验与对照，不作为 Alpha 发布阻塞项。
 - 当前版本未针对移动端进行专门适配，移动端体验不作为 Alpha 阶段验收标准。
 - Alpha 反馈仍在持续收口，尚未进入 Beta 候选冻结。
 - 对外发布、第三方设备最小回归与反馈记录模板见 [docs/testing/alpha-release.md](docs/testing/alpha-release.md)。
