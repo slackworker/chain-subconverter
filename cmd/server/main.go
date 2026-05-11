@@ -15,7 +15,13 @@ import (
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
-const httpListenNetwork = "tcp4"
+const (
+	httpListenNetwork   = "tcp4"
+	readHeaderTimeout   = 5 * time.Second
+	readTimeout         = 15 * time.Second
+	writeTimeout        = 30 * time.Second
+	idleTimeout         = 60 * time.Second
+)
 
 func main() {
 	subconverterCfg, err := config.LoadSubconverterFromEnv()
@@ -65,7 +71,10 @@ func main() {
 
 	server := &http.Server{
 		Handler:           api.WithFrontendAssets(handler, serverCfg.FrontendDistDir),
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
 	}
 
 	listener, err := listenHTTPServer(serverCfg.HTTPAddress)

@@ -18,6 +18,7 @@ const (
 	jsonContentType = "application/json; charset=utf-8"
 	yamlContentType = "text/yaml; charset=utf-8"
 	noStoreHeader   = "private, no-store"
+	maxJSONBodyBytes = 256 * 1024
 )
 
 type Handler struct {
@@ -96,7 +97,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request *http.Request) {
 	var payload service.Stage1ConvertRequest
-	if err := decodeJSONBody(request, &payload); err != nil {
+	if err := decodeJSONBody(writer, request, &payload); err != nil {
 		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
@@ -117,7 +118,7 @@ func (handler *Handler) handleRuntimeConfig(writer http.ResponseWriter, request 
 
 func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http.Request) {
 	var payload service.GenerateRequest
-	if err := decodeJSONBody(request, &payload); err != nil {
+	if err := decodeJSONBody(writer, request, &payload); err != nil {
 		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
@@ -139,7 +140,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 
 func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *http.Request) {
 	var payload service.ShortLinkRequest
-	if err := decodeJSONBody(request, &payload); err != nil {
+	if err := decodeJSONBody(writer, request, &payload); err != nil {
 		writeStage3DecodeError(writer, err)
 		return
 	}
@@ -161,7 +162,7 @@ func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *ht
 
 func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *http.Request) {
 	var payload service.ResolveURLRequest
-	if err := decodeJSONBody(request, &payload); err != nil {
+	if err := decodeJSONBody(writer, request, &payload); err != nil {
 		writeStage3DecodeError(writer, err)
 		return
 	}
@@ -358,8 +359,8 @@ func (handler *Handler) handleHealthz(writer http.ResponseWriter, _ *http.Reques
 	_, _ = writer.Write([]byte("ok\n"))
 }
 
-func decodeJSONBody(request *http.Request, target any) error {
-	decoder := json.NewDecoder(request.Body)
+func decodeJSONBody(writer http.ResponseWriter, request *http.Request, target any) error {
+	decoder := json.NewDecoder(http.MaxBytesReader(writer, request.Body, maxJSONBodyBytes))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
 		return fmt.Errorf("decode JSON body: %w", err)
