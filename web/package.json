@@ -5,10 +5,12 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
+		"dev:default": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default vite",
 		"dev:a": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=a vite",
 		"dev:b": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=b vite",
 		"dev:c": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=c vite",
 		"build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+		"build:default": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default tsc --noEmit -p tsconfig.app.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default tsc --noEmit -p tsconfig.node.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default vite build",
 		"build:a": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=a tsc --noEmit -p tsconfig.app.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=a tsc --noEmit -p tsconfig.node.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=a vite build",
 		"build:b": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=b tsc --noEmit -p tsconfig.app.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=b tsc --noEmit -p tsconfig.node.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=b vite build",
 		"build:c": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=c tsc --noEmit -p tsconfig.app.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=c tsc --noEmit -p tsconfig.node.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=c vite build",

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "main"    # 当代码推送到 main 分支时触发
-      - "alpha"   # 当代码推送到 alpha 发布分支时触发
+      - "release/3.0"   # 当代码推送到 3.0 发布分支时触发
     tags:
       - 'v*.*.*'  # 当推送形如 v1.0.0, v1.2.3 等版本标签时触发
   workflow_dispatch:
@@ -77,9 +77,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-alpha-latest: # 处理 alpha 发布分支的推送，打上 alpha-latest 标签
-    if: github.event_name == 'push' && github.ref == 'refs/heads/alpha'
-    name: Build and Push Alpha Latest Image
+  build-and-push-alpha-latest: # 处理 release/3.0 发布分支的推送，当前 Alpha 阶段打上 alpha-latest 标签
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release/3.0'
+    name: Build and Push Release 3.0 Alpha Latest Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -104,14 +104,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract metadata for Alpha Docker Image
+      - name: Extract metadata for Release 3.0 Alpha Docker Image
         id: meta_alpha
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/chain-subconverter
           tags: |
             type=raw,value=alpha-latest
-            type=sha,prefix=alpha-,format=short
+            type=sha,prefix=release-3.0-,format=short
 
       - name: Build and push Alpha Docker image
         uses: docker/build-push-action@v5
