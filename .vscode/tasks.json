@@ -97,6 +97,24 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "ui: promote scheme to default",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/promote-ui-scheme-to-default.sh",
+        "${input:promoteUISourceScheme}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ],
   "inputs": [
@@ -109,6 +127,17 @@
       "id": "devCommitMessage",
       "type": "promptString",
       "description": "Commit message (commits staged changes to local dev, clears matching current-branch changes; does not push)"
+    },
+    {
+      "id": "promoteUISourceScheme",
+      "type": "pickString",
+      "description": "Select which experimental UI scheme to copy into default",
+      "options": [
+        "a",
+        "b",
+        "c"
+      ],
+      "default": "a"
     }
   ]
 }

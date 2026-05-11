@@ -72,13 +72,27 @@ Phase 4 前端工程目录。
 
 ## 方案层装配
 
-- 当前提交是 **0 UI 起点里程碑**：仅保留共享 workflow 装配能力与可替换 scheme 骨架，不提供任何业务 UI 完整实现
-- A/B/C 方案后续页面实现必须从 `docs/spec/02-frontend-spec.md` 推导，不以本次占位页面作为行为依据
 - `src/main.tsx` 只负责按当前路由解析并装配 active scheme，不再注入共享全局样式
 - `src/App.tsx` 只负责共享 workflow 与浏览器动作桥接，不再持有默认方案页面结构
+- `src/scheme/default` 是当前默认发布入口的冻结目录；`src/scheme/a`、`src/scheme/b`、`src/scheme/c` 是 `dev` 分支上的持续演进目录
+- 各 scheme 目录必须自包含：页面入口统一由 `Page.tsx` 导出 `SchemePage`，局部样式和局部组件只放在各自目录内
+- `default` 不作为 A/B/C 的共享基类，也不在运行时 import `a|b|c` 的页面实现；默认入口切换通过“复制某个 scheme 到 default”完成
 - `src/scheme/a`、`src/scheme/b`、`src/scheme/c` 分别承载三个方案自己的页面与样式入口
 - 共享层不再提供 `index.css` 这类全局 UI baseline；每个方案从自己的 `index.css` 起步
 - `npm run build:default`、`npm run build:a`、`npm run build:b`、`npm run build:c` 可用于验证不同方案在同一共享业务层上的可构建性
+
+## Default 与 A/B/C 的关系
+
+- 当前 `default` 与 `a` 在页面实现上无实质差异；`default` 只是作为 `/` 默认入口冻结了一份来自 UI-A 的副本
+- `a`、`b`、`c` 可以继续在 `dev` 分支独立演进；只有当某个方案完成评审并确认要替换默认入口时，才把该方案整体拷贝到 `default`
+- 未来切换默认入口时，不改路由协议：`/` 继续指向 `default`，`/ui/a`、`/ui/b`、`/ui/c` 继续保留作对照入口
+
+## 提升某个方案为 Default
+
+- 命令行：在仓库根目录运行 `./scripts/promote-ui-scheme-to-default.sh <a|b|c>`
+- VS Code：运行任务 `ui: promote scheme to default`，在 GUI 里选择 `a`、`b` 或 `c`
+- 该脚本会完整复制所选 scheme 目录到 `src/scheme/default`，重写 `default/index.ts` 的默认元数据，并执行 `npm run build:default`
+- 如需先确认动作而不改文件，可运行 `./scripts/promote-ui-scheme-to-default.sh <a|b|c> --dry-run`
 
 当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。
 

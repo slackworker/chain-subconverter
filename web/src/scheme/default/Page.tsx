@@ -513,7 +513,7 @@ function WorkflowLogPanel({ entries, locale, footerCredit }: { entries: Workflow
 	);
 }
 
-export function DefaultAppPage({ workflow, outputActions, primaryBlockingFeedbackPlacement, runtimeConfig }: AppPageProps) {
+export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPlacement, runtimeConfig }: AppPageProps) {
 	const {
 		state,
 		stage2Rows,

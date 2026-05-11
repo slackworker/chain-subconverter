@@ -13,15 +13,15 @@ const schemes: Record<string, UISchemeDefinition> = Object.fromEntries(orderedSc
 async function loadUISchemePage(id: string): Promise<ComponentType<AppPageProps>> {
 	switch (id) {
 		case "default":
-			return (await import("./default/Page")).DefaultAppPage;
+			return (await import("./default/Page")).SchemePage;
 		case "a":
-			return (await import("./a/Page")).AAppPage;
+			return (await import("./a/Page")).SchemePage;
 		case "b":
-			return (await import("./b/Page")).BAppPage;
+			return (await import("./b/Page")).SchemePage;
 		case "c":
-			return (await import("./c/Page")).CAppPage;
+			return (await import("./c/Page")).SchemePage;
 		default:
-			return (await import("./default/Page")).DefaultAppPage;
+			return (await import("./default/Page")).SchemePage;
 	}
 }
 

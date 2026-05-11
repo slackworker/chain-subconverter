@@ -135,7 +135,7 @@ function Modal({
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function CAppPage({ workflow, outputActions, primaryBlockingFeedbackPlacement }: AppPageProps) {
+export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPlacement }: AppPageProps) {
 	const [showAdvanced, setShowAdvanced] = useState(false);
 	const [showSocksModal, setShowSocksModal] = useState(false);
 	const [showRelayModal, setShowRelayModal] = useState(false);

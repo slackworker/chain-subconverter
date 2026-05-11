@@ -41,6 +41,9 @@
 - 方案层可以通过注入或装配的方式提供 Stage 容器、notice renderer、status display、target chooser 等 UI 实现，但不得改变共享业务语义
 - A/B/C 方案应以 `0 UI` 为起点独立开发，不以任一既有页面壳层作为继承前提
 - 共享层严格限定为业务契约与状态语义，不包含任何 UI 壳、页面骨架或视觉容器实现
+- `web/src/scheme/default` 是默认发布入口的冻结目录，不作为 A/B/C 的共享基类；`web/src/scheme/a|b|c` 才是 `dev` 分支上的持续演进方案目录
+- 每个 scheme 目录必须保持自包含：至少由本地 `Page.tsx` 导出统一入口 `SchemePage`，并由本地 `index.ts` 声明 scheme 元数据；不得让 `default` 运行时直接 import `a|b|c` 的页面实现
+- 当需要把某个实验方案提升为默认入口时，权威动作是把该 scheme 目录整体复制到 `web/src/scheme/default`，然后仅重写 `default/index.ts` 的默认元数据；不得把 `default` 改成某个实验方案的运行时别名
 
 ### `scope` 与阶段标签
 

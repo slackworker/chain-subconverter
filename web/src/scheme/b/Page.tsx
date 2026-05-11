@@ -5,7 +5,7 @@ import { Stage3 } from "./Stage3";
 import { LogPanel } from "./LogPanel";
 import "./index.css";
 
-export function BAppPage({ workflow, outputActions }: AppPageProps) {
+export function SchemePage({ workflow, outputActions }: AppPageProps) {
 	return (
 		<div className="min-h-screen bg-[#0a0a0c] text-zinc-300 selection:bg-indigo-500/30">
 			{/* Header */}
