@@ -47,10 +47,13 @@ export interface AppPageProps {
 	runtimeConfig: RuntimeConfigResponse | null;
 }
 
-export interface UIScheme {
+export interface UISchemeDefinition {
 	id: string;
 	label: string;
 	description: string;
 	primaryBlockingFeedbackPlacement: PrimaryBlockingFeedbackPlacement;
+}
+
+export interface UIScheme extends UISchemeDefinition {
 	Page: ComponentType<AppPageProps>;
 }

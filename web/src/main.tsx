@@ -4,12 +4,14 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./global.css";
 import { UISchemeProvider } from "./lib/scheme-context";
-import { resolveUISchemeRoute } from "./scheme";
+import type { UIScheme } from "./lib/composition";
+import { resolveLoadedUIScheme, resolveUISchemeRoute } from "./scheme";
 
 function SchemeRoot() {
 	const fallbackSchemeName = import.meta.env.VITE_CHAIN_SUBCONVERTER_UI_SCHEME;
 	const basePath = import.meta.env.BASE_URL;
 	const [pathname, setPathname] = useState(() => window.location.pathname);
+	const [resolvedScheme, setResolvedScheme] = useState<UIScheme | null>(null);
 	const route = useMemo(() => resolveUISchemeRoute(pathname, basePath, fallbackSchemeName), [pathname, basePath, fallbackSchemeName]);
 
 	useEffect(() => {
@@ -27,8 +29,25 @@ function SchemeRoot() {
 		setPathname(route.canonicalPath);
 	}, [route.canonicalPath]);
 
+	useEffect(() => {
+		let cancelled = false;
+		setResolvedScheme((current) => (current?.id === route.scheme.id ? current : null));
+		resolveLoadedUIScheme(route.scheme.id).then((scheme) => {
+			if (!cancelled) {
+				setResolvedScheme(scheme);
+			}
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [route.scheme.id]);
+
+	if (resolvedScheme === null || resolvedScheme.id !== route.scheme.id) {
+		return null;
+	}
+
 	return (
-		<UISchemeProvider value={route.scheme}>
+		<UISchemeProvider value={resolvedScheme}>
 			<App />
 		</UISchemeProvider>
 	);

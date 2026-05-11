@@ -1,4 +1,6 @@
-import type { UIScheme } from "../lib/composition";
+import type { ComponentType } from "react";
+
+import type { AppPageProps, UIScheme, UISchemeDefinition } from "../lib/composition";
 import { defaultUIScheme } from "./default";
 import { aUIScheme } from "./a";
 import { bUIScheme } from "./b";
@@ -6,7 +8,22 @@ import { cUIScheme } from "./c";
 
 const fallbackUIScheme = defaultUIScheme;
 const orderedSchemes = [defaultUIScheme, aUIScheme, bUIScheme, cUIScheme];
-const schemes: Record<string, UIScheme> = Object.fromEntries(orderedSchemes.map((scheme) => [scheme.id, scheme]));
+const schemes: Record<string, UISchemeDefinition> = Object.fromEntries(orderedSchemes.map((scheme) => [scheme.id, scheme]));
+
+async function loadUISchemePage(id: string): Promise<ComponentType<AppPageProps>> {
+	switch (id) {
+		case "default":
+			return (await import("./default/Page")).DefaultAppPage;
+		case "a":
+			return (await import("./a/Page")).AAppPage;
+		case "b":
+			return (await import("./b/Page")).BAppPage;
+		case "c":
+			return (await import("./c/Page")).CAppPage;
+		default:
+			return (await import("./default/Page")).DefaultAppPage;
+	}
+}
 
 function normalizeBasePath(basePath: string | undefined) {
 	const trimmedValue = basePath?.trim() ?? "";
@@ -29,12 +46,18 @@ export function getUISchemes() {
 	return orderedSchemes;
 }
 
-export function resolveUIScheme(name: string | undefined): UIScheme {
+export function resolveUIScheme(name: string | undefined): UISchemeDefinition {
 	if (name === undefined) {
 		return fallbackUIScheme;
 	}
 
 	return schemes[name] ?? fallbackUIScheme;
+}
+
+export async function resolveLoadedUIScheme(name: string | undefined): Promise<UIScheme> {
+	const scheme = resolveUIScheme(name);
+	const Page = await loadUISchemePage(scheme.id);
+	return { ...scheme, Page };
 }
 
 export function getUISchemePath(name: string, basePath: string | undefined) {
