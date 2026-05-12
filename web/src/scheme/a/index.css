@@ -84,22 +84,38 @@
 	top: 0;
 	z-index: 40;
 	/* 抵消 .a-shell 内边距，使顶栏与 Scheme B 类似贴顶、全宽；内边距与壳层对齐 */
-	margin-block: -1.75rem 1.75rem;
+	margin-block: -1.75rem clamp(2.25rem, 5vw, 3rem);
 	margin-inline: calc(-1 * clamp(1rem, 4vw, 2.5rem));
-	padding-block: 0.4rem;
+	padding-block: clamp(0.48rem, 1.1vw, 0.65rem);
 	padding-inline: clamp(1rem, 4vw, 2.5rem);
-	border-bottom: 1px solid var(--color-line);
-	background: color-mix(in srgb, var(--color-elevated) 78%, transparent);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	box-shadow: 0 1px 0 color-mix(in srgb, var(--color-line) 55%, transparent);
+	/* 页面在顶部：透明顶栏与 .a-shell 径向光晕一体；滚动后见 .a-header--scrolled */
+	border-bottom: 1px solid color-mix(in srgb, var(--color-line) 32%, transparent);
+	background: transparent;
+	box-shadow: none;
+	transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.a-header.a-header--scrolled {
+	border-bottom: 1px solid color-mix(in srgb, var(--color-line) 38%, transparent);
+	background: color-mix(in srgb, var(--color-canvas) 82%, var(--color-elevated) 18%);
+	backdrop-filter: blur(14px) saturate(1.06);
+	-webkit-backdrop-filter: blur(14px) saturate(1.06);
+	box-shadow: 0 1px 0 color-mix(in srgb, var(--color-line) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.a-header {
+		transition: none;
+	}
 }
 
 .a-header__brand {
 	display: flex;
 	align-items: center;
-	gap: 0.65rem;
-	max-width: 42rem;
+	gap: 0.8rem;
+	flex: 1;
+	min-width: 0;
+	max-width: none;
 }
 
 .a-header__brand-icon {
@@ -111,33 +127,52 @@
 	object-fit: contain;
 }
 
+/* 顶栏品牌：主标题 + 副文案同一行衔接（与 UI-A DOM 一致：h1 + p），空间不足时副文案折行仍跟在主标题之后 */
 .a-header__brand-text {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	/* 与图标、右侧快捷区同用顶栏 cross-axis 居中；主副标题彼此用行框底对齐，避免 center 把小号副标题行框居中后显得“悬空”、行高过大 */
+	align-items: flex-end;
+	gap: 0.65rem min(1.1rem, 2.8vw);
 	min-width: 0;
+	/* 随主标题+副标题宽度收缩，不把副标题撑到品牌区右端 */
+	width: fit-content;
+	max-width: 100%;
+	/* 相对顶栏上下沿略留气，避免字重顶满条带 */
+	padding-block: 0.12rem;
 }
 
 .a-eyebrow {
-	margin: 0.18rem 0 0;
-	font-size: 0.65rem;
+	margin: 0;
+	flex-shrink: 0;
+	font-size: 0.78rem;
 	line-height: 1.2;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	color: var(--color-muted);
+	white-space: nowrap;
 }
 
 .a-title {
 	margin: 0;
-	font-size: clamp(1.1rem, 2vw, 1.35rem);
-	line-height: 1.2;
+	flex: 0 1 auto;
+	min-width: 0;
+	font-size: 1.5rem;
+	line-height: 1.18;
 	font-weight: 650;
 	letter-spacing: -0.02em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-/* 顶栏已为 sticky + blur，快捷操作仅作内联排布，不再套药丸形容器 */
+/* 顶栏 sticky 与壳层光晕一体；快捷操作仅作内联排布，不再套药丸形容器 */
 .a-scheme-nav {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: 0.5rem;
+	gap: 0.58rem;
 	padding: 0;
 	margin: 0;
 	background: none;
@@ -227,6 +262,57 @@
 .a-scheme-nav__link--active {
 	color: var(--color-on-accent);
 	background: var(--color-accent);
+}
+
+/*
+ * 窄屏顶栏（Default / A 一致）：宽度不足时隐藏副标题；首行 logo + 主标题 + 快捷按钮不换行。
+ * 使用 grid + display:contents 展平品牌区 DOM，避免 flex-wrap 把导航挤到额外行。
+ */
+@media (max-width: 720px) {
+	.a-header {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-rows: auto;
+		align-items: center;
+		column-gap: 0.65rem;
+	}
+
+	.a-header__brand {
+		display: contents;
+	}
+
+	.a-header__brand-text {
+		display: contents;
+	}
+
+	.a-header__brand-icon {
+		grid-column: 1;
+		grid-row: 1;
+		align-self: center;
+	}
+
+	.a-title {
+		grid-column: 2;
+		grid-row: 1;
+		align-self: center;
+		min-width: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		flex: unset;
+	}
+
+	.a-eyebrow {
+		display: none;
+	}
+
+	.a-scheme-nav {
+		grid-column: 3;
+		grid-row: 1;
+		flex-wrap: nowrap;
+		align-self: center;
+		flex-shrink: 0;
+	}
 }
 
 .a-panel {
@@ -582,6 +668,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 1.5rem;
+	/* 与顶栏下方 margin 叠加少量顶距，接近 B 版 main 上沿的松弛感（无额外文案占位） */
+	padding-top: clamp(0.35rem, 1.2vw, 0.85rem);
 }
 
 .a-footer {

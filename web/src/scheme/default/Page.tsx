@@ -561,6 +561,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
+	const [headerScrolled, setHeaderScrolled] = useState(false);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
 	const chainTargetMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -608,6 +609,21 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		window.localStorage.setItem(THEME_STORAGE_KEY, colorMode);
 		document.documentElement.style.colorScheme = colorMode === "dark" ? "dark" : "light";
 	}, [colorMode]);
+
+	const HEADER_SCROLL_ELEVATE_PX = 12;
+
+	useEffect(() => {
+		function readScroll() {
+			const y = window.scrollY || document.documentElement.scrollTop || 0;
+			const next = y > HEADER_SCROLL_ELEVATE_PX;
+			setHeaderScrolled((prev) => (prev === next ? prev : next));
+		}
+		readScroll();
+		window.addEventListener("scroll", readScroll, { passive: true });
+		return () => {
+			window.removeEventListener("scroll", readScroll);
+		};
+	}, []);
 
 	function submitSocks5() {
 		try {
@@ -756,7 +772,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 	return (
 		<div className={`a-shell${colorMode === "dark" ? " a-shell--dark" : ""}`}>
-			<header className="a-header">
+			<header className={`a-header${headerScrolled ? " a-header--scrolled" : ""}`}>
 				<div className="a-header__brand">
 					<img
 						className="a-header__brand-icon"
