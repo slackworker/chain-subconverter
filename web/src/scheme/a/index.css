@@ -717,7 +717,7 @@
 	gap: 0.55rem;
 }
 
-/* 步骤序号：方框线框，与右侧圆角状态胶囊区分 */
+/* 步骤序号：淡底标识，与右侧圆角状态胶囊区分 */
 .a-stage-step {
 	display: inline-flex;
 	align-items: center;
@@ -727,13 +727,13 @@
 	height: 1.55rem;
 	padding: 0 0.3rem;
 	border-radius: 0.4rem;
-	border: 1.5px solid color-mix(in srgb, var(--color-ink) 20%, var(--color-line));
-	background: var(--color-surface);
+	border: none;
+	background: var(--color-muted-fill);
 	font-size: 0.9rem;
-	font-weight: 700;
+	font-weight: 650;
 	font-variant-numeric: tabular-nums;
 	line-height: 1;
-	color: var(--color-ink);
+	color: var(--color-muted);
 	cursor: default;
 }
 
