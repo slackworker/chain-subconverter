@@ -22,6 +22,10 @@
 
 该目录固定保存以下基线材料：
 
+- `stage1/input/landing.txt`
+- `stage1/input/transit.txt`
+- `stage1/input/forward-relays.txt`
+- `stage1/input/advanced-options.yaml`
 - `stage1/output/landing-discovery.*`
 - `stage1/output/transit-discovery.*`
 - `stage1/output/full-base.*`

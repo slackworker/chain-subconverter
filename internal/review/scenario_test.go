@@ -34,8 +34,8 @@ func TestLoadCase_DefaultExample(t *testing.T) {
 	if testCase.Stage1Input.AdvancedOptions.SkipCertVerify != nil {
 		t.Fatal("SkipCertVerify placeholder should stay omitted")
 	}
-	if testCase.Stage1Input.AdvancedOptions.Config != nil {
-		t.Fatalf("Config = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Config)
+	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Config, "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini") {
+		t.Fatalf("Config = %v, want tracked default template URL", testCase.Stage1Input.AdvancedOptions.Config)
 	}
 	if testCase.Stage1Input.AdvancedOptions.Include != nil {
 		t.Fatalf("Include = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Include)

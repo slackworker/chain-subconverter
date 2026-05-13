@@ -1,0 +1,6 @@
+emoji: true
+udp: true
+skipCertVerify:
+config: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini
+include:
+exclude:
