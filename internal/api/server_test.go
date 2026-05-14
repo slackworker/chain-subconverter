@@ -865,7 +865,7 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 	}
 	templateStore := service.NewInMemoryTemplateContentStore()
 
-	managedSource, err := service.NewManagedConversionSource(client, templateStore, "http://internal.example.com/base", time.Second, service.ManagedConversionSourceOptions{})
+	managedSource, err := service.NewManagedConversionSource(client, templateStore, "http://internal.example.com/base", time.Second, service.ManagedConversionSourceOptions{AllowPrivateNetworks: true})
 	if err != nil {
 		t.Fatalf("NewManagedConversionSource() error = %v", err)
 	}

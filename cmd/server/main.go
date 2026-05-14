@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	httpListenNetwork   = "tcp4"
-	readHeaderTimeout   = 5 * time.Second
-	readTimeout         = 15 * time.Second
-	writeTimeout        = 30 * time.Second
-	idleTimeout         = 60 * time.Second
+	httpListenNetwork = "tcp4"
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 15 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 60 * time.Second
 )
 
 func main() {
@@ -54,6 +54,7 @@ func main() {
 		DefaultTemplateURL:           serverCfg.DefaultTemplateURL,
 		DefaultTemplateFetchCacheTTL: serverCfg.DefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        serverCfg.TemplateFetchCacheTTL,
+		AllowPrivateNetworks:         serverCfg.TemplateAllowPrivateNetworks,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init managed conversion source: %v\n", err)

@@ -23,6 +23,8 @@ HOST_PORT="11200"
 # PUBLIC_BASE_URL 可选：直连局域网或其他单入口部署通常无需配置，服务端会按请求来源自动推断。
 # 仅在 HTTPS 反代/公网域名、多入口或需要固定发布地址时填写，例如 https://example.com；若直接暴露端口，可用 http://<设备IP>:11200。
 # PUBLIC_BASE_URL=""
+# 默认会拒绝拉取指向私网/loopback 的模板 URL；只有在可信自部署环境且确实需要内网模板源时，才显式开启：
+# TEMPLATE_ALLOW_PRIVATE_NETWORKS="false"
 # 推荐在正式记录里同时记下本次实际使用的不可变版本 tag，例如 v3.0.0-alpha.1。
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
@@ -54,6 +56,8 @@ services:
       # PUBLIC_BASE_URL 可选；直连局域网通常留空，HTTPS 反代/公网域名或多入口场景再显式填写。
       # 若需固定发布地址，取消注释并填入实际可访问地址（例如 https://example.com）：
       # CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
+      # 仅在可信内网环境且模板 URL 需要指向私网/loopback 地址时才开启：
+      # CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS: "${TEMPLATE_ALLOW_PRIVATE_NETWORKS}"
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: "${DEFAULT_TEMPLATE_URL}"
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
@@ -176,12 +180,14 @@ docker compose -f deploy/docker-compose.yml up --build -d
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
 - `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
+- `TEMPLATE_ALLOW_PRIVATE_NETWORKS`：**默认关闭**。服务端默认拒绝拉取指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL；只有在可信自部署环境且确实需要访问内网模板源时，才显式设为 `true`
 
 生成后的 `docker-compose.yml` 当前涉及两类配置：
 
 - 传给 `app` 的运行时环境变量
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
   - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源推断，适用于直连局域网或 DDNS 等单入口部署。若前端有反代做 HTTPS 终止，或需固定发布地址，按实际可访问地址填入（`https://` 或 `http://`），不要填容器内地址
+  - `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=false`：默认拒绝指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL。仅当部署者明确知道模板源位于可信内网，且接受相应 SSRF 风险边界时才改为 `true`
   - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值，同时通过 `/api/runtime-config` 供前端填入 `advancedOptions.config`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`
@@ -202,6 +208,8 @@ docker compose -f deploy/docker-compose.yml up --build -d
 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 不是同一个概念：前者给浏览器和最终链接使用，后者只给容器内的 `subconverter` 回连托管模板使用。第三方设备部署时，不要把前者写成 `http://app:11200`，也不要把后者改成宿主机 IP。
 
 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL` 必须是 HTTP(S) URL。前端会把它作为普通模板 URL 写入阶段 1 输入快照、生成请求与长链接载荷。当请求中的模板 URL 等于该部署默认值时，模板成功拉取并通过解析后会进入默认模板缓存；后续刷新失败时，服务可使用此前验证通过的缓存继续完成转换，并在支持 `messages[]` 的接口响应中返回 warning。若没有可用缓存，仍会返回 `TEMPLATE_CONFIG_UNAVAILABLE`。
+
+默认情况下，模板 URL 若解析到 loopback、link-local、RFC1918/ULA、多播或未指定地址，会在服务端被直接拒绝，返回输入非法错误；这样可以避免把模板抓取能力直接暴露为私网探测入口。只有在可信自部署环境且模板源本来就位于内网时，才应显式设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
 
 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` 控制显式模板 URL 等于部署默认模板 URL 时的上游抓取缓存 TTL；默认即为非零值，用于降低默认路径在公开部署或意外暴露场景下对模板上游的重复请求压力。当前 Compose preview 显式设为 `5m`。
 

@@ -21,6 +21,7 @@ const (
 	DefaultDefaultTemplateURL           = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
+	DefaultTemplateAllowPrivateNetworks = false
 
 	EnvHTTPAddress                  = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL                = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
@@ -34,6 +35,7 @@ const (
 	EnvDefaultTemplateURL           = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL"
 	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
+	EnvTemplateAllowPrivateNetworks = "CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS"
 )
 
 type Server struct {
@@ -49,6 +51,7 @@ type Server struct {
 	DefaultTemplateURL           string
 	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL        time.Duration
+	TemplateAllowPrivateNetworks bool
 }
 
 func DefaultServer() Server {
@@ -65,6 +68,7 @@ func DefaultServer() Server {
 		DefaultTemplateURL:           DefaultDefaultTemplateURL,
 		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
+		TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
 	}
 }
 
@@ -130,6 +134,13 @@ func LoadServerFromEnv() (Server, error) {
 			return Server{}, fmt.Errorf("parse %s: %w", EnvTemplateFetchCacheTTL, err)
 		}
 		cfg.TemplateFetchCacheTTL = templateFetchCacheTTL
+	}
+	if value, ok := lookupTrimmedEnv(EnvTemplateAllowPrivateNetworks); ok {
+		templateAllowPrivateNetworks, err := strconv.ParseBool(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvTemplateAllowPrivateNetworks, err)
+		}
+		cfg.TemplateAllowPrivateNetworks = templateAllowPrivateNetworks
 	}
 
 	if err := cfg.Validate(); err != nil {

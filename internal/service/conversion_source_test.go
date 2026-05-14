@@ -256,7 +256,9 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	source, err := NewManagedConversionSource(client, templateStore, internalTemplateServer.URL, time.Second, ManagedConversionSourceOptions{})
+	source, err := NewManagedConversionSource(client, templateStore, internalTemplateServer.URL, time.Second, ManagedConversionSourceOptions{
+		AllowPrivateNetworks: true,
+	})
 	if err != nil {
 		t.Fatalf("NewManagedConversionSource() error = %v", err)
 	}
@@ -316,6 +318,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 			DefaultTemplateURL:           defaultURL,
 			DefaultTemplateFetchCacheTTL: defaultTTL,
 			TemplateFetchCacheTTL:        ttl,
+			AllowPrivateNetworks:         true,
 		})
 		if err != nil {
 			t.Fatalf("NewManagedConversionSource() error = %v", err)
@@ -373,6 +376,47 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 					t.Fatalf("blocking error = %+v, want INVALID_REQUEST stage1_field config", blockingError)
 				}
 			}
+		}
+	})
+
+	t.Run("rejects private template URL by default", func(t *testing.T) {
+		dummySubconverter := httptest.NewServer(http.NotFoundHandler())
+		defer dummySubconverter.Close()
+
+		client, err := subconverter.NewClient(config.Subconverter{
+			BaseURL:     dummySubconverter.URL + "/sub?",
+			Timeout:     time.Second,
+			MaxInFlight: 1,
+		})
+		if err != nil {
+			t.Fatalf("NewClient() error = %v", err)
+		}
+
+		source, err := NewManagedConversionSource(client, NewInMemoryTemplateContentStore(), "http://internal.example.com", time.Second, ManagedConversionSourceOptions{})
+		if err != nil {
+			t.Fatalf("NewManagedConversionSource() error = %v", err)
+		}
+
+		_, err = source.PrepareConversion(context.Background(), Stage1Input{
+			AdvancedOptions: AdvancedOptions{Config: stringPtr("http://127.0.0.1/private.ini")},
+		})
+		if err == nil {
+			t.Fatal("PrepareConversion() error = nil, want invalid request for private template URL")
+		}
+
+		responseErr, ok := AsResponseError(err)
+		if !ok {
+			t.Fatalf("PrepareConversion() error = %T, want ResponseError", err)
+		}
+		if responseErr.StatusCode() != http.StatusBadRequest {
+			t.Fatalf("status code = %d, want %d", responseErr.StatusCode(), http.StatusBadRequest)
+		}
+		blockingError := responseErr.BlockingError()
+		if blockingError.Code != "INVALID_REQUEST" || blockingError.Scope != "stage1_field" || blockingError.Context["field"] != "config" {
+			t.Fatalf("blocking error = %+v, want INVALID_REQUEST stage1_field config", blockingError)
+		}
+		if !strings.Contains(blockingError.Message, "private or loopback") {
+			t.Fatalf("blocking error message = %q, want private-or-loopback hint", blockingError.Message)
 		}
 	})
 

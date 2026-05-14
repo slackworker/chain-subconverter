@@ -13,7 +13,7 @@
 
 1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
 2. 按主题进入前端、API、业务规则、技术约束。
-3. 需要了解当前执行计划、发布节奏或阶段缺口时，先读 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) 与 [progress/STATUS](progress/STATUS.md)。
+3. 需要了解当前执行计划、发布节奏或阶段缺口时，先读 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)、[progress/STATUS](progress/STATUS.md) 与 [progress/beta-readiness](progress/beta-readiness.md)。
 4. 只有在需要了解整体历史阶段划分或本地联调流程时，再读 [ROADMAP](ROADMAP.md) 与 `testing/` 文档。
 
 ## 目录约定
@@ -47,6 +47,7 @@
 |------|------|
 | [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) | 当前执行计划：`release/3.0` 发布线、Alpha 收口工作流、后续 Beta/GA 预埋 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已稳定范围、当前缺口与最近验证 |
+| [progress/beta-readiness](progress/beta-readiness.md) | Beta 发布缺口评估：Alpha 收口剩余项、Beta 门禁与推荐推进顺序 |
 | [ROADMAP](ROADMAP.md) | 推进路线图：Phase 划分、依赖关系与推荐下一步 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 启动与 smoke runbook：固定入口、最小检查项与常见排障 |

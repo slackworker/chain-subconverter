@@ -20,6 +20,7 @@ type ManagedConversionSourceOptions struct {
 	DefaultTemplateURL           string
 	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL        time.Duration
+	AllowPrivateNetworks         bool
 }
 
 type ManagedConversionSource struct {
@@ -30,6 +31,7 @@ type ManagedConversionSource struct {
 	defaultTemplateURL        string
 	defaultTemplateFetchCache *templateFetchCache
 	templateFetchCache        *templateFetchCache
+	allowPrivateNetworks      bool
 }
 
 func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, managedTemplateBaseURL string, templateTimeout time.Duration, options ManagedConversionSourceOptions) (*ManagedConversionSource, error) {
@@ -68,10 +70,11 @@ func NewManagedConversionSource(client *subconverter.Client, templateStore Templ
 		client:                    client,
 		templateStore:             templateStore,
 		managedTemplateBaseURL:    parsedBaseURL,
-		httpClient:                &http.Client{Timeout: templateTimeout},
+		httpClient:                newTemplateFetchHTTPClient(templateTimeout, options.AllowPrivateNetworks),
 		defaultTemplateURL:        parsedDefaultTemplateURL.String(),
 		defaultTemplateFetchCache: newTemplateFetchCache(options.DefaultTemplateFetchCacheTTL),
 		templateFetchCache:        newTemplateFetchCache(options.TemplateFetchCacheTTL),
+		allowPrivateNetworks:      options.AllowPrivateNetworks,
 	}, nil
 }
 
@@ -196,6 +199,14 @@ func templateFetchMessages(usedStaleTemplate bool) []Message {
 }
 
 func (source *ManagedConversionSource) fetchTemplateConfigFromUpstream(ctx context.Context, templateURL string, isDefaultTemplate bool) (string, error) {
+	parsedURL, err := url.Parse(templateURL)
+	if err != nil {
+		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
+	}
+	if err := validateTemplateFetchTarget(ctx, parsedURL.Hostname(), source.allowPrivateNetworks); err != nil {
+		return "", newStage1FieldInvalidRequestError("config must not target private or loopback addresses", "config", err)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, templateURL, nil)
 	if err != nil {
 		return "", newStage1FieldInvalidRequestError("config must be a valid HTTP(S) template URL", "config", err)
@@ -259,6 +270,110 @@ func buildTemplateConfigUnavailableMessage(templateURL string, isDefaultTemplate
 func isNetworkTimeout(err error) bool {
 	var netErr net.Error
 	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+var blockedTemplateFetchCIDRs = mustParseCIDRs(
+	"127.0.0.0/8",
+	"::1/128",
+	"169.254.0.0/16",
+	"fe80::/10",
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"fc00::/7",
+	"0.0.0.0/8",
+	"224.0.0.0/4",
+)
+
+func newTemplateFetchHTTPClient(timeout time.Duration, allowPrivateNetworks bool) *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	dialer := &net.Dialer{Timeout: timeout}
+
+	if !allowPrivateNetworks {
+		transport.DialContext = func(ctx context.Context, network string, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+
+			targets, err := resolveAllowedTemplateFetchTargets(ctx, host, port)
+			if err != nil {
+				return nil, err
+			}
+
+			var lastErr error
+			for _, target := range targets {
+				conn, err := dialer.DialContext(ctx, network, target)
+				if err == nil {
+					return conn, nil
+				}
+				lastErr = err
+			}
+
+			if lastErr != nil {
+				return nil, lastErr
+			}
+			return nil, fmt.Errorf("template fetch target is unavailable")
+		}
+	}
+
+	return &http.Client{Timeout: timeout, Transport: transport}
+}
+
+func validateTemplateFetchTarget(ctx context.Context, hostname string, allowPrivateNetworks bool) error {
+	if allowPrivateNetworks {
+		return nil
+	}
+
+	trimmedHost := strings.TrimSpace(hostname)
+	if trimmedHost == "" {
+		return fmt.Errorf("missing host")
+	}
+
+	_, err := resolveAllowedTemplateFetchTargets(ctx, trimmedHost, "80")
+	return err
+}
+
+func resolveAllowedTemplateFetchTargets(ctx context.Context, hostname string, port string) ([]string, error) {
+	resolvedIPs, err := net.DefaultResolver.LookupIPAddr(ctx, hostname)
+	if err != nil {
+		return nil, err
+	}
+
+	allowedTargets := make([]string, 0, len(resolvedIPs))
+	for _, resolvedIP := range resolvedIPs {
+		if isBlockedTemplateFetchIP(resolvedIP.IP) {
+			continue
+		}
+		allowedTargets = append(allowedTargets, net.JoinHostPort(resolvedIP.IP.String(), port))
+	}
+
+	if len(allowedTargets) == 0 {
+		return nil, fmt.Errorf("template URL host %q resolves only to blocked addresses", hostname)
+	}
+
+	return allowedTargets, nil
+}
+
+func isBlockedTemplateFetchIP(ip net.IP) bool {
+	for _, blockedNetwork := range blockedTemplateFetchCIDRs {
+		if blockedNetwork.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func mustParseCIDRs(values ...string) []*net.IPNet {
+	networks := make([]*net.IPNet, 0, len(values))
+	for _, value := range values {
+		_, network, err := net.ParseCIDR(value)
+		if err != nil {
+			panic(err)
+		}
+		networks = append(networks, network)
+	}
+	return networks
 }
 
 func (source *ManagedConversionSource) buildManagedTemplateURL(id string) (string, error) {

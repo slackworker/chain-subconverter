@@ -36,16 +36,19 @@
 
 ## 当前缺口
 
-- 发布自动化、文档与 runbook 里仍残留 `alpha` 分支口径，尚未全部切换到 `release/3.0` + tag 驱动模型。
+- 发布自动化、文档与 runbook 的主入口已切到 `release/3.0` + tag 驱动模型，但仍有少量尾部说明和辅助材料待继续清理。
 - B/C 方案尚未把新的 workflow log 视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
-- PR / push 级 CI 守门尚未补齐，正式本地预览 / Compose 单入口验收也尚未形成稳定的版本化发布节奏。
+- PR / push 级 CI 守门已补齐，但正式本地预览 / Compose 单入口验收仍未形成稳定的版本化发布节奏。
+- 模板 URL 已补上最小 SSRF 拒绝名单与显式放行开关，但 `RequirePublicBaseURL`、通用限速与更严格的出站控制仍未落地。
 - Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - Alpha 发布、最小回归顺序与反馈记录入口已固定到 [testing/alpha-release](../testing/alpha-release.md)，后续回归记录应按该文档执行。
 - 当前执行计划见 [plan/3.0-alpha-cutover](../plan/3.0-alpha-cutover.md)。
+- Beta 发布缺口评估见 [progress/beta-readiness](beta-readiness.md)。
 
 ## 最近验证
 
+- `2026-05-14`: `go test ./internal/service ./internal/config ./internal/api ./cmd/server`
 - `2026-05-05`: `cd web && npm run build:a`
 - `2026-05-05`: `cd web && npm run build:b && npm run build:c`
 - `2026-05-01`: `cd web && npm run build:b`
@@ -64,6 +67,7 @@
 - 阶段顺序与整体路线：[`docs/ROADMAP.md`](../ROADMAP.md)
 - 权威边界与契约：[`docs/spec/`](../spec/)
 - 当前执行计划：[`docs/plan/3.0-alpha-cutover.md`](../plan/3.0-alpha-cutover.md)
+- Beta 发布缺口评估：[`docs/progress/beta-readiness.md`](beta-readiness.md)
 - 本地 UI 启动与 smoke 入口：[`docs/testing/local-dev-smoke.md`](../testing/local-dev-smoke.md)
 - Alpha 发布与反馈闭环：[`docs/testing/alpha-release.md`](../testing/alpha-release.md)
 - 第三方设备 Compose 启动命令：[`deploy/README.md`](../../deploy/README.md)

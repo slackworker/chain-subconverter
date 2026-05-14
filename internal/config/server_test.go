@@ -38,6 +38,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvDefaultTemplateURL:           "  https://templates.example.com/default.ini  ",
 				EnvDefaultTemplateFetchCacheTTL: " 30m ",
 				EnvTemplateFetchCacheTTL:        " 5m ",
+				EnvTemplateAllowPrivateNetworks: " true ",
 			},
 			want: Server{
 				HTTPAddress:                  ":11300",
@@ -52,6 +53,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				DefaultTemplateURL:           "https://templates.example.com/default.ini",
 				DefaultTemplateFetchCacheTTL: 30 * time.Minute,
 				TemplateFetchCacheTTL:        5 * time.Minute,
+				TemplateAllowPrivateNetworks: true,
 			},
 		},
 		{
@@ -88,6 +90,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvTemplateFetchCacheTTL: "bad",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL",
+		},
+		{
+			name: "invalid template allow private networks",
+			env: map[string]string{
+				EnvTemplateAllowPrivateNetworks: "bad",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS",
 		},
 		{
 			name: "invalid managed template base url",
@@ -344,6 +353,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvDefaultTemplateURL, "")
 	t.Setenv(EnvDefaultTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateFetchCacheTTL, "")
+	t.Setenv(EnvTemplateAllowPrivateNetworks, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)
