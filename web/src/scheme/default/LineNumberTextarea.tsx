@@ -48,7 +48,9 @@ export function LineNumberTextarea({
 		const gutterWidth = gutter.offsetWidth;
 		const minContentWidth = Math.max(shell.clientWidth - gutterWidth, 0);
 		ta.style.width = `${minContentWidth}px`;
-		ta.style.width = `${Math.max(minContentWidth, ta.scrollWidth)}px`;
+		if (value !== "") {
+			ta.style.width = `${Math.max(minContentWidth, ta.scrollWidth)}px`;
+		}
 
 		gutter.style.height = "";
 		ta.style.height = "";
