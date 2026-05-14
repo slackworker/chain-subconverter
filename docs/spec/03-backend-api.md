@@ -186,11 +186,13 @@
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
+- `RATE_LIMITED` 用于写接口命中服务端 per-IP 限速；当前只用于 `POST /api/stage1/convert`、`POST /api/generate`、`POST /api/short-links`、`POST /api/resolve-url`，必须返回 `scope = global`，可返回 `retryable = true`
 
 ### 5. HTTP 状态码
 
 - `200`：请求成功；`blockingErrors[]` 必须为空
 - `400`：请求体结构、字段类型或 URL 形态不符合接口契约；`blockingErrors[]` 必须包含 `INVALID_REQUEST` 或 `INVALID_URL`
+- `429`：写接口命中服务端限速；`blockingErrors[]` 必须包含 `RATE_LIMITED`
 - `422`：请求体结构合法，但业务校验未通过；`blockingErrors[]` 必须非空
 - `503`：依赖暂时不可用；`blockingErrors[]` 必须非空；若返回 `retryable`，其值必须为 `true`
 - `500`：未知内部错误；`blockingErrors[]` 必须非空
@@ -279,6 +281,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
+- `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`、`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`
 - `INVALID_FORWARD_RELAY_LINE`、`DUPLICATE_FORWARD_RELAY`：都必须返回 `scope = stage1_field` 与 `context.field = forwardRelayItems`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
@@ -356,6 +359,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
+- `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`LONG_URL_TOO_LONG`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
@@ -420,6 +424,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
+- `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`INVALID_LONG_URL`、`LONG_URL_TOO_LONG`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
@@ -467,6 +472,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
+- `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`、`LONG_URL_TOO_LONG`；三者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`

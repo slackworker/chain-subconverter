@@ -13,7 +13,7 @@
 当前实现默认假设以下条件成立：
 
 - 由部署者自行控制运行环境与访问入口。
-- `app` 与 `subconverter` 通过同一 Compose 编排运行，`subconverter` 不对外暴露。
+- 默认使用一体化 Compose 内部部署，或在双 Docker 分离部署时仍保持 `app` 与 `subconverter` 之间只通过私有可达地址通信；`subconverter` 不对外暴露。
 - 若存在 HTTPS 反向代理、固定域名或多入口访问，部署者会显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`。
 - 短链接数据通过持久卷保存；无卷的临时预览环境只适合无状态测试。
 
@@ -69,12 +69,12 @@
 
 - 阶段 1 输入长度、URL 数量、长链接长度均有上限。
 - `subconverter` 调用有超时与并发上限。
+- 四个写接口共享每 IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整；设为 `0` 可关闭。
 - 默认模板路径有单独缓存 TTL。
 - Compose 部署默认把短链接 SQLite 文件放到持久卷。
 
 当前仍未内建：
 
-- 通用 rate limiting
 - 审计日志与安全告警
 - 安全响应头策略
 - 反向代理可信链识别
@@ -93,6 +93,7 @@
 6. 限制可访问人群；不要把当前 Alpha 直接视作公开互联网服务。
 7. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
 8. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
+9. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先结合反代或网关层继续限速。
 
 ## 当前不承诺防护的内容
 

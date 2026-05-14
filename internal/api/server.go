@@ -29,6 +29,7 @@ type Handler struct {
 	defaultTemplateURL  string
 	maxLongURLLength    int
 	inputLimits         service.InputLimits
+	writeRateLimiter    *ipRateLimiter
 	managedTemplatePath string
 	shortSubPath        string
 	subPath             string
@@ -43,7 +44,7 @@ type runtimeConfigResponse struct {
 	DefaultTemplateURL string `json:"defaultTemplateURL"`
 }
 
-func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits) (*Handler, error) {
+func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits, options ...HandlerOption) (*Handler, error) {
 	if source == nil {
 		return nil, fmt.Errorf("conversion source must not be nil")
 	}
@@ -75,12 +76,17 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 		shortSubPath:        shortSubPath,
 		subPath:             subPath,
 	}
+	for _, option := range options {
+		if option != nil {
+			option(handler)
+		}
+	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/stage1/convert", handler.handleStage1Convert)
-	mux.HandleFunc("POST /api/generate", handler.handleGenerate)
-	mux.HandleFunc("POST /api/short-links", handler.handleShortLinks)
-	mux.HandleFunc("POST /api/resolve-url", handler.handleResolveURL)
+	mux.HandleFunc("POST /api/stage1/convert", handler.rateLimitWrite(handler.handleStage1Convert))
+	mux.HandleFunc("POST /api/generate", handler.rateLimitWrite(handler.handleGenerate))
+	mux.HandleFunc("POST /api/short-links", handler.rateLimitWrite(handler.handleShortLinks))
+	mux.HandleFunc("POST /api/resolve-url", handler.rateLimitWrite(handler.handleResolveURL))
 	mux.HandleFunc("GET /api/runtime-config", handler.handleRuntimeConfig)
 	mux.HandleFunc(managedTemplatePath, handler.handleManagedTemplate)
 	mux.HandleFunc("GET "+shortSubPath, handler.handleShortSubscription)
@@ -93,6 +99,22 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	handler.mux.ServeHTTP(writer, request)
+}
+
+func (handler *Handler) rateLimitWrite(next http.HandlerFunc) http.HandlerFunc {
+	if handler.writeRateLimiter == nil {
+		return next
+	}
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if handler.writeRateLimiter.allow(clientIPAddress(request.RemoteAddr)) {
+			next(writer, request)
+			return
+		}
+
+		retryable := true
+		writeBlockingError(writer, http.StatusTooManyRequests, "RATE_LIMITED", "rate limit exceeded", "global", nil, &retryable)
+	}
 }
 
 func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request *http.Request) {

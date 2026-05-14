@@ -13,6 +13,7 @@ const (
 	DefaultPublicBaseURL                = "http://localhost:11200"
 	DefaultManagedTemplateBaseURL       = DefaultPublicBaseURL
 	DefaultFrontendDistDir              = "web/dist"
+	DefaultWriteRequestsPerMinute       = 60
 	DefaultMaxLongURLLength             = 8192
 	DefaultMaxInputSize                 = 2048
 	DefaultMaxURLsPerField              = 20
@@ -28,6 +29,7 @@ const (
 	EnvPublicBaseURL                = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
 	EnvManagedTemplateBaseURL       = "CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL"
 	EnvFrontendDistDir              = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
+	EnvWriteRequestsPerMinute       = "CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE"
 	EnvMaxLongURLLength             = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
 	EnvMaxInputSize                 = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
 	EnvMaxURLsPerField              = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
@@ -45,6 +47,7 @@ type Server struct {
 	PublicBaseURL                string
 	ManagedTemplateBaseURL       string
 	FrontendDistDir              string
+	WriteRequestsPerMinute       int
 	MaxLongURLLength             int
 	MaxInputSize                 int
 	MaxURLsPerField              int
@@ -63,6 +66,7 @@ func DefaultServer() Server {
 		PublicBaseURL:                "",
 		ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
 		FrontendDistDir:              DefaultFrontendDistDir,
+		WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
 		MaxLongURLLength:             DefaultMaxLongURLLength,
 		MaxInputSize:                 DefaultMaxInputSize,
 		MaxURLsPerField:              DefaultMaxURLsPerField,
@@ -90,6 +94,13 @@ func LoadServerFromEnv() (Server, error) {
 	}
 	if value, ok := lookupTrimmedEnv(EnvFrontendDistDir); ok {
 		cfg.FrontendDistDir = value
+	}
+	if value, ok := lookupTrimmedEnv(EnvWriteRequestsPerMinute); ok {
+		writeRequestsPerMinute, err := strconv.Atoi(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvWriteRequestsPerMinute, err)
+		}
+		cfg.WriteRequestsPerMinute = writeRequestsPerMinute
 	}
 	if value, ok := lookupTrimmedEnv(EnvMaxLongURLLength); ok {
 		maxLongURLLength, err := strconv.Atoi(value)
@@ -166,6 +177,9 @@ func (cfg Server) Validate() error {
 	}
 	if strings.TrimSpace(cfg.FrontendDistDir) == "" {
 		return fmt.Errorf("frontend dist dir must not be empty")
+	}
+	if cfg.WriteRequestsPerMinute < 0 {
+		return fmt.Errorf("write requests per minute must not be negative")
 	}
 	if cfg.MaxLongURLLength <= 0 {
 		return fmt.Errorf("max long URL length must be greater than zero")

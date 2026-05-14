@@ -16,7 +16,7 @@
 | `3d72cf2` | 模板 URL 默认拒绝私网/loopback 地址 |
 | `26f9762` | `RequirePublicBaseURL` 启动闸门 |
 
-- **工作区状态**：干净，无未暂存或未跟踪改动。
+- **工作区状态**：有未提交改动（四 API per-IP rate limiting + 文档同步）。
 
 ## 本轮已完成
 
@@ -34,14 +34,15 @@
 
 ### 3. 安全 hardening — 已完成（W3）
 
-以下三项代码已落地、测试已通过、部署文档已同步：
+以下五项代码已落地、测试已通过、部署文档已同步：
 
 | 项 | 文件 | 说明 |
 |----|------|------|
 | JSON body 上限 | `internal/api/server.go` | `decodeJSONBody` 统一限制 256 KiB |
 | HTTP 服务超时 | `cmd/server/main.go` | `ReadTimeout 15s / WriteTimeout 30s / IdleTimeout 60s` |
 | 模板 URL 私网拦截 | `internal/service/managed_conversion_source.go` | 默认拒绝 loopback/link-local/RFC1918/ULA/multicast/unspecified；`CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true` 显式放行 |
-| PUBILC_BASE_URL 启动闸门 | `internal/config/server.go` | `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true` 时，未设 PUBLIC_BASE_URL 则启动失败 |
+| PUBLIC_BASE_URL 启动闸门 | `internal/config/server.go` | `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true` 时，未设 PUBLIC_BASE_URL 则启动失败 |
+| 四 API 基础限速 | `internal/api/rate_limit.go`、`internal/config/server.go` | `POST /api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url` 共享 per-IP token bucket；默认 `60 req/min`，`CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE=0` 可关闭 |
 
 ### 4. 安全文档化
 
@@ -54,12 +55,17 @@
 - `deploy/README.md` 已补充“双 Docker 分离部署（可选）”口径：允许独立 Docker 化 `subconverter`，但要求显式保证 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 的双向可达性。
 - `docs/spec/05-tech-stack.md`、`docs/testing/alpha-release.md`、`docs/progress/STATUS.md` 已同步更新为“默认一体化 Compose，允许双 Docker 分离部署”的一致口径。
 
+### 6. 四 API 最小 rate limiting
+
+- `internal/api/rate_limit.go` 已落地最简 per-IP token bucket，覆盖 `POST /api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url`。
+- `internal/config/server.go` 新增 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE`；默认 `60`，设为 `0` 可关闭。
+- `docs/spec/03-backend-api.md`、`deploy/README.md`、`SECURITY.md`、`docs/progress/STATUS.md` 已同步更新 `429 RATE_LIMITED` 与部署变量口径。
+
 ## 本轮未完成（接手后优先推进）
 
 ### 紧邻最高优先
 
-1. **四 API 最小 rate limiting**：`/api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url` 目前无任何限速。建议用 `golang.org/x/time/rate` 做 per-IP token bucket，默认 60 req/min，可由 env 关闭。
-2. **旧文档清理**：`docs/plan/phase-4-*` 应从主导航降级或移走；`_legacy/` 应迁出仓库（打 tag 后删除）；`docs/temp/` 内已 gitignore 的临时文件需清理。
+1. **旧文档清理**：`docs/plan/phase-4-*` 应从主导航降级或移走；`_legacy/` 应迁出仓库（打 tag 后删除）；`docs/temp/` 内已 gitignore 的临时文件需清理。
 
 ### 中优先
 
@@ -69,7 +75,7 @@
 
 ### 低优先 / 跟踪项
 
-7. 旧 `phase-4-dev-readiness.md` 仍有 `alpha` 分支旧口径，虽已降级为历史参考但建议直接修正或移走。
+6. 旧 `phase-4-dev-readiness.md` 仍有 `alpha` 分支旧口径，虽已降级为历史参考但建议直接修正或移走。
 7. `deploy/docker-compose.yml` 中 `subconverter:integration-chain-subconverter` 是浮动 tag，建议在 runbook 记录已验证版本与回滚方式（不强制 digest 锁定）。
 8. 前端无单元/E2E 测试框架；当前仅靠 TypeScript 编译校验。
 
@@ -93,12 +99,17 @@
 | 安全配置解析 | `internal/config/server.go` |
 | 服务启动 | `cmd/server/main.go` |
 | API 请求体限制 | `internal/api/server.go`（`maxJSONBodyBytes`） |
+| API 限速实现 | `internal/api/rate_limit.go` |
 
 ## 验证命令
 
 ```bash
 # 全量 Go 测试
 go test ./...
+
+# 本轮限速相关最小验证
+go test ./internal/api -run TestStage1ConvertHandler_RateLimitsByClientIP
+go test ./internal/api ./internal/config ./cmd/server
 
 # 四 scheme 前端构建
 cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c

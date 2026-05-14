@@ -28,6 +28,8 @@ HOST_PORT="11200"
 # REQUIRE_PUBLIC_BASE_URL="false"
 # 默认会拒绝拉取指向私网/loopback 的模板 URL；只有在可信自部署环境且确实需要内网模板源时，才显式开启：
 # TEMPLATE_ALLOW_PRIVATE_NETWORKS="false"
+# 默认四个写接口共用 per-IP token bucket；设为 0 可关闭，仅建议本地调试时使用：
+# WRITE_REQUESTS_PER_MINUTE="60"
 # 推荐在正式记录里同时记下本次实际使用的不可变版本 tag，例如 v3.0.0-alpha.1。
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
@@ -65,6 +67,8 @@ services:
       # CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL: "${REQUIRE_PUBLIC_BASE_URL}"
       # 仅在可信内网环境且模板 URL 需要指向私网/loopback 地址时才开启：
       # CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS: "${TEMPLATE_ALLOW_PRIVATE_NETWORKS}"
+      # 设为 0 可关闭；默认建议保留：
+      # CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE: "${WRITE_REQUESTS_PER_MINUTE}"
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: "${DEFAULT_TEMPLATE_URL}"
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
@@ -179,6 +183,7 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 - `SUBCONVERTER_IMAGE`
 - `HOST_PORT`
 - `PUBLIC_BASE_URL`
+- `WRITE_REQUESTS_PER_MINUTE`
 - `SHORT_LINK_CAPACITY`
 - 其他 `app` 环境变量
 
@@ -224,6 +229,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
 - `SHORT_LINK_CAPACITY`：短链接索引容量
 - `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
 - `TEMPLATE_ALLOW_PRIVATE_NETWORKS`：**默认关闭**。服务端默认拒绝拉取指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL；只有在可信自部署环境且确实需要访问内网模板源时，才显式设为 `true`
+- `WRITE_REQUESTS_PER_MINUTE`：**默认 `60`**。四个写接口（`/api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url`）共享的每 IP 限速；设为 `0` 表示关闭，仅建议本地调试或受控验证环境使用
 - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`：`app` 访问 `subconverter` 的内部 HTTP endpoint。默认一体化 Compose 直接使用 `http://subconverter:25500/sub`；若改成双 Docker 分离部署，必须显式改成 `app` 容器可达的地址
 - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`：`subconverter` 回取托管模板时使用的 `app` 地址。默认一体化 Compose 可用 `http://app:11200`；双 Docker 分离部署若不共享服务名解析，必须显式改成 `subconverter` 可回连的地址
 
@@ -234,6 +240,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
   - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源推断，适用于直连局域网或 DDNS 等单入口部署。若前端有反代做 HTTPS 终止，或需固定发布地址，按实际可访问地址填入（`https://` 或 `http://`），不要填容器内地址
   - `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=false`：设为 `true` 时，要求同时提供 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，否则服务启动失败。建议在公网、固定域名或 HTTPS 反代场景开启
   - `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=false`：默认拒绝指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL。仅当部署者明确知道模板源位于可信内网，且接受相应 SSRF 风险边界时才改为 `true`
+  - `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE=60`：四个写接口共享的每 IP token bucket；设为 `0` 表示关闭。当前限速命中时接口返回 `429 RATE_LIMITED`
   - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值，同时通过 `/api/runtime-config` 供前端填入 `advancedOptions.config`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`
@@ -259,6 +266,8 @@ docker compose -f deploy/docker-compose.yml up --build -d
 
 默认情况下，模板 URL 若解析到 loopback、link-local、RFC1918/ULA、多播或未指定地址，会在服务端被直接拒绝，返回输入非法错误；这样可以避免把模板抓取能力直接暴露为私网探测入口。只有在可信自部署环境且模板源本来就位于内网时，才应显式设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
 
+`CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 控制四个写接口共享的每 IP token bucket。默认值 `60` 适合当前 Alpha 自部署场景；若部署在更公开的入口前，建议保留非零值并按实际流量继续下调或配合反代层限速，而不是直接关闭。
+
 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` 控制显式模板 URL 等于部署默认模板 URL 时的上游抓取缓存 TTL；默认即为非零值，用于降低默认路径在公开部署或意外暴露场景下对模板上游的重复请求压力。当前 Compose preview 显式设为 `5m`。
 
 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL` 控制其他模板 URL 的上游抓取缓存 TTL；留空或设为 `0` 表示关闭。若同时设置两个变量，内置默认模板优先使用 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL`，其他模板使用 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL`。
@@ -275,6 +284,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
 - 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/`、`POST /api/stage1/convert` 与一条最终订阅读取路径；如需对照，再额外验证 `/ui/a`、`/ui/b`、`/ui/c`
 - 内测设备建议保留默认命名卷 `short-link-data`，并在容器重启后确认短链仍可恢复
 - 若使用双 Docker 分离部署，额外确认 `subconverter` 能回取 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向的模板地址，且 `subconverter` 不对公网开放
+- 不要在对外可访问环境里把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；若要提高并发承载，优先结合反代或网关层限速一起调整
 - 当前 Alpha 安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
 - 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/alpha-release.md](../docs/testing/alpha-release.md)
 

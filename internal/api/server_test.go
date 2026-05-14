@@ -629,6 +629,46 @@ func TestHealthzHandler(t *testing.T) {
 	}
 }
 
+func TestStage1ConvertHandler_RateLimitsByClientIP(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"http://localhost:11200",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{},
+		WithWriteRequestsPerMinute(1),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+
+	firstRequest := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	firstRequest.RemoteAddr = "198.51.100.10:12345"
+	firstRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstRecorder, firstRequest)
+	if firstRecorder.Code != http.StatusOK {
+		t.Fatalf("first status mismatch: got %d want %d, body=%s", firstRecorder.Code, http.StatusOK, firstRecorder.Body.String())
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	secondRequest.RemoteAddr = "198.51.100.10:54321"
+	secondRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(secondRecorder, secondRequest)
+
+	assertBlockingError(t, secondRecorder, http.StatusTooManyRequests, service.BlockingError{
+		Code:      "RATE_LIMITED",
+		Message:   "rate limit exceeded",
+		Scope:     "global",
+		Retryable: boolPtr(true),
+	})
+}
+
 func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: singleLandingResult("HK Landing", "ss", false),

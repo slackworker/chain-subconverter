@@ -32,6 +32,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvPublicBaseURL:                "  https://example.com/base  ",
 				EnvManagedTemplateBaseURL:       "  https://internal.example.com/base  ",
 				EnvFrontendDistDir:              "  web/app-dist  ",
+				EnvWriteRequestsPerMinute:       " 120 ",
 				EnvMaxLongURLLength:             " 4096 ",
 				EnvShortLinkDBPath:              "  tmp/short-links.sqlite3  ",
 				EnvShortLinkCapacity:            " 2048 ",
@@ -46,6 +47,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				PublicBaseURL:                "https://example.com/base",
 				ManagedTemplateBaseURL:       "https://internal.example.com/base",
 				FrontendDistDir:              "web/app-dist",
+				WriteRequestsPerMinute:       120,
 				MaxLongURLLength:             4096,
 				MaxInputSize:                 DefaultMaxInputSize,
 				MaxURLsPerField:              DefaultMaxURLsPerField,
@@ -57,6 +59,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				TemplateAllowPrivateNetworks: true,
 				RequirePublicBaseURL:         true,
 			},
+		},
+		{
+			name: "invalid write requests per minute",
+			env: map[string]string{
+				EnvWriteRequestsPerMinute: "bad",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE",
 		},
 		{
 			name: "invalid max long url length",
@@ -199,6 +208,23 @@ func TestServerValidate(t *testing.T) {
 				DefaultTemplateURL:     DefaultDefaultTemplateURL,
 			},
 			wantErr: "frontend dist dir must not be empty",
+		},
+		{
+			name: "negative write requests per minute",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				PublicBaseURL:          DefaultPublicBaseURL,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
+				WriteRequestsPerMinute: -1,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
+			},
+			wantErr: "write requests per minute must not be negative",
 		},
 		{
 			name: "non-positive max long url length",
