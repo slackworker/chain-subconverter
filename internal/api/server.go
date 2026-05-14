@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	jsonContentType = "application/json; charset=utf-8"
-	yamlContentType = "text/yaml; charset=utf-8"
-	noStoreHeader   = "private, no-store"
+	jsonContentType  = "application/json; charset=utf-8"
+	yamlContentType  = "text/yaml; charset=utf-8"
+	noStoreHeader    = "private, no-store"
 	maxJSONBodyBytes = 256 * 1024
 )
 

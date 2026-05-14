@@ -61,11 +61,17 @@
 - `internal/config/server.go` 新增 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE`；默认 `60`，设为 `0` 可关闭。
 - `docs/spec/03-backend-api.md`、`deploy/README.md`、`SECURITY.md`、`docs/progress/STATUS.md` 已同步更新 `429 RATE_LIMITED` 与部署变量口径。
 
+### 7. 旧文档清理（phase-4 迁移）
+
+- `docs/plan/phase-4-breakdown.md` 与 `docs/plan/phase-4-dev-readiness.md` 已迁移至 `docs/temp/completed-phases/`。
+- `docs/README.md` 主导航已移除 `phase-4-*` 历史计划入口。
+- `docs/plan/3.0-alpha-cutover.md`、`docs/progress/beta-readiness.md` 已改为新路径引用。
+
 ## 本轮未完成（接手后优先推进）
 
 ### 紧邻最高优先
 
-1. **旧文档清理**：`docs/plan/phase-4-*` 应从主导航降级或移走；`_legacy/` 应迁出仓库（打 tag 后删除）；`docs/temp/` 内已 gitignore 的临时文件需清理。
+1. **旧文档清理**：`_legacy/` 应迁出仓库（打 tag 后删除）；`docs/temp/` 内已 gitignore 的临时文件需清理。
 
 ### 中优先
 
@@ -75,7 +81,7 @@
 
 ### 低优先 / 跟踪项
 
-6. 旧 `phase-4-dev-readiness.md` 仍有 `alpha` 分支旧口径，虽已降级为历史参考但建议直接修正或移走。
+6. `docs/temp/completed-phases/phase-4-dev-readiness.md` 仍有 `alpha` 分支旧口径，虽已降级为历史参考但建议直接修正或移走。
 7. `deploy/docker-compose.yml` 中 `subconverter:integration-chain-subconverter` 是浮动 tag，建议在 runbook 记录已验证版本与回滚方式（不强制 digest 锁定）。
 8. 前端无单元/E2E 测试框架；当前仅靠 TypeScript 编译校验。
 

@@ -53,15 +53,6 @@
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 启动与 smoke runbook：固定入口、最小检查项与常见排障 |
 | [testing/alpha-release](testing/alpha-release.md) | 3.0 Alpha 发布与回归 runbook：当前内测口径、发布前检查、第三方设备回归与反馈记录模板 |
 
-## 历史参考
-
-以下文档仍可用于理解 Phase 4 形成过程，但不再作为当前执行计划：
-
-| 文档 | 说明 |
-|------|------|
-| [plan/phase-4-breakdown](plan/phase-4-breakdown.md) | Phase 4 细化计划：前端主线、非目标与建议推进顺序 |
-| [plan/phase-4-dev-readiness](plan/phase-4-dev-readiness.md) | Phase 4 本地预览与联调就绪计划：ABC UI 开发前的运行、测试与 smoke 收口 |
-
 ## 临时区规则
 
 `docs/temp/` 用于放置以下材料：

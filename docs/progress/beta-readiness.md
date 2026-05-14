@@ -78,7 +78,7 @@ Beta 候选冻结后需补：**Beta 发布说明、最小回归（可继承 Alph
 
 ### 4. 工程与质量债（不单独阻塞 default Beta，但影响信心）
 
-- **文档与实现不同步**：[3.0-alpha-cutover.md §1](../plan/3.0-alpha-cutover.md) 仍写「无 PR 守门」；[phase-4-dev-readiness.md](../plan/phase-4-dev-readiness.md) 仍含 `alpha` 分支旧口径。
+- **文档与实现不同步**：[3.0-alpha-cutover.md §1](../plan/3.0-alpha-cutover.md) 仍写「无 PR 守门」；[phase-4-dev-readiness.md](../temp/completed-phases/phase-4-dev-readiness.md) 仍含 `alpha` 分支旧口径。
 - **测试深度**：无覆盖率门禁、无前端单测/E2E；[docker-publish](../../.github/workflows/docker-publish.yml) 构建前不跑测试。
 - **依赖浮动**：[deploy/docker-compose.yml](../../deploy/docker-compose.yml) 中 `subconverter:integration-chain-subconverter` 浮动 tag；计划要求 runbook 记录**已验证版本与回滚**（不强制 digest）。
 - **前端体验债**：B/C 的 workflow log 与 default 不一致（[STATUS.md](STATUS.md)）；**不阻塞 Beta**。
