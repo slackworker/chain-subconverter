@@ -282,8 +282,8 @@
 }
 
 /*
- * 窄屏顶栏（Default / A 一致）：宽度不足时隐藏副标题；首行 logo + 主标题 + 快捷按钮不换行。
- * 使用 grid + display:contents 展平品牌区 DOM，避免 flex-wrap 把导航挤到额外行。
+ * 窄屏顶栏（Default / A 一致）：隐藏副标题；缩小 logo 与主标题字号；快捷按钮保持并排。
+ * 使用 grid + display:contents 展平品牌区 DOM，避免 flex-wrap 把导航挤到额外行；主标题保持完整不省略。
  */
 @media (max-width: 720px) {
 	.a-header {
@@ -291,7 +291,7 @@
 		grid-template-columns: auto minmax(0, 1fr) auto;
 		grid-template-rows: auto;
 		align-items: center;
-		column-gap: 0.65rem;
+		column-gap: 0.5rem;
 	}
 
 	.a-header__brand {
@@ -306,6 +306,8 @@
 		grid-column: 1;
 		grid-row: 1;
 		align-self: center;
+		width: 1.875rem;
+		height: 1.875rem;
 	}
 
 	.a-title {
@@ -313,9 +315,11 @@
 		grid-row: 1;
 		align-self: center;
 		min-width: 0;
+		font-size: clamp(1.05rem, 4.6vw, 1.35rem);
+		line-height: 1.15;
 		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		overflow: visible;
+		text-overflow: clip;
 		flex: unset;
 	}
 
@@ -329,6 +333,22 @@
 		flex-wrap: nowrap;
 		align-self: center;
 		flex-shrink: 0;
+		gap: 0.45rem;
+	}
+}
+
+@media (max-width: 380px) {
+	.a-header {
+		column-gap: 0.4rem;
+	}
+
+	.a-header__brand-icon {
+		width: 1.625rem;
+		height: 1.625rem;
+	}
+
+	.a-title {
+		font-size: clamp(0.98rem, 4.2vw, 1.2rem);
 	}
 }
 
