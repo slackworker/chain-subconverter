@@ -298,6 +298,48 @@ func TestResolveURLFromSource_ResolvesShortURL(t *testing.T) {
 	}
 }
 
+func TestResolveURLFromSource_ResolvesBareShortID(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+
+	var request GenerateRequest
+	readJSONFixture(t, fixtureDir+"/stage2/output/generate.request.json", &request)
+
+	storedLongURL, err := EncodeLongURL("https://legacy.example.com/base", BuildLongURLPayload(request.Stage1Input, request.Stage2Snapshot), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	resolver := &fakeShortLinkResolver{
+		longURLByID: map[string]string{"7NpK2mQx9a": storedLongURL},
+	}
+	source := &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}
+
+	response, err := ResolveURLFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		resolver,
+		"7NpK2mQx9a",
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("ResolveURLFromSource() error = %v", err)
+	}
+
+	if response.ShortURL != "http://localhost:11200/sub/7NpK2mQx9a" {
+		t.Fatalf("shortUrl mismatch: got %q want %q", response.ShortURL, "http://localhost:11200/sub/7NpK2mQx9a")
+	}
+	if resolver.lastResolvedID != "7NpK2mQx9a" {
+		t.Fatalf("expected short ID to be resolved, got %q", resolver.lastResolvedID)
+	}
+	if response.RestoreStatus != "replayable" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
+	}
+}
+
 func TestResolveURLFromSource_ShortURLNotFound(t *testing.T) {
 	_, err := ResolveURLFromSource(
 		context.Background(),
@@ -368,8 +410,10 @@ func TestParseResolveURLInput(t *testing.T) {
 		{name: "valid long url with base path", url: "http://localhost:11200/base/sub?data=abc", want: resolveURLInput{LongURL: "http://localhost:11200/base/sub?data=abc", IsLong: true}},
 		{name: "valid short url", url: "http://localhost:11200/sub/7NpK2mQx9a", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
 		{name: "valid short url with base path", url: "http://localhost:11200/base/sub/7NpK2mQx9a", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
+		{name: "valid bare short id", url: "7NpK2mQx9a", want: resolveURLInput{ShortID: "7NpK2mQx9a"}},
 		{name: "some random url", url: "https://example.com/page", wantError: true},
 		{name: "sub without data", url: "http://localhost:11200/sub", wantError: true},
+		{name: "invalid bare token", url: "not-a-short-id", wantError: true},
 		{name: "relative url", url: "/sub/7NpK2mQx9a", wantError: true},
 	}
 

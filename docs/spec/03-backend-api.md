@@ -431,7 +431,7 @@
 
 ### 5. `POST /api/resolve-url`
 
-用途：输入长链接或短链接，返回规范化长链接、页面恢复所需快照，以及该快照当前是否允许继续编辑和继续生成。
+用途：输入长链接、短链接或短链接 `shortID`，返回规范化长链接、页面恢复所需快照，以及该快照当前是否允许继续编辑和继续生成。
 
 请求：
 
@@ -459,8 +459,9 @@
 
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
-- 传入短链接时，先解析为长链接，再解码同一份快照
-- 传入短链接且解析成功时，成功响应必须额外返回规范化 `shortUrl`；传入长链接时不返回该字段
+- 传入短链接或裸 `shortID` 时，先解析为长链接，再解码同一份快照
+- 传入短链接或裸 `shortID` 且解析成功时，成功响应必须额外返回规范化 `shortUrl`；传入长链接时不返回该字段
+- 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理
 - 若传入长链接带有额外兼容 query，成功响应中的 `longUrl` 必须是折叠共享状态覆写后的规范长链接，不保留仅用于本次订阅读取的额外透传参数
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)

@@ -170,7 +170,12 @@ func isRestoreConflictError(err error) bool {
 }
 
 func parseResolveURLInput(rawURL string) (resolveURLInput, error) {
-	parsedURL, err := url.Parse(strings.TrimSpace(rawURL))
+	trimmedInput := strings.TrimSpace(rawURL)
+	if isBareShortIDInput(trimmedInput) {
+		return resolveURLInput{ShortID: trimmedInput}, nil
+	}
+
+	parsedURL, err := url.Parse(trimmedInput)
 	if err != nil {
 		return resolveURLInput{}, fmt.Errorf("parse url: %w", err)
 	}
@@ -206,4 +211,21 @@ func parseResolveURLInput(rawURL string) (resolveURLInput, error) {
 	}
 
 	return resolveURLInput{ShortID: shortID}, nil
+}
+
+func isBareShortIDInput(raw string) bool {
+	if raw == "" || len(raw) > 11 {
+		return false
+	}
+	if strings.ContainsAny(raw, "/?#&=:%") {
+		return false
+	}
+
+	for _, char := range raw {
+		if !strings.ContainsRune(shortIDBase62Alphabet, char) {
+			return false
+		}
+	}
+
+	return true
 }
