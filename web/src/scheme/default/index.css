@@ -969,12 +969,17 @@
 
 .a-lined-input {
 	display: grid;
-	grid-template-columns: auto 1fr;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
 	border: 1px solid var(--color-line);
 	border-radius: 10px;
-	overflow: hidden;
+	overflow-x: auto;
+	overflow-y: hidden;
 	background: var(--color-elevated);
 	min-height: 9rem;
+	--lined-input-font-size: 0.82rem;
+	--lined-input-line-height: 1.45;
+	--lined-input-pad-block: 0.55rem;
 }
 
 .a-lined-input--error {
@@ -987,31 +992,39 @@
 }
 
 .a-lined-input__gutter {
-	padding: 0.55rem 0.45rem 0.55rem 0.65rem;
+	padding: var(--lined-input-pad-block) 0.45rem var(--lined-input-pad-block) 0.65rem;
 	background: var(--color-gutter);
 	color: var(--color-muted);
 	font-family: ui-monospace, monospace;
-	font-size: 0.78rem;
-	line-height: 1.45;
+	font-size: var(--lined-input-font-size);
+	line-height: var(--lined-input-line-height);
 	text-align: right;
 	white-space: pre;
 	overflow: hidden;
 	user-select: none;
 	border-right: 1px solid var(--color-line);
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	align-self: start;
 }
 
 .a-lined-input__textarea {
 	margin: 0;
 	border: none;
-	padding: 0.55rem 0.65rem;
+	padding: var(--lined-input-pad-block) 0.65rem;
 	font-family: ui-monospace, monospace;
-	font-size: 0.82rem;
-	line-height: 1.45;
-	resize: vertical;
+	font-size: var(--lined-input-font-size);
+	line-height: var(--lined-input-line-height);
+	appearance: none;
+	resize: none;
+	overflow: hidden;
 	min-height: 9rem;
 	outline: none;
 	background: transparent;
 	color: var(--color-ink);
+	display: block;
+	align-self: start;
 }
 
 .a-input {

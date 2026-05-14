@@ -1,4 +1,4 @@
-import { useCallback, useRef, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
 
 interface LineNumberTextareaProps {
 	id: string;
@@ -37,13 +37,40 @@ export function LineNumberTextarea({
 	const lineCount = value === "" ? 1 : value.split("\n").length;
 	const gutterText = Array.from({ length: lineCount }, (_, index) => String(index + 1)).join("\n");
 
-	const syncScroll = useCallback(() => {
+	const adjustLayout = useCallback(() => {
 		const ta = taRef.current;
 		const gutter = gutterRef.current;
-		if (ta && gutter) {
-			gutter.scrollTop = ta.scrollTop;
+		const shell = ta?.closest<HTMLElement>(".a-lined-input");
+		if (!ta || !gutter || !shell) {
+			return;
 		}
-	}, []);
+
+		const gutterWidth = gutter.offsetWidth;
+		const minContentWidth = Math.max(shell.clientWidth - gutterWidth, 0);
+		ta.style.width = `${minContentWidth}px`;
+		ta.style.width = `${Math.max(minContentWidth, ta.scrollWidth)}px`;
+
+		gutter.style.height = "";
+		ta.style.height = "";
+	}, [lineCount, value]);
+
+	useLayoutEffect(() => {
+		adjustLayout();
+	}, [adjustLayout]);
+
+	useLayoutEffect(() => {
+		const ta = taRef.current;
+		const shell = ta?.closest<HTMLElement>(".a-lined-input");
+		if (!ta || !shell) {
+			return;
+		}
+		const observer = new ResizeObserver(() => {
+			adjustLayout();
+		});
+		observer.observe(ta);
+		observer.observe(shell);
+		return () => observer.disconnect();
+	}, [adjustLayout]);
 
 	return (
 		<div className="a-field">
@@ -62,9 +89,9 @@ export function LineNumberTextarea({
 						ref={taRef}
 						id={id}
 						className="a-lined-input__textarea"
+						rows={lineCount}
 						value={value}
 						onChange={(event) => onChange(event.target.value)}
-						onScroll={syncScroll}
 						placeholder={placeholder}
 						disabled={disabled}
 						spellCheck={false}
