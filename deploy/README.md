@@ -4,7 +4,7 @@
 
 ## 当前范围
 
-- 已提供默认一体化 `docker-compose.yml`，用于编排 `app + subconverter`
+- 已提供默认一体化 `docker-compose.yml`，用于编排 `app + subconverter`；与下文第三方设备单段命令生成的 Compose 保持同一拉镜像口径
 - 默认推荐 `subconverter` 以内网 Compose 服务形式随 `app` 一起部署；如部署方已有独立 Docker 化 `subconverter`，也允许改为双 Docker 分离部署
 - SQLite 短链接索引默认通过 Compose 命名卷持久化
 - 当前同时覆盖本机预览与第三方设备部署所需的最小运行路径
@@ -149,7 +149,8 @@ environment:
 在仓库根目录执行：
 
 ```bash
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/docker-compose.yml pull
+docker compose -f deploy/docker-compose.yml up -d --force-recreate
 ```
 
 检查状态：
@@ -159,7 +160,7 @@ docker compose -f deploy/docker-compose.yml ps
 curl http://localhost:11200/healthz
 ```
 
-若只是日常前端开发与热更新联调，优先使用仓库根目录的 `./scripts/dev-up.sh <scheme>` 或 VS Code 任务 `dev: up`；Compose 路径继续保留为正式预览 / 集成验证主路径。
+若只是日常前端开发与热更新联调，优先使用仓库根目录的 `./scripts/dev-up.sh <scheme>` 或 VS Code 任务 `dev: up`；Compose 路径继续保留为正式预览 / 集成验证主路径。若需验证未发布到 GHCR 的本地源码构建，请走 `dev-up` 或自行 `docker build` 后改写 `app.image`，不要依赖 Compose 本地构建。
 
 ## 更新
 
@@ -198,22 +199,23 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 
 ### 仓库内 Compose 预览
 
-如果更新的是仓库源码或 Dockerfile，在仓库根目录执行：
+如果只是同步仓库内 `deploy/docker-compose.yml` 或远端镜像 tag，在仓库根目录执行：
 
 ```bash
 git pull
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/docker-compose.yml pull
+docker compose -f deploy/docker-compose.yml up -d
 docker compose -f deploy/docker-compose.yml ps
 curl http://localhost:11200/healthz
 ```
 
-其中 `--build` 会按当前源码重新构建 `app` 镜像并重建容器。
+若本轮要验证未发布到 GHCR 的本地源码或 Dockerfile 变更，请改用 `./scripts/dev-up.sh <scheme>`，或自行 `docker build` 后改写 `app.image` 再启动 Compose。
 
 如果只想同步 `subconverter` 远端镜像，也可以额外先执行：
 
 ```bash
 docker compose -f deploy/docker-compose.yml pull subconverter
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 ## 环境变量

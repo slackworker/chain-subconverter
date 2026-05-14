@@ -78,8 +78,9 @@ http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b|c 时）
 正式单入口预览使用：
 
 ```bash
-docker compose -f deploy/docker-compose.yml up --build -d
+docker compose -f deploy/docker-compose.yml pull
+docker compose -f deploy/docker-compose.yml up -d --force-recreate
 curl http://localhost:11200/healthz
 ```
 
-Compose 用于预览与集成验证，不替代日常 frontend HMR 调试。
+Compose 用于预览与集成验证，不替代日常 frontend HMR 调试；未发布到 GHCR 的本地源码构建请走 `dev-up`。
