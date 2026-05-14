@@ -970,7 +970,7 @@
 .a-lined-input {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr);
-	align-items: start;
+	align-items: stretch;
 	border: 1px solid var(--color-line);
 	border-radius: 10px;
 	overflow-x: auto;
@@ -1006,7 +1006,8 @@
 	position: sticky;
 	left: 0;
 	z-index: 1;
-	align-self: start;
+	align-self: stretch;
+	min-height: 9rem;
 }
 
 .a-lined-input__textarea {
@@ -1024,7 +1025,6 @@
 	background: transparent;
 	color: var(--color-ink);
 	display: block;
-	align-self: start;
 }
 
 .a-input {
