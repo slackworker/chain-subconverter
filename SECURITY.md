@@ -60,6 +60,7 @@
 
 - 单入口直连部署通常可以工作。
 - 如果前面有 HTTPS 终止反代，而应用本身只看到明文 HTTP，请务必显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=https://<your-host>`。
+- 如果该部署不允许继续依赖请求头自动推断，应同时设置 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`，让错误配置在启动阶段直接失败。
 - 如果公网或多入口场景下不显式设置该值，生成链接可能错误，且存在被 Host 头污染的风险。
 
 ## 4. 资源保护仍是 Alpha 级别
@@ -87,10 +88,11 @@
 1. 仅暴露 `app` 的 HTTP 入口，不要暴露 `subconverter`。
 2. 为第三方设备部署保留持久卷，避免短链数据在容器重建后丢失。
 3. 有 HTTPS 反代、固定域名或公网入口时，显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`。
-4. 优先固定 `APP_IMAGE` 为明确版本 tag，而不是长期依赖 `alpha-latest`。
-5. 限制可访问人群；不要把当前 Alpha 直接视作公开互联网服务。
-6. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
-7. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
+4. 对公网、固定域名或 HTTPS 反代部署，建议同时设置 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`。
+5. 优先固定 `APP_IMAGE` 为明确版本 tag，而不是长期依赖 `alpha-latest`。
+6. 限制可访问人群；不要把当前 Alpha 直接视作公开互联网服务。
+7. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
+8. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
 
 ## 当前不承诺防护的内容
 

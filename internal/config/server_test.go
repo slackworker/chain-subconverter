@@ -39,6 +39,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvDefaultTemplateFetchCacheTTL: " 30m ",
 				EnvTemplateFetchCacheTTL:        " 5m ",
 				EnvTemplateAllowPrivateNetworks: " true ",
+				EnvRequirePublicBaseURL:         " true ",
 			},
 			want: Server{
 				HTTPAddress:                  ":11300",
@@ -54,6 +55,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: 30 * time.Minute,
 				TemplateFetchCacheTTL:        5 * time.Minute,
 				TemplateAllowPrivateNetworks: true,
+				RequirePublicBaseURL:         true,
 			},
 		},
 		{
@@ -97,6 +99,20 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvTemplateAllowPrivateNetworks: "bad",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS",
+		},
+		{
+			name: "invalid require public base url",
+			env: map[string]string{
+				EnvRequirePublicBaseURL: "bad",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL",
+		},
+		{
+			name: "require public base url without explicit value",
+			env: map[string]string{
+				EnvRequirePublicBaseURL: "true",
+			},
+			wantErr: "public base URL is required when CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true",
 		},
 		{
 			name: "invalid managed template base url",
@@ -249,6 +265,22 @@ func TestServerValidate(t *testing.T) {
 			wantErr: "public base URL must include scheme and host",
 		},
 		{
+			name: "require public base url when empty",
+			cfg: Server{
+				HTTPAddress:            DefaultHTTPAddress,
+				ManagedTemplateBaseURL: DefaultManagedTemplateBaseURL,
+				FrontendDistDir:        DefaultFrontendDistDir,
+				MaxLongURLLength:       DefaultMaxLongURLLength,
+				MaxInputSize:           DefaultMaxInputSize,
+				MaxURLsPerField:        DefaultMaxURLsPerField,
+				ShortLinkDBPath:        DefaultShortLinkDBPath,
+				ShortLinkCapacity:      DefaultShortLinkCapacity,
+				DefaultTemplateURL:     DefaultDefaultTemplateURL,
+				RequirePublicBaseURL:   true,
+			},
+			wantErr: "public base URL is required when CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true",
+		},
+		{
 			name: "missing managed template base scheme",
 			cfg: Server{
 				HTTPAddress:            DefaultHTTPAddress,
@@ -354,6 +386,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvDefaultTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateAllowPrivateNetworks, "")
+	t.Setenv(EnvRequirePublicBaseURL, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)

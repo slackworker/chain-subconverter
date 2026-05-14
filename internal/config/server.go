@@ -22,6 +22,7 @@ const (
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 	DefaultTemplateAllowPrivateNetworks = false
+	DefaultRequirePublicBaseURL         = false
 
 	EnvHTTPAddress                  = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL                = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
@@ -36,6 +37,7 @@ const (
 	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateAllowPrivateNetworks = "CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS"
+	EnvRequirePublicBaseURL         = "CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL"
 )
 
 type Server struct {
@@ -52,6 +54,7 @@ type Server struct {
 	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL        time.Duration
 	TemplateAllowPrivateNetworks bool
+	RequirePublicBaseURL         bool
 }
 
 func DefaultServer() Server {
@@ -69,6 +72,7 @@ func DefaultServer() Server {
 		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 		TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
+		RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
 	}
 }
 
@@ -142,6 +146,13 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.TemplateAllowPrivateNetworks = templateAllowPrivateNetworks
 	}
+	if value, ok := lookupTrimmedEnv(EnvRequirePublicBaseURL); ok {
+		requirePublicBaseURL, err := strconv.ParseBool(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvRequirePublicBaseURL, err)
+		}
+		cfg.RequirePublicBaseURL = requirePublicBaseURL
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return Server{}, err
@@ -197,6 +208,8 @@ func (cfg Server) Validate() error {
 		if parsedURL.Scheme == "" || parsedURL.Host == "" {
 			return fmt.Errorf("public base URL must include scheme and host")
 		}
+	} else if cfg.RequirePublicBaseURL {
+		return fmt.Errorf("public base URL is required when %s=true", EnvRequirePublicBaseURL)
 	}
 	managedTemplateURL, err := url.Parse(cfg.ManagedTemplateBaseURL)
 	if err != nil {

@@ -47,7 +47,7 @@ Beta 在计划里**不单独做功能开发**；[3.0-alpha-cutover.md §7](../pl
 | **W0** 发布线 | 部分 | 全仓 `alpha` 分支叙述与 [STATUS.md](STATUS.md) 缺口描述对齐 [ci.yml](../../.github/workflows/ci.yml) / [docker-publish.yml](../../.github/workflows/docker-publish.yml)；预埋 `beta-latest` 或等价 Beta 镜像策略 |
 | **W1** 文档 | 部分 | `phase-4-*` 归档出主导航；[_legacy/](../../_legacy/) 迁出；[SECURITY.md](../../SECURITY.md) 与 W3 落地后一致 |
 | **W2** 测试 | 部分 | 在 [docs/testing/](../testing/) 写清 unit / contract / smoke 分层；[alpha-release.md](../testing/alpha-release.md) 发布前检查与 CI 统一为 `build:default/a/b/c` |
-| **W3** 安全 | **大部分未做** | SSRF（[managed_conversion_source.go](../../internal/service/managed_conversion_source.go) 仍 `&http.Client{Timeout}`）；四 API 限速；`RequirePublicBaseURL`；Compose subconverter 网络隔离与 [deploy/README.md](../../deploy/README.md) 安全专节 |
+| **W3** 安全 | **部分已做** | SSRF 最小拦截与 `RequirePublicBaseURL` 已落地；剩余四 API 限速、Compose subconverter 网络隔离、更严格出站控制与 [deploy/README.md](../../deploy/README.md) 安全专节补全 |
 | **W4** 发布验证 | 未记录 | 干净设备 + **不可变 tag** 冷启动；default 主线 + 四入口连通；写入 [STATUS.md](STATUS.md)「最近验证」 |
 | **W5** 反馈 SOP | 未做 | [.github/ISSUE_TEMPLATE/](../../.github/ISSUE_TEMPLATE/)；[alpha-release.md](../testing/alpha-release.md) 补 **Alpha → Beta 退出口径** |
 
