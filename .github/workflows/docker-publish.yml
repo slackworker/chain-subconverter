@@ -3,10 +3,10 @@ name: Build Docker Image & Deploy to Render
 on:
   push:
     branches:
-      - "main"    # 当代码推送到 main 分支时触发
-      - "release/3.0"   # 当代码推送到 3.0 发布分支时触发
+      - main
+      - release/3.0
     tags:
-      - 'v*.*.*'  # 当推送形如 v1.0.0, v1.2.3 等版本标签时触发
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       ref:
@@ -28,222 +28,229 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/chain-subconverter
+
 jobs:
-  build-and-push-main-latest: # 处理 main 分支的推送，打上 latest 标签
-    # 仅当推送到 main 分支时运行此 job
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    name: Build and Push Main Latest Image
+  prepare:
+    name: Prepare Docker Metadata
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write # 写入 GitHub Packages (ghcr.io) 的权限
+    outputs:
+      checkout_ref: ${{ steps.plan.outputs.checkout_ref }}
+      source_sha: ${{ steps.source.outputs.sha }}
+      tags: ${{ steps.plan.outputs.tags }}
+      labels: ${{ steps.plan.outputs.labels }}
+      should_trigger_render: ${{ steps.plan.outputs.should_trigger_render }}
+      primary_tag: ${{ steps.plan.outputs.primary_tag }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata (tags, labels) for Main Latest Docker Image
-        id: meta_main_latest
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/chain-subconverter
-          tags: |
-            type=raw,value=latest # main 分支的推送打上 'latest' 标签
-          # type=sha,prefix=main-,format=short # 也为每个 main 构建打上 'main-<short-sha>'
-
-      - name: Build and push Main Latest Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta_main_latest.outputs.tags }}
-          labels: ${{ steps.meta_main_latest.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-and-push-alpha-latest: # 处理 release/3.0 发布分支的推送，当前 Alpha 阶段打上 alpha-latest 标签
-    if: github.event_name == 'push' && github.ref == 'refs/heads/release/3.0'
-    name: Build and Push Release 3.0 Alpha Latest Image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata for Release 3.0 Alpha Docker Image
-        id: meta_alpha
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/chain-subconverter
-          tags: |
-            type=raw,value=alpha-latest
-            type=sha,prefix=release-3.0-,format=short
-
-      - name: Build and push Alpha Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta_alpha.outputs.tags }}
-          labels: ${{ steps.meta_alpha.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-versioned-and-dev-latest-for-render: # 处理版本标签的推送
-    # 仅当推送版本标签 (v*.*.*) 时运行此 job
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    name: Build Versioned Image (and dev-latest) & Deploy to Render
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write # 写入 GitHub Packages (ghcr.io) 的权限
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata (tags, labels) for Versioned & Dev-Latest Docker Image
-        id: meta_versioned_dev_latest
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository_owner }}/chain-subconverter
-          tags: |
-            type=semver,pattern={{version}} # 例如 Git 标签 v1.0.0 -> Docker 标签 1.0.0
-            type=raw,value=dev-latest      # 将这个版本标签也同时标记为 'dev-latest'，用于Render部署
-          flavor: | # 添加或修改 flavor 配置
-            latest=false # 明确禁用自动添加 latest 标签
-
-      - name: Build and push Versioned & Dev-Latest Docker image
-        id: build_image_for_render
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta_versioned_dev_latest.outputs.tags }}
-          labels: ${{ steps.meta_versioned_dev_latest.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Trigger Render Deploy
-        if: success() && steps.build_image_for_render.outputs.digest # 仅在镜像构建并推送成功时运行
-        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        # 确保 Render 服务配置为拉取 ghcr.io/${{ github.repository_owner }}/chain-subconverter:dev-latest
-
-  build-manual-image:
-    if: github.event_name == 'workflow_dispatch'
-    name: Build Manual Image
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || github.sha }}
-
-      - name: Capture source revision
-        id: source_revision
+      - name: Resolve publish plan
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          INPUT_REF: ${{ inputs.ref }}
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
+          INPUT_UPDATE_DEV_LATEST: ${{ inputs.update_dev_latest }}
+          INPUT_TRIGGER_RENDER: ${{ inputs.trigger_render }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Compute manual image tags
-        id: manual_tags
-        run: |
-          image="ghcr.io/${{ github.repository_owner }}/chain-subconverter"
-          tags="${image}:${{ inputs.image_tag }}"
-          if [[ "${{ inputs.update_dev_latest }}" == "true" ]]; then
-            tags="${tags}"$'\n'"${image}:dev-latest"
+          checkout_ref="$GITHUB_SHA"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_REF" ]]; then
+            checkout_ref="$INPUT_REF"
           fi
 
+          should_trigger_render=false
+          primary_tag=''
+          image_version=''
+          tags=()
+
+          case "$EVENT_NAME" in
+            push)
+              if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+                primary_tag="${IMAGE_NAME}:latest"
+                image_version='latest'
+                tags+=("$primary_tag")
+              elif [[ "$GITHUB_REF" == "refs/heads/release/3.0" ]]; then
+                primary_tag="${IMAGE_NAME}:alpha-latest"
+                image_version='alpha-latest'
+                tags+=("$primary_tag" "${IMAGE_NAME}:release-3.0-${GITHUB_SHA::7}")
+              elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+                version="${GITHUB_REF_NAME#v}"
+                primary_tag="${IMAGE_NAME}:${version}"
+                image_version="$version"
+                should_trigger_render=true
+                tags+=("$primary_tag" "${IMAGE_NAME}:dev-latest")
+              else
+                echo "Unsupported push ref: $GITHUB_REF" >&2
+                exit 1
+              fi
+              ;;
+            workflow_dispatch)
+              primary_tag="${IMAGE_NAME}:${INPUT_IMAGE_TAG}"
+              image_version="$INPUT_IMAGE_TAG"
+              tags+=("$primary_tag")
+              if [[ "$INPUT_UPDATE_DEV_LATEST" == "true" ]]; then
+                tags+=("${IMAGE_NAME}:dev-latest")
+              fi
+              if [[ "$INPUT_TRIGGER_RENDER" == "true" ]]; then
+                should_trigger_render=true
+              fi
+              ;;
+            *)
+              echo "Unsupported event: $EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          labels=$(
+            printf '%s\n' \
+              "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+              "org.opencontainers.image.version=${image_version}"
+          )
+
           {
+            echo "checkout_ref=$checkout_ref"
+            echo "primary_tag=$primary_tag"
+            echo "should_trigger_render=$should_trigger_render"
             echo 'tags<<EOF'
-            printf '%s\n' "$tags"
+            printf '%s\n' "${tags[@]}"
+            echo EOF
+            echo 'labels<<EOF'
+            printf '%s\n' "$labels"
             echo EOF
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push manual Docker image
-        id: build_manual_image
-        uses: docker/build-push-action@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.plan.outputs.checkout_ref }}
+
+      - name: Capture source revision
+        id: source
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.platform }} image
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            platform_pair: linux-amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            platform_pair: linux-arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
-          tags: ${{ steps.manual_tags.outputs.tags }}
+          platforms: ${{ matrix.platform }}
           labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ steps.source_revision.outputs.sha }}
-            org.opencontainers.image.version=${{ inputs.image_tag }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ needs.prepare.outputs.labels }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.source_sha }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=docker-publish-${{ matrix.platform_pair }}
+          cache-to: type=gha,scope=docker-publish-${{ matrix.platform_pair }},mode=max
 
-      - name: Trigger Render Deploy for manual build
-        if: success() && steps.build_manual_image.outputs.digest && inputs.trigger_render
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.platform_pair }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge Multi-Arch Image
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push tags
+        working-directory: /tmp/digests
+        env:
+          TAGS: ${{ needs.prepare.outputs.tags }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: |
+          shopt -s nullglob
+
+          tag_args=()
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] || continue
+            tag_args+=("-t" "$tag")
+          done <<< "$TAGS"
+
+          digest_refs=()
+          for digest in *; do
+            digest_refs+=("${IMAGE_NAME}@sha256:${digest}")
+          done
+
+          if [[ ${#digest_refs[@]} -eq 0 ]]; then
+            echo "No digests downloaded" >&2
+            exit 1
+          fi
+
+          docker buildx imagetools create "${tag_args[@]}" "${digest_refs[@]}"
+
+      - name: Inspect published image
+        run: docker buildx imagetools inspect ${{ needs.prepare.outputs.primary_tag }}
+
+      - name: Trigger Render Deploy
+        if: success() && needs.prepare.outputs.should_trigger_render == 'true'
         run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

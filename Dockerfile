@@ -6,7 +6,7 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
 COPY web ./
-RUN npm run build
+RUN npm run build:docker
 
 FROM --platform=$TARGETPLATFORM golang:1.25-alpine AS builder
 
