@@ -17,7 +17,7 @@
 - 主应用镜像：`ghcr.io/slackworker/chain-subconverter:alpha-latest`
 - 推荐回归记录：`v3.0.0-alpha.N` 等不可变 tag
 - `subconverter` 镜像：`ghcr.io/slackworker/subconverter:integration-chain-subconverter`
-- 第三方设备部署入口：`deploy/README.md` 中的单段 Compose 命令
+- 第三方设备部署入口：优先使用 `deploy/README.md` 中的一体化单段 Compose 命令；如确有既有 `subconverter` 生命周期管理，也允许按其中“双 Docker 分离部署”口径接入
 - 默认 UI 访问入口：`/`（保持根路径不跳转；`/ui/a|/ui/b|/ui/c` 用于并行方案开发与对照）
 
 其中 `release/3.0` 承担 3.0 的 Alpha、Beta、正式版发布；`alpha-latest` 仅作为 Alpha 阶段便捷镜像标签，后续应由不可变 tag 承担正式回归记录。`dev` 只作为 A/B/C 并行实现与交叉比对的集成线，不直接承担对外发布。
@@ -64,7 +64,7 @@ docker compose -f deploy/docker-compose.yml config
 ## 第三方设备发布
 
 1. 在目标设备按 [../../deploy/README.md](../../deploy/README.md) 顶部变量填写 `APP_DIR`、`HOST_PORT`、镜像 tag 与可选 `PUBLIC_BASE_URL`。
-2. 执行同文中的单段命令，生成并启动 `docker-compose.yml`。
+2. 优先执行同文中的一体化单段命令，生成并启动 `docker-compose.yml`；若采用双 Docker 分离部署，则按同文额外设置 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`。
 3. 记录实际访问入口：`http://<device-ip>:<host-port>/`；如有额外方案验证，再补充其他 `scheme`（如 `/ui/a`）。
 
 ## 发布后最小回归
@@ -78,6 +78,7 @@ docker compose -f deploy/docker-compose.yml config
 - 可生成 `longUrl`
 - 页面底部 workflow log 可展开，并能看到本轮主流程的动作与结果历史
 - `GET /sub?...` 或 `GET /sub/<id>` 至少成功一条
+- 若采用双 Docker 分离部署，额外确认 `subconverter` 可回取 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向的托管模板
 
 若启用了短链，还要额外确认：
 

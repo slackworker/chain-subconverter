@@ -1,6 +1,8 @@
 services:
   subconverter:
     image: ghcr.io/slackworker/subconverter:integration-chain-subconverter
+    networks:
+      - subconverter-backend
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:25500/version || exit 1"]
@@ -25,6 +27,8 @@ services:
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
       CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY: 1000
+    networks:
+      - subconverter-backend
     ports:
       - "11200:11200"
     volumes:
@@ -39,3 +43,6 @@ services:
 
 volumes:
   short-link-data:
+
+networks:
+  subconverter-backend:

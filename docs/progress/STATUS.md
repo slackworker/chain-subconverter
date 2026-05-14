@@ -31,7 +31,7 @@
 - 本地开发主入口已固定为 `./scripts/dev-up.sh <scheme>`，默认端口为 `25500 / 11200 / 5173`。
 - VS Code `dev: up` 与 `./scripts/dev-up.sh` 默认共用固定端口；多 worktree 并行需显式设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（或任务包装脚本的第二参数 / `auto`），冲突时由 `dev-up.sh` 复用、清理本工作区残留实例或报错退出。
 - Docker 镜像已接入前端构建，后端也已具备 SPA 静态资源托管能力。
-- `deploy/README.md` 已将第三方设备部署改为单段可复制命令，由用户修改顶部变量后生成并启动本地 `docker-compose.yml`。
+- `deploy/README.md` 已将第三方设备部署改为单段可复制命令，由用户修改顶部变量后生成并启动本地 `docker-compose.yml`；默认优先走一体化 Compose 内部部署，也允许按文档切换为双 Docker 分离部署。
 - Alpha（内测）发布默认入口与部署入口已固定，可直接用于第三方设备冷启动；A/B/C 入口继续保留用于对照验证。
 
 ## 当前缺口
@@ -39,7 +39,7 @@
 - 发布自动化、文档与 runbook 的主入口已切到 `release/3.0` + tag 驱动模型，但仍有少量尾部说明和辅助材料待继续清理。
 - B/C 方案尚未把新的 workflow log 视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
 - PR / push 级 CI 守门已补齐，但正式本地预览 / Compose 单入口验收仍未形成稳定的版本化发布节奏。
-- 模板 URL 已补上最小 SSRF 拒绝名单与显式放行开关，`RequirePublicBaseURL` 也已落地；剩余安全缺口主要是通用限速、更严格的出站控制与部署侧网络隔离。
+- 模板 URL 已补上最小 SSRF 拒绝名单与显式放行开关，`RequirePublicBaseURL` 也已落地；默认 Compose 部署现已使用独立 `subconverter` 私有网络，剩余安全缺口主要是通用限速与更严格的出站控制。
 - Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - Alpha 发布、最小回归顺序与反馈记录入口已固定到 [testing/alpha-release](../testing/alpha-release.md)，后续回归记录应按该文档执行。

@@ -7,7 +7,7 @@
 ## 0. 当前硬约束
 
 - 后端当前唯一已确认的正式实现语言是 `Go`；既有 Python 实现仅保留在 `_legacy/` 供追溯参考。
-- `subconverter` 必须继续以同部署内的内部 HTTP 服务形式集成；业务层不得散落其请求细节。
+- `subconverter` 必须继续以部署侧私有 HTTP 服务形式集成；默认优先与 `app` 同 Compose 内部署，也允许以独立 Docker 服务形式提供，但都不得把其请求细节散落到业务层。
 - 当前允许保留仅含 `app + subconverter` 的 API-only Compose 作为本地验证路径。
 
 当前状态见 [../progress/STATUS.md](../progress/STATUS.md)。
@@ -17,7 +17,7 @@
 在当前收口与微调阶段，默认按以下方向对齐实现与文档；若治理结论调整，以最新确认文档为准。
 
 - 项目统一采用 `Go + Gin + React + TypeScript + Vite + Tailwind CSS + SQLite + Docker Compose`
-- `subconverter` 以**同一 Compose 部署内的内部容器**形式集成
+- `subconverter` 默认以**同一 Compose 部署内的内部容器**形式集成；如部署方已有独立 Docker 化实例，也允许通过私有网络地址接入
 - 主后端统一提供 API 与前端静态资源；当前不单独引入 `nginx`
 - 短链接索引默认使用本地 SQLite 文件持久化
 - 整体架构保持**单仓库、单主服务、单内部依赖服务**；不拆分微服务
@@ -39,8 +39,8 @@
 | 前端 | `React + TypeScript + Vite` | 对应阶段默认采用单页应用；负责三阶段表单、状态展示与交互，不做 SSR |
 | 前端样式 | `Tailwind CSS` | 仅作为样式与布局层；不引入重量级前端框架 |
 | 数据存储 | `SQLite` | 默认承载短链接索引与必要元数据；不引入独立数据库服务 |
-| 部署 | `Docker Compose` | 默认统一编排主应用与 `subconverter`；面向 NAS、软路由与小型服务器 |
-| 转换组件 | `subconverter` 官方镜像 | 作为内部 HTTP 服务运行；不直接暴露到宿主机公网端口 |
+| 部署 | `Docker Compose` | 默认统一编排主应用与 `subconverter`；面向 NAS、软路由与小型服务器；允许按需拆成两个 Docker 项目 |
+| 转换组件 | `subconverter` 官方镜像 | 作为内部 HTTP 服务运行；不直接暴露到宿主机公网端口；拆分部署时仍应保持私网可达 |
 
 ## 4. 后端实现约束
 
@@ -66,14 +66,15 @@
 ### 6.1 Compose 服务划分
 
 - `app`：主应用容器；完整前端接入后对外暴露 Web UI 与 API
-- `subconverter`：内部转换服务容器，只在 Compose 内部网络可达
+- `subconverter`：内部转换服务容器；默认只在 Compose 内部网络可达，拆分部署时也应只通过私有 Docker 网络或等价内网地址暴露给 `app`
 
 ### 6.2 部署规则
 
 - 默认只暴露 `app` 的宿主机端口
 - `subconverter` 不对宿主机直接暴露端口
-- `app` 与 `subconverter` 必须加入同一私有 Compose 网络
-- `app` 必须声明对 `subconverter` 的启动依赖与健康检查依赖
+- 默认一体化 Compose 部署时，`app` 与 `subconverter` 必须加入同一私有 Compose 网络
+- 默认一体化 Compose 部署时，`app` 必须声明对 `subconverter` 的启动依赖与健康检查依赖
+- 若改为双 Docker 分离部署，`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 必须指向 `app` 可达的私有地址，`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 必须指向 `subconverter` 可回连的 `app` 地址
 - 若引入 SQLite，数据库文件必须通过卷挂载持久化，避免容器重建导致短链接索引丢失
 - 默认部署不要求额外引入 `nginx`、Redis、消息队列或外部数据库
 - 在完整前端与持久化交付前，可保留仅包含 `app + subconverter` 的 API-only Compose 作为本地验证路径；该路径不代表正式单入口部署已完成
@@ -85,7 +86,8 @@
 - 需要同步上游更新时，首选流程是：调整镜像版本 -> 拉取新镜像 -> 重启部署 -> 做兼容性验证
 - 当前不将 `subconverter` 源码 vendoring 到本仓库，也不与其源码级强绑定
 - 如确有必要，可增加**薄封装**镜像或本地构建覆盖配置，但该路径只作为手动维护选项，不作为默认路径
-- 无论采用官方镜像还是薄封装镜像，对主应用暴露的契约都必须保持为“同部署内本地 HTTP 服务”
+- 若改为双 Docker 分离部署，部署文档必须显式说明 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 的可达性要求
+- 无论采用官方镜像、薄封装镜像还是双 Docker 分离部署，对主应用暴露的契约都必须保持为“部署侧私有 HTTP 服务”
 
 ## 8. 推荐项目结构
 

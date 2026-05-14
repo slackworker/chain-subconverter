@@ -4,7 +4,8 @@
 
 ## 当前范围
 
-- 已提供 `docker-compose.yml`，用于编排 `app + subconverter`
+- 已提供默认一体化 `docker-compose.yml`，用于编排 `app + subconverter`
+- 默认推荐 `subconverter` 以内网 Compose 服务形式随 `app` 一起部署；如部署方已有独立 Docker 化 `subconverter`，也允许改为双 Docker 分离部署
 - SQLite 短链接索引默认通过 Compose 命名卷持久化
 - 当前同时覆盖本机预览与第三方设备部署所需的最小运行路径
 - 完整阶段状态与缺口统一见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)
@@ -40,6 +41,8 @@ cat > docker-compose.yml <<EOF
 services:
   subconverter:
     image: "${SUBCONVERTER_IMAGE}"
+    networks:
+      - subconverter-backend
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:25500/version || exit 1"]
@@ -68,6 +71,8 @@ services:
       CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
       CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY: "${SHORT_LINK_CAPACITY}"
+    networks:
+      - subconverter-backend
     ports:
       - "${HOST_PORT}:11200"
     volumes:
@@ -82,6 +87,9 @@ services:
 
 volumes:
   short-link-data:
+
+networks:
+  subconverter-backend:
 EOF
 
 docker compose pull
@@ -101,6 +109,36 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 ```text
 http://<device-ip>:<host-port>/
 ```
+
+该默认路径中，`subconverter` 只加入私有 Docker 网络 `subconverter-backend`，不对宿主机直接暴露端口；浏览器与其他终端只访问 `app`。
+
+### 双 Docker 分离部署（可选）
+
+若你已经有独立维护的 Docker 化 `subconverter`，或希望把 `app` 与 `subconverter` 放到两个独立 Compose 项目中，也可以这样部署；但当前仍以“同宿主机或同私有 Docker 网络内的内部 HTTP 服务”作为推荐口径。
+
+分离部署时必须同时满足：
+
+- `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 指向 `app` 容器可达的 `subconverter` 内部地址，例如 `http://subconverter:25500/sub` 或同类私有地址
+- `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向 `subconverter` 可回连的 `app` 地址；若两者共享 Docker 网络，可继续使用 `http://app:11200`，否则必须改成 `subconverter` 侧可访问的宿主机 / 反代 / 内网地址
+- `subconverter` 仍不应直接暴露到公网；若确需跨项目通信，优先使用共享 Docker 网络、反代后的内网入口或宿主机防火墙限制后的局域网地址
+
+常见做法：
+
+- 同一台机器、两个 Compose 项目：先创建一个共享 Docker network，再让两个项目都加入该网络，分别使用服务名互访
+- 同一台机器、单独容器：把 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 写成该容器在共享网络中的 DNS 名称
+- 不同主机：必须显式设置 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 为 `subconverter` 能访问到的 `app` 外部地址，并自行承担链路加密、访问控制与 egress 控制
+
+如采用双 Docker 分离部署，建议至少把下列变量写入 `app` 的 Compose：
+
+```yaml
+environment:
+  CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
+  CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
+  CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub
+  CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
+```
+
+其中 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 是否还能写成 `http://app:11200`，取决于你的外部 `subconverter` 是否真能解析并访问 `app` 这个服务名；不能时就必须改成其他可达地址。
 
 ### 仓库内 Compose 预览
 
@@ -175,7 +213,7 @@ docker compose -f deploy/docker-compose.yml up --build -d
 
 ## 环境变量
 
-部署命令顶部变量用于生成最终的 `docker-compose.yml`：
+部署命令顶部变量用于生成最终的 `docker-compose.yml`；若采用双 Docker 分离部署，还需额外关注后文列出的关键运行时环境变量：
 
 - `APP_DIR`：本机保存 Compose 文件的位置
 - `HOST_PORT`：宿主机对外暴露的端口
@@ -186,6 +224,8 @@ docker compose -f deploy/docker-compose.yml up --build -d
 - `SHORT_LINK_CAPACITY`：短链接索引容量
 - `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
 - `TEMPLATE_ALLOW_PRIVATE_NETWORKS`：**默认关闭**。服务端默认拒绝拉取指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL；只有在可信自部署环境且确实需要访问内网模板源时，才显式设为 `true`
+- `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`：`app` 访问 `subconverter` 的内部 HTTP endpoint。默认一体化 Compose 直接使用 `http://subconverter:25500/sub`；若改成双 Docker 分离部署，必须显式改成 `app` 容器可达的地址
+- `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`：`subconverter` 回取托管模板时使用的 `app` 地址。默认一体化 Compose 可用 `http://app:11200`；双 Docker 分离部署若不共享服务名解析，必须显式改成 `subconverter` 可回连的地址
 
 生成后的 `docker-compose.yml` 当前涉及两类配置：
 
@@ -209,9 +249,9 @@ docker compose -f deploy/docker-compose.yml up --build -d
 
 `app` 服务会把 SQLite 文件写入命名卷 `short-link-data`，用于在容器重建后保留短链接索引。
 
-`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 默认走 Compose 内部服务地址 `http://app:11200`，供 `subconverter` 在私有网络内回取托管模板；该地址不是对外公开入口。
+`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 默认走 Compose 内部服务地址 `http://app:11200`，供 `subconverter` 在私有网络内回取托管模板；该地址不是对外公开入口。若改为双 Docker 分离部署，必须确保这个地址从 `subconverter` 侧仍可达。
 
-`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 不是同一个概念：前者给浏览器和最终链接使用，后者只给容器内的 `subconverter` 回连托管模板使用。第三方设备部署时，不要把前者写成 `http://app:11200`，也不要把后者改成宿主机 IP。
+`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 不是同一个概念：前者给浏览器和最终链接使用，后者只给容器内或私有网络内的 `subconverter` 回连托管模板使用。第三方设备部署时，不要把前者写成 `http://app:11200`；后者只有在 `subconverter` 无法通过 Docker 服务名访问 `app` 时，才应该改成宿主机 IP、反代地址或其他私有可达地址。
 
 若部署环境不允许服务端继续根据请求头自动推断公开地址，应显式同时设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`，把错误配置提前暴露在启动阶段，而不是等到生成链接时才发现。
 
@@ -223,16 +263,18 @@ docker compose -f deploy/docker-compose.yml up --build -d
 
 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL` 控制其他模板 URL 的上游抓取缓存 TTL；留空或设为 `0` 表示关闭。若同时设置两个变量，内置默认模板优先使用 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL`，其他模板使用 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL`。
 
-`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 推荐显式写成完整 endpoint，例如 `http://subconverter:25500/sub`。当前服务启动时会自动补全缺失的 `http://` 与 `/sub`，因此 `subconverter:25500`、`http://subconverter:25500` 也可接受；若显式提供路径前缀，例如 `http://subconverter:25500/proxy`，则会归一化为 `http://subconverter:25500/proxy/sub`。
+`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 推荐显式写成完整 endpoint，例如 `http://subconverter:25500/sub`。当前服务启动时会自动补全缺失的 `http://` 与 `/sub`，因此 `subconverter:25500`、`http://subconverter:25500` 也可接受；若显式提供路径前缀，例如 `http://subconverter:25500/proxy`，则会归一化为 `http://subconverter:25500/proxy/sub`。双 Docker 分离部署时，这个地址必须从 `app` 容器内部可达，而不是仅在宿主机 shell 中可达。
 
 若是单容器托管平台且未挂卷，镜像默认会退回到 `/tmp/short-links.sqlite3`，以保证预览环境至少可启动；该路径仅适合无状态预览，不保证重建后保留短链接数据。
 
 ## Alpha 部署建议
 
 - 第三方设备内测优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建；3.0 发布线统一以 `release/3.0` 配合版本 tag 管理
+- 优先使用默认一体化 Compose 部署；只有在部署方已独立维护 `subconverter` 生命周期时，才切换到双 Docker 分离部署
 - `alpha-latest` 只适合作为便捷入口；每轮正式回归都应记录实际对应的不可变 tag 或 commit 来源
 - 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/`、`POST /api/stage1/convert` 与一条最终订阅读取路径；如需对照，再额外验证 `/ui/a`、`/ui/b`、`/ui/c`
 - 内测设备建议保留默认命名卷 `short-link-data`，并在容器重启后确认短链仍可恢复
+- 若使用双 Docker 分离部署，额外确认 `subconverter` 能回取 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向的模板地址，且 `subconverter` 不对公网开放
 - 当前 Alpha 安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
 - 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/alpha-release.md](../docs/testing/alpha-release.md)
 

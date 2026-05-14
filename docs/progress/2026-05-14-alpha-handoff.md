@@ -48,13 +48,18 @@
 - 新建 `SECURITY.md`：威胁模型、部署假设、已知边界、运维建议、报告方式。
 - `deploy/README.md` 已写明所有新增安全开关的用途与使用场景。
 
+### 5. Compose 部署拓扑补全
+
+- `deploy/docker-compose.yml` 已为 `app` 与 `subconverter` 引入独立共享网络 `subconverter-backend`，默认继续优先使用一体化 Compose 内部部署。
+- `deploy/README.md` 已补充“双 Docker 分离部署（可选）”口径：允许独立 Docker 化 `subconverter`，但要求显式保证 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 的双向可达性。
+- `docs/spec/05-tech-stack.md`、`docs/testing/alpha-release.md`、`docs/progress/STATUS.md` 已同步更新为“默认一体化 Compose，允许双 Docker 分离部署”的一致口径。
+
 ## 本轮未完成（接手后优先推进）
 
 ### 紧邻最高优先
 
 1. **四 API 最小 rate limiting**：`/api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url` 目前无任何限速。建议用 `golang.org/x/time/rate` 做 per-IP token bucket，默认 60 req/min，可由 env 关闭。
-2. **Compose subconverter 网络隔离**：`deploy/docker-compose.yml` 中 `subconverter` 当前与 `app` 共享默认网络，无独立 egress 约束。计划（W3.5）要求加 `networks: [internal-only]` 或至少加 README 安全补全。
-3. **旧文档清理**：`docs/plan/phase-4-*` 应从主导航降级或移走；`_legacy/` 应迁出仓库（打 tag 后删除）；`docs/temp/` 内已 gitignore 的临时文件需清理。
+2. **旧文档清理**：`docs/plan/phase-4-*` 应从主导航降级或移走；`_legacy/` 应迁出仓库（打 tag 后删除）；`docs/temp/` 内已 gitignore 的临时文件需清理。
 
 ### 中优先
 
@@ -65,8 +70,8 @@
 ### 低优先 / 跟踪项
 
 7. 旧 `phase-4-dev-readiness.md` 仍有 `alpha` 分支旧口径，虽已降级为历史参考但建议直接修正或移走。
-8. `deploy/docker-compose.yml` 中 `subconverter:integration-chain-subconverter` 是浮动 tag，建议在 runbook 记录已验证版本与回滚方式（不强制 digest 锁定）。
-9. 前端无单元/E2E 测试框架；当前仅靠 TypeScript 编译校验。
+7. `deploy/docker-compose.yml` 中 `subconverter:integration-chain-subconverter` 是浮动 tag，建议在 runbook 记录已验证版本与回滚方式（不强制 digest 锁定）。
+8. 前端无单元/E2E 测试框架；当前仅靠 TypeScript 编译校验。
 
 ## 关键文件速查
 
