@@ -59,6 +59,7 @@ const COPY = {
 		githubRepo: "打开 GitHub 仓库",
 		blockingTitle: "需要处理的问题",
 		blockingSource: "来源：{stageLabel}",
+		blockingExpand: "展开问题详情",
 		currentStage: "当前阶段",
 		logToggle: "日志",
 		messageLog: "工作流日志",
@@ -170,6 +171,7 @@ const COPY = {
 		githubRepo: "Open GitHub repository",
 		blockingTitle: "Issues to resolve",
 		blockingSource: "Source: {stageLabel}",
+		blockingExpand: "Show issue details",
 		currentStage: "Current stage",
 		logToggle: "Logs",
 		messageLog: "Workflow log",
@@ -398,20 +400,78 @@ function BlockingPanel({
 	locale: Locale;
 }) {
 	const copy = COPY[locale];
+	const panelId = useId();
+	const panelRef = useRef<HTMLDivElement>(null);
+	const [expanded, setExpanded] = useState(true);
+	const errorSignature = globalErrors.map((error) => `${error.code}:${error.message}`).join("|");
+	const sourceLabel = stageLabel ? translate(copy.blockingSource, { stageLabel }) : null;
+	const primaryMessage = globalErrors[0]?.message ?? "";
+
+	useEffect(() => {
+		setExpanded(true);
+	}, [errorSignature]);
+
+	useEffect(() => {
+		if (!expanded) {
+			return undefined;
+		}
+		const handlePointerDown = (event: PointerEvent) => {
+			if (!panelRef.current?.contains(event.target as Node)) {
+				setExpanded(false);
+			}
+		};
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setExpanded(false);
+			}
+		};
+		document.addEventListener("pointerdown", handlePointerDown);
+		document.addEventListener("keydown", handleKeyDown);
+		return () => {
+			document.removeEventListener("pointerdown", handlePointerDown);
+			document.removeEventListener("keydown", handleKeyDown);
+		};
+	}, [expanded]);
+
 	if (globalErrors.length === 0) {
 		return null;
 	}
+
 	return (
-		<div className="a-blocking-flyout">
-			<section className="a-panel a-panel--danger a-panel--blocking" aria-live="polite">
-				<h2 className="a-panel__title">{copy.blockingTitle}</h2>
-				{stageLabel ? <p className="a-panel__meta">{translate(copy.blockingSource, { stageLabel })}</p> : null}
-				<ul className="a-error-list">
-					{globalErrors.map((error) => (
-						<li key={`${error.code}:${error.message}`}>{error.message}</li>
-					))}
-				</ul>
-			</section>
+		<div
+			ref={panelRef}
+			id={panelId}
+			className={`a-blocking-flyout${expanded ? "" : " a-blocking-flyout--collapsed"}`}
+		>
+			{expanded ? (
+				<section
+					className="a-panel a-panel--danger a-panel--blocking"
+					aria-live="polite"
+				>
+					<div className="a-panel__head">
+						<h2 className="a-panel__title">{copy.blockingTitle}</h2>
+						{sourceLabel ? <p className="a-panel__meta a-panel__meta--inline">{sourceLabel}</p> : null}
+					</div>
+					<ul className="a-error-list">
+						{globalErrors.map((error) => (
+							<li key={`${error.code}:${error.message}`}>{error.message}</li>
+						))}
+					</ul>
+				</section>
+			) : (
+				<button
+					type="button"
+					className="a-blocking-flyout__chip"
+					aria-expanded="false"
+					aria-controls={panelId}
+					aria-label={`${copy.blockingExpand}：${primaryMessage}`}
+					onClick={() => setExpanded(true)}
+				>
+					<span className="a-blocking-flyout__chip-title">{copy.blockingTitle}</span>
+					<span className="a-blocking-flyout__chip-message">{primaryMessage}</span>
+					{sourceLabel ? <span className="a-blocking-flyout__chip-source">{sourceLabel}</span> : null}
+				</button>
+			)}
 		</div>
 	);
 }
