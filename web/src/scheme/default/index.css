@@ -110,6 +110,8 @@
 }
 
 .a-header__brand {
+	container-type: inline-size;
+	container-name: header-brand;
 	display: flex;
 	align-items: center;
 	gap: 0.8rem;
@@ -165,6 +167,21 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* 品牌区够宽时主标题完整展示；空间不足时先藏副标题，再让主标题省略 */
+@container header-brand (min-width: 33rem) {
+	.a-title {
+		flex-shrink: 0;
+		overflow: visible;
+		text-overflow: clip;
+	}
+}
+
+@container header-brand (max-width: 32.99rem) {
+	.a-eyebrow {
+		display: none;
+	}
 }
 
 /* 顶栏 sticky 与壳层光晕一体；快捷操作仅作内联排布，不再套药丸形容器 */
