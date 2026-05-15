@@ -15,8 +15,8 @@ const (
 	DefaultFrontendDistDir              = "web/dist"
 	DefaultWriteRequestsPerMinute       = 60
 	DefaultMaxLongURLLength             = 8192
-	DefaultMaxInputSize                 = 2048
-	DefaultMaxURLsPerField              = 20
+	DefaultMaxUpstreamRequestURLLength  = 16384
+	DefaultMaxURLsPerField              = 32
 	DefaultShortLinkDBPath              = "data/short-links.sqlite3"
 	DefaultShortLinkCapacity            = 1000
 	DefaultDefaultTemplateURL           = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
@@ -31,7 +31,7 @@ const (
 	EnvFrontendDistDir              = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
 	EnvWriteRequestsPerMinute       = "CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE"
 	EnvMaxLongURLLength             = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
-	EnvMaxInputSize                 = "CHAIN_SUBCONVERTER_MAX_INPUT_SIZE"
+	EnvMaxUpstreamRequestURLLength  = "CHAIN_SUBCONVERTER_MAX_UPSTREAM_REQUEST_URL_LENGTH"
 	EnvMaxURLsPerField              = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
 	EnvShortLinkDBPath              = "CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH"
 	EnvShortLinkCapacity            = "CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY"
@@ -49,7 +49,7 @@ type Server struct {
 	FrontendDistDir              string
 	WriteRequestsPerMinute       int
 	MaxLongURLLength             int
-	MaxInputSize                 int
+	MaxUpstreamRequestURLLength  int
 	MaxURLsPerField              int
 	ShortLinkDBPath              string
 	ShortLinkCapacity            int
@@ -68,7 +68,7 @@ func DefaultServer() Server {
 		FrontendDistDir:              DefaultFrontendDistDir,
 		WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
 		MaxLongURLLength:             DefaultMaxLongURLLength,
-		MaxInputSize:                 DefaultMaxInputSize,
+		MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
 		MaxURLsPerField:              DefaultMaxURLsPerField,
 		ShortLinkDBPath:              DefaultShortLinkDBPath,
 		ShortLinkCapacity:            DefaultShortLinkCapacity,
@@ -109,12 +109,12 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.MaxLongURLLength = maxLongURLLength
 	}
-	if value, ok := lookupTrimmedEnv(EnvMaxInputSize); ok {
-		maxInputSize, err := strconv.Atoi(value)
+	if value, ok := lookupTrimmedEnv(EnvMaxUpstreamRequestURLLength); ok {
+		maxUpstreamRequestURLLength, err := strconv.Atoi(value)
 		if err != nil {
-			return Server{}, fmt.Errorf("parse %s: %w", EnvMaxInputSize, err)
+			return Server{}, fmt.Errorf("parse %s: %w", EnvMaxUpstreamRequestURLLength, err)
 		}
-		cfg.MaxInputSize = maxInputSize
+		cfg.MaxUpstreamRequestURLLength = maxUpstreamRequestURLLength
 	}
 	if value, ok := lookupTrimmedEnv(EnvMaxURLsPerField); ok {
 		maxURLsPerField, err := strconv.Atoi(value)
@@ -184,8 +184,8 @@ func (cfg Server) Validate() error {
 	if cfg.MaxLongURLLength <= 0 {
 		return fmt.Errorf("max long URL length must be greater than zero")
 	}
-	if cfg.MaxInputSize <= 0 {
-		return fmt.Errorf("max input size must be greater than zero")
+	if cfg.MaxUpstreamRequestURLLength <= 0 {
+		return fmt.Errorf("max upstream request URL length must be greater than zero")
 	}
 	if cfg.MaxURLsPerField <= 0 {
 		return fmt.Errorf("max URLs per field must be greater than zero")

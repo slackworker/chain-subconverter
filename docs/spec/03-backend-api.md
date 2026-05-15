@@ -44,8 +44,8 @@
 - `config` 表示当前快照使用的模板 URL，必须是非空 HTTP(S) URL；`include` 与 `exclude` 为透传 Tag 列表。为兼容空输入，服务端可接受 `include = []`、`exclude = []`，但必须在入站归一化为 `null`
 - 当前 Web 前端若以 TagInput 承载 `include`、`exclude`，接口接受层收到的必须是按输入顺序排列的字符串数组，不使用连续文本序列化
 - `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`；参数默认值与具体传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
-- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小必须受限；该上限必须可配置，默认 `2048` bytes
-- 若任一字段支持多 URL 输入，则该字段承载的 URL 数量必须受限；该上限必须可配置，默认每个字段最多 `20` 条
+- 参与转换的 `landingRawText` 与 `transitRawText` 必须受上游 `GET /sub` 请求 URI 预算约束；该预算必须可配置，默认完整请求 URI 最多 `16384` bytes
+- 若任一字段支持多 URL 输入，则该字段承载的输入项数量必须受限；该上限必须可配置，默认每个字段最多 `32` 条
 
 ### 2. 阶段 2 配置快照
 
@@ -214,7 +214,8 @@
 
 ```json
 {
-  "defaultTemplateURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
+  "defaultTemplateURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+  "maxPublicLongURLLength": 8192
 }
 ```
 
@@ -222,6 +223,7 @@
 
 - `defaultTemplateURL` 表示前端阶段 1 模板 URL 输入框的部署默认初始值
 - 前端必须把该值作为普通模板 URL 写入 `advancedOptions.config`，并随阶段 1 请求、生成请求与长链接载荷提交
+- `maxPublicLongURLLength` 表示当前部署对外公开 longUrl 的预算上限；当前 Web 前端必须据此决定何时自动切换为短链接展示
 - 该接口不承载鉴权、转换、模板拉取或健康检查语义
 
 ### 2. `POST /api/stage1/convert`
@@ -354,13 +356,14 @@
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
 - `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `PUBLIC_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断（scheme 来自 TLS 状态，host 来自 `Host` 请求头），多入口访问场景下 host 部分可能随入口不同而变化
+- 当前 Web 前端拿到 `longUrl` 后，若其长度超过 `GET /api/runtime-config` 返回的 `maxPublicLongURLLength`，必须立即创建并切换为 `shortUrl` 展示；此时 `longUrl` 只作为前端与后端之间的内部中间值存在，不再作为主展示结果
 - 请求体中的 `advancedOptions.config` 仍表示模板 URL，而不是最终订阅 YAML
 
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`LONG_URL_TOO_LONG`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
@@ -370,7 +373,6 @@
 - `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `DUPLICATE_FORWARD_RELAY_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
 - `EMPTY_CHAIN_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
-- `LONG_URL_TOO_LONG`：必须返回 `scope = global`
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -425,7 +427,7 @@
 
 - `400`：`INVALID_REQUEST`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `422`：`INVALID_LONG_URL`、`LONG_URL_TOO_LONG`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
+- `422`：`INVALID_LONG_URL`；必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -474,7 +476,7 @@
 
 - `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`、`LONG_URL_TOO_LONG`；三者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
+- `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`；两者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -606,13 +608,10 @@ gzip 规则：
 ### 6. 长度约束
 
 - 单条规范化 `longUrl` 的总长度必须受限
-- 当前默认上限为 `8192` bytes
-- 阶段 1 输入总大小上限与 `longUrl` 总长度上限都必须可配置；两者可以分别调节
-- 当前 `v = 1` 编码下，早期原型默认将阶段 1 的 `landingRawText` 与 `transitRawText` 规范化后总大小上限设为 `2048` bytes
-- `POST /api/generate` 若生成结果超过上限，必须返回阻断错误；结果按原请求语义终止，不截断、不自动切换为短链接
-- 满足阶段 1 输入边界的合法请求，仍可能因最终 `longUrl` 超长而在生成阶段失败；该情形必须以 `LONG_URL_TOO_LONG` 返回
-- 超限时错误码必须为 `LONG_URL_TOO_LONG`
-- `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，若规范化重编码超出当前上限，同样返回 `LONG_URL_TOO_LONG`（非解码管线失败，故不使用 `INVALID_LONG_URL`）
+- 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
+- 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
+- 当前 `v = 1` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
 

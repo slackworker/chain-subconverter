@@ -703,7 +703,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 	})
 }
 
-func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
+func TestGenerateHandler_AllowsInternalLongURLBeyondPublicBudget(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
 
@@ -717,11 +717,12 @@ func TestGenerateHandler_MapsLongURLTooLongToSpecModel(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
-		Code:    "LONG_URL_TOO_LONG",
-		Message: "long URL exceeds maximum length",
-		Scope:   "global",
-	})
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"longUrl":"http://localhost:11200/sub?data=`) {
+		t.Fatalf("generate response should include internal longUrl, got body=%s", recorder.Body.String())
+	}
 }
 
 func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
@@ -789,7 +790,7 @@ func TestSubscriptionHandler_RejectsDecodedInputLimitFailureAsInvalidLongURL(t *
 		"http://localhost:11200",
 		"http://localhost:11200",
 		2048,
-		service.InputLimits{MaxInputSize: 8},
+		service.InputLimits{MaxRequestURLLength: 80, SubconverterBaseURL: "http://subconverter:25500/sub?"},
 	)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
@@ -818,7 +819,7 @@ func TestSubscriptionHandler_RejectsDecodedInputLimitFailureAsInvalidLongURL(t *
 
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "INVALID_LONG_URL",
-		Message: "validate stage1 input limits: normalized input total size 16 exceeds limit 8",
+		Message: "validate stage1 input limits: landing-discovery request URL length 156 exceeds limit 80",
 		Scope:   "global",
 	})
 }
@@ -955,13 +956,17 @@ func TestRuntimeConfigHandler_ReturnsDefaultTemplateURL(t *testing.T) {
 	}
 
 	var response struct {
-		DefaultTemplateURL string `json:"defaultTemplateURL"`
+		DefaultTemplateURL     string `json:"defaultTemplateURL"`
+		MaxPublicLongURLLength int    `json:"maxPublicLongURLLength"`
 	}
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode runtime config JSON: %v", err)
 	}
 	if response.DefaultTemplateURL != "https://templates.example.com/default.ini" {
 		t.Fatalf("defaultTemplateURL = %q", response.DefaultTemplateURL)
+	}
+	if response.MaxPublicLongURLLength != 8192 {
+		t.Fatalf("maxPublicLongURLLength = %d", response.MaxPublicLongURLLength)
 	}
 }
 
@@ -975,7 +980,7 @@ func mustNewTestHandlerWithShortLinks(t *testing.T, source service.ConversionSou
 	t.Helper()
 
 	templateStore := service.NewInMemoryTemplateContentStore()
-	handler, err := NewHandler(source, templateStore, shortLinkStore, "http://localhost:11200", "http://localhost:11200", 2048, service.InputLimits{})
+	handler, err := NewHandler(source, templateStore, shortLinkStore, "http://localhost:11200", "http://localhost:11200", 8192, service.InputLimits{})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

@@ -91,7 +91,10 @@ func TestDecodeLongURLPayload_RejectsDecodedStage1InputOverLimit(t *testing.T) {
 		t.Fatalf("EncodeLongURL() error = %v", err)
 	}
 
-	_, err = DecodeLongURLPayload(longURL, InputLimits{MaxInputSize: 8})
+	_, err = DecodeLongURLPayload(longURL, InputLimits{
+		MaxRequestURLLength: 80,
+		SubconverterBaseURL: "http://subconverter:25500/sub?",
+	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

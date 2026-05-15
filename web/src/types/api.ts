@@ -122,6 +122,7 @@ export interface ResolveURLResponse {
 
 export interface RuntimeConfigResponse {
 	defaultTemplateURL: string;
+	maxPublicLongURLLength: number;
 }
 
 export interface ErrorResponse {

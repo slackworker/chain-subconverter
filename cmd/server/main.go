@@ -62,8 +62,9 @@ func main() {
 	}
 
 	handler, err := api.NewHandler(managedSource, templateStore, shortLinkStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
-		MaxInputSize:    serverCfg.MaxInputSize,
-		MaxURLsPerField: serverCfg.MaxURLsPerField,
+		MaxRequestURLLength: serverCfg.MaxUpstreamRequestURLLength,
+		MaxURLsPerField:     serverCfg.MaxURLsPerField,
+		SubconverterBaseURL: subconverterCfg.BaseURL,
 	}, api.WithWriteRequestsPerMinute(serverCfg.WriteRequestsPerMinute))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)

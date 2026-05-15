@@ -5,34 +5,40 @@ import (
 	"testing"
 )
 
-func TestValidateStage1InputLimits_TotalSize(t *testing.T) {
+func TestValidateStage1InputLimits_RequestURLLength(t *testing.T) {
 	tests := []struct {
-		name     string
-		landing  string
-		transit  string
-		maxSize  int
-		wantErr  bool
-		wantCode string
+		name      string
+		landing   string
+		transit   string
+		baseURL   string
+		maxLength int
+		wantErr   bool
+		wantCode  string
+		wantCtx   string
 	}{
 		{
-			name:    "within limit",
-			landing: "https://example.com/sub",
-			transit: "https://example.com/transit",
-			maxSize: 2048,
+			name:      "within request URL limit",
+			landing:   "https://example.com/sub",
+			transit:   "https://example.com/transit",
+			baseURL:   "http://subconverter:25500/sub?",
+			maxLength: 256,
 		},
 		{
-			name:     "exceeds limit",
-			landing:  strings.Repeat("a", 1500),
-			transit:  strings.Repeat("b", 600),
-			maxSize:  2048,
-			wantErr:  true,
-			wantCode: "STAGE1_INPUT_TOO_LARGE",
+			name:      "landing request exceeds limit",
+			landing:   strings.Repeat("https://example.com/subscription/", 8),
+			transit:   "https://example.com/transit",
+			baseURL:   "http://subconverter:25500/sub?",
+			maxLength: 180,
+			wantErr:   true,
+			wantCode:  "STAGE1_INPUT_TOO_LARGE",
+			wantCtx:   "landingRawText",
 		},
 		{
-			name:    "zero limit means no check",
-			landing: strings.Repeat("a", 5000),
-			transit: strings.Repeat("b", 5000),
-			maxSize: 0,
+			name:      "zero limit means no check",
+			landing:   strings.Repeat("https://example.com/subscription/", 16),
+			transit:   strings.Repeat("https://example.com/transit/", 16),
+			baseURL:   "http://subconverter:25500/sub?",
+			maxLength: 0,
 		},
 	}
 
@@ -41,7 +47,7 @@ func TestValidateStage1InputLimits_TotalSize(t *testing.T) {
 			err := ValidateStage1InputLimits(Stage1Input{
 				LandingRawText: tt.landing,
 				TransitRawText: tt.transit,
-			}, InputLimits{MaxInputSize: tt.maxSize})
+			}, InputLimits{MaxRequestURLLength: tt.maxLength, SubconverterBaseURL: tt.baseURL})
 
 			if tt.wantErr {
 				if err == nil {
@@ -57,6 +63,10 @@ func TestValidateStage1InputLimits_TotalSize(t *testing.T) {
 				if respErr.BlockingError().Scope != "stage1_field" {
 					t.Fatalf("scope mismatch: got %q want %q", respErr.BlockingError().Scope, "stage1_field")
 				}
+				ctx := respErr.BlockingError().Context
+				if ctx == nil || ctx["field"] != tt.wantCtx {
+					t.Fatalf("context field mismatch: got %v want field=%q", ctx, tt.wantCtx)
+				}
 			} else {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -67,8 +77,8 @@ func TestValidateStage1InputLimits_TotalSize(t *testing.T) {
 }
 
 func TestValidateStage1InputLimits_URLCount(t *testing.T) {
-	twentyOneURLs := strings.Repeat("https://example.com/sub\n", 21)
-	twentyURLs := strings.Repeat("https://example.com/sub\n", 20)
+	thirtyThreeURLs := strings.Repeat("https://example.com/sub\n", 33)
+	thirtyTwoURLs := strings.Repeat("https://example.com/sub\n", 32)
 
 	tests := []struct {
 		name     string
@@ -81,15 +91,15 @@ func TestValidateStage1InputLimits_URLCount(t *testing.T) {
 	}{
 		{
 			name:    "within url limit",
-			landing: twentyURLs,
-			transit: twentyURLs,
-			maxURLs: 20,
+			landing: thirtyTwoURLs,
+			transit: thirtyTwoURLs,
+			maxURLs: 32,
 		},
 		{
 			name:     "landing exceeds url limit",
-			landing:  twentyOneURLs,
+			landing:  thirtyThreeURLs,
 			transit:  "https://example.com/transit",
-			maxURLs:  20,
+			maxURLs:  32,
 			wantErr:  true,
 			wantCode: "TOO_MANY_UPSTREAM_URLS",
 			wantCtx:  "landingRawText",
@@ -97,25 +107,25 @@ func TestValidateStage1InputLimits_URLCount(t *testing.T) {
 		{
 			name:     "transit exceeds url limit",
 			landing:  "https://example.com/landing",
-			transit:  twentyOneURLs,
-			maxURLs:  20,
+			transit:  thirtyThreeURLs,
+			maxURLs:  32,
 			wantErr:  true,
 			wantCode: "TOO_MANY_UPSTREAM_URLS",
 			wantCtx:  "transitRawText",
 		},
 		{
 			name:     "standalone carriage return is treated as newline",
-			landing:  strings.Repeat("https://example.com/sub\r", 21),
+			landing:  strings.Repeat("https://example.com/sub\r", 33),
 			transit:  "",
-			maxURLs:  20,
+			maxURLs:  32,
 			wantErr:  true,
 			wantCode: "TOO_MANY_UPSTREAM_URLS",
 			wantCtx:  "landingRawText",
 		},
 		{
 			name:    "zero maxURLs means no check",
-			landing: twentyOneURLs,
-			transit: twentyOneURLs,
+			landing: thirtyThreeURLs,
+			transit: thirtyThreeURLs,
 			maxURLs: 0,
 		},
 	}

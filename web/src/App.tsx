@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAppWorkflow } from "./hooks/useAppWorkflow";
 import { copyTextToClipboard } from "./lib/clipboard";
 import { getRuntimeConfig } from "./lib/api";
-import { DEFAULT_TEMPLATE_URL } from "./lib/defaults";
+import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH, DEFAULT_TEMPLATE_URL } from "./lib/defaults";
 import type { OutputActions } from "./lib/composition";
 import type { RuntimeConfigResponse } from "./types/api";
 import { useUIScheme } from "./lib/scheme-context";
@@ -33,9 +33,9 @@ function withDownloadFlag(urlString: string) {
 
 export default function App() {
 	const { Page, primaryBlockingFeedbackPlacement } = useUIScheme();
-	const workflow = useAppWorkflow();
 	const [copyState, setCopyState] = useState<"idle" | "done" | "failed">("idle");
 	const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfigResponse | null>(null);
+	const workflow = useAppWorkflow(runtimeConfig?.maxPublicLongURLLength ?? DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH);
 
 	useEffect(() => {
 		if (copyState === "idle") {
@@ -55,7 +55,10 @@ export default function App() {
 			})
 			.catch(() => {
 				if (!cancelled) {
-					setRuntimeConfig({ defaultTemplateURL: DEFAULT_TEMPLATE_URL });
+					setRuntimeConfig({
+						defaultTemplateURL: DEFAULT_TEMPLATE_URL,
+						maxPublicLongURLLength: DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH,
+					});
 				}
 			});
 		return () => {

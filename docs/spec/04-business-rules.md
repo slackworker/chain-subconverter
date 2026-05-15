@@ -20,8 +20,8 @@
 - 业务层默认不对失败的 `subconverter` 调用自动重试
 - 若显式启用重试，最多只允许 `1` 次串行重试，且不得并行放大请求
 - 后端在转发给 `subconverter` 前先校验参与本次转换的输入边界；超限请求直接拒绝
-- 参与转换的 `landingRawText` 与 `transitRawText` 规范化后总大小上限必须可配置，默认 `2048` bytes
-- 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的 URL 数量上限都必须可配置，默认每个字段最多 `20` 条
+- 当前阶段 1 的主预算口径固定为“完整上游请求 URI 长度”：`landing-discovery pass`、`transit-discovery pass`、`full-base pass` 三个请求中任意一个超过预算都必须在转发前阻断；该上限必须可配置，默认 `16384` bytes
+- 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的输入项数量上限都必须可配置，默认每个字段最多 `32` 条
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
 - `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
 - 若本次有效模板已识别出某地域策略组，但该地域策略组在同一条转换管线的 `full-base pass` 产物（经 `1.3` 后处理后的 `baseCompleteConfig`）中完全不存在，必须视为 `full-base pass` 失败；不得按空组静默降级
@@ -43,6 +43,7 @@
 - 输入区中的换行只承担编辑态分条语义；不得把换行字面量直接传给上游 `url` 参数
 - 输入区分条时，`LF`、`CRLF` 与单独 `CR` 都必须按换行等价处理
 - URL 输入归一化时按行去除首尾空白并忽略空行；传给上游的 `url` 参数不得包含由空白行产生的空项
+- 阶段 1 输入边界校验必须复用与真实请求一致的 query 拼装规则，按完整请求 URI 长度判定是否超出上游预算；不得再使用独立的“规范化文本总字节数”粗略近似
 
 ### 0.2.2 `subconverter` 参数表
 

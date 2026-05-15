@@ -11,6 +11,7 @@
 - `G1` 前端共享业务层已签收；共享边界以 [spec/02-frontend-spec](../spec/02-frontend-spec.md) 为准，不再单独维护一份 G1 验收说明。
 - 当前 3.0 分支模型应统一为 `main`、`dev`、`release/3.0`：共享改动先回 `main`，A/B/C 并行实现集中在 `dev`（原 `ui-lab`），3.0 的 Alpha、Beta、正式版统一由 `release/3.0` 配合版本 tag 承担。
 - Alpha 当前对外口径已固定为默认入口 `/` + Compose 单段部署命令；镜像可保留 `alpha-latest` 作为便捷入口，但发布记录应开始绑定不可变 tag。
+- Stage 1 容量限制已从“规范化文本总字节数 2048”收口为“每字段 32 条输入项 + 上游 `GET /sub` 完整请求 URI 预算”；Stage 3 对外 longUrl 预算保持 `8192`，超过时前端自动强制切短链接。
 
 ## Phase 进度
 
@@ -31,6 +32,7 @@
 - 本地开发主入口已固定为 `./scripts/dev-up.sh <scheme>`，默认端口为 `25500 / 11200 / 5173`。
 - VS Code `dev: up` 与 `./scripts/dev-up.sh` 默认共用固定端口；多 worktree 并行需显式设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（或任务包装脚本的第二参数 / `auto`），冲突时由 `dev-up.sh` 复用、清理本工作区残留实例或报错退出。
 - Docker 镜像已接入前端构建，后端也已具备 SPA 静态资源托管能力。
+- `GET /api/runtime-config` 现已同时下发默认模板 URL 与公开 longUrl 预算；前端生成流程已接入 `>8192` 自动短链与禁止回落展示超预算 longUrl。
 - `deploy/README.md` 已将第三方设备部署改为单段可复制命令，由用户修改顶部变量后生成并启动本地 `docker-compose.yml`；默认优先走一体化 Compose 内部部署，也允许按文档切换为双 Docker 分离部署。
 - 四个写接口现已在 HTTP 层共享最简 per-IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整或设 `0` 关闭。
 - Alpha（内测）发布默认入口与部署入口已固定，可直接用于第三方设备冷启动；A/B/C 入口继续保留用于对照验证。
@@ -52,6 +54,8 @@
 - `2026-05-14`: `go test ./internal/api ./internal/config ./cmd/server`
 - `2026-05-14`: `go test ./internal/service ./internal/config ./internal/api ./cmd/server`
 - `2026-05-14`: `go test ./internal/api -run TestStage1ConvertHandler_RateLimitsByClientIP`
+- `2026-05-15`: `go test ./internal/service ./internal/subconverter ./internal/config ./internal/api`
+- `2026-05-15`: `cd web && npm run build`
 - `2026-05-05`: `cd web && npm run build:a`
 - `2026-05-05`: `cd web && npm run build:b && npm run build:c`
 - `2026-05-01`: `cd web && npm run build:b`

@@ -17,6 +17,7 @@ const (
 	defaultLongURLMaxLength = 8192
 	longURLSchemaVersion    = 1
 	longURLPath             = "/sub"
+	NoLongURLLengthLimit    = -1
 )
 
 const (
@@ -94,6 +95,9 @@ func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLengt
 	}
 
 	maxLength := maxLongURLLength
+	if maxLength == NoLongURLLengthLimit {
+		return longURL, nil
+	}
 	if maxLength <= 0 {
 		maxLength = defaultLongURLMaxLength
 	}

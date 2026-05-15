@@ -152,6 +152,7 @@
   - `enablePortForward`：switch
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
 - “模板 URL”输入框默认填入 `GET /api/runtime-config` 返回的 `defaultTemplateURL`
+- 前端同时从 `GET /api/runtime-config` 读取 `maxPublicLongURLLength`，用于决定何时必须强制切换为短链接展示
 - 前端必须把默认模板 URL 作为普通输入值写入 `advancedOptions.config`；该值随阶段 1 请求、生成请求与长链接状态载荷一起提交
 - 模板 URL 输入框右侧必须提供“恢复默认”动作；触发后将输入框值改回当前 `defaultTemplateURL`
 - 前端不得在输入框外重复展示“当前默认模板”URL 文本块；用户复制默认 URL 时直接从输入框选中文本复制
@@ -262,8 +263,9 @@
 - “使用短链接”切换控件属于阶段 3 稳定能力，位置约束为链接输入框右侧
 - 反向解析须在同一输入框中允许用户输入已有 URL（本系统生成的 `longUrl` 或 `shortUrl`）或对应短链接 `shortID` 供 `resolve-url` 使用
 - 长链接是规范化快照链接，始终作为页面状态来源；短链接是长链接的后端别名；两者都可直接作为订阅地址消费
-- 切换规则：无 `longUrl` 时切换到“使用短链接”只记录展示偏好，不改写当前恢复输入；有 `longUrl` 且首次开启“使用短链接”且尚无 `shortUrl` 时，前端调用 `POST /api/short-links` 创建短链接，成功后展示短链接，失败则保持展示长链接并显著提示错误；后续已获得 `shortUrl` 时再次开启只切换展示值，不重新生成链接
-- 关闭“使用短链接”时切回展示长链接，不触发后端请求
+- 切换规则：无 `longUrl` 时切换到“使用短链接”只记录展示偏好，不改写当前恢复输入；有 `longUrl` 且首次开启“使用短链接”且尚无 `shortUrl` 时，前端调用 `POST /api/short-links` 创建短链接，成功后展示短链接；若当前 `longUrl` 未超过 `maxPublicLongURLLength`，短链创建失败时允许保持展示长链接并显著提示错误；后续已获得 `shortUrl` 时再次开启只切换展示值，不重新生成链接
+- 当 `POST /api/generate` 返回的 `longUrl` 长度超过 `maxPublicLongURLLength` 时，前端必须立即创建短链接，并在成功后强制展示 `shortUrl`；该场景下若短链创建失败，本次生成视为未完成，不得回落展示超预算 `longUrl`
+- 当当前状态的 `longUrl` 已超过 `maxPublicLongURLLength` 且页面已持有对应 `shortUrl` 时，前端不得允许用户切回展示长链接
 - 方案层若为阻断错误显示阶段标签，首次短链创建失败属于 Stage 3
 
 ### 3.3 链接消费动作与反向解析

@@ -20,6 +20,12 @@ type Client struct {
 	maxInFlight chan struct{}
 }
 
+type RequestURLs struct {
+	LandingDiscovery string
+	TransitDiscovery string
+	FullBase         string
+}
+
 func NewClient(cfg config.Subconverter) (*Client, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -47,46 +53,72 @@ func NewClient(cfg config.Subconverter) (*Client, error) {
 }
 
 func (client *Client) Convert(ctx context.Context, request Request) (ThreePassResult, error) {
-	landingURL, err := client.buildPassURL(request, request.LandingRawText, true, request.ExtraQuery)
+	requestURLs, err := BuildRequestURLs(client.baseURL.String(), request)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
-	landingYAML, err := client.executePass(ctx, "landing-discovery pass", landingURL)
-	if err != nil {
-		return ThreePassResult{}, err
-	}
-
-	transitURL, err := client.buildPassURL(request, request.TransitRawText, true, request.ExtraQuery)
-	if err != nil {
-		return ThreePassResult{}, err
-	}
-	transitYAML, err := client.executePass(ctx, "transit-discovery pass", transitURL)
+	landingYAML, err := client.executePass(ctx, "landing-discovery pass", requestURLs.LandingDiscovery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
 
-	fullBaseURL, err := client.buildPassURL(request, joinURLs(request.LandingRawText, request.TransitRawText), false, request.ExtraQuery)
+	transitYAML, err := client.executePass(ctx, "transit-discovery pass", requestURLs.TransitDiscovery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
-	fullBaseYAML, err := client.executePass(ctx, "full-base pass", fullBaseURL)
+
+	fullBaseYAML, err := client.executePass(ctx, "full-base pass", requestURLs.FullBase)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
 
 	return ThreePassResult{
 		LandingDiscovery: PassResult{
-			RequestURL: landingURL,
+			RequestURL: requestURLs.LandingDiscovery,
 			YAML:       landingYAML,
 		},
 		TransitDiscovery: PassResult{
-			RequestURL: transitURL,
+			RequestURL: requestURLs.TransitDiscovery,
 			YAML:       transitYAML,
 		},
 		FullBase: PassResult{
-			RequestURL: fullBaseURL,
+			RequestURL: requestURLs.FullBase,
 			YAML:       fullBaseYAML,
 		},
+	}, nil
+}
+
+func BuildRequestURLs(baseURL string, request Request) (RequestURLs, error) {
+	normalizedBaseURL, err := config.NormalizeSubconverterBaseURL(baseURL)
+	if err != nil {
+		return RequestURLs{}, fmt.Errorf("normalize subconverter base URL: %w", err)
+	}
+
+	parsedBaseURL, err := url.Parse(normalizedBaseURL)
+	if err != nil {
+		return RequestURLs{}, fmt.Errorf("parse subconverter base URL: %w", err)
+	}
+	if parsedBaseURL.Scheme == "" || parsedBaseURL.Host == "" {
+		return RequestURLs{}, fmt.Errorf("subconverter base URL must include scheme and host")
+	}
+
+	landingURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, request.LandingRawText, true, request.ExtraQuery)
+	if err != nil {
+		return RequestURLs{}, err
+	}
+	transitURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, request.TransitRawText, true, request.ExtraQuery)
+	if err != nil {
+		return RequestURLs{}, err
+	}
+	fullBaseURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, joinURLs(request.LandingRawText, request.TransitRawText), false, request.ExtraQuery)
+	if err != nil {
+		return RequestURLs{}, err
+	}
+
+	return RequestURLs{
+		LandingDiscovery: landingURL,
+		TransitDiscovery: transitURL,
+		FullBase:         fullBaseURL,
 	}, nil
 }
 
@@ -131,12 +163,19 @@ func (client *Client) executePass(ctx context.Context, op string, rawURL string)
 }
 
 func (client *Client) buildPassURL(request Request, rawInput string, list bool, extraQuery url.Values) (string, error) {
-	baseURL := *client.baseURL
-	baseURL.RawQuery = client.buildRawQuery(request, rawInput, list, extraQuery)
-	return baseURL.String(), nil
+	return buildPassURLFromBaseURL(client.baseURL, request, rawInput, list, extraQuery)
 }
 
-func (client *Client) buildRawQuery(request Request, rawInput string, list bool, extraQuery url.Values) string {
+func buildPassURLFromBaseURL(baseURL *url.URL, request Request, rawInput string, list bool, extraQuery url.Values) (string, error) {
+	if baseURL == nil {
+		return "", fmt.Errorf("subconverter base URL must not be nil")
+	}
+	requestURL := *baseURL
+	requestURL.RawQuery = buildRawQuery(request, rawInput, list, extraQuery)
+	return requestURL.String(), nil
+}
+
+func buildRawQuery(request Request, rawInput string, list bool, extraQuery url.Values) string {
 	params := make([]string, 0, 9)
 	params = append(params, "target=clash")
 	params = appendOptionalBoolQuery(params, "emoji", request.Options.Emoji)

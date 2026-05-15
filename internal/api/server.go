@@ -41,7 +41,8 @@ type defaultTemplateURLProvider interface {
 }
 
 type runtimeConfigResponse struct {
-	DefaultTemplateURL string `json:"defaultTemplateURL"`
+	DefaultTemplateURL     string `json:"defaultTemplateURL"`
+	MaxPublicLongURLLength int    `json:"maxPublicLongURLLength"`
 }
 
 func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits, options ...HandlerOption) (*Handler, error) {
@@ -134,7 +135,8 @@ func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request 
 
 func (handler *Handler) handleRuntimeConfig(writer http.ResponseWriter, request *http.Request) {
 	writeJSON(writer, http.StatusOK, runtimeConfigResponse{
-		DefaultTemplateURL: handler.defaultTemplateURL,
+		DefaultTemplateURL:     handler.defaultTemplateURL,
+		MaxPublicLongURLLength: handler.maxLongURLLength,
 	})
 }
 
@@ -150,7 +152,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 		handler.effectiveBaseURL(request),
 		handler.source,
 		payload,
-		handler.maxLongURLLength,
+		service.NoLongURLLengthLimit,
 		handler.inputLimits,
 	)
 	if err != nil {
@@ -172,7 +174,7 @@ func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *ht
 		handler.effectiveBaseURL(request),
 		handler.shortLinkStore,
 		payload.LongURL,
-		handler.maxLongURLLength,
+		service.NoLongURLLengthLimit,
 		handler.inputLimits,
 	)
 	if err != nil {
@@ -195,7 +197,7 @@ func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *ht
 		handler.source,
 		handler.shortLinkStore,
 		payload.URL,
-		handler.maxLongURLLength,
+		service.NoLongURLLengthLimit,
 		handler.inputLimits,
 	)
 	if err != nil {

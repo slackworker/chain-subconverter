@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
 import { getChainTargetGroups } from "../lib/chainTargets";
+import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
 	clearStage1FieldErrors,
@@ -189,6 +190,10 @@ function getDisplayedGeneratedUrl(
 	return generatedUrls.longUrl;
 }
 
+function exceedsPublicLongURLBudget(longUrl: string, maxPublicLongURLLength: number) {
+	return maxPublicLongURLLength > 0 && longUrl.length > maxPublicLongURLLength;
+}
+
 function getModeOptions(stage2Init: Stage2Init | null) {
 	return stage2Init?.availableModes ?? [];
 }
@@ -321,7 +326,7 @@ function pickNextTarget(stage2Init: Stage2Init | null, stage2Rows: Stage2Snapsho
 	return null;
 }
 
-export function useAppWorkflow() {
+export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH) {
 	const [state, setState] = useState(initialAppState);
 	const [isConverting, setIsConverting] = useState(false);
 	const [isRestoring, setIsRestoring] = useState(false);
@@ -710,7 +715,8 @@ export function useAppWorkflow() {
 				stage1Input: toStage1InputPayload(stage1Input),
 				stage2Snapshot,
 			});
-			if (!preferShortUrl) {
+			const forceShortUrl = exceedsPublicLongURLBudget(response.longUrl, maxPublicLongURLLength);
+			if (!preferShortUrl && !forceShortUrl) {
 				const logEntries = backendMessagesToWorkflowLog(response.messages, "stage2").concat(
 					buildWorkflowLogEntry("success", "GENERATE_SUCCEEDED", "已生成长链接。", "frontend", "stage2"),
 				);
@@ -731,10 +737,17 @@ export function useAppWorkflow() {
 				const shortLinkResponse = await postShortLink(response.longUrl);
 				const mergedMessages = mergeMessages(response.messages, shortLinkResponse.messages);
 				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage2").concat(
-					buildWorkflowLogEntry("success", "SHORT_URL_READY", "已生成短链接。", "frontend", "stage2"),
+					buildWorkflowLogEntry(
+						"success",
+						"SHORT_URL_READY",
+						forceShortUrl ? "长链接超过公开长度上限，已自动切换为短链接。" : "已生成短链接。",
+						"frontend",
+						"stage2",
+					),
 				);
 				setState((current) => ({
 					...current,
+					preferShortUrl: preferShortUrl || forceShortUrl,
 					generatedUrls: buildGeneratedUrls(shortLinkResponse.longUrl, shortLinkResponse.shortUrl),
 					currentLinkInput: shortLinkResponse.shortUrl,
 					responseOriginStage: "stage2",
@@ -753,17 +766,19 @@ export function useAppWorkflow() {
 				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage3").concat(
 					buildWorkflowLogEntry(
 						"error",
-						"SHORT_URL_FAILED",
-						`创建短链接失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
+						forceShortUrl ? "SHORT_URL_REQUIRED_FAILED" : "SHORT_URL_FAILED",
+						forceShortUrl
+							? `当前状态的长链接超过公开长度上限，自动短链接失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`
+							: `创建短链接失败：${summarizeBlockingErrors(blockingErrors, "请求失败。")}`,
 						"frontend",
 						"stage3",
 					),
 				);
 				setState((current) => ({
 					...current,
-					preferShortUrl: false,
-					generatedUrls: buildGeneratedUrls(response.longUrl, null),
-					currentLinkInput: response.longUrl,
+					preferShortUrl: forceShortUrl ? true : false,
+					generatedUrls: forceShortUrl ? null : buildGeneratedUrls(response.longUrl, null),
+					currentLinkInput: forceShortUrl ? current.currentLinkInput : response.longUrl,
 					responseOriginStage: "stage3",
 					messages: mergedMessages,
 					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
@@ -803,6 +818,26 @@ export function useAppWorkflow() {
 
 	async function handlePreferShortUrl(checked: boolean) {
 		if (!checked) {
+			if (state.generatedUrls && exceedsPublicLongURLBudget(state.generatedUrls.longUrl, maxPublicLongURLLength)) {
+				setState((current) => ({
+					...current,
+					preferShortUrl: true,
+					currentLinkInput: getDisplayedGeneratedUrl(current.generatedUrls, true) || current.currentLinkInput,
+					workflowLog: appendWorkflowLogEntries(
+						current.workflowLog,
+						[
+							buildWorkflowLogEntry(
+								"warning",
+								"SHORT_URL_REQUIRED",
+								"当前状态的长链接超过公开长度上限，不能切回长链接展示。",
+								"frontend",
+								"stage3",
+							),
+						],
+					),
+				}));
+				return;
+			}
 			setState((current) => ({
 				...current,
 				preferShortUrl: false,
