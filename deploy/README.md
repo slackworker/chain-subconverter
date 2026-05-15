@@ -232,7 +232,7 @@ docker compose -f deploy/docker-compose.yml up -d
 - `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
 - `TEMPLATE_ALLOW_PRIVATE_NETWORKS`：**默认关闭**。服务端默认拒绝拉取指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL；只有在可信自部署环境且确实需要访问内网模板源时，才显式设为 `true`
 - `WRITE_REQUESTS_PER_MINUTE`：**默认 `60`**。四个写接口（`/api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url`）共享的每 IP 限速；设为 `0` 表示关闭，仅建议本地调试或受控验证环境使用
-- `TRUSTED_PROXY_CIDRS`：**可选**。仅在入口前存在受信反代时使用；值为逗号分隔的单 IP 或 CIDR。官方 Compose 示例默认填入 `172.16.0.0/12,127.0.0.0/8`，用于覆盖常见 Docker bridge + 宿主机反代场景；若实际反代 peer 不在这些网段，需按部署拓扑改成真实 peer 网段
+- `TRUSTED_PROXY_CIDRS`：**可选**。仅在入口前存在受信反代时使用；值为逗号分隔的单 IP 或 CIDR。官方 Compose 示例默认填入 `172.16.0.0/12`，用于覆盖常见 Docker bridge + 宿主机反代场景；若实际反代 peer 不在该网段（例如 `network_mode: host` 且对端为 loopback），需按部署拓扑改成真实 peer 网段
 - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`：`app` 访问 `subconverter` 的内部 HTTP endpoint。默认一体化 Compose 直接使用 `http://subconverter:25500/sub`；若改成双 Docker 分离部署，必须显式改成 `app` 容器可达的地址
 - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`：`subconverter` 回取托管模板时使用的 `app` 地址。默认一体化 Compose 可用 `http://app:11200`；双 Docker 分离部署若不共享服务名解析，必须显式改成 `subconverter` 可回连的地址
 
@@ -244,7 +244,7 @@ docker compose -f deploy/docker-compose.yml up -d
   - `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=false`：设为 `true` 时，要求同时提供 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，否则服务启动失败。建议在公网、固定域名或 HTTPS 反代场景开启
   - `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=false`：默认拒绝指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL。仅当部署者明确知道模板源位于可信内网，且接受相应 SSRF 风险边界时才改为 `true`
   - `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE=60`：四个写接口共享的每 IP token bucket；设为 `0` 表示关闭。当前限速命中时接口返回 `429 RATE_LIMITED`
-  - `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS=172.16.0.0/12,127.0.0.0/8`：trusted proxy peer 列表；仅当直接对端 IP 命中这些单 IP / CIDR 时，服务端才会读取 `X-Forwarded-For`、`X-Forwarded-Proto` 与 `X-Forwarded-Host`。Compose 示例默认值用于覆盖常见 Docker bridge + 本机 Nginx/OpenResty 反代场景；若实际 peer 网段不同，需按部署拓扑改写
+  - `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS=172.16.0.0/12`：trusted proxy peer 列表；仅当直接对端 IP 命中这些单 IP / CIDR 时，服务端才会读取 `X-Forwarded-For`、`X-Forwarded-Proto` 与 `X-Forwarded-Host`。Compose 示例默认值用于覆盖常见 Docker bridge + 本机 Nginx/OpenResty 反代场景；若实际 peer 网段不同（例如 host 网络下对端为 `127.0.0.1`），需按部署拓扑改写
   - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值，同时通过 `/api/runtime-config` 供前端填入 `advancedOptions.config`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`

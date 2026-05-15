@@ -59,7 +59,7 @@
 这意味着：
 
 - 单入口直连部署通常可以工作。
-- 常见 Docker bridge + 宿主机反代场景可通过 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 改善 fallback 推断；官方 Compose 示例默认给出 `172.16.0.0/12,127.0.0.0/8` 作为新手友好值。
+- 常见 Docker bridge + 宿主机反代场景可通过 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 改善 fallback 推断；官方 Compose 示例默认给出 `172.16.0.0/12`。若使用 `network_mode: host` 且对端为 loopback，需另行加入 `127.0.0.1/32` 等实际 peer。
 - 如果前面有 HTTPS 终止反代，而应用本身只看到明文 HTTP，请务必显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=https://<your-host>`。
 - 如果该部署不允许继续依赖请求头自动推断，应同时设置 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`，让错误配置在启动阶段直接失败。
 - 如果公网或多入口场景下不显式设置该值，生成链接可能错误，且存在被 Host 头污染的风险。

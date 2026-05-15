@@ -681,7 +681,7 @@ func TestStage1ConvertHandler_RateLimitsByTrustedForwardedClientIP(t *testing.T)
 		2048,
 		service.InputLimits{},
 		WithWriteRequestsPerMinute(1),
-		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
 	)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
@@ -724,7 +724,7 @@ func TestStage1ConvertHandler_IgnoresForwardedClientIPFromUntrustedPeer(t *testi
 		2048,
 		service.InputLimits{},
 		WithWriteRequestsPerMinute(1),
-		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
 	)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
@@ -1098,7 +1098,7 @@ func TestEffectiveBaseURL_UsesTrustedForwardedHeaders(t *testing.T) {
 		"http://localhost:11200",
 		2048,
 		service.InputLimits{},
-		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
 	)
 	if err != nil {
 		t.Fatalf("NewHandler() with trusted proxies error = %v", err)
@@ -1126,7 +1126,7 @@ func TestEffectiveBaseURL_IgnoresForwardedHeadersFromUntrustedPeer(t *testing.T)
 		"http://localhost:11200",
 		2048,
 		service.InputLimits{},
-		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
 	)
 	if err != nil {
 		t.Fatalf("NewHandler() with trusted proxies error = %v", err)
