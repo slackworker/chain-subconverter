@@ -27,6 +27,8 @@ services:
       # CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS: "false"
       # 设为 0 可关闭；默认建议保留：
       # CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE: "60"
+      # 常见 Docker + 宿主机反代场景的默认 trusted proxies；若你的反代 peer 不在这些网段，按实际改：
+      CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS: "172.16.0.0/12,127.0.0.0/8"
       CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m

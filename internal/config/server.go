@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ const (
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 	DefaultTemplateAllowPrivateNetworks = false
 	DefaultRequirePublicBaseURL         = false
+	DefaultTrustedProxyCIDRs            = ""
 
 	EnvHTTPAddress                  = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
 	EnvPublicBaseURL                = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
@@ -40,6 +42,7 @@ const (
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateAllowPrivateNetworks = "CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS"
 	EnvRequirePublicBaseURL         = "CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL"
+	EnvTrustedProxyCIDRs            = "CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS"
 )
 
 type Server struct {
@@ -58,6 +61,7 @@ type Server struct {
 	TemplateFetchCacheTTL        time.Duration
 	TemplateAllowPrivateNetworks bool
 	RequirePublicBaseURL         bool
+	TrustedProxyCIDRs            string
 }
 
 func DefaultServer() Server {
@@ -77,6 +81,7 @@ func DefaultServer() Server {
 		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 		TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
 		RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
+		TrustedProxyCIDRs:            DefaultTrustedProxyCIDRs,
 	}
 }
 
@@ -164,6 +169,13 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.RequirePublicBaseURL = requirePublicBaseURL
 	}
+	if value, ok := lookupTrimmedEnv(EnvTrustedProxyCIDRs); ok {
+		normalized, err := normalizeTrustedProxyCIDRs(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvTrustedProxyCIDRs, err)
+		}
+		cfg.TrustedProxyCIDRs = normalized
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return Server{}, err
@@ -225,6 +237,9 @@ func (cfg Server) Validate() error {
 	} else if cfg.RequirePublicBaseURL {
 		return fmt.Errorf("public base URL is required when %s=true", EnvRequirePublicBaseURL)
 	}
+	if _, err := normalizeTrustedProxyCIDRs(cfg.TrustedProxyCIDRs); err != nil {
+		return fmt.Errorf("parse trusted proxy CIDRs: %w", err)
+	}
 	managedTemplateURL, err := url.Parse(cfg.ManagedTemplateBaseURL)
 	if err != nil {
 		return fmt.Errorf("parse managed template base URL: %w", err)
@@ -233,4 +248,29 @@ func (cfg Server) Validate() error {
 		return fmt.Errorf("managed template base URL must include scheme and host")
 	}
 	return nil
+}
+
+func normalizeTrustedProxyCIDRs(value string) (string, error) {
+	parts := strings.Split(value, ",")
+	normalized := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+
+		if prefix, err := netip.ParsePrefix(trimmed); err == nil {
+			normalized = append(normalized, prefix.String())
+			continue
+		}
+
+		addr, err := netip.ParseAddr(trimmed)
+		if err != nil {
+			return "", fmt.Errorf("invalid proxy entry %q", trimmed)
+		}
+		normalized = append(normalized, addr.String())
+	}
+
+	return strings.Join(normalized, ","), nil
 }

@@ -54,11 +54,12 @@
 
 ## 3. 对外链接推断依赖请求来源
 
-如果未显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，服务端会根据当前请求的 TLS 状态和 `Host` 头推断公开基地址，用于长链接、短链接和订阅路径生成。
+如果未显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，服务端会根据当前请求来源推断公开基地址，用于长链接、短链接和订阅路径生成：默认使用当前请求的 TLS 状态与 `Host` 头；若直接对端 IP 命中 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`，则会优先读取标准 `X-Forwarded-Proto` 与 `X-Forwarded-Host`。
 
 这意味着：
 
 - 单入口直连部署通常可以工作。
+- 常见 Docker bridge + 宿主机反代场景可通过 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 改善 fallback 推断；官方 Compose 示例默认给出 `172.16.0.0/12,127.0.0.0/8` 作为新手友好值。
 - 如果前面有 HTTPS 终止反代，而应用本身只看到明文 HTTP，请务必显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=https://<your-host>`。
 - 如果该部署不允许继续依赖请求头自动推断，应同时设置 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`，让错误配置在启动阶段直接失败。
 - 如果公网或多入口场景下不显式设置该值，生成链接可能错误，且存在被 Host 头污染的风险。
@@ -69,7 +70,7 @@
 
 - 阶段 1 输入长度、URL 数量、长链接长度均有上限。
 - `subconverter` 调用有超时与并发上限。
-- 四个写接口共享每 IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整；设为 `0` 可关闭。
+- 四个写接口共享每 IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整；设为 `0` 可关闭。若直接对端命中 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`，限速会按 `X-Forwarded-For` 中解析出的客户端 IP 分桶；否则按 `RemoteAddr` 分桶。
 - 默认模板路径有单独缓存 TTL。
 - Compose 部署默认把短链接 SQLite 文件放到持久卷。
 
@@ -77,7 +78,6 @@
 
 - 审计日志与安全告警
 - 安全响应头策略
-- 反向代理可信链识别
 
 因此，Alpha 只适合低并发、可信网络与可控流量来源。
 
@@ -94,6 +94,7 @@
 7. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
 8. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
 9. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先结合反代或网关层继续限速。
+10. 若入口前存在反代，确认 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 覆盖的是实际反代 peer 网段，而不是笼统地扩大到所有私网。
 
 ## 当前不承诺防护的内容
 

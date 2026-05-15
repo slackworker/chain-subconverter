@@ -186,7 +186,7 @@
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
-- `RATE_LIMITED` 用于写接口命中服务端 per-IP 限速；当前只用于 `POST /api/stage1/convert`、`POST /api/generate`、`POST /api/short-links`、`POST /api/resolve-url`，必须返回 `scope = global`，可返回 `retryable = true`
+- `RATE_LIMITED` 用于写接口命中服务端 per-IP 限速；当前只用于 `POST /api/stage1/convert`、`POST /api/generate`、`POST /api/short-links`、`POST /api/resolve-url`，必须返回 `scope = global`，可返回 `retryable = true`；限速分桶默认按连接对端地址识别客户端，只有当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时才允许改用 `X-Forwarded-For` 推断客户端 IP
 
 ### 5. HTTP 状态码
 
@@ -355,7 +355,7 @@
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
-- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `PUBLIC_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断（scheme 来自 TLS 状态，host 来自 `Host` 请求头），多入口访问场景下 host 部分可能随入口不同而变化
+- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `PUBLIC_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
 - 当前 Web 前端拿到 `longUrl` 后，若其长度超过 `GET /api/runtime-config` 返回的 `maxPublicLongURLLength`，必须立即创建并切换为 `shortUrl` 展示；此时 `longUrl` 只作为前端与后端之间的内部中间值存在，不再作为主展示结果
 - 请求体中的 `advancedOptions.config` 仍表示模板 URL，而不是最终订阅 YAML
 

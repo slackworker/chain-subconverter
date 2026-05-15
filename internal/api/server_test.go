@@ -669,6 +669,92 @@ func TestStage1ConvertHandler_RateLimitsByClientIP(t *testing.T) {
 	})
 }
 
+func TestStage1ConvertHandler_RateLimitsByTrustedForwardedClientIP(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"http://localhost:11200",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{},
+		WithWriteRequestsPerMinute(1),
+		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+
+	firstRequest := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	firstRequest.RemoteAddr = "172.18.0.2:12345"
+	firstRequest.Header.Set("X-Forwarded-For", "198.51.100.10")
+	firstRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstRecorder, firstRequest)
+	if firstRecorder.Code != http.StatusOK {
+		t.Fatalf("first status mismatch: got %d want %d, body=%s", firstRecorder.Code, http.StatusOK, firstRecorder.Body.String())
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	secondRequest.RemoteAddr = "172.18.0.2:54321"
+	secondRequest.Header.Set("X-Forwarded-For", "198.51.100.10")
+	secondRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(secondRecorder, secondRequest)
+
+	assertBlockingError(t, secondRecorder, http.StatusTooManyRequests, service.BlockingError{
+		Code:      "RATE_LIMITED",
+		Message:   "rate limit exceeded",
+		Scope:     "global",
+		Retryable: boolPtr(true),
+	})
+}
+
+func TestStage1ConvertHandler_IgnoresForwardedClientIPFromUntrustedPeer(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"http://localhost:11200",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{},
+		WithWriteRequestsPerMinute(1),
+		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+
+	firstRequest := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	firstRequest.RemoteAddr = "198.51.100.20:12345"
+	firstRequest.Header.Set("X-Forwarded-For", "203.0.113.10")
+	firstRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstRecorder, firstRequest)
+	if firstRecorder.Code != http.StatusOK {
+		t.Fatalf("first status mismatch: got %d want %d, body=%s", firstRecorder.Code, http.StatusOK, firstRecorder.Body.String())
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	secondRequest.RemoteAddr = "198.51.100.20:54321"
+	secondRequest.Header.Set("X-Forwarded-For", "203.0.113.11")
+	secondRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(secondRecorder, secondRequest)
+
+	assertBlockingError(t, secondRecorder, http.StatusTooManyRequests, service.BlockingError{
+		Code:      "RATE_LIMITED",
+		Message:   "rate limit exceeded",
+		Scope:     "global",
+		Retryable: boolPtr(true),
+	})
+}
+
 func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: singleLandingResult("HK Landing", "ss", false),
@@ -997,6 +1083,63 @@ func TestEffectiveBaseURL_InfersFromRequestHost(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "http://myhost.example:9090/sub?data=x", nil)
 	got := handler.effectiveBaseURL(request)
 	want := "http://myhost.example:9090"
+	if got != want {
+		t.Fatalf("effectiveBaseURL() = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveBaseURL_UsesTrustedForwardedHeaders(t *testing.T) {
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{},
+		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() with trusted proxies error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "http://internal.example/sub?data=x", nil)
+	request.RemoteAddr = "172.18.0.2:12345"
+	request.Header.Set("X-Forwarded-Proto", "https")
+	request.Header.Set("X-Forwarded-Host", "public.example.com")
+
+	got := handler.effectiveBaseURL(request)
+	want := "https://public.example.com"
+	if got != want {
+		t.Fatalf("effectiveBaseURL() = %q, want %q", got, want)
+	}
+}
+
+func TestEffectiveBaseURL_IgnoresForwardedHeadersFromUntrustedPeer(t *testing.T) {
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{},
+		WithTrustedProxyCIDRs("172.16.0.0/12,127.0.0.0/8"),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() with trusted proxies error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "http://internal.example/sub?data=x", nil)
+	request.RemoteAddr = "198.51.100.20:12345"
+	request.Host = "local.example:11200"
+	request.Header.Set("X-Forwarded-Proto", "https")
+	request.Header.Set("X-Forwarded-Host", "public.example.com")
+
+	got := handler.effectiveBaseURL(request)
+	want := "http://local.example:11200"
 	if got != want {
 		t.Fatalf("effectiveBaseURL() = %q, want %q", got, want)
 	}

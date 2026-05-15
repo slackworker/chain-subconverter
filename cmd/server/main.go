@@ -65,7 +65,10 @@ func main() {
 		MaxRequestURLLength: serverCfg.MaxUpstreamRequestURLLength,
 		MaxURLsPerField:     serverCfg.MaxURLsPerField,
 		SubconverterBaseURL: subconverterCfg.BaseURL,
-	}, api.WithWriteRequestsPerMinute(serverCfg.WriteRequestsPerMinute))
+	},
+		api.WithWriteRequestsPerMinute(serverCfg.WriteRequestsPerMinute),
+		api.WithTrustedProxyCIDRs(serverCfg.TrustedProxyCIDRs),
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)
 		os.Exit(1)

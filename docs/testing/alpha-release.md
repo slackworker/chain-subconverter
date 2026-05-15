@@ -31,6 +31,7 @@
 - `APP_IMAGE` 与 `SUBCONVERTER_IMAGE`
 - 对外访问端口
 - 是否显式设置 `PUBLIC_BASE_URL`
+- 若有反代，`TRUSTED_PROXY_CIDRS` 是否保持默认示例值或已按 peer 网段改写
 - 本轮要求回归的 UI `scheme`；默认固定为 `default`
 
 若本轮只是刷新 `alpha-latest`，仍要记录镜像 tag、提交来源和发布时间。
@@ -63,7 +64,7 @@ docker compose -f deploy/docker-compose.yml config
 
 ## 第三方设备发布
 
-1. 在目标设备按 [../../deploy/README.md](../../deploy/README.md) 顶部变量填写 `APP_DIR`、`HOST_PORT`、镜像 tag 与可选 `PUBLIC_BASE_URL`。
+1. 在目标设备按 [../../deploy/README.md](../../deploy/README.md) 顶部变量填写 `APP_DIR`、`HOST_PORT`、镜像 tag 与可选 `PUBLIC_BASE_URL`；若入口前存在反代，额外确认 Compose 中的 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 是否覆盖实际反代 peer 网段。
 2. 优先执行同文中的一体化单段命令，生成并启动 `docker-compose.yml`；若采用双 Docker 分离部署，则按同文额外设置 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`。
 3. 记录实际访问入口：`http://<device-ip>:<host-port>/`；如有额外方案验证，再补充其他 `scheme`（如 `/ui/a`）。
 
@@ -108,6 +109,7 @@ docker compose -f deploy/docker-compose.yml config
 - 部署设备：
 - 访问入口：
 - PUBLIC_BASE_URL：未设置 / 已设置为
+- TRUSTED_PROXY_CIDRS：默认 / 已改为
 - 回归范围：
 - 结果：
 - 失败点归类：

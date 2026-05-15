@@ -42,7 +42,7 @@
 - 发布自动化、文档与 runbook 的主入口已切到 `release/3.0` + tag 驱动模型，但仍有少量尾部说明和辅助材料待继续清理。
 - B/C 方案尚未把新的 workflow log 视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
 - PR / push 级 CI 守门已补齐，但正式本地预览 / Compose 单入口验收仍未形成稳定的版本化发布节奏。
-- 模板 URL 已补上最小 SSRF 拒绝名单与显式放行开关，`RequirePublicBaseURL` 也已落地；默认 Compose 部署现已使用独立 `subconverter` 私有网络，并补上四个写接口的基础 per-IP 限速。剩余安全缺口主要是更严格的出站控制与部署侧 egress 收敛。
+- 模板 URL 已补上最小 SSRF 拒绝名单与显式放行开关，`RequirePublicBaseURL` 也已落地；默认 Compose 部署现已使用独立 `subconverter` 私有网络，并补上四个写接口的基础 per-IP 限速与 trusted proxy fallback 支持。剩余安全缺口主要是更严格的出站控制与部署侧 egress 收敛。
 - Alpha（内测）反馈项尚未完成集中收口，尚未进入 Beta 候选冻结。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - Alpha 发布、最小回归顺序与反馈记录入口已固定到 [testing/alpha-release](../testing/alpha-release.md)，后续回归记录应按该文档执行。
@@ -54,6 +54,7 @@
 - `2026-05-14`: `go test ./internal/api ./internal/config ./cmd/server`
 - `2026-05-14`: `go test ./internal/service ./internal/config ./internal/api ./cmd/server`
 - `2026-05-14`: `go test ./internal/api -run TestStage1ConvertHandler_RateLimitsByClientIP`
+- `2026-05-15`: `go test ./cmd/server ./internal/config ./internal/api`
 - `2026-05-15`: `go test ./internal/service ./internal/subconverter ./internal/config ./internal/api`
 - `2026-05-15`: `cd web && npm run build`
 - `2026-05-05`: `cd web && npm run build:a`

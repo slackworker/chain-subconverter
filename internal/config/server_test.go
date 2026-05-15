@@ -41,6 +41,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvTemplateFetchCacheTTL:        " 5m ",
 				EnvTemplateAllowPrivateNetworks: " true ",
 				EnvRequirePublicBaseURL:         " true ",
+				EnvTrustedProxyCIDRs:            " 172.16.0.0/12, 127.0.0.1 , , 2001:db8::/32 ",
 			},
 			want: Server{
 				HTTPAddress:                  ":11300",
@@ -58,6 +59,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				TemplateFetchCacheTTL:        5 * time.Minute,
 				TemplateAllowPrivateNetworks: true,
 				RequirePublicBaseURL:         true,
+				TrustedProxyCIDRs:            "172.16.0.0/12,127.0.0.1,2001:db8::/32",
 			},
 		},
 		{
@@ -115,6 +117,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvRequirePublicBaseURL: "bad",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL",
+		},
+		{
+			name: "invalid trusted proxy cidrs",
+			env: map[string]string{
+				EnvTrustedProxyCIDRs: "172.16.0.0/12, not-an-ip",
+			},
+			wantErr: "parse CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS",
 		},
 		{
 			name: "require public base url without explicit value",
@@ -176,6 +185,26 @@ func TestServerValidate(t *testing.T) {
 		{
 			name: "valid default config",
 			cfg:  DefaultServer(),
+		},
+		{
+			name: "valid trusted proxy cidrs",
+			cfg: Server{
+				HTTPAddress:                  DefaultHTTPAddress,
+				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				FrontendDistDir:              DefaultFrontendDistDir,
+				WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
+				MaxLongURLLength:             DefaultMaxLongURLLength,
+				MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
+				MaxURLsPerField:              DefaultMaxURLsPerField,
+				ShortLinkDBPath:              DefaultShortLinkDBPath,
+				ShortLinkCapacity:            DefaultShortLinkCapacity,
+				DefaultTemplateURL:           DefaultDefaultTemplateURL,
+				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
+				TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
+				TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
+				RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
+				TrustedProxyCIDRs:            "172.16.0.0/12,127.0.0.1",
+			},
 		},
 		{
 			name: "empty http address",
@@ -305,6 +334,27 @@ func TestServerValidate(t *testing.T) {
 				RequirePublicBaseURL:        true,
 			},
 			wantErr: "public base URL is required when CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true",
+		},
+		{
+			name: "invalid trusted proxy cidrs",
+			cfg: Server{
+				HTTPAddress:                  DefaultHTTPAddress,
+				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				FrontendDistDir:              DefaultFrontendDistDir,
+				WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
+				MaxLongURLLength:             DefaultMaxLongURLLength,
+				MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
+				MaxURLsPerField:              DefaultMaxURLsPerField,
+				ShortLinkDBPath:              DefaultShortLinkDBPath,
+				ShortLinkCapacity:            DefaultShortLinkCapacity,
+				DefaultTemplateURL:           DefaultDefaultTemplateURL,
+				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
+				TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
+				TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
+				RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
+				TrustedProxyCIDRs:            "bad-entry",
+			},
+			wantErr: "parse trusted proxy CIDRs",
 		},
 		{
 			name: "missing managed template base scheme",

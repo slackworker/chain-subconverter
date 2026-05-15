@@ -9,11 +9,12 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type HandlerOption func(*Handler)
+type HandlerOption func(*Handler) error
 
 func WithWriteRequestsPerMinute(requestsPerMinute int) HandlerOption {
-	return func(handler *Handler) {
+	return func(handler *Handler) error {
 		handler.writeRateLimiter = newIPRateLimiter(requestsPerMinute)
+		return nil
 	}
 }
 

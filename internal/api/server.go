@@ -30,6 +30,7 @@ type Handler struct {
 	maxLongURLLength    int
 	inputLimits         service.InputLimits
 	writeRateLimiter    *ipRateLimiter
+	requestOrigin       *requestOriginResolver
 	managedTemplatePath string
 	shortSubPath        string
 	subPath             string
@@ -79,7 +80,9 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	}
 	for _, option := range options {
 		if option != nil {
-			option(handler)
+			if err := option(handler); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -108,7 +111,7 @@ func (handler *Handler) rateLimitWrite(next http.HandlerFunc) http.HandlerFunc {
 	}
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if handler.writeRateLimiter.allow(clientIPAddress(request.RemoteAddr)) {
+		if handler.writeRateLimiter.allow(handler.requestOriginFor(request).clientIP) {
 			next(writer, request)
 			return
 		}
@@ -266,15 +269,21 @@ func (handler *Handler) effectiveBaseURL(request *http.Request) string {
 	if handler.publicBaseURL != "" {
 		return handler.publicBaseURL
 	}
-	scheme := "http"
-	if request.TLS != nil {
-		scheme = "https"
-	}
-	host := request.Host
-	if host == "" {
-		host = "localhost"
-	}
+	origin := handler.requestOriginFor(request)
+	scheme := origin.scheme
+	host := origin.host
 	return scheme + "://" + host
+}
+
+func (handler *Handler) requestOriginFor(request *http.Request) requestOrigin {
+	if handler.requestOrigin == nil {
+		return requestOrigin{
+			clientIP: clientIPAddress(request.RemoteAddr),
+			scheme:   requestScheme(request),
+			host:     requestHost(request),
+		}
+	}
+	return handler.requestOrigin.resolve(request)
 }
 
 func managedTemplateRoutePath(managedTemplateBaseURL string) (string, error) {
