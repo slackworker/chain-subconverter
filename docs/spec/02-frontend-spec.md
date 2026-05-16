@@ -61,6 +61,8 @@
 - 单次失败请求只能有 1 个主阻断反馈承载位；方案层可选择 `stage-local` 或 `global-only` 两种承载策略
 - 选择 `stage-local` 时，可归属于具体阶段操作的问题默认锚定在 `originStage` 对应的阶段操作区；若本次失败只包含 `scope = global` 的系统级或请求级异常，则该请求唯一的主阻断反馈承载位可例外回落到全局位置
 - 若方案层需要展示 Stage 1 / 2 / 3 来源标签，只能由请求入口或工作流上下文派生，不得由 `scope` 反推
+- `SUBCONVERTER_UNAVAILABLE` 的主提示只允许展示业务化结论与排查建议；不得把 pass 名称、容器主机名、内部 URL、查询串或原始技术错误串直接暴露给用户
+- 前端若消费 `blockingErrors[].context.diagnostic`，只能把 `problemClass` 与 `userInputSource` 映射为业务文案；不得把该对象原样渲染
 - 全局 workflow log 承载当前页面会话内的用户可读工作流历史；后端返回的 `messages[]` 只是其中一种消息源，不等同于整个日志系统
 - workflow log 必须按时间顺序保留最近一段可回溯历史；共享层不得把它退化为“仅当前请求消息”或“仅最近一条消息”的临时槽位
 - workflow log 默认可折叠/隐藏，但展开后必须能查看完整保留历史；共享层不要求 Stage 1 / 2 / 3 各自维护独立日志区

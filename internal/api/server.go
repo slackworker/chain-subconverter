@@ -366,8 +366,7 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 	)
 	if err != nil {
 		if subconverter.IsUnavailable(err) {
-			retryable := true
-			writeBlockingError(writer, http.StatusServiceUnavailable, "SUBCONVERTER_UNAVAILABLE", err.Error(), "global", nil, &retryable)
+			writeUnavailableBlockingError(writer, err)
 			return
 		}
 		writeBlockingError(writer, http.StatusInternalServerError, "RENDER_FAILED", err.Error(), "global", nil, nil)
@@ -425,8 +424,7 @@ func writeJSON(writer http.ResponseWriter, statusCode int, value any) {
 
 func writeOperationError(writer http.ResponseWriter, err error) {
 	if subconverter.IsUnavailable(err) {
-		retryable := true
-		writeBlockingError(writer, http.StatusServiceUnavailable, "SUBCONVERTER_UNAVAILABLE", err.Error(), "global", nil, &retryable)
+		writeUnavailableBlockingError(writer, err)
 		return
 	}
 

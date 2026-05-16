@@ -253,7 +253,7 @@
 1. 对区域策略组，读取 `baseCompleteConfig` 中本次有效模板识别出的全部地域策略组当前结果
 2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 与所有落地节点都不计入成员数
 3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 与所有落地节点后成员数为 `0`，该区域策略组仍必须进入 `chainTargets[]`，但必须标记 `isEmpty = true`
-4. 若有效模板识别出的某地域策略组在 `baseCompleteConfig` 当前结果中完全不存在，必须直接以 `SUBCONVERTER_UNAVAILABLE` 阻断当前请求；错误文案必须明确为 `subconverter` 未成功获取或应用后端托管模板，或等价表达
+4. 若有效模板识别出的某地域策略组在 `baseCompleteConfig` 当前结果中完全不存在，必须直接以 `SUBCONVERTER_UNAVAILABLE` 阻断当前请求；错误文案必须使用面向最终用户的业务表达，例如“转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查模板设置后重试。”；不得暴露 pass 名称、内部 URL 或原始技术错误串
 5. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
 6. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
 7. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`

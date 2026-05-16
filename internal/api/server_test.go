@@ -92,6 +92,54 @@ func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
 	}
 }
 
+func TestStage1ConvertHandler_MapsTransitTimeoutToBusinessMessage(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		err: subconverter.NewUnavailableError("transit-discovery pass", context.DeadlineExceeded),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:    "SUBCONVERTER_UNAVAILABLE",
+		Message: "1、转换服务未就绪或无法连接。请确认 subconverter 已部署、已启动，且地址和端口配置正确。 2、若转换服务状态正常，请检查「中转信息」中的订阅链接或节点内容是否可访问且有效。",
+		Scope:   "global",
+		Context: map[string]any{"diagnostic": map[string]any{
+			"problemClass":    unavailableProblemSourceFetchFailed,
+			"userInputSource": unavailableInputSourceTransit,
+		}},
+		Retryable: boolPtr(true),
+	})
+}
+
+func TestStage1ConvertHandler_MapsManagedTemplateValidationToBusinessMessage(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		err: subconverter.NewUnavailableError("validate full-base region proxy-groups", errors.New("missing recognized region proxy-group")),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:    "SUBCONVERTER_UNAVAILABLE",
+		Message: "转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查模板设置后重试。",
+		Scope:   "global",
+		Context: map[string]any{"diagnostic": map[string]any{
+			"problemClass":    unavailableProblemConversionResultInvalid,
+			"userInputSource": unavailableInputSourceManagedTemplate,
+		}},
+		Retryable: boolPtr(true),
+	})
+}
+
 func TestGenerateHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
@@ -498,6 +546,45 @@ func TestSubscriptionHandler_PassesThroughExtraQueryToSubconverter(t *testing.T)
 	if source.gotRequest.ExtraQuery.Get("download") != "" {
 		t.Fatalf("download query must not passthrough, got %+v", source.gotRequest.ExtraQuery)
 	}
+}
+
+func TestSubscriptionHandler_MapsConnectionFailureToBusinessMessage(t *testing.T) {
+	longURL, err := service.EncodeLongURL(
+		"http://localhost:11200",
+		service.BuildLongURLPayload(
+			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
+			service.Stage2Snapshot{
+				Rows: []service.Stage2Row{{
+					LandingNodeName: "HK 01",
+					Mode:            "none",
+					TargetName:      nil,
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		err: subconverter.NewUnavailableError("landing-discovery pass", errors.New("dial tcp 127.0.0.1:25500: connect: connection refused")),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, longURL, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:    "SUBCONVERTER_UNAVAILABLE",
+		Message: "转换服务未就绪或无法连接。请确认 subconverter 已部署、已启动，且地址和端口配置正确。",
+		Scope:   "global",
+		Context: map[string]any{"diagnostic": map[string]any{
+			"problemClass":    unavailableProblemServiceUnreachable,
+			"userInputSource": unavailableInputSourceLanding,
+		}},
+		Retryable: boolPtr(true),
+	})
 }
 
 func TestShortSubscriptionHandler_HappyPath(t *testing.T) {
