@@ -373,15 +373,16 @@
 	z-index: 2000;
 	width: 100%;
 	max-width: 100%;
-	max-height: min(40vh, 20rem);
-	overflow: auto;
+	overflow: visible;
 	pointer-events: auto;
 	margin: 0 0 1rem;
 }
 
 .a-panel--blocking {
 	margin-bottom: 0;
-	box-shadow: 0 8px 32px rgba(var(--shadow-rgb), 0.14), var(--shadow);
+	max-height: min(40vh, 20rem);
+	overflow-y: auto;
+	box-shadow: var(--shadow);
 }
 
 .a-blocking-flyout--collapsed {
