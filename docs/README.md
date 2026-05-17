@@ -33,7 +33,7 @@
 
 | 文档 | 说明 |
 |------|------|
-| [spec/00-governance](spec/00-governance.md) | 治理与总则：轻量流程、权威顺序、文档同步原则 |
+| [spec/00-governance](spec/00-governance.md) | 治理与总则：澄清回补、冲突裁决、轻量编写 |
 | [spec/01-overview](spec/01-overview.md) | 项目概览：目标、数据流、术语与约束 |
 | [spec/02-frontend-spec](spec/02-frontend-spec.md) | 前端 UI 规格 |
 | [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
