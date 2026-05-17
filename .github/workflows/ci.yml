@@ -4,9 +4,9 @@ on:
   pull_request:
   push:
     branches:
+      - beta
       - main
       - dev
-      - release/3.0
 
 jobs:
   go-test:

@@ -76,19 +76,19 @@ flowchart LR
 | `internal/store/` | SQLite 短链接索引（幂等 + LRU 淘汰） |
 | `internal/config/` | 应用层限制项：输入大小、URL 数量、长链接长度、短链容量 |
 
-## Phase 4：前端与部署
+## Phase 4：前端、部署与发布整理
 
-**目标**：在后端扩展业务稳定后，再推进前端与可运行部署形态（进行中，Alpha 内测发布已到位）
+**目标**：在后端扩展业务稳定后，完成前端默认入口、部署路径、分支/标签策略与文档收口（进行中）
 
-当前执行入口见 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)；`phase-4-*` 文档仅保留为历史形成过程参考。
+当前执行入口见 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)。文件名暂保留，但当前计划已改按 `dev / beta / main` 三线与滚动标签维护。
 
 | 任务 | 说明 |
 |------|------|
-| 初始化 `web/` | `Vite + React + TypeScript` 单页骨架与页面状态主线 |
-| 三阶段主线 UI | 当前共享主线已接入 `stage1/convert -> stage2 -> generate -> longUrl`，仍待 UI 方案评审与细节收口 |
-| 恢复与短链 | 共享主线已接入 `resolve-url` 与 `short-links`，仍待与最终 UI 方案合并验收 |
-| `cmd/server/` | HTTP 启动、静态资源分发与运行形态收口 |
-| `deploy/` | Docker Compose 单入口路径（`app + subconverter`）；3.0 当前由 `release/3.0` 配合 Alpha tag 与 `alpha-latest` 便捷标签承载 |
+| 默认 UI 固定 | 默认入口继续使用 `/` + `default` scheme；A/B/C 保留为实验入口 |
+| 发布模型收口 | 分支模型收口为 `dev / beta / main`；滚动标签收口为 `dev-latest / beta-latest / latest` |
+| 用户文档整理 | README、RELEASES、deploy 只保留对外真正需要的说明 |
+| 内部状态整理 | STATUS、计划、路线图、runbook 与当前实现保持同步 |
+| 固定回归基线扩展 | 在现有 `3pass-ss2022-test-subscription` 基础上扩展完整固定回归流程 |
 
 > 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 
@@ -96,7 +96,7 @@ flowchart LR
 
 按最小增量推进：
 
-1. 先按 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) 收口发布线、文档、CI 与 Alpha runbook，使 `release/3.0` 成为 3.0 唯一发布线。
-2. 在默认 `/` 已冻结的前提下，继续把 B/C 方案作为实验入口推进，不把其视觉收口阻塞 Alpha 发布。
-3. 在统一 smoke 场景下收口恢复、短链与长链接主线，并形成第三方设备回归记录。
-4. 再根据 Alpha 反馈决定 Beta 候选冻结与后续 tag 节奏。
+1. 先完成分支/标签、工作流与文档口径的统一，彻底移除 `release/3.0` 与 `alpha-latest` 的当前基线地位。
+2. 再补齐第三方设备回归记录、反馈闭环与进入 Beta 的前置条件。
+3. 然后扩展固定测试流程与 mock 数据，把长链接、短链接、端口转发与恢复流程纳入统一基线。
+4. 最后按固定节奏做文档与 Memory 整理，避免状态持续膨胀。

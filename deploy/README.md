@@ -30,8 +30,8 @@ HOST_PORT="11200"
 # TEMPLATE_ALLOW_PRIVATE_NETWORKS="false"
 # 默认四个写接口共用 per-IP token bucket；设为 0 可关闭，仅建议本地调试时使用：
 # WRITE_REQUESTS_PER_MINUTE="60"
-# 推荐在正式记录里同时记下本次实际使用的不可变版本 tag，例如 v3.0.0-alpha.1。
-APP_IMAGE="ghcr.io/slackworker/chain-subconverter:alpha-latest"
+# 当前默认公开滚动镜像由 main 分支 CI 发布为 latest；dev 手动测试可改成 dev-latest，后续 Beta 阶段可改成 beta-latest。
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 SHORT_LINK_CAPACITY="1000"
 DEFAULT_TEMPLATE_URL="https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
@@ -166,7 +166,7 @@ curl http://localhost:11200/healthz
 
 ### 第三方设备 / 局域网设备
 
-如果只是刷新同一份 `docker-compose.yml` 中引用的镜像 tag，例如 `alpha-latest` 已有新内容，或你已经把 `APP_IMAGE` 固定成某个明确的 `v3.0.0-alpha.N`，可在设备上执行：
+如果只是刷新同一份 `docker-compose.yml` 中引用的镜像 tag，例如 `latest`、`beta-latest` 或 `dev-latest` 已有新内容，可在设备上执行：
 
 ```bash
 cd "$HOME/chain-subconverter"
@@ -226,7 +226,7 @@ docker compose -f deploy/docker-compose.yml up -d
 - `HOST_PORT`：宿主机对外暴露的端口
 - `PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源（`Host` 请求头与 TLS 状态）推断，适用于直连局域网或 DDNS 等单入口部署。**若前端有 Nginx/Caddy 等反代做 HTTPS 终止**，服务端看不到 TLS，自动推断会产生 `http://` 链接，此时必须显式填入 `https://<域名>` 才能生成正确的订阅链接。多入口或固定发布地址场景同理
 - `REQUIRE_PUBLIC_BASE_URL`：**默认关闭**。设为 `true` 时，若未显式设置 `PUBLIC_BASE_URL`，服务启动会直接失败。适用于公网、HTTPS 反代或其他不能接受 Host 头自动推断的部署场景
-- `APP_IMAGE`：主应用镜像；当前可使用 `alpha-latest` 作为便捷入口，但推荐在正式发布记录和第三方设备回归时固定为明确版本标签，例如 `ghcr.io/slackworker/chain-subconverter:v3.0.0-alpha.1`
+- `APP_IMAGE`：主应用镜像；当前默认对外口径为 `ghcr.io/slackworker/chain-subconverter:latest`。`dev` 分支的手动测试建议使用 `dev-latest`；进入 Beta 阶段后可切到 `beta-latest`，并在后续版本化发布时再补充明确版本标签
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
 - `DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值；默认是推荐的 Aethersailor GitHub Raw 模板，可按部署需要替换为自托管或镜像地址
@@ -253,7 +253,7 @@ docker compose -f deploy/docker-compose.yml up -d
   - `CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY=1000`
 - 由 Compose 解析的宿主机 / 镜像变量
   - `HOST_PORT=11200`
-  - `APP_IMAGE=ghcr.io/slackworker/chain-subconverter:alpha-latest`
+  - `APP_IMAGE=ghcr.io/slackworker/chain-subconverter:latest`
   - `SUBCONVERTER_IMAGE=ghcr.io/slackworker/subconverter:integration-chain-subconverter`
 
 如需切换或刷新镜像标签，可修改命令顶部的 `APP_IMAGE` 与 `SUBCONVERTER_IMAGE` 后重新执行；命令会先拉取远端镜像，再启动 Compose。
@@ -272,7 +272,7 @@ docker compose -f deploy/docker-compose.yml up -d
 
 默认情况下，模板 URL 若解析到 loopback、link-local、RFC1918/ULA、多播或未指定地址，会在服务端被直接拒绝，返回输入非法错误；这样可以避免把模板抓取能力直接暴露为私网探测入口。只有在可信自部署环境且模板源本来就位于内网时，才应显式设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
 
-`CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 控制四个写接口共享的每 IP token bucket。默认值 `60` 适合当前 Alpha 自部署场景；若部署在更公开的入口前，建议保留非零值并按实际流量继续下调或配合反代层限速，而不是直接关闭。
+`CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 控制四个写接口共享的每 IP token bucket。默认值 `60` 适合当前自部署与测试场景；若部署在更公开的入口前，建议保留非零值并按实际流量继续下调或配合反代层限速，而不是直接关闭。
 
 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` 控制显式模板 URL 等于部署默认模板 URL 时的上游抓取缓存 TTL；默认即为非零值，用于降低默认路径在公开部署或意外暴露场景下对模板上游的重复请求压力。当前 Compose preview 显式设为 `5m`。
 
@@ -282,16 +282,17 @@ docker compose -f deploy/docker-compose.yml up -d
 
 若是单容器托管平台且未挂卷，镜像默认会退回到 `/tmp/short-links.sqlite3`，以保证预览环境至少可启动；该路径仅适合无状态预览，不保证重建后保留短链接数据。
 
-## Alpha 部署建议
+## 当前阶段部署建议
 
-- 第三方设备内测优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建；3.0 发布线统一以 `release/3.0` 配合版本 tag 管理
+- 第三方设备优先使用发布到 GHCR 的 `APP_IMAGE`，不要依赖设备本地源码构建；当前默认对外入口是 `main` 分支 CI 发布的 `latest`
 - 优先使用默认一体化 Compose 部署；只有在部署方已独立维护 `subconverter` 生命周期时，才切换到双 Docker 分离部署
-- `alpha-latest` 只适合作为便捷入口；每轮正式回归都应记录实际对应的不可变 tag 或 commit 来源
+- `dev-latest` 只用于开发测试；不要把它当成稳定对外镜像
+- `beta-latest` 预留给 Beta 阶段；当前若尚未进入 Beta，就继续使用 `latest`
 - 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/`、`POST /api/stage1/convert` 与一条最终订阅读取路径；如需对照，再额外验证 `/ui/a`、`/ui/b`、`/ui/c`
 - 内测设备建议保留默认命名卷 `short-link-data`，并在容器重启后确认短链仍可恢复
 - 若使用双 Docker 分离部署，额外确认 `subconverter` 能回取 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向的模板地址，且 `subconverter` 不对公网开放
 - 不要在对外可访问环境里把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；若要提高并发承载，优先结合反代或网关层限速一起调整
-- 当前 Alpha 安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
+- 当前安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
 - 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/alpha-release.md](../docs/testing/alpha-release.md)
 
 ## 边界

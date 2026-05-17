@@ -3,10 +3,10 @@ name: Build Docker Image & Deploy to Render
 on:
   push:
     branches:
+      - beta
       - main
-      - release/3.0
     tags:
-      - 'v*.*.*'
+      - 'v*'
   workflow_dispatch:
     inputs:
       ref:
@@ -16,12 +16,7 @@ on:
       image_tag:
         description: Docker image tag to publish
         required: false
-        default: manual-preview
-      update_dev_latest:
-        description: Also publish dev-latest for the selected image build
-        required: false
-        type: boolean
-        default: false
+        default: dev-latest
       trigger_render:
         description: Trigger Render deploy hook after a successful manual build
         required: false
@@ -61,7 +56,6 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           INPUT_REF: ${{ inputs.ref }}
           INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
-          INPUT_UPDATE_DEV_LATEST: ${{ inputs.update_dev_latest }}
           INPUT_TRIGGER_RENDER: ${{ inputs.trigger_render }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
@@ -81,16 +75,21 @@ jobs:
                 primary_tag="${IMAGE_NAME}:latest"
                 image_version='latest'
                 tags+=("$primary_tag")
-              elif [[ "$GITHUB_REF" == "refs/heads/release/3.0" ]]; then
-                primary_tag="${IMAGE_NAME}:alpha-latest"
-                image_version='alpha-latest'
-                tags+=("$primary_tag" "${IMAGE_NAME}:release-3.0-${GITHUB_SHA::7}")
+              elif [[ "$GITHUB_REF" == "refs/heads/beta" ]]; then
+                primary_tag="${IMAGE_NAME}:beta-latest"
+                image_version='beta-latest'
+                tags+=("$primary_tag")
               elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
                 version="${GITHUB_REF_NAME#v}"
                 primary_tag="${IMAGE_NAME}:${version}"
                 image_version="$version"
-                should_trigger_render=true
-                tags+=("$primary_tag" "${IMAGE_NAME}:dev-latest")
+                tags+=("$primary_tag")
+                if [[ "$version" == *-beta.* ]]; then
+                  tags+=("${IMAGE_NAME}:beta-latest")
+                else
+                  tags+=("${IMAGE_NAME}:latest")
+                  should_trigger_render=true
+                fi
               else
                 echo "Unsupported push ref: $GITHUB_REF" >&2
                 exit 1
@@ -100,9 +99,6 @@ jobs:
               primary_tag="${IMAGE_NAME}:${INPUT_IMAGE_TAG}"
               image_version="$INPUT_IMAGE_TAG"
               tags+=("$primary_tag")
-              if [[ "$INPUT_UPDATE_DEV_LATEST" == "true" ]]; then
-                tags+=("${IMAGE_NAME}:dev-latest")
-              fi
               if [[ "$INPUT_TRIGGER_RENDER" == "true" ]]; then
                 should_trigger_render=true
               fi
@@ -141,9 +137,61 @@ jobs:
         run: |
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+  validate:
+    name: Publish Validation
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip validation for manual publish
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "Skipping publish validation for workflow_dispatch."
+
+      - name: Checkout repository
+        if: github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
+
+      - name: Set up Go
+        if: github.event_name == 'push'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run go test
+        if: github.event_name == 'push'
+        run: go test ./...
+
+      - name: Set up Node.js
+        if: github.event_name == 'push'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        if: github.event_name == 'push'
+        working-directory: web
+        run: npm ci
+
+      - name: Build frontend schemes
+        if: github.event_name == 'push'
+        working-directory: web
+        run: |
+          npm run build:default
+          npm run build:a
+          npm run build:b
+          npm run build:c
+
+      - name: Validate deploy compose file
+        if: github.event_name == 'push'
+        run: docker compose -f deploy/docker-compose.yml config
+
   build:
     name: Build ${{ matrix.platform }} image
-    needs: prepare
+    needs: [prepare, validate]
     strategy:
       fail-fast: false
       matrix:

@@ -4,9 +4,9 @@
 
 ## 状态
 
-当前对外内测线已进入 **3.0 Alpha** 阶段，3.0 发布基线固定为 `release/3.0` 分支配合版本 tag：默认入口为 `/`，`ghcr.io/slackworker/chain-subconverter:alpha-latest` 继续作为 Alpha 阶段便捷镜像标签。
+当前项目已进入 **3.0 开发后期与发布整理阶段**。默认入口为 `/`，当前公开滚动镜像为 `ghcr.io/slackworker/chain-subconverter:latest`，由 `main` 分支的 CI 发布；`beta` 分支预留给 Beta 阶段的 `beta-latest` 与后续版本标签，`dev` 分支用于手动快速构建 `dev-latest`。
 
-相对 2.0，3.0 Alpha 对用户最重要的变化：
+相对 2.0，3.0 当前基线对用户最重要的变化：
 
 - **前后端单镜像集成**：前端页面与后端服务已收口到同一个 `app` 镜像，单服务入口即可提供 UI 与 API。
 - **Docker Compose 联合部署（app + subconverter）**：提供统一 Compose 路径编排 `app` 与 `subconverter`，第三方设备可直接冷启动。
@@ -14,7 +14,7 @@
 - **支持短链**：可把生成结果压缩为短链接，便于在设备间分发和复用。
 - **支持反向解析**：可通过已有链接恢复配置状态，便于回看、继续编辑和复用。
 
-本次 3.0 Alpha 的详细发布说明见 [RELEASES.md](RELEASES.md)。
+当前发布口径、滚动标签与后续 Beta / 正式版标签说明见 [RELEASES.md](RELEASES.md)。
 
 ## 快速开始
 
@@ -29,7 +29,7 @@
 
 - 用户部署与访问入口见 [deploy/README.md](deploy/README.md)
 - 当前安全边界与部署假设见 [SECURITY.md](SECURITY.md)
-- Alpha 发布与回归说明见 [docs/testing/alpha-release.md](docs/testing/alpha-release.md)
+- 当前发布与回归说明见 [docs/testing/alpha-release.md](docs/testing/alpha-release.md)
 - 当前版本发布说明见 [RELEASES.md](RELEASES.md)
 - 历史版本发布说明见 [_legacy/RELEASES.md](_legacy/RELEASES.md)
 
@@ -41,9 +41,9 @@
 
 当前长期分支口径：
 
-- `main`：共享层、后端、脚本、部署、文档等公共改动的稳定主干
-- `dev`：A/B/C 三套 UI 实现并存的日常集成线（原 `ui-lab`）
-- `release/3.0`：3.0 的 Alpha、Beta、正式版发布线；默认入口固定为 `/`，A/B/C 保留为实验入口
+- `dev`：日常开发与快速试验线；允许手动构建 `dev-latest`
+- `beta`：预发布收口线；进入 Beta 阶段后承接 `beta-latest` 与可选 Beta 版本标签
+- `main`：对外稳定主线；当前公开滚动镜像 `latest` 由该分支 CI 发布
 
 ## License
 

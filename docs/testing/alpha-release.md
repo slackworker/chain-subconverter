@@ -1,26 +1,25 @@
-# Alpha 发布与回归
+# 发布与回归 Runbook
 
-本文定义 Alpha（内测）阶段的发布入口、最小回归顺序与反馈记录口径。
+> 文件名暂保留为 `alpha-release.md`，但本文当前用于维护通用的发布与回归流程。
+
+本文定义当前滚动发布、第三方设备回归与进入 Beta 前的最小记录口径。
 
 ## 用途边界
 
-- 本文是 Alpha runbook，不定义 spec。
+- 本文是当前 runbook，不定义 spec。
 - 对外发布说明与相对 2.0 的功能更新摘要统一见 [../../RELEASES.md](../../RELEASES.md)。
 - 部署命令与环境变量以 [../../deploy/README.md](../../deploy/README.md) 为准。
 - 本地 HMR 联调入口以 [local-dev-smoke](local-dev-smoke.md) 为准。
 
-## 当前 Alpha 口径
+## 当前发布口径
 
-- 当前对外版本阶段：`3.0 Alpha`
-- 当前发布线：`release/3.0`
-- Alpha 默认 UI 基线：`scheme default`
-- 主应用镜像：`ghcr.io/slackworker/chain-subconverter:alpha-latest`
-- 推荐回归记录：`v3.0.0-alpha.N` 等不可变 tag
+- `dev`：开发线；仅手动发布 `dev-latest`
+- `beta`：预发布线；进入 Beta 阶段后默认发布 `beta-latest`，并可附加 Beta 版本标签
+- `main`：当前公开稳定线；默认发布 `latest`
+- 默认 UI 基线：`scheme default`
+- 默认访问入口：`/`
 - `subconverter` 镜像：`ghcr.io/slackworker/subconverter:integration-chain-subconverter`
 - 第三方设备部署入口：优先使用 `deploy/README.md` 中的一体化单段 Compose 命令；如确有既有 `subconverter` 生命周期管理，也允许按其中“双 Docker 分离部署”口径接入
-- 默认 UI 访问入口：`/`（保持根路径不跳转；`/ui/a|/ui/b|/ui/c` 用于并行方案开发与对照）
-
-其中 `release/3.0` 承担 3.0 的 Alpha、Beta、正式版发布；`alpha-latest` 仅作为 Alpha 阶段便捷镜像标签，后续应由不可变 tag 承担正式回归记录。`dev` 只作为 A/B/C 并行实现与交叉比对的集成线，不直接承担对外发布。
 
 仅当存在明确回归结论时，才允许替换默认镜像 tag 或默认入口。
 
@@ -34,7 +33,7 @@
 - 若有反代，`TRUSTED_PROXY_CIDRS` 是否保持默认示例值或已按 peer 网段改写
 - 本轮要求回归的 UI `scheme`；默认固定为 `default`
 
-若本轮只是刷新 `alpha-latest`，仍要记录镜像 tag、提交来源和发布时间。
+若本轮使用的是滚动标签（如 `latest`、`beta-latest`、`dev-latest`），仍要记录对应的分支、提交来源和发布时间。
 
 ## 发布前检查
 
@@ -44,7 +43,7 @@
 
 ```bash
 go test ./...
-cd web && npm run build && npm run build:b && npm run build:c
+cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
 docker compose -f deploy/docker-compose.yml config
 ```
 
@@ -88,10 +87,10 @@ docker compose -f deploy/docker-compose.yml config
 
 ## 反馈记录模板
 
-每轮 Alpha 发布或回归至少记录以下字段：
+每轮发布或回归至少记录以下字段：
 
 - 日期
-- 提交或镜像 tag
+- 分支 / 提交或镜像 tag
 - 部署设备
 - 访问入口
 - 是否设置 `PUBLIC_BASE_URL`
@@ -103,9 +102,9 @@ docker compose -f deploy/docker-compose.yml config
 可直接使用下面模板：
 
 ```md
-## YYYY-MM-DD Alpha 回归
+## YYYY-MM-DD 发布回归
 
-- 提交或镜像 tag：
+- 分支 / 提交或镜像 tag：
 - 部署设备：
 - 访问入口：
 - PUBLIC_BASE_URL：未设置 / 已设置为
@@ -118,10 +117,17 @@ docker compose -f deploy/docker-compose.yml config
 
 ## 失败升级条件
 
-出现以下任一情况时，不应继续沿用当前 Alpha 镜像对外分发：
+出现以下任一情况时，不应继续沿用当前滚动镜像对外分发：
 
 - `GET /healthz` 不稳定
 - 默认 `/` 无法打开主流程
 - `stage1/convert`、`generate`、`resolve-url`、`short-links` 中任一主线不可用
 - 第三方设备只能依赖开发机环境才能完成部署
 - 同一轮回归中出现未归类的结果漂移，无法判断是代码回归还是外部依赖漂移
+
+## 进入 Beta 的前置条件
+
+- `beta` 分支与 `beta-latest` 发布路径已稳定可用
+- 当前第三方设备回归已形成持续记录
+- 默认 `/` 主线在多轮回归中无 P0
+- 发布文档、状态页与部署文档对同一套分支/标签口径保持一致

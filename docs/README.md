@@ -2,19 +2,20 @@
 
 ## 仓库入口
 
-如需了解对外产品说明与当前版本发布信息，优先查看：
+如需了解对外产品说明、当前镜像口径与部署方式，优先查看：
 
 - [../README.md](../README.md)
 - [../RELEASES.md](../RELEASES.md)
+- [../deploy/README.md](../deploy/README.md)
 
 ## 阅读入口
 
-本文档是项目文档的唯一导航入口。
+本文档是当前仓库文档的唯一导航入口。
 
 1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
-2. 按主题进入前端、API、业务规则、技术约束。
-3. 需要了解当前执行计划、发布节奏或阶段缺口时，先读 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)、[progress/STATUS](progress/STATUS.md) 与 [progress/beta-readiness](progress/beta-readiness.md)。
-4. 只有在需要了解整体历史阶段划分或本地联调流程时，再读 [ROADMAP](ROADMAP.md) 与 `testing/` 文档。
+2. 需要看当前执行重点、分支/标签策略或阶段缺口时，读 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)、[progress/STATUS](progress/STATUS.md) 与 [progress/beta-readiness](progress/beta-readiness.md)。文件名暂保留，但内容已按当前 `dev / beta / main` 三线模型维护。
+3. 需要看详细契约与业务规则时，按主题进入 `spec/02-05`。
+4. 需要看固定回归基线、本地 smoke 或发布回归流程时，进入 `testing/`。
 
 ## 目录约定
 
@@ -23,39 +24,32 @@
 | 目录 | 用途 |
 |------|------|
 | `spec/` | 当前权威规格；规则冲突按 `spec/00-governance.md` 裁决 |
-| `plan/` | 当前或紧邻下一阶段的执行计划；已完成阶段计划移出主导航 |
-| `progress/` | 当前状态快照与阶段缺口 |
-| `testing/` | 验收样例、工作流与回归说明 |
+| `plan/` | 当前执行计划；只保留仍在推进的计划 |
+| `progress/` | 当前状态快照、Beta 缺口与阶段记录 |
+| `testing/` | 固定验收样例、本地 smoke 与发布回归说明 |
 | `temp/` | 临时待删区；非权威、默认不纳入版本控制 |
 
-## 权威文档
-
-**[docs/spec/](spec/)** — 当前收口与微调阶段的核心规则目录（用于与实现对齐整理）。
+## 当前核心文档
 
 | 文档 | 说明 |
 |------|------|
-| [spec/00-governance](spec/00-governance.md) | 治理与总则：核心规则、权威顺序、编写原则 |
+| [spec/00-governance](spec/00-governance.md) | 治理与总则：轻量流程、权威顺序、文档同步原则 |
 | [spec/01-overview](spec/01-overview.md) | 项目概览：目标、数据流、术语与约束 |
 | [spec/02-frontend-spec](spec/02-frontend-spec.md) | 前端 UI 规格 |
 | [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
 | [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
 | [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
-
-## 推进与验证
-
-| 文档 | 说明 |
-|------|------|
-| [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) | 当前执行计划：`release/3.0` 发布线、Alpha 收口工作流、后续 Beta/GA 预埋 |
-| [progress/STATUS](progress/STATUS.md) | 当前状态快照：进度、已稳定范围、当前缺口与最近验证 |
-| [progress/beta-readiness](progress/beta-readiness.md) | Beta 发布缺口评估：Alpha 收口剩余项、Beta 门禁与推荐推进顺序 |
-| [ROADMAP](ROADMAP.md) | 推进路线图：Phase 划分、依赖关系与推荐下一步 |
-| [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | `3-pass` 与最小完整流程测试样例说明 |
-| [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地 UI 启动与 smoke runbook：固定入口、最小检查项与常见排障 |
-| [testing/alpha-release](testing/alpha-release.md) | 3.0 Alpha 发布与回归 runbook：当前内测口径、发布前检查、第三方设备回归与反馈记录模板 |
+| [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) | 当前发布整理计划；文件名暂保留 |
+| [progress/STATUS](progress/STATUS.md) | 当前状态快照：已稳定范围、当前缺口与最近验证 |
+| [progress/beta-readiness](progress/beta-readiness.md) | Beta 前置条件、剩余缺口与进入 Beta 的推荐顺序 |
+| [ROADMAP](ROADMAP.md) | 阶段路线图与当前推荐下一步 |
+| [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | 当前唯一稳定固定 fixture 说明 |
+| [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地开发与 smoke runbook |
+| [testing/alpha-release](testing/alpha-release.md) | 当前发布与回归 runbook；文件名暂保留 |
 
 ## 临时区规则
 
-`docs/temp/` 用于放置以下材料：
+`docs/temp/` 只用于放置以下材料：
 
 - 已完成阶段的细化计划
 - 待删除的 legacy、archive、迁移映射
