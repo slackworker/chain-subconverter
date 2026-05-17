@@ -80,7 +80,7 @@ flowchart LR
 
 **目标**：在后端扩展业务稳定后，完成前端默认入口、部署路径、分支/标签策略与文档收口（进行中）
 
-当前执行入口见 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)。文件名暂保留，但当前计划已改按 `dev / beta / main` 三线与滚动标签维护。
+当前执行入口见 [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md)。
 
 | 任务 | 说明 |
 |------|------|

@@ -13,7 +13,7 @@
 本文档是当前仓库文档的唯一导航入口。
 
 1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
-2. 需要看当前执行重点、分支/标签策略或阶段缺口时，读 [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md)、[progress/STATUS](progress/STATUS.md) 与 [progress/beta-readiness](progress/beta-readiness.md)。文件名暂保留，但内容已按当前 `dev / beta / main` 三线模型维护。
+2. 需要看当前执行重点、分支/标签策略或阶段缺口时，读 [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md)、[progress/STATUS](progress/STATUS.md) 与 [progress/beta-readiness](progress/beta-readiness.md)。
 3. 需要看详细契约与业务规则时，按主题进入 `spec/02-05`。
 4. 需要看固定回归基线、本地 smoke 或发布回归流程时，进入 `testing/`。
 
@@ -39,13 +39,13 @@
 | [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
 | [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
 | [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
-| [plan/3.0-alpha-cutover](plan/3.0-alpha-cutover.md) | 当前发布整理计划；文件名暂保留 |
+| [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md) | 当前发布整理计划 |
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：已稳定范围、当前缺口与最近验证 |
 | [progress/beta-readiness](progress/beta-readiness.md) | Beta 前置条件、剩余缺口与进入 Beta 的推荐顺序 |
 | [ROADMAP](ROADMAP.md) | 阶段路线图与当前推荐下一步 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | 当前唯一稳定固定 fixture 说明 |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地开发与 smoke runbook |
-| [testing/alpha-release](testing/alpha-release.md) | 当前发布与回归 runbook；文件名暂保留 |
+| [testing/release-runbook](testing/release-runbook.md) | 当前发布与回归 runbook |
 
 ## 临时区规则
 

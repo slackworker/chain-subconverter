@@ -31,5 +31,5 @@
 - 默认 `/` 已固定为当前对外入口；`/ui/a`、`/ui/b`、`/ui/c` 继续保留用于实验与对照，不作为当前发布整理阻塞项。
 - 当前版本未针对移动端进行专门适配，移动端体验不作为当前阶段验收标准。
 - `beta` 分支与版本号标签规则已预留，但尚未进入正式 Beta 冻结与版本化发布。
-- 对外发布、第三方设备最小回归与反馈记录模板见 [docs/testing/alpha-release.md](docs/testing/alpha-release.md)。
+- 对外发布、第三方设备最小回归与反馈记录模板见 [docs/testing/release-runbook.md](docs/testing/release-runbook.md)。
 - 2.0 及更早历史发布说明见 [_legacy/RELEASES.md](_legacy/RELEASES.md)。

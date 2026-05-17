@@ -293,7 +293,7 @@ docker compose -f deploy/docker-compose.yml up -d
 - 若使用双 Docker 分离部署，额外确认 `subconverter` 能回取 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向的模板地址，且 `subconverter` 不对公网开放
 - 不要在对外可访问环境里把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；若要提高并发承载，优先结合反代或网关层限速一起调整
 - 当前安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
-- 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/alpha-release.md](../docs/testing/alpha-release.md)
+- 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/release-runbook.md](../docs/testing/release-runbook.md)
 
 ## 边界
 

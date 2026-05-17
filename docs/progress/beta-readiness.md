@@ -2,7 +2,7 @@
 
 > 最近更新：2026-05-17
 
-本文记录 3.0 距 Beta 发布仍缺的条件与推荐推进顺序。实时阶段状态仍以 [STATUS.md](STATUS.md) 为准；当前执行计划见 [plan/3.0-alpha-cutover.md](../plan/3.0-alpha-cutover.md)。
+本文记录 3.0 距 Beta 发布仍缺的条件与推荐推进顺序。实时阶段状态仍以 [STATUS.md](STATUS.md) 为准；当前执行计划见 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md)。
 
 ## 当前基线
 
@@ -55,5 +55,5 @@
 ## 相关文档
 
 - 当前状态快照：[STATUS.md](STATUS.md)
-- 当前执行计划：[plan/3.0-alpha-cutover.md](../plan/3.0-alpha-cutover.md)
-- 当前发布与回归：[testing/alpha-release.md](../testing/alpha-release.md)
+- 当前执行计划：[plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md)
+- 当前发布与回归：[testing/release-runbook.md](../testing/release-runbook.md)

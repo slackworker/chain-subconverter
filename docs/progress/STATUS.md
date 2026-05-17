@@ -71,8 +71,8 @@
 
 - 阶段顺序与整体路线：[`docs/ROADMAP.md`](../ROADMAP.md)
 - 权威边界与契约：[`docs/spec/`](../spec/)
-- 当前执行计划：[`docs/plan/3.0-alpha-cutover.md`](../plan/3.0-alpha-cutover.md)
+- 当前执行计划：[`docs/plan/3.0-release-stabilization.md`](../plan/3.0-release-stabilization.md)
 - Beta 前置条件：[`docs/progress/beta-readiness.md`](beta-readiness.md)
 - 本地 UI 启动与 smoke 入口：[`docs/testing/local-dev-smoke.md`](../testing/local-dev-smoke.md)
-- 当前发布与回归 runbook：[`docs/testing/alpha-release.md`](../testing/alpha-release.md)
+- 当前发布与回归 runbook：[`docs/testing/release-runbook.md`](../testing/release-runbook.md)
 - 第三方设备 Compose 启动命令：[`deploy/README.md`](../../deploy/README.md)

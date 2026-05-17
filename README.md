@@ -29,7 +29,7 @@
 
 - 用户部署与访问入口见 [deploy/README.md](deploy/README.md)
 - 当前安全边界与部署假设见 [SECURITY.md](SECURITY.md)
-- 当前发布与回归说明见 [docs/testing/alpha-release.md](docs/testing/alpha-release.md)
+- 当前发布与回归说明见 [docs/testing/release-runbook.md](docs/testing/release-runbook.md)
 - 当前版本发布说明见 [RELEASES.md](RELEASES.md)
 - 历史版本发布说明见 [_legacy/RELEASES.md](_legacy/RELEASES.md)
 

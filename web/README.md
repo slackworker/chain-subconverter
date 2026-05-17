@@ -39,16 +39,16 @@ Phase 4 前端工程目录。
 
 ## 分支工作流
 
-- `main`：公共改动的稳定主干。共享业务层、后端、脚本、部署、文档等不属于单一方案的改动，先提交到这里。
-- `dev`：A/B/C 三套方案并存的日常开发分支（原 `ui-lab`）。`web/src/scheme/a`、`b`、`c` 的实现演进和相互参考都集中在这里。
-- `release/3.0`：3.0 发布分支。它承接经过回归确认、准备发出去的快照；Alpha、Beta、正式版统一通过版本 tag 区分，默认入口为 `/`（scheme=default），并保留 `/ui/a|/ui/b|/ui/c` 供对照验证。
+- `main`：公共改动的稳定主干。共享业务层、后端、脚本、部署、文档等不属于单一方案的改动，先提交到这里；当前公开滚动镜像 `latest` 由该分支 CI 发布。
+- `dev`：A/B/C 三套方案并存的日常开发分支（原 `ui-lab`）。`web/src/scheme/a`、`b`、`c` 的实现演进和相互参考都集中在这里；默认通过手动流程发布 `dev-latest` 供快速验证。
+- `beta`：预发布收口分支。用于回归确认的候选快照、`beta-latest` 验证与后续 Beta 标签发布准备。
 
 推荐提交流程：
 
 - 纯公共改动：直接提交到 `main`，然后把 `dev` rebase 到最新 `main`。
 - 纯方案改动：直接提交到 `dev`。
 - 同一轮同时包含公共改动和方案改动：先把公共部分单独提交到 `main`，同步 `dev` 后，再把方案部分提交到 `dev`；不要把两类改动混成一个提交。
-- `release/3.0` 不作为日常方案开发分支；它只在准备发布或更新当前 3.0 阶段镜像时，从 `main`/`dev` 选定已回归快照后更新。
+- `beta` 不作为日常方案开发分支；它只在准备预发布回归或更新 `beta-latest` 时，从 `main`/`dev` 选定已回归快照后更新。
 
 当前仓库已支持在同一分支同时预览三个方案：启动本地开发实例后，可直接同时打开 `/ui/a`、`/ui/b`、`/ui/c`。多个 worktree 并行跑时请显式设置端口 offset（或 `auto`），不要依赖多套默认端口并存。
 
@@ -96,4 +96,4 @@ Phase 4 前端工程目录。
 
 当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。
 
-当前实施顺序见 [../docs/plan/3.0-alpha-cutover.md](../docs/plan/3.0-alpha-cutover.md)。
+当前实施顺序见 [../docs/plan/3.0-release-stabilization.md](../docs/plan/3.0-release-stabilization.md)。
