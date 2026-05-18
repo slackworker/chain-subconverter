@@ -1,0 +1,57 @@
+name: Bug / 回归
+description: 缺陷或发布回归反馈
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 分支 / 提交或镜像 tag
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 部署环境（设备、访问入口）
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 回归范围
+      options:
+        - 自动化（go test / web test）
+        - 本地 dev-up smoke
+        - 第三方设备 Compose
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: 失败点归类
+      options:
+        - Docker / Compose
+        - subconverter
+        - backend
+        - frontend
+        - 外部模板 / 订阅源
+        - 其他
+    validations:
+      required: true

@@ -2,7 +2,7 @@
 
 ## 当前发布口径
 
-> 当前滚动发布说明，更新时间：2026-05-17
+> 当前滚动发布说明，更新时间：2026-05-18
 
 ### 分支与标签
 
@@ -31,5 +31,6 @@
 - 默认 `/` 已固定为当前对外入口；`/ui/a`、`/ui/b`、`/ui/c` 继续保留用于实验与对照，不作为当前发布整理阻塞项。
 - 当前版本未针对移动端进行专门适配，移动端体验不作为当前阶段验收标准。
 - `beta` 分支与版本号标签规则已预留，但尚未进入正式 Beta 冻结与版本化发布。
-- 对外发布、第三方设备最小回归与反馈记录模板见 [docs/testing/release-runbook.md](docs/testing/release-runbook.md)。
+- 发布前自动化：`go test ./...`（双 fixture）、`cd web && npm run test`；E2E 为本地/手工基线，见 [docs/testing/release-runbook.md](docs/testing/release-runbook.md)。
+- 第三方设备最小回归与反馈记录模板见同上 runbook。
 - 2.0 及更早历史发布说明见 [_legacy/RELEASES.md](_legacy/RELEASES.md)。

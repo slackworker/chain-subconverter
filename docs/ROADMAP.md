@@ -88,7 +88,7 @@ flowchart LR
 | 发布模型收口 | 分支模型收口为 `dev / beta / main`；滚动标签收口为 `dev-latest / beta-latest / latest` |
 | 用户文档整理 | README、RELEASES、deploy 只保留对外真正需要的说明 |
 | 内部状态整理 | STATUS、计划、路线图、runbook 与当前实现保持同步 |
-| 固定回归基线扩展 | 在现有 `3pass-ss2022-test-subscription` 基础上扩展完整固定回归流程 |
+| 固定回归基线 | 已含 `3pass-ss2022` 与 `dual-landing-chain-port-forward`；后续补 E2E 阻断路径 |
 
 > 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 
@@ -96,7 +96,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 先完成分支/标签、工作流与文档口径的统一，彻底移除 `release/3.0` 与 `alpha-latest` 的当前基线地位。
-2. 再补齐第三方设备回归记录、反馈闭环与进入 Beta 的前置条件。
-3. 然后扩展固定测试流程与 mock 数据，把长链接、短链接、端口转发与恢复流程纳入统一基线。
-4. 最后按固定节奏做文档与 Memory 整理，避免状态持续膨胀。
+1. 用 `beta` 跑通 `beta-latest` 发布与第三方设备回归并归档。
+2. 补 Playwright 阻断路径；视需要纳入 CI。
+3. 持续精简 `docs/temp/` 与状态页，避免文档膨胀。

@@ -16,6 +16,8 @@ Phase 4 前端工程目录。
 - `npm run build:b`
 - `npm run build:c`
 - `npm run preview`
+- `npm run test`（Vitest，纯逻辑）
+- `npm run test:e2e`（Playwright；需 `./scripts/dev-up.sh default`，见 [release-runbook](../docs/testing/release-runbook.md)）
 
 ## 本地 UI 开发入口
 

@@ -118,5 +118,14 @@ chain-subconverter/
 - `web` 目录预留给前端工程与构建产物
 - `deploy` 目录只承载部署清单与部署说明
 
+## 9. 测试与 CI（当前）
+
+| 层 | 工具 | 范围 |
+|----|------|------|
+| 后端 | `go test ./...` | 含 `3pass-ss2022`、`dual-landing-chain-port-forward` fixture |
+| 前端逻辑 | Vitest（`web`） | `stage1` / `state` / `notices` 等纯函数 |
+| 浏览器 | Playwright（`web`） | 默认 `/` 最小 happy path；本地或容器化，**未进 CI** |
+| CI | GitHub Actions | Go test、Web 单测、四 scheme build、compose config |
+
 
 

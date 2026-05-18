@@ -12,7 +12,7 @@ services:
       start_period: 10s
 
   app:
-    image: ghcr.io/slackworker/chain-subconverter:alpha-latest
+    image: ghcr.io/slackworker/chain-subconverter:latest
     depends_on:
       subconverter:
         condition: service_healthy
