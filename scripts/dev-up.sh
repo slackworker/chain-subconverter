@@ -128,17 +128,17 @@ backend_http_address() {
   printf '0.0.0.0:%s' "$port"
 }
 
-backend_public_base_url() {
+backend_user_facing_base_url() {
   local port=$1
   printf 'http://localhost:%s' "$port"
 }
 
-backend_managed_template_base_url() {
+backend_subconverter_facing_base_url() {
   local port=$1
   printf 'http://host.docker.internal:%s' "$port"
 }
 
-backend_subconverter_base_url() {
+backend_subconverter_upstream_base_url() {
   local port=$1
   printf 'http://127.0.0.1:%s/sub?' "$port"
 }
@@ -333,9 +333,9 @@ backend_env_matches() {
 
   process_env_matches "$pid" CHAIN_SUBCONVERTER_DEV_UP "$DEV_UP_BACKEND_MARKER" &&
     process_env_matches "$pid" CHAIN_SUBCONVERTER_HTTP_ADDRESS "$(backend_http_address "$port")" &&
-    process_env_matches "$pid" CHAIN_SUBCONVERTER_PUBLIC_BASE_URL "$(backend_public_base_url "$port")" &&
-    process_env_matches "$pid" CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL "$(backend_managed_template_base_url "$port")" &&
-    process_env_matches "$pid" CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL "$(backend_subconverter_base_url "$subconverter_port")"
+    process_env_matches "$pid" CHAIN_SUBCONVERTER_USER_FACING_BASE_URL "$(backend_user_facing_base_url "$port")" &&
+    process_env_matches "$pid" CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL "$(backend_subconverter_facing_base_url "$port")" &&
+    process_env_matches "$pid" CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL "$(backend_subconverter_upstream_base_url "$subconverter_port")"
 }
 
 reusable_backend_ready() {
@@ -345,7 +345,7 @@ reusable_backend_ready() {
 
   http_ready "http://127.0.0.1:${port}/healthz" &&
     backend_env_matches "$port" "$subconverter_port" &&
-    container_http_ready "$container_name" "$(backend_managed_template_base_url "$port")/healthz"
+    container_http_ready "$container_name" "$(backend_subconverter_facing_base_url "$port")/healthz"
 }
 
 select_reusable_or_free_port() {
@@ -443,9 +443,9 @@ start_backend() {
     cd "$ROOT_DIR"
     CHAIN_SUBCONVERTER_DEV_UP="$DEV_UP_BACKEND_MARKER" \
       CHAIN_SUBCONVERTER_HTTP_ADDRESS="$(backend_http_address "$backend_port")" \
-      CHAIN_SUBCONVERTER_PUBLIC_BASE_URL="$(backend_public_base_url "$backend_port")" \
-      CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL="$(backend_managed_template_base_url "$backend_port")" \
-      CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL="$(backend_subconverter_base_url "$subconverter_port")" \
+	      CHAIN_SUBCONVERTER_USER_FACING_BASE_URL="$(backend_user_facing_base_url "$backend_port")" \
+	      CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL="$(backend_subconverter_facing_base_url "$backend_port")" \
+	      CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL="$(backend_subconverter_upstream_base_url "$subconverter_port")" \
       CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR="web/dist" \
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH="data/short-links.sqlite3" \
       go run ./cmd/server
@@ -458,7 +458,7 @@ start_backend() {
     return 1
   fi
 
-  if ! wait_for_container_http "$container_name" "$(backend_managed_template_base_url "$backend_port")/healthz" "backend-from-subconverter" 30; then
+  if ! wait_for_container_http "$container_name" "$(backend_subconverter_facing_base_url "$backend_port")/healthz" "backend-from-subconverter" 30; then
     tail -n 50 "$BACKEND_LOG" >&2 || true
     return 1
   fi
@@ -479,9 +479,9 @@ write_runtime_file() {
 
   cat >"$RUNTIME_FILE" <<EOF
 SCHEME=${scheme}
-SUBCONVERTER_BASE_URL=http://127.0.0.1:${subconverter_port}/sub?
+SUBCONVERTER_UPSTREAM_BASE_URL=http://127.0.0.1:${subconverter_port}/sub?
 BACKEND_URL=http://localhost:${backend_port}
-MANAGED_TEMPLATE_BASE_URL=http://host.docker.internal:${backend_port}
+SUBCONVERTER_FACING_BASE_URL=http://host.docker.internal:${backend_port}
 FRONTEND_URL=http://localhost:${frontend_port}
 SCHEME_URL=${scheme_url}
 BACKEND_LOG=${BACKEND_LOG}

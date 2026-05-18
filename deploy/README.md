@@ -21,11 +21,11 @@
 ```bash
 APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
-# PUBLIC_BASE_URL 可选：直连局域网或其他单入口部署通常无需配置，服务端会按请求来源自动推断。
+# USER_FACING_BASE_URL 可选：直连局域网或其他单入口部署通常无需配置，服务端会按请求来源自动推断。
 # 仅在 HTTPS 反代/公网域名、多入口或需要固定发布地址时填写，例如 https://example.com；若直接暴露端口，可用 http://<设备IP>:11200。
-# PUBLIC_BASE_URL=""
-# 公网/HTTPS 反代场景建议同时开启，要求未设置 PUBLIC_BASE_URL 时启动直接失败：
-# REQUIRE_PUBLIC_BASE_URL="false"
+# USER_FACING_BASE_URL=""
+# 公网/HTTPS 反代场景建议同时开启，要求未设置 USER_FACING_BASE_URL 时启动直接失败：
+# REQUIRE_USER_FACING_BASE_URL="false"
 # 默认会拒绝拉取指向私网/loopback 的模板 URL；只有在可信自部署环境且确实需要内网模板源时，才显式开启：
 # TEMPLATE_ALLOW_PRIVATE_NETWORKS="false"
 # 默认四个写接口共用 per-IP token bucket；设为 0 可关闭，仅建议本地调试时使用：
@@ -60,19 +60,19 @@ services:
         condition: service_healthy
     environment:
       CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
-      # PUBLIC_BASE_URL 可选；直连局域网通常留空，HTTPS 反代/公网域名或多入口场景再显式填写。
+      # USER_FACING_BASE_URL 可选；直连局域网通常留空，HTTPS 反代/公网域名或多入口场景再显式填写。
       # 若需固定发布地址，取消注释并填入实际可访问地址（例如 https://example.com）：
-      # CHAIN_SUBCONVERTER_PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
-      # 公网/HTTPS 反代场景建议同时开启，要求未设置 PUBLIC_BASE_URL 时启动失败：
-      # CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL: "${REQUIRE_PUBLIC_BASE_URL}"
+      # CHAIN_SUBCONVERTER_USER_FACING_BASE_URL: "${USER_FACING_BASE_URL}"
+      # 公网/HTTPS 反代场景建议同时开启，要求未设置 USER_FACING_BASE_URL 时启动失败：
+      # CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL: "${REQUIRE_USER_FACING_BASE_URL}"
       # 仅在可信内网环境且模板 URL 需要指向私网/loopback 地址时才开启：
       # CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS: "${TEMPLATE_ALLOW_PRIVATE_NETWORKS}"
       # 设为 0 可关闭；默认建议保留：
       # CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE: "${WRITE_REQUESTS_PER_MINUTE}"
-      CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
+      CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: "${DEFAULT_TEMPLATE_URL}"
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL: 5m
-      CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub?
+      CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL: http://subconverter:25500/sub?
       CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
       CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY: "${SHORT_LINK_CAPACITY}"
     networks:
@@ -122,27 +122,27 @@ http://<device-ip>:<host-port>/
 
 分离部署时必须同时满足：
 
-- `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 指向 `app` 容器可达的 `subconverter` 内部地址，例如 `http://subconverter:25500/sub` 或同类私有地址
-- `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向 `subconverter` 可回连的 `app` 地址；若两者共享 Docker 网络，可继续使用 `http://app:11200`，否则必须改成 `subconverter` 侧可访问的宿主机 / 反代 / 内网地址
+- `CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL` 指向 `app` 容器可达的 `subconverter` 内部地址，例如 `http://subconverter:25500/sub` 或同类私有地址
+- `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 指向 `subconverter` 可回连的 `app` 地址；若两者共享 Docker 网络，可继续使用 `http://app:11200`，否则必须改成 `subconverter` 侧可访问的宿主机 / 反代 / 内网地址
 - `subconverter` 仍不应直接暴露到公网；若确需跨项目通信，优先使用共享 Docker 网络、反代后的内网入口或宿主机防火墙限制后的局域网地址
 
 常见做法：
 
 - 同一台机器、两个 Compose 项目：先创建一个共享 Docker network，再让两个项目都加入该网络，分别使用服务名互访
-- 同一台机器、单独容器：把 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 写成该容器在共享网络中的 DNS 名称
-- 不同主机：必须显式设置 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 为 `subconverter` 能访问到的 `app` 外部地址，并自行承担链路加密、访问控制与 egress 控制
+- 同一台机器、单独容器：把 `CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL` 写成该容器在共享网络中的 DNS 名称
+- 不同主机：必须显式设置 `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 为 `subconverter` 能访问到的 `app` 外部地址，并自行承担链路加密、访问控制与 egress 控制
 
 如采用双 Docker 分离部署，建议至少把下列变量写入 `app` 的 Compose：
 
 ```yaml
 environment:
   CHAIN_SUBCONVERTER_HTTP_ADDRESS: :11200
-  CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL: http://app:11200
-  CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: http://subconverter:25500/sub
+  CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL: http://app:11200
+  CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL: http://subconverter:25500/sub
   CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH: /data/short-links.sqlite3
 ```
 
-其中 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 是否还能写成 `http://app:11200`，取决于你的外部 `subconverter` 是否真能解析并访问 `app` 这个服务名；不能时就必须改成其他可达地址。
+其中 `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 是否还能写成 `http://app:11200`，取决于你的外部 `subconverter` 是否真能解析并访问 `app` 这个服务名；不能时就必须改成其他可达地址。
 
 ### 仓库内 Compose 预览
 
@@ -183,7 +183,7 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 - `APP_IMAGE`
 - `SUBCONVERTER_IMAGE`
 - `HOST_PORT`
-- `PUBLIC_BASE_URL`
+- `USER_FACING_BASE_URL`
 - `WRITE_REQUESTS_PER_MINUTE`
 - `SHORT_LINK_CAPACITY`
 - 其他 `app` 环境变量
@@ -224,8 +224,8 @@ docker compose -f deploy/docker-compose.yml up -d
 
 - `APP_DIR`：本机保存 Compose 文件的位置
 - `HOST_PORT`：宿主机对外暴露的端口
-- `PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源（`Host` 请求头与 TLS 状态）推断，适用于直连局域网或 DDNS 等单入口部署。**若前端有 Nginx/Caddy 等反代做 HTTPS 终止**，服务端看不到 TLS，自动推断会产生 `http://` 链接，此时必须显式填入 `https://<域名>` 才能生成正确的订阅链接。多入口或固定发布地址场景同理
-- `REQUIRE_PUBLIC_BASE_URL`：**默认关闭**。设为 `true` 时，若未显式设置 `PUBLIC_BASE_URL`，服务启动会直接失败。适用于公网、HTTPS 反代或其他不能接受 Host 头自动推断的部署场景
+- `USER_FACING_BASE_URL`：**可选**。用户访问 `chain-subconverter` 的外部地址。未配置时服务端自动按请求来源（`Host` 请求头与 TLS 状态）推断，适用于直连局域网或 DDNS 等单入口部署。**若前端有 Nginx/Caddy 等反代做 HTTPS 终止**，服务端看不到 TLS，自动推断会产生 `http://` 链接，此时必须显式填入 `https://<域名>` 才能生成正确的订阅链接。多入口或固定发布地址场景同理
+- `REQUIRE_USER_FACING_BASE_URL`：**默认关闭**。设为 `true` 时，若未显式设置 `USER_FACING_BASE_URL`，服务启动会直接失败。适用于公网、HTTPS 反代或其他不能接受 Host 头自动推断的部署场景
 - `APP_IMAGE`：主应用镜像；当前默认对外口径为 `ghcr.io/slackworker/chain-subconverter:latest`。`dev` 分支的手动测试建议使用 `dev-latest`；进入 Beta 阶段后可切到 `beta-latest`，并在后续版本化发布时再补充明确版本标签
 - `SUBCONVERTER_IMAGE`：集成 `subconverter` 镜像；按需要锁定版本
 - `SHORT_LINK_CAPACITY`：短链接索引容量
@@ -233,22 +233,22 @@ docker compose -f deploy/docker-compose.yml up -d
 - `TEMPLATE_ALLOW_PRIVATE_NETWORKS`：**默认关闭**。服务端默认拒绝拉取指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL；只有在可信自部署环境且确实需要访问内网模板源时，才显式设为 `true`
 - `WRITE_REQUESTS_PER_MINUTE`：**默认 `60`**。四个写接口（`/api/stage1/convert`、`/api/generate`、`/api/short-links`、`/api/resolve-url`）共享的每 IP 限速；设为 `0` 表示关闭，仅建议本地调试或受控验证环境使用
 - `TRUSTED_PROXY_CIDRS`：**可选**。仅在入口前存在受信反代时使用；值为逗号分隔的单 IP 或 CIDR。官方 Compose 示例默认填入 `172.16.0.0/12`，用于覆盖常见 Docker bridge + 宿主机反代场景；若实际反代 peer 不在该网段（例如 `network_mode: host` 且对端为 loopback），需按部署拓扑改成真实 peer 网段
-- `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL`：`app` 访问 `subconverter` 的内部 HTTP endpoint。默认一体化 Compose 直接使用 `http://subconverter:25500/sub`；若改成双 Docker 分离部署，必须显式改成 `app` 容器可达的地址
-- `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL`：`subconverter` 回取托管模板时使用的 `app` 地址。默认一体化 Compose 可用 `http://app:11200`；双 Docker 分离部署若不共享服务名解析，必须显式改成 `subconverter` 可回连的地址
+- `CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL`：`app` 访问 `subconverter` 的内部 HTTP endpoint。默认一体化 Compose 直接使用 `http://subconverter:25500/sub`；若改成双 Docker 分离部署，必须显式改成 `app` 容器可达的地址
+- `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL`：`subconverter` 回取托管模板时使用的 `app` 地址。默认一体化 Compose 可用 `http://app:11200`；双 Docker 分离部署若不共享服务名解析，必须显式改成 `subconverter` 可回连的地址
 
 生成后的 `docker-compose.yml` 当前涉及两类配置：
 
 - 传给 `app` 的运行时环境变量
   - `CHAIN_SUBCONVERTER_HTTP_ADDRESS=:11200`
-  - `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`：**可选**。对浏览器、短链与订阅结果公开的外部地址。未配置时服务端自动按请求来源推断，适用于直连局域网或 DDNS 等单入口部署。若前端有反代做 HTTPS 终止，或需固定发布地址，按实际可访问地址填入（`https://` 或 `http://`），不要填容器内地址
-  - `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=false`：设为 `true` 时，要求同时提供 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，否则服务启动失败。建议在公网、固定域名或 HTTPS 反代场景开启
+  - `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`：**可选**。用户访问 `chain-subconverter` 的外部地址。未配置时服务端自动按请求来源推断，适用于直连局域网或 DDNS 等单入口部署。若前端有反代做 HTTPS 终止，或需固定发布地址，按实际可访问地址填入（`https://` 或 `http://`），不要填容器内地址
+  - `CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=false`：设为 `true` 时，要求同时提供 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，否则服务启动失败。建议在公网、固定域名或 HTTPS 反代场景开启
   - `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=false`：默认拒绝指向 loopback、link-local、RFC1918/ULA 等私网地址的模板 URL。仅当部署者明确知道模板源位于可信内网，且接受相应 SSRF 风险边界时才改为 `true`
   - `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE=60`：四个写接口共享的每 IP token bucket；设为 `0` 表示关闭。当前限速命中时接口返回 `429 RATE_LIMITED`
   - `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS=172.16.0.0/12`：trusted proxy peer 列表；仅当直接对端 IP 命中这些单 IP / CIDR 时，服务端才会读取 `X-Forwarded-For`、`X-Forwarded-Proto` 与 `X-Forwarded-Host`。Compose 示例默认值用于覆盖常见 Docker bridge + 本机 Nginx/OpenResty 反代场景；若实际 peer 网段不同（例如 host 网络下对端为 `127.0.0.1`），需按部署拓扑改写
-  - `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL=http://app:11200`
+  - `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL=http://app:11200`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL`：阶段 1 模板 URL 输入框的部署默认初始值，同时通过 `/api/runtime-config` 供前端填入 `advancedOptions.config`
   - `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL=5m`
-  - `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL=http://subconverter:25500/sub?`
+  - `CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL=http://subconverter:25500/sub?`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3`
   - `CHAIN_SUBCONVERTER_SHORT_LINK_CAPACITY=1000`
 - 由 Compose 解析的宿主机 / 镜像变量
@@ -260,13 +260,13 @@ docker compose -f deploy/docker-compose.yml up -d
 
 `app` 服务会把 SQLite 文件写入命名卷 `short-link-data`，用于在容器重建后保留短链接索引。
 
-`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 默认走 Compose 内部服务地址 `http://app:11200`，供 `subconverter` 在私有网络内回取托管模板；该地址不是对外公开入口。若改为双 Docker 分离部署，必须确保这个地址从 `subconverter` 侧仍可达。
+`CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 默认走 Compose 内部服务地址 `http://app:11200`，供 `subconverter` 在私有网络内回取托管模板；该地址不是对外公开入口。若改为双 Docker 分离部署，必须确保这个地址从 `subconverter` 侧仍可达。
 
-`CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 不是同一个概念：前者给浏览器和最终链接使用，后者只给容器内或私有网络内的 `subconverter` 回连托管模板使用。第三方设备部署时，不要把前者写成 `http://app:11200`；后者只有在 `subconverter` 无法通过 Docker 服务名访问 `app` 时，才应该改成宿主机 IP、反代地址或其他私有可达地址。
+`CHAIN_SUBCONVERTER_USER_FACING_BASE_URL` 与 `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 不是同一个概念：前者给浏览器和最终链接使用，后者只给容器内或私有网络内的 `subconverter` 回连托管模板使用。第三方设备部署时，不要把前者写成 `http://app:11200`；后者只有在 `subconverter` 无法通过 Docker 服务名访问 `app` 时，才应该改成宿主机 IP、反代地址或其他私有可达地址。
 
-若部署环境不允许服务端继续根据请求头自动推断公开地址，应显式同时设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 与 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`，把错误配置提前暴露在启动阶段，而不是等到生成链接时才发现。
+若部署环境不允许服务端继续根据请求头自动推断公开地址，应显式同时设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL` 与 `CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true`，把错误配置提前暴露在启动阶段，而不是等到生成链接时才发现。
 
-若入口前有受信反代，且希望在未显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 时仍尽量自动得到正确的 `https://` 链接，或希望写接口限速按真实客户端 IP 分桶，可设置 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`。只有当直接对端 IP 命中受信列表时，服务端才会解析标准 `X-Forwarded-*` 头；否则继续回退到 `RemoteAddr`、`request.TLS` 与 `Host`。这项能力是对自动推断的补充，不替代公网部署显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL` 的主方案。
+若入口前有受信反代，且希望在未显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL` 时仍尽量自动得到正确的 `https://` 链接，或希望写接口限速按真实客户端 IP 分桶，可设置 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`。只有当直接对端 IP 命中受信列表时，服务端才会解析标准 `X-Forwarded-*` 头；否则继续回退到 `RemoteAddr`、`request.TLS` 与 `Host`。这项能力是对自动推断的补充，不替代公网部署显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL` 的主方案。
 
 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL` 必须是 HTTP(S) URL。前端会把它作为普通模板 URL 写入阶段 1 输入快照、生成请求与长链接载荷。当请求中的模板 URL 等于该部署默认值时，模板成功拉取并通过解析后会进入默认模板缓存；后续刷新失败时，服务可使用此前验证通过的缓存继续完成转换，并在支持 `messages[]` 的接口响应中返回 warning。若没有可用缓存，仍会返回 `TEMPLATE_CONFIG_UNAVAILABLE`。
 
@@ -278,7 +278,7 @@ docker compose -f deploy/docker-compose.yml up -d
 
 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL` 控制其他模板 URL 的上游抓取缓存 TTL；留空或设为 `0` 表示关闭。若同时设置两个变量，内置默认模板优先使用 `CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL`，其他模板使用 `CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL`。
 
-`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 推荐显式写成完整 endpoint，例如 `http://subconverter:25500/sub`。当前服务启动时会自动补全缺失的 `http://` 与 `/sub`，因此 `subconverter:25500`、`http://subconverter:25500` 也可接受；若显式提供路径前缀，例如 `http://subconverter:25500/proxy`，则会归一化为 `http://subconverter:25500/proxy/sub`。双 Docker 分离部署时，这个地址必须从 `app` 容器内部可达，而不是仅在宿主机 shell 中可达。
+`CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL` 推荐显式写成完整 endpoint，例如 `http://subconverter:25500/sub`。当前服务启动时会自动补全缺失的 `http://` 与 `/sub`，因此 `subconverter:25500`、`http://subconverter:25500` 也可接受；若显式提供路径前缀，例如 `http://subconverter:25500/proxy`，则会归一化为 `http://subconverter:25500/proxy/sub`。双 Docker 分离部署时，这个地址必须从 `app` 容器内部可达，而不是仅在宿主机 shell 中可达。
 
 若是单容器托管平台且未挂卷，镜像默认会退回到 `/tmp/short-links.sqlite3`，以保证预览环境至少可启动；该路径仅适合无状态预览，不保证重建后保留短链接数据。
 
@@ -290,9 +290,9 @@ docker compose -f deploy/docker-compose.yml up -d
 - `beta-latest` 预留给 Beta 阶段；当前若尚未进入 Beta，就继续使用 `latest`
 - 每次切换镜像 tag 后，至少复验 `GET /healthz`、`/`、`POST /api/stage1/convert` 与一条最终订阅读取路径；如需对照，再额外验证 `/ui/a`、`/ui/b`、`/ui/c`
 - 内测设备建议保留默认命名卷 `short-link-data`，并在容器重启后确认短链仍可恢复
-- 若使用双 Docker 分离部署，额外确认 `subconverter` 能回取 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 指向的模板地址，且 `subconverter` 不对公网开放
+- 若使用双 Docker 分离部署，额外确认 `subconverter` 能回取 `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 指向的模板地址，且 `subconverter` 不对公网开放
 - 不要在对外可访问环境里把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；若要提高并发承载，优先结合反代或网关层限速一起调整
-- 当前安全边界、匿名访问假设与 SSRF / PUBLIC_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
+- 当前安全边界、匿名访问假设与 SSRF / USER_FACING_BASE_URL 风险说明见 [../SECURITY.md](../SECURITY.md)
 - 发布前检查、第三方设备最小回归与反馈记录模板统一见 [../docs/testing/release-runbook.md](../docs/testing/release-runbook.md)
 
 ## 边界

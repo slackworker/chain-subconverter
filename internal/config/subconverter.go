@@ -11,38 +11,38 @@ import (
 )
 
 const (
-	DefaultSubconverterBaseURL     = "http://subconverter:25500/sub?"
-	DefaultSubconverterTimeout     = 15 * time.Second
-	DefaultSubconverterMaxInFlight = 10
+	DefaultSubconverterUpstreamBaseURL = "http://subconverter:25500/sub?"
+	DefaultSubconverterTimeout         = 15 * time.Second
+	DefaultSubconverterMaxInFlight     = 10
 
-	EnvSubconverterBaseURL     = "CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL"
-	EnvSubconverterTimeout     = "CHAIN_SUBCONVERTER_SUBCONVERTER_TIMEOUT"
-	EnvSubconverterMaxInFlight = "CHAIN_SUBCONVERTER_SUBCONVERTER_MAX_IN_FLIGHT"
+	EnvSubconverterUpstreamBaseURL = "CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL"
+	EnvSubconverterTimeout         = "CHAIN_SUBCONVERTER_SUBCONVERTER_TIMEOUT"
+	EnvSubconverterMaxInFlight     = "CHAIN_SUBCONVERTER_SUBCONVERTER_MAX_IN_FLIGHT"
 )
 
 type Subconverter struct {
-	BaseURL     string
-	Timeout     time.Duration
-	MaxInFlight int
+	UpstreamBaseURL string
+	Timeout         time.Duration
+	MaxInFlight     int
 }
 
 func DefaultSubconverter() Subconverter {
 	return Subconverter{
-		BaseURL:     DefaultSubconverterBaseURL,
-		Timeout:     DefaultSubconverterTimeout,
-		MaxInFlight: DefaultSubconverterMaxInFlight,
+		UpstreamBaseURL: DefaultSubconverterUpstreamBaseURL,
+		Timeout:         DefaultSubconverterTimeout,
+		MaxInFlight:     DefaultSubconverterMaxInFlight,
 	}
 }
 
 func LoadSubconverterFromEnv() (Subconverter, error) {
 	cfg := DefaultSubconverter()
 
-	if value, ok := lookupTrimmedEnv(EnvSubconverterBaseURL); ok {
+	if value, ok := lookupTrimmedEnv(EnvSubconverterUpstreamBaseURL); ok {
 		normalizedBaseURL, err := NormalizeSubconverterBaseURL(value)
 		if err != nil {
-			return Subconverter{}, fmt.Errorf("normalize %s: %w", EnvSubconverterBaseURL, err)
+			return Subconverter{}, fmt.Errorf("normalize %s: %w", EnvSubconverterUpstreamBaseURL, err)
 		}
-		cfg.BaseURL = normalizedBaseURL
+		cfg.UpstreamBaseURL = normalizedBaseURL
 	}
 
 	if value, ok := lookupTrimmedEnv(EnvSubconverterTimeout); ok {
@@ -69,10 +69,10 @@ func LoadSubconverterFromEnv() (Subconverter, error) {
 }
 
 func (cfg Subconverter) Validate() error {
-	if strings.TrimSpace(cfg.BaseURL) == "" {
-		return fmt.Errorf("subconverter base URL must not be empty")
+	if strings.TrimSpace(cfg.UpstreamBaseURL) == "" {
+		return fmt.Errorf("subconverter upstream base URL must not be empty")
 	}
-	if _, err := NormalizeSubconverterBaseURL(cfg.BaseURL); err != nil {
+	if _, err := NormalizeSubconverterBaseURL(cfg.UpstreamBaseURL); err != nil {
 		return err
 	}
 	if cfg.Timeout <= 0 {
@@ -87,7 +87,7 @@ func (cfg Subconverter) Validate() error {
 func NormalizeSubconverterBaseURL(rawURL string) (string, error) {
 	trimmedURL := strings.TrimSpace(rawURL)
 	if trimmedURL == "" {
-		return "", fmt.Errorf("subconverter base URL must not be empty")
+		return "", fmt.Errorf("subconverter upstream base URL must not be empty")
 	}
 
 	candidateURL := trimmedURL
@@ -97,13 +97,13 @@ func NormalizeSubconverterBaseURL(rawURL string) (string, error) {
 
 	parsedURL, err := url.Parse(candidateURL)
 	if err != nil {
-		return "", fmt.Errorf("subconverter base URL must be a valid http(s) URL, got %q", trimmedURL)
+		return "", fmt.Errorf("subconverter upstream base URL must be a valid http(s) URL, got %q", trimmedURL)
 	}
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return "", fmt.Errorf("subconverter base URL must use http or https, got %q", parsedURL.Scheme)
+		return "", fmt.Errorf("subconverter upstream base URL must use http or https, got %q", parsedURL.Scheme)
 	}
 	if parsedURL.Host == "" {
-		return "", fmt.Errorf("subconverter base URL must include host, got %q; try %q", trimmedURL, "http://localhost:25500/sub")
+		return "", fmt.Errorf("subconverter upstream base URL must include host, got %q; try %q", trimmedURL, "http://localhost:25500/sub")
 	}
 
 	parsedURL.Path = normalizeSubconverterEndpointPath(parsedURL.Path)

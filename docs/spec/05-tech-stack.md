@@ -74,7 +74,7 @@
 - `subconverter` 不对宿主机直接暴露端口
 - 默认一体化 Compose 部署时，`app` 与 `subconverter` 必须加入同一私有 Compose 网络
 - 默认一体化 Compose 部署时，`app` 必须声明对 `subconverter` 的启动依赖与健康检查依赖
-- 若改为双 Docker 分离部署，`CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 必须指向 `app` 可达的私有地址，`CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 必须指向 `subconverter` 可回连的 `app` 地址
+- 若改为双 Docker 分离部署，`CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL` 必须指向 `app` 可达的私有地址，`CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 必须指向 `subconverter` 可回连的 `app` 地址
 - 若引入 SQLite，数据库文件必须通过卷挂载持久化，避免容器重建导致短链接索引丢失
 - 默认部署不要求额外引入 `nginx`、Redis、消息队列或外部数据库
 - 在完整前端与持久化交付前，可保留仅包含 `app + subconverter` 的 API-only Compose 作为本地验证路径；该路径不代表正式单入口部署已完成
@@ -86,7 +86,7 @@
 - 需要同步上游更新时，首选流程是：调整镜像版本 -> 拉取新镜像 -> 重启部署 -> 做兼容性验证
 - 当前不将 `subconverter` 源码 vendoring 到本仓库，也不与其源码级强绑定
 - 如确有必要，可增加**薄封装**镜像或本地构建覆盖配置，但该路径只作为手动维护选项，不作为默认路径
-- 若改为双 Docker 分离部署，部署文档必须显式说明 `CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL` 与 `CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL` 的可达性要求
+- 若改为双 Docker 分离部署，部署文档必须显式说明 `CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL` 与 `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL` 的可达性要求
 - 无论采用官方镜像、薄封装镜像还是双 Docker 分离部署，对主应用暴露的契约都必须保持为“部署侧私有 HTTP 服务”
 
 ## 8. 推荐项目结构

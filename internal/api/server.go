@@ -25,7 +25,7 @@ type Handler struct {
 	source              service.ConversionSource
 	templateStore       service.TemplateContentReader
 	shortLinkStore      service.ShortLinkStore
-	publicBaseURL       string
+	userFacingBaseURL   string
 	defaultTemplateURL  string
 	maxLongURLLength    int
 	inputLimits         service.InputLimits
@@ -46,18 +46,18 @@ type runtimeConfigResponse struct {
 	MaxPublicLongURLLength int    `json:"maxPublicLongURLLength"`
 }
 
-func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, publicBaseURL string, managedTemplateBaseURL string, maxLongURLLength int, inputLimits service.InputLimits, options ...HandlerOption) (*Handler, error) {
+func NewHandler(source service.ConversionSource, templateStore service.TemplateContentReader, shortLinkStore service.ShortLinkStore, userFacingBaseURL string, subconverterFacingBaseURL string, maxLongURLLength int, inputLimits service.InputLimits, options ...HandlerOption) (*Handler, error) {
 	if source == nil {
 		return nil, fmt.Errorf("conversion source must not be nil")
 	}
 	if templateStore == nil {
 		return nil, fmt.Errorf("template store must not be nil")
 	}
-	managedTemplatePath, err := managedTemplateRoutePath(managedTemplateBaseURL)
+	managedTemplatePath, err := managedTemplateRoutePath(subconverterFacingBaseURL)
 	if err != nil {
 		return nil, err
 	}
-	subPath, shortSubPath, err := subRoutePaths(publicBaseURL)
+	subPath, shortSubPath, err := subRoutePaths(userFacingBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 		source:              source,
 		templateStore:       templateStore,
 		shortLinkStore:      shortLinkStore,
-		publicBaseURL:       publicBaseURL,
+		userFacingBaseURL:   userFacingBaseURL,
 		defaultTemplateURL:  defaultTemplateURL,
 		maxLongURLLength:    maxLongURLLength,
 		inputLimits:         inputLimits,
@@ -239,17 +239,17 @@ func (handler *Handler) handleManagedTemplate(writer http.ResponseWriter, reques
 	_, _ = writer.Write([]byte(content))
 }
 
-func subRoutePaths(publicBaseURL string) (string, string, error) {
-	trimmed := strings.TrimSpace(publicBaseURL)
+func subRoutePaths(userFacingBaseURL string) (string, string, error) {
+	trimmed := strings.TrimSpace(userFacingBaseURL)
 	if trimmed == "" {
 		return "/sub", "/sub/", nil
 	}
 	parsedURL, err := url.Parse(trimmed)
 	if err != nil {
-		return "", "", fmt.Errorf("parse public base URL: %w", err)
+		return "", "", fmt.Errorf("parse user-facing base URL: %w", err)
 	}
 	if parsedURL.Scheme == "" || parsedURL.Host == "" {
-		return "", "", fmt.Errorf("public base URL must include scheme and host")
+		return "", "", fmt.Errorf("user-facing base URL must include scheme and host")
 	}
 
 	basePath := strings.TrimRight(parsedURL.EscapedPath(), "/")
@@ -260,14 +260,14 @@ func subRoutePaths(publicBaseURL string) (string, string, error) {
 	return cleanBasePath + "/sub", cleanBasePath + "/sub/", nil
 }
 
-// effectiveBaseURL returns the public base URL to use for link generation.
-// If an explicit PUBLIC_BASE_URL is configured it is used as-is (highest priority).
+// effectiveBaseURL returns the user-facing base URL to use for link generation.
+// If an explicit USER_FACING_BASE_URL is configured it is used as-is (highest priority).
 // Otherwise the URL is inferred from the incoming request: scheme from TLS state,
 // host from the Host header. This covers the common single-entry-point deployment
 // where frontend and backend are served from the same origin.
 func (handler *Handler) effectiveBaseURL(request *http.Request) string {
-	if handler.publicBaseURL != "" {
-		return handler.publicBaseURL
+	if handler.userFacingBaseURL != "" {
+		return handler.userFacingBaseURL
 	}
 	origin := handler.requestOriginFor(request)
 	scheme := origin.scheme
@@ -286,13 +286,13 @@ func (handler *Handler) requestOriginFor(request *http.Request) requestOrigin {
 	return handler.requestOrigin.resolve(request)
 }
 
-func managedTemplateRoutePath(managedTemplateBaseURL string) (string, error) {
-	parsedURL, err := url.Parse(strings.TrimSpace(managedTemplateBaseURL))
+func managedTemplateRoutePath(subconverterFacingBaseURL string) (string, error) {
+	parsedURL, err := url.Parse(strings.TrimSpace(subconverterFacingBaseURL))
 	if err != nil {
-		return "", fmt.Errorf("parse managed template base URL: %w", err)
+		return "", fmt.Errorf("parse subconverter-facing base URL: %w", err)
 	}
 	if parsedURL.Scheme == "" || parsedURL.Host == "" {
-		return "", fmt.Errorf("managed template base URL must include scheme and host")
+		return "", fmt.Errorf("subconverter-facing base URL must include scheme and host")
 	}
 	basePath := strings.TrimRight(parsedURL.EscapedPath(), "/")
 	if basePath == "" {

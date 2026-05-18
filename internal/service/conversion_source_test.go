@@ -248,9 +248,9 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 	defer subconverterServer.Close()
 
 	client, err := subconverter.NewClient(config.Subconverter{
-		BaseURL:     subconverterServer.URL + "/sub?",
-		Timeout:     time.Second,
-		MaxInFlight: 1,
+		UpstreamBaseURL: subconverterServer.URL + "/sub?",
+		Timeout:         time.Second,
+		MaxInFlight:     1,
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
@@ -306,9 +306,9 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		defer dummySubconverter.Close()
 
 		client, err := subconverter.NewClient(config.Subconverter{
-			BaseURL:     dummySubconverter.URL + "/sub?",
-			Timeout:     time.Second,
-			MaxInFlight: 1,
+			UpstreamBaseURL: dummySubconverter.URL + "/sub?",
+			Timeout:         time.Second,
+			MaxInFlight:     1,
 		})
 		if err != nil {
 			t.Fatalf("NewClient() error = %v", err)
@@ -384,9 +384,9 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 		defer dummySubconverter.Close()
 
 		client, err := subconverter.NewClient(config.Subconverter{
-			BaseURL:     dummySubconverter.URL + "/sub?",
-			Timeout:     time.Second,
-			MaxInFlight: 1,
+			UpstreamBaseURL: dummySubconverter.URL + "/sub?",
+			Timeout:         time.Second,
+			MaxInFlight:     1,
 		})
 		if err != nil {
 			t.Fatalf("NewClient() error = %v", err)

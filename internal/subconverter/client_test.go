@@ -451,9 +451,9 @@ func newTestClient(t *testing.T, baseURL string, timeout time.Duration, maxInFli
 	t.Helper()
 
 	client, err := NewClient(config.Subconverter{
-		BaseURL:     baseURL,
-		Timeout:     timeout,
-		MaxInFlight: maxInFlight,
+		UpstreamBaseURL: baseURL,
+		Timeout:         timeout,
+		MaxInFlight:     maxInFlight,
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)

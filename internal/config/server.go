@@ -11,8 +11,8 @@ import (
 
 const (
 	DefaultHTTPAddress                  = ":11200"
-	DefaultPublicBaseURL                = "http://localhost:11200"
-	DefaultManagedTemplateBaseURL       = DefaultPublicBaseURL
+	DefaultUserFacingBaseURL            = "http://localhost:11200"
+	DefaultSubconverterFacingBaseURL    = DefaultUserFacingBaseURL
 	DefaultFrontendDistDir              = "web/dist"
 	DefaultWriteRequestsPerMinute       = 60
 	DefaultMaxLongURLLength             = 8192
@@ -24,12 +24,12 @@ const (
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 	DefaultTemplateAllowPrivateNetworks = false
-	DefaultRequirePublicBaseURL         = false
+	DefaultRequireUserFacingBaseURL     = false
 	DefaultTrustedProxyCIDRs            = ""
 
 	EnvHTTPAddress                  = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
-	EnvPublicBaseURL                = "CHAIN_SUBCONVERTER_PUBLIC_BASE_URL"
-	EnvManagedTemplateBaseURL       = "CHAIN_SUBCONVERTER_MANAGED_TEMPLATE_BASE_URL"
+	EnvUserFacingBaseURL            = "CHAIN_SUBCONVERTER_USER_FACING_BASE_URL"
+	EnvSubconverterFacingBaseURL    = "CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL"
 	EnvFrontendDistDir              = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
 	EnvWriteRequestsPerMinute       = "CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE"
 	EnvMaxLongURLLength             = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
@@ -41,14 +41,14 @@ const (
 	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateAllowPrivateNetworks = "CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS"
-	EnvRequirePublicBaseURL         = "CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL"
+	EnvRequireUserFacingBaseURL     = "CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL"
 	EnvTrustedProxyCIDRs            = "CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS"
 )
 
 type Server struct {
 	HTTPAddress                  string
-	PublicBaseURL                string
-	ManagedTemplateBaseURL       string
+	UserFacingBaseURL            string
+	SubconverterFacingBaseURL    string
 	FrontendDistDir              string
 	WriteRequestsPerMinute       int
 	MaxLongURLLength             int
@@ -60,15 +60,15 @@ type Server struct {
 	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL        time.Duration
 	TemplateAllowPrivateNetworks bool
-	RequirePublicBaseURL         bool
+	RequireUserFacingBaseURL     bool
 	TrustedProxyCIDRs            string
 }
 
 func DefaultServer() Server {
 	return Server{
 		HTTPAddress:                  DefaultHTTPAddress,
-		PublicBaseURL:                "",
-		ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+		UserFacingBaseURL:            "",
+		SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 		FrontendDistDir:              DefaultFrontendDistDir,
 		WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
 		MaxLongURLLength:             DefaultMaxLongURLLength,
@@ -80,7 +80,7 @@ func DefaultServer() Server {
 		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 		TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
-		RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
+		RequireUserFacingBaseURL:     DefaultRequireUserFacingBaseURL,
 		TrustedProxyCIDRs:            DefaultTrustedProxyCIDRs,
 	}
 }
@@ -91,11 +91,11 @@ func LoadServerFromEnv() (Server, error) {
 	if value, ok := lookupTrimmedEnv(EnvHTTPAddress); ok {
 		cfg.HTTPAddress = value
 	}
-	if value, ok := lookupTrimmedEnv(EnvPublicBaseURL); ok {
-		cfg.PublicBaseURL = value
+	if value, ok := lookupTrimmedEnv(EnvUserFacingBaseURL); ok {
+		cfg.UserFacingBaseURL = value
 	}
-	if value, ok := lookupTrimmedEnv(EnvManagedTemplateBaseURL); ok {
-		cfg.ManagedTemplateBaseURL = value
+	if value, ok := lookupTrimmedEnv(EnvSubconverterFacingBaseURL); ok {
+		cfg.SubconverterFacingBaseURL = value
 	}
 	if value, ok := lookupTrimmedEnv(EnvFrontendDistDir); ok {
 		cfg.FrontendDistDir = value
@@ -162,12 +162,12 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.TemplateAllowPrivateNetworks = templateAllowPrivateNetworks
 	}
-	if value, ok := lookupTrimmedEnv(EnvRequirePublicBaseURL); ok {
-		requirePublicBaseURL, err := strconv.ParseBool(value)
+	if value, ok := lookupTrimmedEnv(EnvRequireUserFacingBaseURL); ok {
+		requireUserFacingBaseURL, err := strconv.ParseBool(value)
 		if err != nil {
-			return Server{}, fmt.Errorf("parse %s: %w", EnvRequirePublicBaseURL, err)
+			return Server{}, fmt.Errorf("parse %s: %w", EnvRequireUserFacingBaseURL, err)
 		}
-		cfg.RequirePublicBaseURL = requirePublicBaseURL
+		cfg.RequireUserFacingBaseURL = requireUserFacingBaseURL
 	}
 	if value, ok := lookupTrimmedEnv(EnvTrustedProxyCIDRs); ok {
 		normalized, err := normalizeTrustedProxyCIDRs(value)
@@ -226,26 +226,26 @@ func (cfg Server) Validate() error {
 		return fmt.Errorf("default template URL must include host")
 	}
 
-	if strings.TrimSpace(cfg.PublicBaseURL) != "" {
-		parsedURL, err := url.Parse(cfg.PublicBaseURL)
+	if strings.TrimSpace(cfg.UserFacingBaseURL) != "" {
+		parsedURL, err := url.Parse(cfg.UserFacingBaseURL)
 		if err != nil {
-			return fmt.Errorf("parse public base URL: %w", err)
+			return fmt.Errorf("parse user-facing base URL: %w", err)
 		}
 		if parsedURL.Scheme == "" || parsedURL.Host == "" {
-			return fmt.Errorf("public base URL must include scheme and host")
+			return fmt.Errorf("user-facing base URL must include scheme and host")
 		}
-	} else if cfg.RequirePublicBaseURL {
-		return fmt.Errorf("public base URL is required when %s=true", EnvRequirePublicBaseURL)
+	} else if cfg.RequireUserFacingBaseURL {
+		return fmt.Errorf("user-facing base URL is required when %s=true", EnvRequireUserFacingBaseURL)
 	}
 	if _, err := normalizeTrustedProxyCIDRs(cfg.TrustedProxyCIDRs); err != nil {
 		return fmt.Errorf("parse trusted proxy CIDRs: %w", err)
 	}
-	managedTemplateURL, err := url.Parse(cfg.ManagedTemplateBaseURL)
+	subconverterFacingURL, err := url.Parse(cfg.SubconverterFacingBaseURL)
 	if err != nil {
-		return fmt.Errorf("parse managed template base URL: %w", err)
+		return fmt.Errorf("parse subconverter-facing base URL: %w", err)
 	}
-	if managedTemplateURL.Scheme == "" || managedTemplateURL.Host == "" {
-		return fmt.Errorf("managed template base URL must include scheme and host")
+	if subconverterFacingURL.Scheme == "" || subconverterFacingURL.Host == "" {
+		return fmt.Errorf("subconverter-facing base URL must include scheme and host")
 	}
 	return nil
 }

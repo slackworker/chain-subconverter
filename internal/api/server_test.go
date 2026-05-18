@@ -1070,9 +1070,9 @@ func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
 	defer templateServer.Close()
 
 	client, err := subconverter.NewClient(config.Subconverter{
-		BaseURL:     "http://localhost:25511/sub?",
-		Timeout:     time.Second,
-		MaxInFlight: 1,
+		UpstreamBaseURL: "http://localhost:25511/sub?",
+		Timeout:         time.Second,
+		MaxInFlight:     1,
 	})
 	if err != nil {
 		t.Fatalf("NewClient() error = %v", err)
@@ -1164,7 +1164,7 @@ func TestEffectiveBaseURL_InfersFromRequestHost(t *testing.T) {
 	templateStore := service.NewInMemoryTemplateContentStore()
 	handler, err := NewHandler(&fakeConversionSource{}, templateStore, service.NewInMemoryShortLinkStore(), "", "http://localhost:11200", 2048, service.InputLimits{})
 	if err != nil {
-		t.Fatalf("NewHandler() with empty publicBaseURL error = %v", err)
+		t.Fatalf("NewHandler() with empty userFacingBaseURL error = %v", err)
 	}
 
 	request := httptest.NewRequest(http.MethodGet, "http://myhost.example:9090/sub?data=x", nil)

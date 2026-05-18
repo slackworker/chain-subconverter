@@ -31,17 +31,17 @@ func NewClient(cfg config.Subconverter) (*Client, error) {
 		return nil, err
 	}
 
-	normalizedBaseURL, err := config.NormalizeSubconverterBaseURL(cfg.BaseURL)
+	normalizedBaseURL, err := config.NormalizeSubconverterBaseURL(cfg.UpstreamBaseURL)
 	if err != nil {
 		return nil, err
 	}
 
 	baseURL, err := url.Parse(normalizedBaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("parse subconverter base URL: %w", err)
+		return nil, fmt.Errorf("parse subconverter upstream base URL: %w", err)
 	}
 	if baseURL.Scheme == "" || baseURL.Host == "" {
-		return nil, fmt.Errorf("subconverter base URL must include scheme and host")
+		return nil, fmt.Errorf("subconverter upstream base URL must include scheme and host")
 	}
 
 	return &Client{
@@ -96,10 +96,10 @@ func BuildRequestURLs(baseURL string, request Request) (RequestURLs, error) {
 
 	parsedBaseURL, err := url.Parse(normalizedBaseURL)
 	if err != nil {
-		return RequestURLs{}, fmt.Errorf("parse subconverter base URL: %w", err)
+		return RequestURLs{}, fmt.Errorf("parse subconverter upstream base URL: %w", err)
 	}
 	if parsedBaseURL.Scheme == "" || parsedBaseURL.Host == "" {
-		return RequestURLs{}, fmt.Errorf("subconverter base URL must include scheme and host")
+		return RequestURLs{}, fmt.Errorf("subconverter upstream base URL must include scheme and host")
 	}
 
 	landingURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, request.LandingRawText, true, request.ExtraQuery)

@@ -50,7 +50,7 @@ func main() {
 	}
 	defer shortLinkStore.Close()
 
-	managedSource, err := service.NewManagedConversionSource(client, templateStore, serverCfg.ManagedTemplateBaseURL, subconverterCfg.Timeout, service.ManagedConversionSourceOptions{
+	managedSource, err := service.NewManagedConversionSource(client, templateStore, serverCfg.SubconverterFacingBaseURL, subconverterCfg.Timeout, service.ManagedConversionSourceOptions{
 		DefaultTemplateURL:           serverCfg.DefaultTemplateURL,
 		DefaultTemplateFetchCacheTTL: serverCfg.DefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        serverCfg.TemplateFetchCacheTTL,
@@ -61,10 +61,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler, err := api.NewHandler(managedSource, templateStore, shortLinkStore, serverCfg.PublicBaseURL, serverCfg.ManagedTemplateBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
+	handler, err := api.NewHandler(managedSource, templateStore, shortLinkStore, serverCfg.UserFacingBaseURL, serverCfg.SubconverterFacingBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
 		MaxRequestURLLength: serverCfg.MaxUpstreamRequestURLLength,
 		MaxURLsPerField:     serverCfg.MaxURLsPerField,
-		SubconverterBaseURL: subconverterCfg.BaseURL,
+		SubconverterBaseURL: subconverterCfg.UpstreamBaseURL,
 	},
 		api.WithWriteRequestsPerMinute(serverCfg.WriteRequestsPerMinute),
 		api.WithTrustedProxyCIDRs(serverCfg.TrustedProxyCIDRs),
@@ -89,11 +89,11 @@ func main() {
 	}
 
 	fmt.Printf(
-		"chain-subconverter listening on %s (public base URL: %s, frontend dist: %s, subconverter: %s)\n",
+		"chain-subconverter listening on %s (user-facing base URL: %s, frontend dist: %s, subconverter upstream: %s)\n",
 		listener.Addr().String(),
-		serverCfg.PublicBaseURL,
+		serverCfg.UserFacingBaseURL,
 		serverCfg.FrontendDistDir,
-		subconverterCfg.BaseURL,
+		subconverterCfg.UpstreamBaseURL,
 	)
 
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {

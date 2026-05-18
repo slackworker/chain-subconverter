@@ -14,7 +14,7 @@
 
 - 由部署者自行控制运行环境与访问入口。
 - 默认使用一体化 Compose 内部部署，或在双 Docker 分离部署时仍保持 `app` 与 `subconverter` 之间只通过私有可达地址通信；`subconverter` 不对外暴露。
-- 若存在 HTTPS 反向代理、固定域名或多入口访问，部署者会显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`。
+- 若存在 HTTPS 反向代理、固定域名或多入口访问，部署者会显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`。
 - 短链接数据通过持久卷保存；无卷的临时预览环境只适合无状态测试。
 
 如果以上任一条件不成立，应视为超出当前 Alpha 默认安全模型。
@@ -54,14 +54,14 @@
 
 ## 3. 对外链接推断依赖请求来源
 
-如果未显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`，服务端会根据当前请求来源推断公开基地址，用于长链接、短链接和订阅路径生成：默认使用当前请求的 TLS 状态与 `Host` 头；若直接对端 IP 命中 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`，则会优先读取标准 `X-Forwarded-Proto` 与 `X-Forwarded-Host`。
+如果未显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，服务端会根据当前请求来源推断公开基地址，用于长链接、短链接和订阅路径生成：默认使用当前请求的 TLS 状态与 `Host` 头；若直接对端 IP 命中 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`，则会优先读取标准 `X-Forwarded-Proto` 与 `X-Forwarded-Host`。
 
 这意味着：
 
 - 单入口直连部署通常可以工作。
 - 常见 Docker bridge + 宿主机反代场景可通过 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 改善 fallback 推断；官方 Compose 示例默认给出 `172.16.0.0/12`。若使用 `network_mode: host` 且对端为 loopback，需另行加入 `127.0.0.1/32` 等实际 peer。
-- 如果前面有 HTTPS 终止反代，而应用本身只看到明文 HTTP，请务必显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL=https://<your-host>`。
-- 如果该部署不允许继续依赖请求头自动推断，应同时设置 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`，让错误配置在启动阶段直接失败。
+- 如果前面有 HTTPS 终止反代，而应用本身只看到明文 HTTP，请务必显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL=https://<your-host>`。
+- 如果该部署不允许继续依赖请求头自动推断，应同时设置 `CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true`，让错误配置在启动阶段直接失败。
 - 如果公网或多入口场景下不显式设置该值，生成链接可能错误，且存在被 Host 头污染的风险。
 
 ## 4. 资源保护仍是 Alpha 级别
@@ -87,8 +87,8 @@
 
 1. 仅暴露 `app` 的 HTTP 入口，不要暴露 `subconverter`。
 2. 为第三方设备部署保留持久卷，避免短链数据在容器重建后丢失。
-3. 有 HTTPS 反代、固定域名或公网入口时，显式设置 `CHAIN_SUBCONVERTER_PUBLIC_BASE_URL`。
-4. 对公网、固定域名或 HTTPS 反代部署，建议同时设置 `CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true`。
+3. 有 HTTPS 反代、固定域名或公网入口时，显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`。
+4. 对公网、固定域名或 HTTPS 反代部署，建议同时设置 `CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true`。
 5. 优先固定 `APP_IMAGE` 为明确版本 tag，而不是长期依赖 `alpha-latest`。
 6. 限制可访问人群；不要把当前 Alpha 直接视作公开互联网服务。
 7. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。

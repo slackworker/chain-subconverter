@@ -15,45 +15,45 @@ func TestLoadSubconverterFromEnv(t *testing.T) {
 		{
 			name: "defaults when env is blank",
 			env: map[string]string{
-				EnvSubconverterBaseURL:     " ",
-				EnvSubconverterTimeout:     "",
-				EnvSubconverterMaxInFlight: "\n",
+				EnvSubconverterUpstreamBaseURL: " ",
+				EnvSubconverterTimeout:         "",
+				EnvSubconverterMaxInFlight:     "\n",
 			},
 			want: DefaultSubconverter(),
 		},
 		{
 			name: "trimmed overrides",
 			env: map[string]string{
-				EnvSubconverterBaseURL:     "  http://localhost:25500/sub?target=clash  ",
-				EnvSubconverterTimeout:     " 20s ",
-				EnvSubconverterMaxInFlight: " 32 ",
+				EnvSubconverterUpstreamBaseURL: "  http://localhost:25500/sub?target=clash  ",
+				EnvSubconverterTimeout:         " 20s ",
+				EnvSubconverterMaxInFlight:     " 32 ",
 			},
 			want: Subconverter{
-				BaseURL:     "http://localhost:25500/sub?target=clash",
-				Timeout:     20 * time.Second,
-				MaxInFlight: 32,
+				UpstreamBaseURL: "http://localhost:25500/sub?target=clash",
+				Timeout:         20 * time.Second,
+				MaxInFlight:     32,
 			},
 		},
 		{
 			name: "normalizes missing scheme and path",
 			env: map[string]string{
-				EnvSubconverterBaseURL: "  localhost:25500  ",
+				EnvSubconverterUpstreamBaseURL: "  localhost:25500  ",
 			},
 			want: Subconverter{
-				BaseURL:     "http://localhost:25500/sub",
-				Timeout:     DefaultSubconverterTimeout,
-				MaxInFlight: DefaultSubconverterMaxInFlight,
+				UpstreamBaseURL: "http://localhost:25500/sub",
+				Timeout:         DefaultSubconverterTimeout,
+				MaxInFlight:     DefaultSubconverterMaxInFlight,
 			},
 		},
 		{
 			name: "normalizes custom prefix path",
 			env: map[string]string{
-				EnvSubconverterBaseURL: "https://sub.example.internal/proxy",
+				EnvSubconverterUpstreamBaseURL: "https://sub.example.internal/proxy",
 			},
 			want: Subconverter{
-				BaseURL:     "https://sub.example.internal/proxy/sub",
-				Timeout:     DefaultSubconverterTimeout,
-				MaxInFlight: DefaultSubconverterMaxInFlight,
+				UpstreamBaseURL: "https://sub.example.internal/proxy/sub",
+				Timeout:         DefaultSubconverterTimeout,
+				MaxInFlight:     DefaultSubconverterMaxInFlight,
 			},
 		},
 		{
@@ -66,9 +66,9 @@ func TestLoadSubconverterFromEnv(t *testing.T) {
 		{
 			name: "invalid scheme",
 			env: map[string]string{
-				EnvSubconverterBaseURL: "ftp://localhost:25500/sub",
+				EnvSubconverterUpstreamBaseURL: "ftp://localhost:25500/sub",
 			},
-			wantErr: "normalize CHAIN_SUBCONVERTER_SUBCONVERTER_BASE_URL: subconverter base URL must use http or https",
+			wantErr: "normalize CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL: subconverter upstream base URL must use http or https",
 		},
 		{
 			name: "invalid max in flight",
@@ -118,40 +118,40 @@ func TestSubconverterValidate(t *testing.T) {
 			cfg:  DefaultSubconverter(),
 		},
 		{
-			name: "empty base url",
+			name: "empty upstream base url",
 			cfg: Subconverter{
-				BaseURL:     " ",
-				Timeout:     DefaultSubconverterTimeout,
-				MaxInFlight: DefaultSubconverterMaxInFlight,
+				UpstreamBaseURL: " ",
+				Timeout:         DefaultSubconverterTimeout,
+				MaxInFlight:     DefaultSubconverterMaxInFlight,
 			},
-			wantErr: "subconverter base URL must not be empty",
+			wantErr: "subconverter upstream base URL must not be empty",
 		},
 		{
 			name: "non-positive timeout",
 			cfg: Subconverter{
-				BaseURL:     DefaultSubconverterBaseURL,
-				Timeout:     0,
-				MaxInFlight: DefaultSubconverterMaxInFlight,
+				UpstreamBaseURL: DefaultSubconverterUpstreamBaseURL,
+				Timeout:         0,
+				MaxInFlight:     DefaultSubconverterMaxInFlight,
 			},
 			wantErr: "subconverter timeout must be greater than zero",
 		},
 		{
 			name: "non-positive max in flight",
 			cfg: Subconverter{
-				BaseURL:     DefaultSubconverterBaseURL,
-				Timeout:     DefaultSubconverterTimeout,
-				MaxInFlight: -1,
+				UpstreamBaseURL: DefaultSubconverterUpstreamBaseURL,
+				Timeout:         DefaultSubconverterTimeout,
+				MaxInFlight:     -1,
 			},
 			wantErr: "subconverter maxInFlight must be greater than zero",
 		},
 		{
 			name: "missing host after normalization",
 			cfg: Subconverter{
-				BaseURL:     "http:///sub",
-				Timeout:     DefaultSubconverterTimeout,
-				MaxInFlight: DefaultSubconverterMaxInFlight,
+				UpstreamBaseURL: "http:///sub",
+				Timeout:         DefaultSubconverterTimeout,
+				MaxInFlight:     DefaultSubconverterMaxInFlight,
 			},
-			wantErr: "subconverter base URL must include host",
+			wantErr: "subconverter upstream base URL must include host",
 		},
 	}
 
@@ -178,7 +178,7 @@ func TestSubconverterValidate(t *testing.T) {
 func setSubconverterEnv(t *testing.T, values map[string]string) {
 	t.Helper()
 
-	t.Setenv(EnvSubconverterBaseURL, "")
+	t.Setenv(EnvSubconverterUpstreamBaseURL, "")
 	t.Setenv(EnvSubconverterTimeout, "")
 	t.Setenv(EnvSubconverterMaxInFlight, "")
 

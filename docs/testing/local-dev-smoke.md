@@ -68,7 +68,7 @@ http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b|c 时）
 
 - `subconverter` 启动失败：先检查 Docker Desktop、镜像拉取与 `GET /version`
 - backend 启动失败：先看 `.tmp/dev-up/backend.log`
-- 报 `backend-from-subconverter did not become ready`：优先确认 backend 以 IPv4 暴露，且 `MANAGED_TEMPLATE_BASE_URL` 仍是 `http://host.docker.internal:<backend-port>`
+- 报 `backend-from-subconverter did not become ready`：优先确认 backend 以 IPv4 暴露，且 `SUBCONVERTER_FACING_BASE_URL` 仍是 `http://host.docker.internal:<backend-port>`
 - 固定端口冲突：同一 worktree 内脚本会尝试复用或停止本工作区残留 dev 进程；无法处理时直接报错。不同 worktree 并行预览须自行设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（或 `auto`），避免与默认 `25500/11200/5173` 抢端口
 - A 方案主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
 - 若出现 `SUBCONVERTER_UNAVAILABLE` 且提示 `missing recognized region proxy-group`：先检查当前 frontend 代理到哪一份 backend，以及该 backend 是否向容器注入了可回连的模板地址

@@ -362,7 +362,7 @@
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
-- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `PUBLIC_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
+- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `USER_FACING_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
 - 当前 Web 前端拿到 `longUrl` 后，若其长度超过 `GET /api/runtime-config` 返回的 `maxPublicLongURLLength`，必须立即创建并切换为 `shortUrl` 展示；此时 `longUrl` 只作为前端与后端之间的内部中间值存在，不再作为主展示结果
 - 请求体中的 `advancedOptions.config` 仍表示模板 URL，而不是最终订阅 YAML
 
@@ -426,7 +426,7 @@
 
 - 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
-- 对同一份规范状态的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；即使 `PUBLIC_BASE_URL` 或请求入口变化导致规范化 `longUrl` 的 scheme / host / base path 变化，只要状态载荷相同，`shortUrl` 中的 `<id>` 也必须保持一致。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
+- 对同一份规范状态的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；即使 `USER_FACING_BASE_URL` 或请求入口变化导致规范化 `longUrl` 的 scheme / host / base path 变化，只要状态载荷相同，`shortUrl` 中的 `<id>` 也必须保持一致。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
 - 若输入 `longUrl` 带有额外兼容 query，后端必须先按本文“长链接编码规范”完成解码与规范化；成功响应中的 `longUrl` 只保留规范状态载荷，不保留仅用于本次订阅读取的额外透传参数
 - 成功响应的 `messages[]` 可包含短链接存储淘汰相关 warning
 
@@ -638,7 +638,7 @@ gzip 规则：
 - 短链接公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
 - 短链接 ID 必须由**规范状态键**通过确定性算法生成；规范状态键由规范化状态载荷唯一导出，等价于与公开基地址无关的 canonical data key；同一份规范状态必须得到同一个 `<id>`
 - 当前默认短链接 ID 生成算法为：对规范状态键计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
-- 规范状态键不得包含 `PUBLIC_BASE_URL`、请求来源 host、scheme 或 base path 等发布入口信息；这些信息只能影响返回给用户的 `longUrl` / `shortUrl` 前缀，不得影响 `<id>`
+- 规范状态键不得包含 `USER_FACING_BASE_URL`、请求来源 host、scheme 或 base path 等发布入口信息；这些信息只能影响返回给用户的 `longUrl` / `shortUrl` 前缀，不得影响 `<id>`
 - 短链接索引在逻辑上是 `canonicalStateKey ↔ shortId` 的双射子集，并额外维护 `shortId -> longUrl` 的当前反查值：除淘汰导致的失效外，同一 `canonicalStateKey` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`canonicalStateKey` 唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立
 - 在当前默认 `64` bit 设计下，允许仅实现极简碰撞防御：若检测到 `shortId` 已被另一条 `canonicalStateKey` 占用，后端必须 fail closed，并保持「一短一状态」映射关系
 - 后端必须持久化维护有限容量的 `shortId -> longUrl` 反查索引，用于将短链接还原为可解码的 `longUrl`；该 `longUrl` 可随当前发布基地址变化而更新，但其对应的规范状态不得变化

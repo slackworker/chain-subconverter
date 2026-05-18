@@ -16,12 +16,12 @@ func TestLoadServerFromEnv(t *testing.T) {
 		{
 			name: "defaults when env is blank",
 			env: map[string]string{
-				EnvHTTPAddress:            "   ",
-				EnvPublicBaseURL:          "",
-				EnvManagedTemplateBaseURL: "",
-				EnvFrontendDistDir:        "  ",
-				EnvMaxLongURLLength:       "\t",
-				EnvShortLinkDBPath:        "  ",
+				EnvHTTPAddress:               "   ",
+				EnvUserFacingBaseURL:         "",
+				EnvSubconverterFacingBaseURL: "",
+				EnvFrontendDistDir:           "  ",
+				EnvMaxLongURLLength:          "\t",
+				EnvShortLinkDBPath:           "  ",
 			},
 			want: DefaultServer(),
 		},
@@ -29,8 +29,8 @@ func TestLoadServerFromEnv(t *testing.T) {
 			name: "trimmed overrides",
 			env: map[string]string{
 				EnvHTTPAddress:                  "  :11300  ",
-				EnvPublicBaseURL:                "  https://example.com/base  ",
-				EnvManagedTemplateBaseURL:       "  https://internal.example.com/base  ",
+				EnvUserFacingBaseURL:            "  https://example.com/base  ",
+				EnvSubconverterFacingBaseURL:    "  https://internal.example.com/base  ",
 				EnvFrontendDistDir:              "  web/app-dist  ",
 				EnvWriteRequestsPerMinute:       " 120 ",
 				EnvMaxLongURLLength:             " 4096 ",
@@ -40,13 +40,13 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvDefaultTemplateFetchCacheTTL: " 30m ",
 				EnvTemplateFetchCacheTTL:        " 5m ",
 				EnvTemplateAllowPrivateNetworks: " true ",
-				EnvRequirePublicBaseURL:         " true ",
+				EnvRequireUserFacingBaseURL:     " true ",
 				EnvTrustedProxyCIDRs:            " 172.16.0.0/12, 127.0.0.1 , , 2001:db8::/32 ",
 			},
 			want: Server{
 				HTTPAddress:                  ":11300",
-				PublicBaseURL:                "https://example.com/base",
-				ManagedTemplateBaseURL:       "https://internal.example.com/base",
+				UserFacingBaseURL:            "https://example.com/base",
+				SubconverterFacingBaseURL:    "https://internal.example.com/base",
 				FrontendDistDir:              "web/app-dist",
 				WriteRequestsPerMinute:       120,
 				MaxLongURLLength:             4096,
@@ -58,7 +58,7 @@ func TestLoadServerFromEnv(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: 30 * time.Minute,
 				TemplateFetchCacheTTL:        5 * time.Minute,
 				TemplateAllowPrivateNetworks: true,
-				RequirePublicBaseURL:         true,
+				RequireUserFacingBaseURL:     true,
 				TrustedProxyCIDRs:            "172.16.0.0/12,127.0.0.1,2001:db8::/32",
 			},
 		},
@@ -77,11 +77,11 @@ func TestLoadServerFromEnv(t *testing.T) {
 			wantErr: "parse CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH",
 		},
 		{
-			name: "invalid public base url",
+			name: "invalid user-facing base url",
 			env: map[string]string{
-				EnvPublicBaseURL: "localhost:11200",
+				EnvUserFacingBaseURL: "localhost:11200",
 			},
-			wantErr: "public base URL must include scheme and host",
+			wantErr: "user-facing base URL must include scheme and host",
 		},
 		{
 			name: "invalid short link capacity",
@@ -112,11 +112,11 @@ func TestLoadServerFromEnv(t *testing.T) {
 			wantErr: "parse CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS",
 		},
 		{
-			name: "invalid require public base url",
+			name: "invalid require user-facing base url",
 			env: map[string]string{
-				EnvRequirePublicBaseURL: "bad",
+				EnvRequireUserFacingBaseURL: "bad",
 			},
-			wantErr: "parse CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL",
+			wantErr: "parse CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL",
 		},
 		{
 			name: "invalid trusted proxy cidrs",
@@ -126,18 +126,18 @@ func TestLoadServerFromEnv(t *testing.T) {
 			wantErr: "parse CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS",
 		},
 		{
-			name: "require public base url without explicit value",
+			name: "require user-facing base url without explicit value",
 			env: map[string]string{
-				EnvRequirePublicBaseURL: "true",
+				EnvRequireUserFacingBaseURL: "true",
 			},
-			wantErr: "public base URL is required when CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true",
+			wantErr: "user-facing base URL is required when CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true",
 		},
 		{
-			name: "invalid managed template base url",
+			name: "invalid subconverter-facing base url",
 			env: map[string]string{
-				EnvManagedTemplateBaseURL: "localhost:11200",
+				EnvSubconverterFacingBaseURL: "localhost:11200",
 			},
-			wantErr: "managed template base URL must include scheme and host",
+			wantErr: "subconverter-facing base URL must include scheme and host",
 		},
 		{
 			name: "invalid default template url",
@@ -190,7 +190,7 @@ func TestServerValidate(t *testing.T) {
 			name: "valid trusted proxy cidrs",
 			cfg: Server{
 				HTTPAddress:                  DefaultHTTPAddress,
-				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:              DefaultFrontendDistDir,
 				WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
 				MaxLongURLLength:             DefaultMaxLongURLLength,
@@ -202,7 +202,7 @@ func TestServerValidate(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 				TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 				TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
-				RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
+				RequireUserFacingBaseURL:     DefaultRequireUserFacingBaseURL,
 				TrustedProxyCIDRs:            "172.16.0.0/12,127.0.0.1",
 			},
 		},
@@ -210,8 +210,8 @@ func TestServerValidate(t *testing.T) {
 			name: "empty http address",
 			cfg: Server{
 				HTTPAddress:                 " ",
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -226,8 +226,8 @@ func TestServerValidate(t *testing.T) {
 			name: "empty frontend dist dir",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             " ",
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -242,8 +242,8 @@ func TestServerValidate(t *testing.T) {
 			name: "negative write requests per minute",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				WriteRequestsPerMinute:      -1,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
@@ -259,8 +259,8 @@ func TestServerValidate(t *testing.T) {
 			name: "non-positive max long url length",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            0,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -275,8 +275,8 @@ func TestServerValidate(t *testing.T) {
 			name: "empty short link db path",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -291,8 +291,8 @@ func TestServerValidate(t *testing.T) {
 			name: "non-positive short link capacity",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -304,11 +304,11 @@ func TestServerValidate(t *testing.T) {
 			wantErr: "short link capacity must be greater than zero",
 		},
 		{
-			name: "missing public base scheme",
+			name: "missing user-facing base scheme",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               "localhost:11200",
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:           "localhost:11200",
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -317,13 +317,13 @@ func TestServerValidate(t *testing.T) {
 				ShortLinkCapacity:           DefaultShortLinkCapacity,
 				DefaultTemplateURL:          DefaultDefaultTemplateURL,
 			},
-			wantErr: "public base URL must include scheme and host",
+			wantErr: "user-facing base URL must include scheme and host",
 		},
 		{
-			name: "require public base url when empty",
+			name: "require user-facing base url when empty",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				ManagedTemplateBaseURL:      DefaultManagedTemplateBaseURL,
+				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -331,15 +331,15 @@ func TestServerValidate(t *testing.T) {
 				ShortLinkDBPath:             DefaultShortLinkDBPath,
 				ShortLinkCapacity:           DefaultShortLinkCapacity,
 				DefaultTemplateURL:          DefaultDefaultTemplateURL,
-				RequirePublicBaseURL:        true,
+				RequireUserFacingBaseURL:    true,
 			},
-			wantErr: "public base URL is required when CHAIN_SUBCONVERTER_REQUIRE_PUBLIC_BASE_URL=true",
+			wantErr: "user-facing base URL is required when CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true",
 		},
 		{
 			name: "invalid trusted proxy cidrs",
 			cfg: Server{
 				HTTPAddress:                  DefaultHTTPAddress,
-				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:              DefaultFrontendDistDir,
 				WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
 				MaxLongURLLength:             DefaultMaxLongURLLength,
@@ -351,17 +351,17 @@ func TestServerValidate(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 				TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 				TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
-				RequirePublicBaseURL:         DefaultRequirePublicBaseURL,
+				RequireUserFacingBaseURL:     DefaultRequireUserFacingBaseURL,
 				TrustedProxyCIDRs:            "bad-entry",
 			},
 			wantErr: "parse trusted proxy CIDRs",
 		},
 		{
-			name: "missing managed template base scheme",
+			name: "missing subconverter-facing base scheme",
 			cfg: Server{
 				HTTPAddress:                 DefaultHTTPAddress,
-				PublicBaseURL:               DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:      "localhost:11200",
+				UserFacingBaseURL:           DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:   "localhost:11200",
 				FrontendDistDir:             DefaultFrontendDistDir,
 				MaxLongURLLength:            DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
@@ -370,14 +370,14 @@ func TestServerValidate(t *testing.T) {
 				ShortLinkCapacity:           DefaultShortLinkCapacity,
 				DefaultTemplateURL:          DefaultDefaultTemplateURL,
 			},
-			wantErr: "managed template base URL must include scheme and host",
+			wantErr: "subconverter-facing base URL must include scheme and host",
 		},
 		{
 			name: "negative default template fetch cache ttl",
 			cfg: Server{
 				HTTPAddress:                  DefaultHTTPAddress,
-				PublicBaseURL:                DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:            DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:              DefaultFrontendDistDir,
 				MaxLongURLLength:             DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
@@ -393,8 +393,8 @@ func TestServerValidate(t *testing.T) {
 			name: "negative template fetch cache ttl",
 			cfg: Server{
 				HTTPAddress:                  DefaultHTTPAddress,
-				PublicBaseURL:                DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:            DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:              DefaultFrontendDistDir,
 				MaxLongURLLength:             DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
@@ -411,8 +411,8 @@ func TestServerValidate(t *testing.T) {
 			name: "empty default template url",
 			cfg: Server{
 				HTTPAddress:                  DefaultHTTPAddress,
-				PublicBaseURL:                DefaultPublicBaseURL,
-				ManagedTemplateBaseURL:       DefaultManagedTemplateBaseURL,
+				UserFacingBaseURL:            DefaultUserFacingBaseURL,
+				SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 				FrontendDistDir:              DefaultFrontendDistDir,
 				MaxLongURLLength:             DefaultMaxLongURLLength,
 				MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
@@ -450,8 +450,8 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Helper()
 
 	t.Setenv(EnvHTTPAddress, "")
-	t.Setenv(EnvPublicBaseURL, "")
-	t.Setenv(EnvManagedTemplateBaseURL, "")
+	t.Setenv(EnvUserFacingBaseURL, "")
+	t.Setenv(EnvSubconverterFacingBaseURL, "")
 	t.Setenv(EnvFrontendDistDir, "")
 	t.Setenv(EnvMaxLongURLLength, "")
 	t.Setenv(EnvMaxUpstreamRequestURLLength, "")
@@ -462,7 +462,7 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvDefaultTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateAllowPrivateNetworks, "")
-	t.Setenv(EnvRequirePublicBaseURL, "")
+	t.Setenv(EnvRequireUserFacingBaseURL, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)

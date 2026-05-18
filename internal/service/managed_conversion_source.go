@@ -26,7 +26,7 @@ type ManagedConversionSourceOptions struct {
 type ManagedConversionSource struct {
 	client                    *subconverter.Client
 	templateStore             TemplateContentStore
-	managedTemplateBaseURL    *url.URL
+	subconverterFacingBaseURL *url.URL
 	httpClient                *http.Client
 	defaultTemplateURL        string
 	defaultTemplateFetchCache *templateFetchCache
@@ -34,19 +34,19 @@ type ManagedConversionSource struct {
 	allowPrivateNetworks      bool
 }
 
-func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, managedTemplateBaseURL string, templateTimeout time.Duration, options ManagedConversionSourceOptions) (*ManagedConversionSource, error) {
+func NewManagedConversionSource(client *subconverter.Client, templateStore TemplateContentStore, subconverterFacingBaseURL string, templateTimeout time.Duration, options ManagedConversionSourceOptions) (*ManagedConversionSource, error) {
 	if client == nil {
 		return nil, fmt.Errorf("conversion client must not be nil")
 	}
 	if templateStore == nil {
 		return nil, fmt.Errorf("template store must not be nil")
 	}
-	parsedBaseURL, err := url.Parse(strings.TrimSpace(managedTemplateBaseURL))
+	parsedBaseURL, err := url.Parse(strings.TrimSpace(subconverterFacingBaseURL))
 	if err != nil {
-		return nil, fmt.Errorf("parse managed template base URL: %w", err)
+		return nil, fmt.Errorf("parse subconverter-facing base URL: %w", err)
 	}
 	if parsedBaseURL.Scheme == "" || parsedBaseURL.Host == "" {
-		return nil, fmt.Errorf("managed template base URL must include scheme and host")
+		return nil, fmt.Errorf("subconverter-facing base URL must include scheme and host")
 	}
 	if templateTimeout <= 0 {
 		templateTimeout = 15 * time.Second
@@ -69,7 +69,7 @@ func NewManagedConversionSource(client *subconverter.Client, templateStore Templ
 	return &ManagedConversionSource{
 		client:                    client,
 		templateStore:             templateStore,
-		managedTemplateBaseURL:    parsedBaseURL,
+		subconverterFacingBaseURL: parsedBaseURL,
 		httpClient:                newTemplateFetchHTTPClient(templateTimeout, options.AllowPrivateNetworks),
 		defaultTemplateURL:        parsedDefaultTemplateURL.String(),
 		defaultTemplateFetchCache: newTemplateFetchCache(options.DefaultTemplateFetchCacheTTL),
@@ -377,7 +377,7 @@ func mustParseCIDRs(values ...string) []*net.IPNet {
 }
 
 func (source *ManagedConversionSource) buildManagedTemplateURL(id string) (string, error) {
-	templateURL := *source.managedTemplateBaseURL
+	templateURL := *source.subconverterFacingBaseURL
 	templateURL.Path = strings.TrimRight(templateURL.Path, "/") + "/internal/templates/" + id + ".ini"
 	templateURL.RawQuery = ""
 	templateURL.Fragment = ""
