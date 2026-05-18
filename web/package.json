@@ -12,6 +12,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"test:e2e": "playwright test",
+		"test:e2e:headed": "playwright test --headed",
 		"build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
 		"build:docker": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default vite build",
 		"build:default": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default tsc --noEmit -p tsconfig.app.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default tsc --noEmit -p tsconfig.node.json && VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default vite build",
@@ -25,10 +27,11 @@
 		"react-dom": "^19.1.0"
 	},
 	"devDependencies": {
-		"@vitest/coverage-v8": "^2.1.8",
+		"@playwright/test": "^1.60.0",
 		"@types/react": "^19.1.2",
 		"@types/react-dom": "^19.1.2",
 		"@vitejs/plugin-react": "^4.4.1",
+		"@vitest/coverage-v8": "^2.1.8",
 		"autoprefixer": "^10.4.20",
 		"jsdom": "^26.0.0",
 		"postcss": "^8.4.49",

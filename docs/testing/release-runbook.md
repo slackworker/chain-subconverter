@@ -42,6 +42,7 @@
 ```bash
 go test ./...
 cd web && npm run test
+cd web && npm run test:e2e -- default-happy-path.spec.ts
 cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
 docker compose -f deploy/docker-compose.yml config
 ```
@@ -51,7 +52,25 @@ docker compose -f deploy/docker-compose.yml config
 - 最小 smoke fixture：`3pass-ss2022-test-subscription`
 - 双落地链式 + 端口转发 fixture：`dual-landing-chain-port-forward`
 
-当前浏览器级 E2E 仍未纳入稳定自动化基线；如需补 Playwright，优先复用 `./scripts/dev-up.sh default` 的固定端口运行时。
+当前浏览器级 E2E 自动化基线已补上默认 `/` 的最小 Playwright happy path；其运行时优先复用 `./scripts/dev-up.sh default` 的固定端口。阻断路径与更广 UI 矩阵仍未纳入 blocking baseline。
+
+若当前 WSL 缺少 Playwright 浏览器系统库，可先启动：
+
+```bash
+./scripts/dev-up.sh default
+```
+
+然后在仓库根目录复用 `http://host.docker.internal:5173` 运行容器化 Playwright：
+
+```bash
+docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
+	--user "$(id -u):$(id -g)" -e HOME=/tmp \
+	-e CHAIN_SUBCONVERTER_E2E_BASE_URL=http://host.docker.internal:5173 \
+	-e CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
+	-v "$PWD":/work -w /work/web \
+	mcr.microsoft.com/playwright:v1.60.0-noble \
+	npm run test:e2e -- default-happy-path.spec.ts
+```
 
 2. 本地开发路径 smoke
 

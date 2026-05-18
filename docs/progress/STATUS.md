@@ -40,7 +40,7 @@
 - 旧的 `release/3.0` / `alpha-latest` / Alpha tag 口径仍残留在部分内部文档与历史记录中，需要继续清理。
 - `beta` 分支与 Beta 回归节奏已纳入当前模型，但正式进入 Beta 冻结前仍需补齐回归记录、反馈闭环与发布说明。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
-- 浏览器级 E2E 仍未落地；当前自动化前端覆盖已扩展到共享业务层单测，但 happy path / 阻断路径的 Playwright 基线仍待补齐。
+- 浏览器级 E2E 已补上默认 `/` 的最小 Playwright happy path，覆盖“转换并自动填充 -> 生成长链接 -> 切短链 -> 反向解析恢复”；阻断路径与更广方案矩阵仍待补齐。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
 - 模板 URL 的最小 SSRF 拒绝名单、`RequirePublicBaseURL` 与基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
 
@@ -50,10 +50,12 @@
 	- `3pass-ss2022-test-subscription`：最小 smoke
 	- `dual-landing-chain-port-forward`：双落地、双中转订阅、双 relay、长/短链接回放
 - 前端已引入 Vitest，当前覆盖 `web/src/lib/stage1.ts`、`web/src/lib/state.ts`、`web/src/lib/notices.ts` 的纯业务逻辑单测。
+- `web` 已新增 Playwright 最小 happy path spec，默认通过 `playwright.config.ts` 复用 `./scripts/dev-up.sh default` 的固定端口运行时。
 - CI 已新增 `Web Unit Test` job，单独执行 `cd web && npm run test`。
 
 ## 最近验证
 
+- `2026-05-18`: 容器化 Playwright（v1.60.0）against host `./scripts/dev-up.sh default`：`cd web && npm run test:e2e -- default-happy-path.spec.ts`
 - `2026-05-18`: `cd web && npm test`
 - `2026-05-18`: `go test ./internal/review -run TestBuildDualLandingChainPortForwardArtifacts_HappyPath -v`
 - `2026-05-18`: `go test ./internal/service -run 'TestBuildStage2Init_DualLandingChainPortForwardFixture|TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable|TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL' -v`
