@@ -43,7 +43,8 @@
 | [progress/STATUS](progress/STATUS.md) | 当前状态快照：已稳定范围、当前缺口与最近验证 |
 | [progress/beta-readiness](progress/beta-readiness.md) | Beta 前置条件、剩余缺口与进入 Beta 的推荐顺序 |
 | [ROADMAP](ROADMAP.md) | 阶段路线图与当前推荐下一步 |
-| [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | 当前唯一稳定固定 fixture 说明 |
+| [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | 最小 smoke 固定 fixture 说明 |
+| [testing/dual-landing-chain-port-forward](testing/dual-landing-chain-port-forward.md) | 双落地链式 + 端口转发固定回放基线 |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地开发与 smoke runbook |
 | [testing/release-runbook](testing/release-runbook.md) | 当前发布与回归 runbook |
 

@@ -1,0 +1,1 @@
+http://localhost:25500/sub?target=clash&list=true&config=https%3A%2F%2Ftemplates.example.com%2Fchain-subconverter-comprehensive.ini&url=https%3A%2F%2Ffixtures.example.com%2Ftransit-a-subscription.txt%0Ahttps%3A%2F%2Ffixtures.example.com%2Ftransit-b-subscription.txt

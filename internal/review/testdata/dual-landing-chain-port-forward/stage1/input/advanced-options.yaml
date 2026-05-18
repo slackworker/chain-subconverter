@@ -1,0 +1,9 @@
+emoji: true
+udp: true
+skipCertVerify: false
+config: https://templates.example.com/chain-subconverter-comprehensive.ini
+include:
+  - HK
+  - JP
+exclude:
+  - Expired

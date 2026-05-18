@@ -1,0 +1,2 @@
+relay-a.example.com:7443
+relay-b.example.com:8443

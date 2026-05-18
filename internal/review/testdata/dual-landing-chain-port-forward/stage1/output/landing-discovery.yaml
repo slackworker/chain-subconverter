@@ -1,0 +1,7 @@
+proxies:
+- {name: Alpha-SS-HK, type: ss}
+- {name: Alpha-Reality-PortForward, type: vless, reality-opts: {public-key: alpha-public-key}}
+- {name: Alpha-Reality-Direct, type: vless, reality-opts: {public-key: alpha-public-key}}
+- {name: Beta-SS-JP, type: ss}
+- {name: Beta-Reality-PortForward, type: vless, reality-opts: {public-key: beta-public-key}}
+- {name: Beta-Reality-Direct, type: vless, reality-opts: {public-key: beta-public-key}}

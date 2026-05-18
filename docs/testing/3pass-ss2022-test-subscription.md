@@ -1,6 +1,6 @@
-# 3-pass 与最小完整流程基线：`3pass-ss2022-test-subscription`
+# 3-pass 与最小完整流程 smoke 基线：`3pass-ss2022-test-subscription`
 
-本文只说明测试基线与目录职责。
+本文只说明最小 smoke 基线与目录职责。
 
 ## 用途
 
@@ -18,7 +18,7 @@
 
 目录：`internal/review/testdata/3pass-ss2022-test-subscription/`
 
-该目录是当前唯一保留的固定基线目录，供 `internal/review`、`internal/service` 与 `internal/api` 相关自动化测试回放。
+该目录是当前保留的最小 smoke 基线目录，供 `internal/review`、`internal/service` 与 `internal/api` 相关自动化测试回放。
 
 该目录固定保存以下基线材料：
 
@@ -64,5 +64,6 @@
 ## 边界
 
 - 仓库内不再保留文件驱动的手动前端回放工作区
-- 若后续扩展高级设置、手动 override、端口转发或恢复冲突，应在 `internal/review/testdata/` 下新增并列 fixture
+- 更完整的固定回放样例见 [dual-landing-chain-port-forward](dual-landing-chain-port-forward.md)
+- 若后续继续扩展高级设置、手动 override、端口转发或恢复冲突，应在 `internal/review/testdata/` 下新增并列 fixture
 - 真实人工验证统一走实际前端服务、`/api/*` 与订阅路径，不复用旧的文本输入回放链

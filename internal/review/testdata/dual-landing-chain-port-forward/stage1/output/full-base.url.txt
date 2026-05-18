@@ -1,0 +1,1 @@
+http://localhost:25500/sub?target=clash&config=https%3A%2F%2Ftemplates.example.com%2Fchain-subconverter-comprehensive.ini&url=alpha-landing%7Calpha-reality%7Cbeta-landing%7Cbeta-reality%7Ctransit-a%7Ctransit-b

@@ -1,0 +1,36 @@
+{
+  "stage2Snapshot": {
+    "rows": [
+      {
+        "landingNodeName": "Alpha-SS-HK",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      },
+      {
+        "landingNodeName": "Alpha-Reality-PortForward",
+        "mode": "port_forward",
+        "targetName": "relay-a.example.com:7443"
+      },
+      {
+        "landingNodeName": "Alpha-Reality-Direct",
+        "mode": "none",
+        "targetName": null
+      },
+      {
+        "landingNodeName": "Beta-SS-JP",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点"
+      },
+      {
+        "landingNodeName": "Beta-Reality-PortForward",
+        "mode": "port_forward",
+        "targetName": "relay-b.example.com:8443"
+      },
+      {
+        "landingNodeName": "Beta-Reality-Direct",
+        "mode": "none",
+        "targetName": null
+      }
+    ]
+  }
+}

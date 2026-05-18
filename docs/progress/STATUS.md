@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-05-17
+> 最近更新：2026-05-18
 
 ## 当前结论
 
@@ -40,12 +40,23 @@
 - 旧的 `release/3.0` / `alpha-latest` / Alpha tag 口径仍残留在部分内部文档与历史记录中，需要继续清理。
 - `beta` 分支与 Beta 回归节奏已纳入当前模型，但正式进入 Beta 冻结前仍需补齐回归记录、反馈闭环与发布说明。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
-- 固定回归基线当前仍只有 `3pass-ss2022-test-subscription` 一套最小 fixture，尚未扩展到完整长/短链接与端口转发流程。
+- 浏览器级 E2E 仍未落地；当前自动化前端覆盖已扩展到共享业务层单测，但 happy path / 阻断路径的 Playwright 基线仍待补齐。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
 - 模板 URL 的最小 SSRF 拒绝名单、`RequirePublicBaseURL` 与基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
 
+## 测试基线补充
+
+- 固定回归基线已扩展到两套并列 fixture：
+	- `3pass-ss2022-test-subscription`：最小 smoke
+	- `dual-landing-chain-port-forward`：双落地、双中转订阅、双 relay、长/短链接回放
+- 前端已引入 Vitest，当前覆盖 `web/src/lib/stage1.ts`、`web/src/lib/state.ts`、`web/src/lib/notices.ts` 的纯业务逻辑单测。
+- CI 已新增 `Web Unit Test` job，单独执行 `cd web && npm run test`。
+
 ## 最近验证
 
+- `2026-05-18`: `cd web && npm test`
+- `2026-05-18`: `go test ./internal/review -run TestBuildDualLandingChainPortForwardArtifacts_HappyPath -v`
+- `2026-05-18`: `go test ./internal/service -run 'TestBuildStage2Init_DualLandingChainPortForwardFixture|TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable|TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL' -v`
 - `2026-05-17`: 已创建本地 `beta` 分支，当前仓库分支模型与工作流口径一致
 - `2026-05-17`: `go test ./...`
 - `2026-05-17`: `cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c`

@@ -1,0 +1,1 @@
+http://localhost:25500/sub?target=clash&list=true&config=https%3A%2F%2Ftemplates.example.com%2Fchain-subconverter-comprehensive.ini&url=ss%3A%2F%2Falpha-bundle%0Avless%3A%2F%2Falpha-reality-port-forward%0Avless%3A%2F%2Falpha-reality-direct%0Ass%3A%2F%2Fbeta-bundle%0Avless%3A%2F%2Fbeta-reality-port-forward%0Avless%3A%2F%2Fbeta-reality-direct

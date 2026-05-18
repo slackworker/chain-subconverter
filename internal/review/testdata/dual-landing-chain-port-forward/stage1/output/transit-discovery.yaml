@@ -1,0 +1,9 @@
+proxies:
+- {name: Transit-A-HK-01, type: ss}
+- {name: Transit-A-HK-02, type: trojan}
+- {name: Transit-A-JP-01, type: vmess}
+- {name: Transit-A-US-01, type: ss}
+- {name: Transit-B-HK-01, type: ss}
+- {name: Transit-B-JP-01, type: vmess}
+- {name: Transit-B-SG-01, type: ss}
+- {name: Transit-B-US-01, type: trojan}

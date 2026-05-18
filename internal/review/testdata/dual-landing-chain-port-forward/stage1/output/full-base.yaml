@@ -1,0 +1,27 @@
+proxies:
+- {name: Alpha-SS-HK, type: ss, server: alpha.example.com, port: 443}
+- {name: Alpha-Reality-PortForward, type: vless, server: alpha.example.com, port: 8443, reality-opts: {public-key: alpha-public-key}}
+- {name: Alpha-Reality-Direct, type: vless, server: alpha.example.com, port: 8443, reality-opts: {public-key: alpha-public-key}}
+- {name: Beta-SS-JP, type: ss, server: beta.example.com, port: 443}
+- {name: Beta-Reality-PortForward, type: vless, server: beta.example.com, port: 9443, reality-opts: {public-key: beta-public-key}}
+- {name: Beta-Reality-Direct, type: vless, server: beta.example.com, port: 9443, reality-opts: {public-key: beta-public-key}}
+- {name: Transit-A-HK-01, type: ss, server: hk-a-01.example.com, port: 443}
+- {name: Transit-A-HK-02, type: trojan, server: hk-a-02.example.com, port: 443}
+- {name: Transit-A-JP-01, type: vmess, server: jp-a-01.example.com, port: 443}
+- {name: Transit-A-US-01, type: ss, server: us-a-01.example.com, port: 443}
+- {name: Transit-B-HK-01, type: ss, server: hk-b-01.example.com, port: 443}
+- {name: Transit-B-JP-01, type: vmess, server: jp-b-01.example.com, port: 443}
+- {name: Transit-B-SG-01, type: ss, server: sg-b-01.example.com, port: 443}
+- {name: Transit-B-US-01, type: trojan, server: us-b-01.example.com, port: 443}
+proxy-groups:
+  - name: 🇭🇰 香港节点
+    type: url-test
+    proxies:
+      - Transit-A-HK-01
+      - Transit-A-HK-02
+      - Transit-B-HK-01
+  - name: 🇯🇵 日本节点
+    type: url-test
+    proxies:
+      - Transit-A-JP-01
+      - Transit-B-JP-01

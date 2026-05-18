@@ -1,0 +1,2 @@
+https://fixtures.example.com/transit-a-subscription.txt
+https://fixtures.example.com/transit-b-subscription.txt

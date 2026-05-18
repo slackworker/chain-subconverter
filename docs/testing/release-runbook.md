@@ -41,9 +41,17 @@
 
 ```bash
 go test ./...
+cd web && npm run test
 cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
 docker compose -f deploy/docker-compose.yml config
 ```
+
+其中 `go test ./...` 当前已覆盖：
+
+- 最小 smoke fixture：`3pass-ss2022-test-subscription`
+- 双落地链式 + 端口转发 fixture：`dual-landing-chain-port-forward`
+
+当前浏览器级 E2E 仍未纳入稳定自动化基线；如需补 Playwright，优先复用 `./scripts/dev-up.sh default` 的固定端口运行时。
 
 2. 本地开发路径 smoke
 

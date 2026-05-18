@@ -93,6 +93,61 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml")))
 }
 
+func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
+	testCase, err := LoadCase(filepath.Join("testdata", "dual-landing-chain-port-forward"))
+	if err != nil {
+		t.Fatalf("LoadCase() error = %v", err)
+	}
+
+	fixtureDir := filepath.Join("testdata", "dual-landing-chain-port-forward")
+	source := &fakeTemplatePreparingSource{
+		request: subconverter.Request{
+			LandingRawText: testCase.Stage1Input.LandingRawText,
+			TransitRawText: testCase.Stage1Input.TransitRawText,
+			Options: subconverter.AdvancedOptions{
+				Emoji:          testCase.Stage1Input.AdvancedOptions.Emoji,
+				UDP:            testCase.Stage1Input.AdvancedOptions.UDP,
+				SkipCertVerify: testCase.Stage1Input.AdvancedOptions.SkipCertVerify,
+				Config:         testCase.Stage1Input.AdvancedOptions.Config,
+				Include:        testCase.Stage1Input.AdvancedOptions.Include,
+				Exclude:        testCase.Stage1Input.AdvancedOptions.Exclude,
+			},
+		},
+		templateConfig: strings.Join([]string{
+			"custom_proxy_group=🇭🇰 香港节点`url-test`HK`https://cp.cloudflare.com/generate_204`300,,50",
+			"custom_proxy_group=🇯🇵 日本节点`url-test`JP`https://cp.cloudflare.com/generate_204`300,,50",
+		}, "\n") + "\n",
+		result: loadThreePassResult(t, fixtureDir),
+	}
+
+	stage1Bundle, err := BuildStage1Artifacts(context.Background(), source, testCase)
+	if err != nil {
+		t.Fatalf("BuildStage1Artifacts() error = %v", err)
+	}
+
+	if len(stage1Bundle.Rows) != 6 {
+		t.Fatalf("len(stage1Bundle.Rows) = %d, want 6", len(stage1Bundle.Rows))
+	}
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| Alpha-SS-HK | SS | chain | 🇭🇰 香港节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| Alpha-Reality-PortForward | Reality | none |  |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| Beta-SS-JP | SS | chain | 🇯🇵 日本节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/forward-relays.txt", "relay-a.example.com:7443")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/forward-relays.txt", "relay-b.example.com:8443")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/template-diagnostics.json", "🇯🇵 日本节点")
+
+	stage2Bundle, err := BuildStage2Artifacts(context.Background(), source, testCase, "http://localhost:11200", 0)
+	if err != nil {
+		t.Fatalf("BuildStage2Artifacts() error = %v", err)
+	}
+
+	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/generate.response.json", "http://localhost:11200/sub?data=")
+	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "dialer-proxy: 🇭🇰 香港节点")
+	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "dialer-proxy: 🇯🇵 日本节点")
+	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "server: relay-a.example.com, port: 7443")
+	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "server: relay-b.example.com, port: 8443")
+}
+
 func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemplateURL(t *testing.T) {
 	source := &fakeTemplatePreparingSource{
 		request: subconverter.Request{
