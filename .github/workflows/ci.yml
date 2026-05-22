@@ -129,6 +129,11 @@ jobs:
         working-directory: web
         run: npx playwright install --with-deps chromium
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Run mocked Playwright E2E tests
         working-directory: web
         run: npm run test:e2e:mock

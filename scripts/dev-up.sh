@@ -13,6 +13,9 @@ SUBCONVERTER_IMAGE=${CHAIN_SUBCONVERTER_SUBCONVERTER_IMAGE:-ghcr.io/slackworker/
 SUBCONVERTER_PORT=${CHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_PORT:-25500}
 BACKEND_PORT=${CHAIN_SUBCONVERTER_DEV_UP_BACKEND_PORT:-11200}
 FRONTEND_PORT=${CHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT:-5173}
+SUBCONVERTER_READY_ATTEMPTS=${CHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_READY_ATTEMPTS:-30}
+BACKEND_READY_ATTEMPTS=${CHAIN_SUBCONVERTER_DEV_UP_BACKEND_READY_ATTEMPTS:-60}
+BACKEND_FROM_CONTAINER_READY_ATTEMPTS=${CHAIN_SUBCONVERTER_DEV_UP_BACKEND_FROM_CONTAINER_READY_ATTEMPTS:-30}
 STALE_SUBCONVERTER_PORTS=(25501 25502 25503)
 STALE_BACKEND_PORTS=(11201 11202 11203)
 STALE_FRONTEND_PORTS=(5176)
@@ -97,7 +100,8 @@ wait_for_http() {
     attempt=$((attempt + 1))
   done
 
-  fail "$label did not become ready: $url"
+  printf '[dev-up] ERROR: %s did not become ready: %s\n' "$label" "$url" >&2
+  return 1
 }
 
 wait_for_container_http() {
@@ -115,7 +119,8 @@ wait_for_container_http() {
     attempt=$((attempt + 1))
   done
 
-  fail "$label did not become ready from $container_name: $url"
+  printf '[dev-up] ERROR: %s did not become ready from %s: %s\n' "$label" "$container_name" "$url" >&2
+  return 1
 }
 
 find_subconverter_container_name() {
@@ -428,7 +433,10 @@ start_subconverter_container() {
     -p "${port}:25500" \
     "$SUBCONVERTER_IMAGE" >/dev/null
 
-  wait_for_http "http://127.0.0.1:${port}/version" "subconverter"
+  if ! wait_for_http "http://127.0.0.1:${port}/version" "subconverter" "$SUBCONVERTER_READY_ATTEMPTS"; then
+    docker logs "$container_name" 2>&1 | tail -n 50 >&2 || true
+    fail "subconverter did not become ready on port $port"
+  fi
 }
 
 start_backend() {
@@ -453,14 +461,14 @@ start_backend() {
 
   BACKEND_PID=$!
 
-  if ! wait_for_http "http://127.0.0.1:${backend_port}/healthz" "backend" 30; then
+  if ! wait_for_http "http://127.0.0.1:${backend_port}/healthz" "backend" "$BACKEND_READY_ATTEMPTS"; then
     tail -n 50 "$BACKEND_LOG" >&2 || true
-    return 1
+    fail "backend did not become ready on port $backend_port"
   fi
 
-  if ! wait_for_container_http "$container_name" "$(backend_subconverter_facing_base_url "$backend_port")/healthz" "backend-from-subconverter" 30; then
+  if ! wait_for_container_http "$container_name" "$(backend_subconverter_facing_base_url "$backend_port")/healthz" "backend-from-subconverter" "$BACKEND_FROM_CONTAINER_READY_ATTEMPTS"; then
     tail -n 50 "$BACKEND_LOG" >&2 || true
-    return 1
+    fail "backend was not reachable from subconverter container $container_name"
   fi
 }
 
