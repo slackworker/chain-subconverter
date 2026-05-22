@@ -13,6 +13,18 @@
 
 ---
 
+## 2026-05-22 — vps-01 / vps-02（dev-latest 更新部署）
+
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`；`subconverter:integration-chain-subconverter`（未变）
+- **设备**：内网 LAN（vps-01）+ 公网 HTTPS 反代（vps-02）；自 `beta-latest` 就地更新 `app` 镜像（命名卷保留）
+- **USER_FACING_BASE_URL**：未改
+- **TRUSTED_PROXY_CIDRS**：未改
+- **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）；两台 digest 一致
+- **结果**：**通过**
+- **后续**：开发验证结束后可回切 `beta-latest` 或跟进 `main`/`latest`；SSH / 入口 URL / 复验命令见本地文件
+
+---
+
 ## 2026-05-20 — Worker fixture 对齐 dual-landing（公网已部署）
 
 - **镜像 / 产物**：`deploy/test-fixtures-worker`；源语义见 [dual-landing-chain-port-forward.md](dual-landing-chain-port-forward.md)
