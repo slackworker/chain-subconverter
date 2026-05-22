@@ -7,6 +7,8 @@ on:
       - beta
       - main
       - dev
+    tags:
+      - 'v*'
 
 jobs:
   go-test:
@@ -26,6 +28,56 @@ jobs:
 
       - name: Run go test
         run: go test ./...
+
+  fixture-freshness:
+    name: Fixture Freshness
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Refresh canonical-derived review fixtures
+        run: go run ./cmd/testfixturegen -repo-root .
+
+      - name: Check tracked review fixtures are up to date
+        run: |
+          if ! git diff --exit-code -- internal/review/testdata; then
+            echo "Generated review fixtures are stale. Run: go run ./cmd/testfixturegen -repo-root ."
+            exit 1
+          fi
+
+  worker-fixture-freshness:
+    name: Worker Fixture Freshness
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: deploy/test-fixtures-worker/package-lock.json
+
+      - name: Install worker fixture dependencies
+        working-directory: deploy/test-fixtures-worker
+        run: npm ci
+
+      - name: Check worker fixtures are up to date
+        working-directory: deploy/test-fixtures-worker
+        run: npm run check
 
   web-unit-test:
     name: Web Unit Test
@@ -51,6 +103,35 @@ jobs:
       - name: Run frontend unit tests
         working-directory: web
         run: npm run test
+
+  web-mock-e2e:
+    name: Web Mock E2E
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run mocked Playwright E2E tests
+        working-directory: web
+        run: npm run test:e2e:mock
 
   web-build:
     name: Web Build Matrix

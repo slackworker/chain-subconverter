@@ -28,6 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
@@ -44,6 +45,7 @@ jobs:
       tags: ${{ steps.plan.outputs.tags }}
       labels: ${{ steps.plan.outputs.labels }}
       should_trigger_render: ${{ steps.plan.outputs.should_trigger_render }}
+      should_skip_validation: ${{ steps.plan.outputs.should_skip_validation }}
       primary_tag: ${{ steps.plan.outputs.primary_tag }}
 
     steps:
@@ -65,6 +67,7 @@ jobs:
           fi
 
           should_trigger_render=false
+          should_skip_validation=false
           primary_tag=''
           image_version=''
           tags=()
@@ -99,6 +102,9 @@ jobs:
               primary_tag="${IMAGE_NAME}:${INPUT_IMAGE_TAG}"
               image_version="$INPUT_IMAGE_TAG"
               tags+=("$primary_tag")
+              if [[ "$INPUT_IMAGE_TAG" == "dev-latest" ]]; then
+                should_skip_validation=true
+              fi
               if [[ "$INPUT_TRIGGER_RENDER" == "true" ]]; then
                 should_trigger_render=true
               fi
@@ -119,6 +125,7 @@ jobs:
             echo "checkout_ref=$checkout_ref"
             echo "primary_tag=$primary_tag"
             echo "should_trigger_render=$should_trigger_render"
+            echo "should_skip_validation=$should_skip_validation"
             echo 'tags<<EOF'
             printf '%s\n' "${tags[@]}"
             echo EOF
@@ -143,51 +150,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Skip validation for manual publish
-        if: github.event_name == 'workflow_dispatch'
-        run: echo "Skipping publish validation for workflow_dispatch."
+      - name: Skip validation for manual dev-latest publish
+        if: needs.prepare.outputs.should_skip_validation == 'true'
+        run: echo "Skipping publish validation for manual dev-latest publish."
 
-      - name: Checkout repository
-        if: github.event_name == 'push'
-        uses: actions/checkout@v4
+      - name: Wait for CI workflow success on source revision
+        if: needs.prepare.outputs.should_skip_validation != 'true'
+        uses: actions/github-script@v7
+        env:
+          TARGET_SHA: ${{ needs.prepare.outputs.source_sha }}
         with:
-          ref: ${{ needs.prepare.outputs.checkout_ref }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const workflowId = 'ci.yml';
+            const targetSha = process.env.TARGET_SHA;
+            const timeoutMs = 30 * 60 * 1000;
+            const pollIntervalMs = 30 * 1000;
+            const deadline = Date.now() + timeoutMs;
 
-      - name: Set up Go
-        if: github.event_name == 'push'
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+            core.info(`Waiting for CI to complete on ${targetSha}`);
 
-      - name: Run go test
-        if: github.event_name == 'push'
-        run: go test ./...
+            while (true) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: workflowId,
+                event: 'push',
+                head_sha: targetSha,
+                per_page: 20,
+              });
 
-      - name: Set up Node.js
-        if: github.event_name == 'push'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+              const runs = data.workflow_runs || [];
+              const latestRun = runs[0];
 
-      - name: Install frontend dependencies
-        if: github.event_name == 'push'
-        working-directory: web
-        run: npm ci
+              if (!latestRun) {
+                core.info('No CI workflow run found yet for this commit; polling again.');
+              } else if (latestRun.status !== 'completed') {
+                core.info(
+                  `CI run #${latestRun.run_number} is ${latestRun.status}; polling again.`
+                );
+              } else if (latestRun.conclusion === 'success') {
+                core.info(`CI run #${latestRun.run_number} succeeded.`);
+                break;
+              } else {
+                core.setFailed(
+                  `CI run #${latestRun.run_number} concluded with ${latestRun.conclusion}.`
+                );
+                return;
+              }
 
-      - name: Build frontend schemes
-        if: github.event_name == 'push'
-        working-directory: web
-        run: |
-          npm run build:default
-          npm run build:a
-          npm run build:b
-          npm run build:c
+              if (Date.now() > deadline) {
+                core.setFailed('Timed out waiting for CI success on the source revision.');
+                return;
+              }
 
-      - name: Validate deploy compose file
-        if: github.event_name == 'push'
-        run: docker compose -f deploy/docker-compose.yml config
+              await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+            }
 
   build:
     name: Build ${{ matrix.platform }} image
