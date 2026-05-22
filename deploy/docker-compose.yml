@@ -21,8 +21,6 @@ services:
       # USER_FACING_BASE_URL 可选；直连局域网通常留空，HTTPS 反代/公网域名或多入口场景再显式填写。
       # 若需固定发布地址，取消注释并填入实际可访问地址（例如 https://example.com）：
       # CHAIN_SUBCONVERTER_USER_FACING_BASE_URL: https://example.com
-      # 公网/HTTPS 反代场景建议同时开启，要求未设置 USER_FACING_BASE_URL 时启动失败：
-      # CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL: "false"
       # 仅在可信内网环境且模板 URL 需要指向私网/loopback 地址时才开启：
       # CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS: "false"
       # 设为 0 可关闭；默认建议保留：

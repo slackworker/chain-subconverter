@@ -1,0 +1,21 @@
+proxies:
+  - {"name":"Transit-A-HongKong-SS-01","type":"ss","server":"198.51.100.120","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"transit-a-hk-01-secret"}
+  - {"name":"Transit-A-Japan-Trojan-01","type":"trojan","server":"jp-a-01.example.test","port":443,"password":"transit-a-jp-01-secret","sni":"jp-a-01.example.test"}
+  - {"name":"Transit-A-UnitedStates-VLESS-01","type":"vless","server":"us-a-01.example.test","port":443,"uuid":"33333333-3333-4333-8333-333333333331","tls":true,"servername":"us-a-01.example.test","network":"ws","ws-opts":{"path":"/transit-a-us-vless","headers":{"Host":"us-a-01.example.test"}}}
+  - {"name":"Transit-A-Singapore-Hysteria2-01","type":"hysteria2","server":"sg-a-01.example.test","port":8443,"ports":"8443","password":"transit-a-sg-01-secret","sni":"sg-a-01.example.test","skip-cert-verify":true}
+  - {"name":"Transit-A-Taiwan-TUIC-01","type":"tuic","server":"tw-a-01.example.test","port":443,"uuid":"55555555-5555-4555-8555-555555555551","password":"transit-a-tw-01-secret","sni":"tw-a-01.example.test","alpn":["h3"],"congestion-controller":"bbr","udp-relay-mode":"native"}
+  - {"name":"Transit-A-Korea-AnyTLS-01","type":"anytls","server":"kr-a-01.example.test","port":443,"password":"transit-a-kr-01-secret","sni":"kr-a-01.example.test","alpn":["h2"]}
+  - {"name":"Transit-A-HongKong-VMess-01","type":"vmess","server":"hk-a-02.example.test","port":443,"uuid":"77777777-7777-4777-8777-777777777771","alterId":0,"cipher":"auto","network":"ws","tls":true,"servername":"hk-a-02.example.test","ws-opts":{"path":"/transit-a-hk-vmess","headers":{"Host":"hk-a-02.example.test"}}}
+  - {"name":"Transit-A-UnitedStates-SSR-01","type":"ssr","server":"us-a-02.example.test","port":443,"cipher":"aes-256-gcm","password":"transit-a-us-02-secret","protocol":"origin","obfs":"plain"}
+  - {"name":"Transit-A-Japan-SS-01","type":"ss","server":"198.51.100.121","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"transit-a-jp-02-secret"}
+  - {"name":"Transit-A-Taiwan-Hysteria2-01","type":"hysteria2","server":"tw-a-02.example.test","port":8443,"ports":"8443","password":"transit-a-tw-02-secret","sni":"tw-a-02.example.test","skip-cert-verify":true}
+  - {"name":"Transit-B-HongKong-SS-01","type":"ss","server":"198.51.100.122","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"transit-b-hk-01-secret"}
+  - {"name":"Transit-B-Japan-Trojan-01","type":"trojan","server":"jp-b-01.example.test","port":443,"password":"transit-b-jp-01-secret","sni":"jp-b-01.example.test"}
+  - {"name":"Transit-B-Singapore-VLESS-01","type":"vless","server":"sg-b-01.example.test","port":443,"uuid":"88888888-8888-4888-8888-888888888883","tls":true,"servername":"sg-b-01.example.test","network":"ws","ws-opts":{"path":"/transit-b-sg-vless","headers":{"Host":"sg-b-01.example.test"}}}
+  - {"name":"Transit-B-UnitedStates-Hysteria2-01","type":"hysteria2","server":"us-b-01.example.test","port":8443,"ports":"8443","password":"transit-b-us-01-secret","sni":"us-b-01.example.test","skip-cert-verify":true}
+  - {"name":"Transit-B-Korea-TUIC-01","type":"tuic","server":"kr-b-01.example.test","port":443,"uuid":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5","password":"transit-b-kr-01-secret","sni":"kr-b-01.example.test","alpn":["h3"],"congestion-controller":"bbr","udp-relay-mode":"native"}
+  - {"name":"Transit-B-Taiwan-AnyTLS-01","type":"anytls","server":"tw-b-01.example.test","port":443,"password":"transit-b-tw-01-secret","sni":"tw-b-01.example.test","alpn":["h2"]}
+  - {"name":"Transit-B-Japan-VMess-01","type":"vmess","server":"jp-b-02.example.test","port":443,"uuid":"bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb7","alterId":0,"cipher":"auto","network":"ws","tls":true,"servername":"jp-b-02.example.test","ws-opts":{"path":"/transit-b-jp-vmess","headers":{"Host":"jp-b-02.example.test"}}}
+  - {"name":"Transit-B-HongKong-SSR-01","type":"ssr","server":"hk-b-02.example.test","port":443,"cipher":"aes-256-gcm","password":"transit-b-hk-02-secret","protocol":"origin","obfs":"plain"}
+  - {"name":"Transit-B-UnitedStates-Trojan-01","type":"trojan","server":"us-b-02.example.test","port":443,"password":"transit-b-us-02-secret","sni":"us-b-02.example.test"}
+  - {"name":"Transit-B-Singapore-SS-01","type":"ss","server":"198.51.100.123","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"transit-b-sg-02-secret"}

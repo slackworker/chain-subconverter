@@ -1,0 +1,15 @@
+{
+  "name": "chain-subconverter-test-fixtures-worker",
+  "private": true,
+  "scripts": {
+    "sync": "node ./scripts/sync-canonical-fixtures.mjs",
+    "test": "node --test ./scripts/*.test.mjs",
+    "check": "node ./scripts/sync-canonical-fixtures.mjs --check",
+    "pack-upload": "./scripts/prepare-dashboard-upload.sh",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.14.0"
+  }
+}
