@@ -5,13 +5,13 @@ mode: rule
 log-level: info
 external-controller: 127.0.0.1:9090
 proxies:
-  - {name: 🇭🇰 Alpha-SS-HK, server: 198.51.100.10, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: alpha-ss-hk-secret, udp: true}
-  - {name: 🇭🇰 Alpha-Reality-HK-PortForward, server: 198.51.100.10, port: 8443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: alpha.example.com, host: alpha.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: alpha-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
+  - {name: 🇭🇰 Alpha-SS-HK, server: 198.51.100.10, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: alpha-ss-hk-secret, udp: true, dialer-proxy: 🇭🇰 香港节点}
+  - {name: 🇭🇰 Alpha-Reality-HK-PortForward, server: relay-a.example.com, port: 7443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: alpha.example.com, host: alpha.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: alpha-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
   - {name: 🇭🇰 Alpha-Reality-HK-Direct, server: 198.51.100.10, port: 8443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111112, servername: alpha.example.com, host: alpha.example.com, reality-opts: {public-key: alpha-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
-  - {name: 🇯🇵 Beta-SS-JP, server: 198.51.100.11, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: beta-ss-jp-secret, udp: true}
-  - {name: 🇯🇵 Beta-Reality-JP-PortForward, server: 198.51.100.11, port: 9443, type: vless, tls: true, uuid: 22222222-2222-4222-8222-222222222221, servername: beta.example.com, host: beta.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: beta-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
+  - {name: 🇯🇵 Beta-SS-JP, server: 198.51.100.11, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: beta-ss-jp-secret, udp: true, dialer-proxy: 🇯🇵 日本节点}
+  - {name: 🇯🇵 Beta-Reality-JP-PortForward, server: relay-b.example.com, port: 8443, type: vless, tls: true, uuid: 22222222-2222-4222-8222-222222222221, servername: beta.example.com, host: beta.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: beta-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
   - {name: 🇯🇵 Beta-Reality-JP-Direct, server: 198.51.100.11, port: 9443, type: vless, tls: true, uuid: 22222222-2222-4222-8222-222222222222, servername: beta.example.com, host: beta.example.com, reality-opts: {public-key: beta-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
-  - {name: 🇭🇰 Manual-SOCKS5-HK-Fallback, server: manual-socks-hk.example.test, port: 1080, type: socks5, username: demo-user, password: demo-pass, skip-cert-verify: false, udp: true}
+  - {name: 🇭🇰 Manual-SOCKS5-HK-Fallback, server: manual-socks-hk.example.test, port: 1080, type: socks5, username: demo-user, password: demo-pass, skip-cert-verify: false, udp: true, dialer-proxy: 🇭🇰 香港节点}
   - {name: 🇭🇰 Transit-A-HongKong-SS-01, server: 198.51.100.120, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-a-hk-01-secret, udp: true}
   - {name: 🇯🇵 Transit-A-Japan-Trojan-01, server: jp-a-01.example.test, port: 443, type: trojan, password: transit-a-jp-01-secret, sni: jp-a-01.example.test, skip-cert-verify: false, udp: true}
   - {name: 🇺🇸 Transit-A-UnitedStates-VLESS-01, server: us-a-01.example.test, port: 443, type: vless, tls: true, uuid: 33333333-3333-4333-8333-333333333331, servername: us-a-01.example.test, network: ws, ws-opts: {path: /transit-a-us-vless, headers: {Host: us-a-01.example.test}}, skip-cert-verify: false, udp: true}
@@ -941,10 +941,6 @@ proxy-groups:
     interval: 300
     tolerance: 50
     proxies:
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
       - 🇭🇰 Transit-A-HongKong-SS-01
       - 🇭🇰 Transit-B-HongKong-SS-01
       - 🇭🇰 Transit-B-HongKong-SSR-01
@@ -964,9 +960,6 @@ proxy-groups:
     interval: 300
     tolerance: 50
     proxies:
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
       - 🇯🇵 Transit-A-Japan-Trojan-01
       - 🇯🇵 Transit-A-Japan-SS-01
       - 🇯🇵 Transit-B-Japan-Trojan-01

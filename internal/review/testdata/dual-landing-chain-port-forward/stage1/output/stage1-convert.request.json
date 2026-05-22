@@ -1,0 +1,23 @@
+{
+  "stage1Input": {
+    "landingRawText": "ss://2022-blake3-aes-256-gcm:alpha-ss-hk-secret@198.51.100.10:443#Alpha-SS-HK\nvless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none\u0026security=reality\u0026sni=alpha.example.com\u0026pbk=alpha-public-key\u0026fp=chrome\u0026flow=xtls-rprx-vision\u0026type=tcp#Alpha-Reality-HK-PortForward\nvless://11111111-1111-4111-8111-111111111112@198.51.100.10:8443?encryption=none\u0026security=reality\u0026sni=alpha.example.com\u0026pbk=alpha-public-key\u0026fp=chrome\u0026type=tcp#Alpha-Reality-HK-Direct\nss://2022-blake3-aes-256-gcm:beta-ss-jp-secret@198.51.100.11:443#Beta-SS-JP\nvless://22222222-2222-4222-8222-222222222221@198.51.100.11:9443?encryption=none\u0026security=reality\u0026sni=beta.example.com\u0026pbk=beta-public-key\u0026fp=chrome\u0026flow=xtls-rprx-vision\u0026type=tcp#Beta-Reality-JP-PortForward\nvless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none\u0026security=reality\u0026sni=beta.example.com\u0026pbk=beta-public-key\u0026fp=chrome\u0026type=tcp#Beta-Reality-JP-Direct\ntg://socks?server=manual-socks-hk.example.test\u0026port=1080\u0026remarks=Manual-SOCKS5-HK-Fallback\u0026user=demo-user\u0026pass=demo-pass",
+    "transitRawText": "https://fixtures.example.com/transit-a-subscription.txt\nhttps://fixtures.example.com/transit-b-subscription.txt",
+    "forwardRelayItems": [
+      "relay-a.example.com:7443",
+      "relay-b.example.com:8443"
+    ],
+    "advancedOptions": {
+      "emoji": true,
+      "udp": true,
+      "skipCertVerify": false,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": [
+        "HK",
+        "JP"
+      ],
+      "exclude": [
+        "Expired"
+      ]
+    }
+  }
+}

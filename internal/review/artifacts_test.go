@@ -10,6 +10,7 @@ import (
 
 	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
+	"github.com/slackworker/chain-subconverter/internal/testfixtures"
 )
 
 type fakeConversionSource struct {
@@ -113,11 +114,8 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 				Exclude:        testCase.Stage1Input.AdvancedOptions.Exclude,
 			},
 		},
-		templateConfig: strings.Join([]string{
-			"custom_proxy_group=🇭🇰 香港节点`url-test`HK`https://cp.cloudflare.com/generate_204`300,,50",
-			"custom_proxy_group=🇯🇵 日本节点`url-test`JP`https://cp.cloudflare.com/generate_204`300,,50",
-		}, "\n") + "\n",
-		result: loadThreePassResult(t, fixtureDir),
+		templateConfig: dualLandingChainPortForwardTemplateConfig(t),
+		result:         loadThreePassResult(t, fixtureDir),
 	}
 
 	stage1Bundle, err := BuildStage1Artifacts(context.Background(), source, testCase)
@@ -125,12 +123,13 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 		t.Fatalf("BuildStage1Artifacts() error = %v", err)
 	}
 
-	if len(stage1Bundle.Rows) != 6 {
-		t.Fatalf("len(stage1Bundle.Rows) = %d, want 6", len(stage1Bundle.Rows))
+	if len(stage1Bundle.Rows) != 7 {
+		t.Fatalf("len(stage1Bundle.Rows) = %d, want 7", len(stage1Bundle.Rows))
 	}
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| Alpha-SS-HK | SS | chain | 🇭🇰 香港节点 |")
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| Alpha-Reality-PortForward | Reality | none |  |")
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| Beta-SS-JP | SS | chain | 🇯🇵 日本节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Alpha-SS-HK | SS | chain | 🇭🇰 香港节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Alpha-Reality-HK-PortForward | Reality | chain | 🇭🇰 香港节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇯🇵 Beta-SS-JP | SS | chain | 🇯🇵 日本节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Manual-SOCKS5-HK-Fallback | SOCKS5 | chain | 🇭🇰 香港节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/forward-relays.txt", "relay-a.example.com:7443")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/forward-relays.txt", "relay-b.example.com:8443")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
@@ -141,11 +140,29 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 		t.Fatalf("BuildStage2Artifacts() error = %v", err)
 	}
 
-	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/generate.response.json", "http://localhost:11200/sub?data=")
-	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "dialer-proxy: 🇭🇰 香港节点")
-	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "dialer-proxy: 🇯🇵 日本节点")
-	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "server: relay-a.example.com, port: 7443")
-	assertArtifactContains(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", "server: relay-b.example.com, port: 8443")
+	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/generate.request.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json")))
+	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/generate.response.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json")))
+	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/short-links.request.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.request.json")))
+	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/short-links.response.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.response.json")))
+	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/long-url.payload.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "long-url.payload.json")))
+	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml")))
+}
+
+func dualLandingChainPortForwardTemplateConfig(t *testing.T) string {
+	t.Helper()
+
+	scenario, err := testfixtures.LoadStage1Scenario(filepath.Join("..", "..", "testdata", "canonical-scenarios", "dual-landing-chain-port-forward.stage1.json"))
+	if err != nil {
+		t.Fatalf("LoadStage1Scenario() error = %v", err)
+	}
+	if scenario.TemplateFixture == nil {
+		t.Fatal("TemplateFixture should not be nil")
+	}
+	content, err := scenario.ReadRelativeFile(scenario.TemplateFixture.ContentFile)
+	if err != nil {
+		t.Fatalf("ReadRelativeFile(%q) error = %v", scenario.TemplateFixture.ContentFile, err)
+	}
+	return content
 }
 
 func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemplateURL(t *testing.T) {

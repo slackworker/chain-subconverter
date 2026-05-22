@@ -2,34 +2,39 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "Alpha-SS-HK",
+        "landingNodeName": "🇭🇰 Alpha-SS-HK",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
       {
-        "landingNodeName": "Alpha-Reality-PortForward",
+        "landingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
         "mode": "port_forward",
         "targetName": "relay-a.example.com:7443"
       },
       {
-        "landingNodeName": "Alpha-Reality-Direct",
+        "landingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
         "mode": "none",
         "targetName": null
       },
       {
-        "landingNodeName": "Beta-SS-JP",
+        "landingNodeName": "🇯🇵 Beta-SS-JP",
         "mode": "chain",
         "targetName": "🇯🇵 日本节点"
       },
       {
-        "landingNodeName": "Beta-Reality-PortForward",
+        "landingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
         "mode": "port_forward",
         "targetName": "relay-b.example.com:8443"
       },
       {
-        "landingNodeName": "Beta-Reality-Direct",
+        "landingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
         "mode": "none",
         "targetName": null
+	  },
+	  {
+	    "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+	    "mode": "chain",
+	    "targetName": "🇭🇰 香港节点"
       }
     ]
   }

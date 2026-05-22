@@ -2,21 +2,19 @@ package review
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/slackworker/chain-subconverter/internal/service"
+	"github.com/slackworker/chain-subconverter/internal/testfixtures"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	LandingFileName         = "landing.txt"
-	TransitFileName         = "transit.txt"
-	ForwardRelaysFileName   = "forward-relays.txt"
-	AdvancedOptionsFileName = "advanced-options.yaml"
-	Stage2SnapshotFileName  = "stage2-snapshot.json"
+	Stage2SnapshotFileName = "stage2-snapshot.json"
 )
 
 type Case struct {
@@ -69,7 +67,7 @@ func LoadCase(directory string) (Case, error) {
 		return Case{}, fmt.Errorf("resolve case dir: %w", err)
 	}
 
-	stage1Input, err := readStage1Input(absDir)
+	stage1Input, err := loadStage1Input(absDir)
 	if err != nil {
 		return Case{}, err
 	}
@@ -92,7 +90,7 @@ func LoadStage1Case(directory string) (Case, error) {
 		return Case{}, fmt.Errorf("resolve case dir: %w", err)
 	}
 
-	stage1Input, err := readStage1Input(absDir)
+	stage1Input, err := loadStage1Input(absDir)
 	if err != nil {
 		return Case{}, err
 	}
@@ -104,16 +102,99 @@ func LoadStage1Case(directory string) (Case, error) {
 	}, nil
 }
 
+func loadStage1Input(directory string) (service.Stage1Input, error) {
+	stage1Input, loaded, err := loadTrackedCanonicalStage1Input(directory)
+	if err != nil {
+		return service.Stage1Input{}, err
+	}
+	if loaded {
+		return stage1Input, nil
+	}
+	return readStage1Input(directory)
+}
+
+func loadTrackedCanonicalStage1Input(directory string) (service.Stage1Input, bool, error) {
+	canonicalFilePath, ok := trackedCanonicalScenarioFile(directory)
+	if !ok {
+		return service.Stage1Input{}, false, nil
+	}
+
+	scenario, err := testfixtures.LoadStage1Scenario(canonicalFilePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return service.Stage1Input{}, false, nil
+		}
+		return service.Stage1Input{}, false, err
+	}
+
+	return toServiceStage1Input(scenario.Stage1Input.ToReviewStage1Input()), true, nil
+}
+
+func toServiceStage1Input(input testfixtures.ReviewStage1Input) service.Stage1Input {
+	return service.NormalizeStage1Input(service.Stage1Input{
+		LandingRawText:    input.LandingRawText,
+		TransitRawText:    input.TransitRawText,
+		ForwardRelayItems: append([]string(nil), input.ForwardRelayItems...),
+		AdvancedOptions:   toServiceAdvancedOptions(input.AdvancedOptions),
+	})
+}
+
+func toServiceAdvancedOptions(options testfixtures.AdvancedOptions) service.AdvancedOptions {
+	serviceOptions := service.AdvancedOptions{
+		Include: append([]string(nil), options.Include...),
+		Exclude: append([]string(nil), options.Exclude...),
+	}
+	if options.Emoji != nil {
+		value := *options.Emoji
+		serviceOptions.Emoji = &value
+	}
+	if options.UDP != nil {
+		value := *options.UDP
+		serviceOptions.UDP = &value
+	}
+	if options.SkipCertVerify != nil {
+		value := *options.SkipCertVerify
+		serviceOptions.SkipCertVerify = &value
+	}
+	if options.Config != nil {
+		value := *options.Config
+		serviceOptions.Config = &value
+	}
+	return serviceOptions
+}
+
+func trackedCanonicalScenarioFile(directory string) (string, bool) {
+	scenarioDir := filepath.Clean(directory)
+	testdataDir := filepath.Dir(scenarioDir)
+	if filepath.Base(testdataDir) != "testdata" {
+		return "", false
+	}
+	reviewDir := filepath.Dir(testdataDir)
+	if filepath.Base(reviewDir) != "review" {
+		return "", false
+	}
+	internalDir := filepath.Dir(reviewDir)
+	if filepath.Base(internalDir) != "internal" {
+		return "", false
+	}
+	repoRoot := filepath.Dir(internalDir)
+	scenarioID := filepath.Base(scenarioDir)
+	if strings.TrimSpace(scenarioID) == "" || scenarioID == "." {
+		return "", false
+	}
+	return filepath.Join(repoRoot, "testdata", "canonical-scenarios", scenarioID+".stage1.json"), true
+}
+
 func readStage1Input(directory string) (service.Stage1Input, error) {
-	landingRawText, err := readScenarioTextFile(directory, LandingFileName)
+	landingRawText, err := readScenarioTextFile(directory, testfixtures.LandingFileName)
 	if err != nil {
 		return service.Stage1Input{}, err
 	}
-	transitRawText, err := readScenarioTextFile(directory, TransitFileName)
+	transitRawText, err := readScenarioTextFile(directory, testfixtures.TransitFileName)
 	if err != nil {
 		return service.Stage1Input{}, err
 	}
-	forwardRelayItems, err := readScenarioListFile(directory, ForwardRelaysFileName)
+	forwardRelayItems, err := readScenarioListFile(directory, testfixtures.ForwardRelaysFileName)
 	if err != nil {
 		return service.Stage1Input{}, err
 	}
@@ -153,7 +234,7 @@ func readScenarioTextFile(directory string, fileName string) (string, error) {
 }
 
 func readAdvancedOptions(directory string) (service.AdvancedOptions, error) {
-	filePath := filepath.Join(directory, "stage1", "input", AdvancedOptionsFileName)
+	filePath := filepath.Join(directory, "stage1", "input", testfixtures.AdvancedOptionsFileName)
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return service.AdvancedOptions{}, fmt.Errorf("read %s: %w", filePath, err)

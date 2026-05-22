@@ -1,7 +1,7 @@
 emoji: true
 udp: true
 skipCertVerify: false
-config: https://templates.example.com/chain-subconverter-comprehensive.ini
+config: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini
 include:
   - HK
   - JP

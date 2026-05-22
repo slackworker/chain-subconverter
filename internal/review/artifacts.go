@@ -89,6 +89,18 @@ func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, 
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
+	shortLinkRequest := service.ShortLinkRequest{LongURL: response.LongURL}
+	shortLinkResponse, err := service.BuildShortLinkResponse(
+		ctx,
+		publicBaseURL,
+		service.NewInMemoryShortLinkStore(),
+		response.LongURL,
+		maxLongURLLength,
+		service.InputLimits{},
+	)
+	if err != nil {
+		return ArtifactBundle{}, err
+	}
 	renderedConfig, err := service.RenderCompleteConfig(testCase.Stage1Input, testCase.Stage2Input, fixtures)
 	if err != nil {
 		return ArtifactBundle{}, err
@@ -97,6 +109,8 @@ func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, 
 	files := []FileArtifact{
 		{RelativePath: "stage2/output/generate.request.json", Content: mustMarshalJSON(request)},
 		{RelativePath: "stage2/output/generate.response.json", Content: mustMarshalJSON(response)},
+		{RelativePath: "stage2/output/short-links.request.json", Content: mustMarshalJSON(shortLinkRequest)},
+		{RelativePath: "stage2/output/short-links.response.json", Content: mustMarshalJSON(shortLinkResponse)},
 		{RelativePath: "stage2/output/long-url.payload.json", Content: mustMarshalJSON(service.BuildLongURLPayload(testCase.Stage1Input, testCase.Stage2Input))},
 		{RelativePath: "stage2/output/complete-config.chain.yaml", Content: ensureTrailingNewline(renderedConfig)},
 	}

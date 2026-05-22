@@ -1,0 +1,185 @@
+{
+  "stage2Init": {
+    "availableModes": [
+      "none",
+      "chain",
+      "port_forward"
+    ],
+    "chainTargets": [
+      {
+        "name": "🇭🇰 香港节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇺🇸 美国节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇯🇵 日本节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇸🇬 新加坡节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇼🇸 台湾节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇰🇷 韩国节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇭🇰 Transit-A-HongKong-SS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 Transit-A-Japan-Trojan-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-A-UnitedStates-VLESS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 Transit-A-Singapore-Hysteria2-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 Transit-A-Taiwan-TUIC-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 Transit-A-Korea-AnyTLS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-A-UnitedStates-SSR-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 Transit-A-Japan-SS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 Transit-A-Taiwan-Hysteria2-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 Transit-B-HongKong-SS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 Transit-B-Japan-Trojan-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 Transit-B-Singapore-VLESS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-B-UnitedStates-Hysteria2-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 Transit-B-Korea-TUIC-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇨🇳 Transit-B-Taiwan-AnyTLS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 Transit-B-HongKong-SSR-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-B-UnitedStates-Trojan-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 Transit-B-Singapore-SS-01",
+        "kind": "proxies"
+      }
+    ],
+    "forwardRelays": [
+      {
+        "name": "relay-a.example.com:7443"
+      },
+      {
+        "name": "relay-b.example.com:8443"
+      }
+    ],
+    "rows": [
+      {
+        "landingNodeName": "🇭🇰 Alpha-SS-HK",
+        "landingNodeType": "SS",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      },
+      {
+        "landingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
+        "landingNodeType": "Reality",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点",
+        "modeWarnings": {
+          "chain": {
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+          }
+        }
+      },
+      {
+        "landingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
+        "landingNodeType": "Reality",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点",
+        "modeWarnings": {
+          "chain": {
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+          }
+        }
+      },
+      {
+        "landingNodeName": "🇯🇵 Beta-SS-JP",
+        "landingNodeType": "SS",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点"
+      },
+      {
+        "landingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
+        "landingNodeType": "Reality",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点",
+        "modeWarnings": {
+          "chain": {
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+          }
+        }
+      },
+      {
+        "landingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
+        "landingNodeType": "Reality",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点",
+        "modeWarnings": {
+          "chain": {
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+          }
+        }
+      },
+      {
+        "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "landingNodeType": "SOCKS5",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      }
+    ]
+  },
+  "messages": [],
+  "blockingErrors": []
+}
