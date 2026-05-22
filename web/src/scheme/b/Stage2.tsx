@@ -1,4 +1,5 @@
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
+import { getStage2DisplayModeOptions, getStage2TargetDisplayLabel } from "../../lib/stage2";
 import { NoticeRenderer } from "./Notice";
 import { AlertTriangleIcon } from "./Icons";
 
@@ -81,12 +82,28 @@ function Stage2RowItem({
 }) {
 	const meta = workflow.getStage2RowMeta(row.landingNodeName);
 	const errors = workflow.getStage2RowErrors(row.landingNodeName);
-	
-	const modeOptions = workflow.modeOptions;
+	const isSnapshotOnly = workflow.state.stage2Init === null;
+	const modeOptions = getStage2DisplayModeOptions(workflow.state.stage2Init, row.mode);
+	const targetDisplayLabel = getStage2TargetDisplayLabel(workflow.state.stage2Init, workflow.stage2Rows, row);
 
 	const renderTargetSelector = () => {
 		if (row.mode === "none") {
 			return <div className="text-zinc-600 italic px-3 py-2">无需目标</div>;
+		}
+
+		if (isSnapshotOnly) {
+			return (
+				<select
+					className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 appearance-none"
+					value={row.targetName || ""}
+					disabled
+				>
+					<option value="" disabled>{row.mode === "chain" ? "请选择中转目标" : "请选择端口转发服务"}</option>
+					{row.targetName ? (
+						<option value={row.targetName}>{targetDisplayLabel ?? row.targetName}</option>
+					) : null}
+				</select>
+			);
 		}
 
 		if (row.mode === "chain") {

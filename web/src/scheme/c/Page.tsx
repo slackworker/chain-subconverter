@@ -11,6 +11,7 @@ import {
 	setPortForwardEnabled,
 	type ManualSocks5FormState,
 } from "../../lib/stage1";
+import { getStage2TargetDisplayLabel } from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
 import "./index.css";
 
@@ -208,7 +209,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	}
 
 	function getModeState(meta: ReturnType<typeof workflow.getStage2RowMeta>, mode: Stage2Row["mode"]) {
-		const unsupported = !workflow.modeOptions.includes(mode);
+		const unsupported = workflow.state.stage2Init !== null && !workflow.modeOptions.includes(mode);
 		const restricted = meta?.restrictedModes?.[mode];
 		return {
 			disabled: unsupported || restricted !== undefined || !workflow.isStage2Editable,
@@ -222,6 +223,17 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 			return (
 				<select disabled value="">
 					<option value="">—</option>
+				</select>
+			);
+		}
+		if (workflow.state.stage2Init === null) {
+			const targetDisplayLabel = getStage2TargetDisplayLabel(workflow.state.stage2Init, workflow.stage2Rows, row);
+			return (
+				<select disabled value={row.targetName ?? ""}>
+					<option value="">{row.mode === "chain" ? "请选择目标" : "请选择端口转发服务"}</option>
+					{row.targetName ? (
+						<option value={row.targetName}>{targetDisplayLabel ?? row.targetName}</option>
+					) : null}
 				</select>
 			);
 		}

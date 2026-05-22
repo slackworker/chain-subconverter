@@ -16,6 +16,7 @@ import {
 	removeForwardRelayItem,
 	setPortForwardEnabled,
 } from "../../lib/stage1";
+import { getStage2DisplayModeOptions, getStage2TargetDisplayLabel } from "../../lib/stage2";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
@@ -1226,16 +1227,23 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										const primaryGroup = chainTargetGroups.find((group) => group.kind === "proxy-groups") ?? null;
 										const supplementGroup = chainTargetGroups.find((group) => group.kind === "proxies") ?? null;
 										const forwardRelayChoices = getForwardRelayChoices(row.landingNodeName);
+										const editable = isStage2Editable;
+										const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
+										const displayForwardRelayChoices = !editable
+											&& state.stage2Init === null
+											&& row.mode === "port_forward"
+											&& row.targetName !== null
+											&& !forwardRelayChoices.some((choice) => choice.value === row.targetName)
+												? [{ value: row.targetName, label: row.targetName, disabled: false }, ...forwardRelayChoices]
+												: forwardRelayChoices;
 										const selectedInSupplement = Boolean(
 											supplementGroup?.choices.some((choice) => choice.value === row.targetName),
 										);
 										const primaryOpen = primaryOpenByRow[row.landingNodeName] !== false;
 										const supplementOpen = supplementOpenByRow[row.landingNodeName] ?? selectedInSupplement;
 										const selectedTargetLabel =
-											primaryGroup?.choices.find((choice) => choice.value === row.targetName)?.label ??
-											supplementGroup?.choices.find((choice) => choice.value === row.targetName)?.label ??
-											"请选择";
-										const editable = isStage2Editable;
+											getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
+											(row.mode === "none" ? "--" : copy.selectTarget);
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
 										const rowErrorId = `a-s2-row-error-${rowIndex}`;
@@ -1271,7 +1279,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																)
 															}
 														>
-																{modeOptions.map((mode) => {
+																	{displayModeOptions.map((mode) => {
 																const restriction = meta?.restrictedModes?.[mode];
 																const modeWarn = meta?.modeWarnings?.[mode];
 																	const label = getModeLabel(mode, locale);
@@ -1450,7 +1458,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																}
 															>
 																<option value="">{row.mode === "none" ? "--" : copy.selectTarget}</option>
-																{forwardRelayChoices.map((choice) => (
+																{displayForwardRelayChoices.map((choice) => (
 																	<option key={choice.value} value={choice.value} disabled={choice.disabled}>
 																		{choice.label}
 																	</option>
