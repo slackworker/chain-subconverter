@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "scenarioID": "3pass-ss2022-test-subscription",
+  "stage1Input": {
+    "landingItems": [
+      "ss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=@198.51.100.10:8888#SS2022-Test-256-US"
+    ],
+    "transitItems": [
+      "http://198.51.100.20:3001/download/test-subscription"
+    ],
+    "forwardRelayItems": [],
+    "advancedOptions": {
+      "emoji": true,
+      "udp": true,
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "include": [],
+      "exclude": []
+    }
+  }
+}
