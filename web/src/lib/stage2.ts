@@ -84,6 +84,32 @@ export function getSelectableChoices(
 	return [];
 }
 
+export function getStage2DisplayModeOptions(stage2Init: Stage2Init | null, currentMode: Stage2Row["mode"]) {
+	if (stage2Init?.availableModes.length) {
+		return stage2Init.availableModes;
+	}
+	return [currentMode];
+}
+
+export function getStage2TargetDisplayLabel(
+	stage2Init: Stage2Init | null,
+	stage2Rows: Stage2SnapshotRows,
+	row: Stage2Row,
+) {
+	if (row.mode === "none" || row.targetName === null) {
+		return null;
+	}
+
+	if (row.mode === "chain") {
+		return getChainTargetChoiceGroups(stage2Init)
+			.flatMap((group) => group.choices)
+			.find((choice) => choice.value === row.targetName)?.label ?? row.targetName;
+	}
+
+	return getForwardRelayChoices(stage2Init, stage2Rows, row.landingNodeName)
+		.find((choice) => choice.value === row.targetName)?.label ?? row.targetName;
+}
+
 export function pickNextTarget(
 	stage2Init: Stage2Init | null,
 	stage2Rows: Stage2SnapshotRows,

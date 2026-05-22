@@ -348,6 +348,75 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("keeps the restored snapshot in readonly conflict state when restore targets are no longer replayable", async () => {
+		const workflow = renderWorkflow();
+		const shortUrl = "https://public.example.com/s/conflicted-short";
+		const restoreResponse: ResolveURLResponse = {
+			longUrl: "https://public.example.com/sub?data=restore-conflicted",
+			shortUrl,
+			restoreStatus: "conflicted",
+			stage1Input: {
+				landingRawText: "ss://restored-landing",
+				transitRawText: "https://example.com/restored-transit.txt",
+				forwardRelayItems: [],
+				advancedOptions: {
+					emoji: true,
+					udp: true,
+					skipCertVerify: null,
+					config: null,
+					include: null,
+					exclude: null,
+				},
+			},
+			stage2Snapshot: {
+				rows: [
+					{
+						landingNodeName: "landing-hk",
+						mode: "chain",
+						targetName: "HK Relay Group",
+					},
+				],
+			},
+			messages: [
+				{ level: "warning", code: "RESTORE_CONFLICT", message: "restore conflict: target not found" },
+			],
+			blockingErrors: [],
+		};
+
+		mockPostResolveURL.mockResolvedValueOnce(restoreResponse);
+
+		await updateCurrentLinkInput(workflow, "Ib2t8wwr3OZ");
+		await runWorkflowAction(() => workflow.current.handleRestore());
+
+		expect(mockPostResolveURL).toHaveBeenCalledWith("Ib2t8wwr3OZ");
+		expect(mockPostStage1Convert).not.toHaveBeenCalled();
+		expect(workflow.current.state.stage1Input).toEqual({
+			...restoreResponse.stage1Input,
+			advancedOptions: {
+				...restoreResponse.stage1Input.advancedOptions,
+				enablePortForward: false,
+			},
+		});
+		expect(workflow.current.state.stage2Init).toBeNull();
+		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.generatedUrls).toEqual({
+			longUrl: restoreResponse.longUrl,
+			shortUrl,
+		});
+		expect(workflow.current.state.currentLinkInput).toBe(shortUrl);
+		expect(workflow.current.state.restoreStatus).toBe("conflicted");
+		expect(workflow.current.state.stage2Stale).toBe(false);
+		expect(workflow.current.isConflictReadonly).toBe(true);
+		expect(workflow.current.isStage2Editable).toBe(false);
+		expect(workflow.current.canGenerate).toBe(false);
+		expect(workflow.current.state.messages).toEqual(restoreResponse.messages);
+		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
+			"RESTORE_STARTED",
+			"RESTORE_CONFLICT",
+			"RESTORE_CONFLICTED",
+		]);
+	});
+
 	it("keeps restored output state but marks Stage 2 stale when restore reinitialization fails", async () => {
 		const workflow = renderWorkflow();
 		const restoreResponse: ResolveURLResponse = {

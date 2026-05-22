@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { getForwardRelayChoices, pickNextTarget } from "./stage2";
+import {
+	getForwardRelayChoices,
+	getStage2DisplayModeOptions,
+	getStage2TargetDisplayLabel,
+	pickNextTarget,
+} from "./stage2";
 
 import type { Stage2Init, Stage2Row } from "../types/api";
 
@@ -101,5 +106,19 @@ describe("stage2 target helpers", () => {
 		expect(
 			pickNextTarget(minimalStage2Init, [], "landing-a", "none", "relay-a.example.com:7443"),
 		).toBeNull();
+	});
+
+	it("falls back to the restored mode when live mode options are unavailable", () => {
+		expect(getStage2DisplayModeOptions(null, "chain")).toEqual(["chain"]);
+	});
+
+	it("falls back to the restored target name when live target metadata is unavailable", () => {
+		const restoredRow: Stage2Row = {
+			landingNodeName: "landing-a",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		};
+
+		expect(getStage2TargetDisplayLabel(null, [restoredRow], restoredRow)).toBe("HK Relay Group");
 	});
 });
