@@ -162,10 +162,6 @@ func (client *Client) executePass(ctx context.Context, op string, rawURL string)
 	return string(body), nil
 }
 
-func (client *Client) buildPassURL(request Request, rawInput string, list bool, extraQuery url.Values) (string, error) {
-	return buildPassURLFromBaseURL(client.baseURL, request, rawInput, list, extraQuery)
-}
-
 func buildPassURLFromBaseURL(baseURL *url.URL, request Request, rawInput string, list bool, extraQuery url.Values) (string, error) {
 	if baseURL == nil {
 		return "", fmt.Errorf("subconverter base URL must not be nil")
@@ -192,17 +188,6 @@ func buildRawQuery(request Request, rawInput string, list bool, extraQuery url.V
 	params = appendOptionalStringListQuery(params, "exclude", request.Options.Exclude)
 	params = appendExtraQuery(params, extraQuery)
 	return strings.Join(params, "&")
-}
-
-func cloneExtraQuery(values url.Values) url.Values {
-	if len(values) == 0 {
-		return url.Values{}
-	}
-	cloned := make(url.Values, len(values))
-	for name, entries := range values {
-		cloned[name] = append([]string(nil), entries...)
-	}
-	return cloned
 }
 
 func appendOptionalBoolQuery(params []string, name string, value *bool) []string {

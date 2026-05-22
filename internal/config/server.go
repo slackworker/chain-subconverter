@@ -24,7 +24,6 @@ const (
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 	DefaultTemplateAllowPrivateNetworks = false
-	DefaultRequireUserFacingBaseURL     = false
 	DefaultTrustedProxyCIDRs            = ""
 
 	EnvHTTPAddress                  = "CHAIN_SUBCONVERTER_HTTP_ADDRESS"
@@ -41,7 +40,6 @@ const (
 	EnvDefaultTemplateFetchCacheTTL = "CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateAllowPrivateNetworks = "CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS"
-	EnvRequireUserFacingBaseURL     = "CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL"
 	EnvTrustedProxyCIDRs            = "CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS"
 )
 
@@ -60,7 +58,6 @@ type Server struct {
 	DefaultTemplateFetchCacheTTL time.Duration
 	TemplateFetchCacheTTL        time.Duration
 	TemplateAllowPrivateNetworks bool
-	RequireUserFacingBaseURL     bool
 	TrustedProxyCIDRs            string
 }
 
@@ -80,7 +77,6 @@ func DefaultServer() Server {
 		DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 		TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 		TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
-		RequireUserFacingBaseURL:     DefaultRequireUserFacingBaseURL,
 		TrustedProxyCIDRs:            DefaultTrustedProxyCIDRs,
 	}
 }
@@ -162,13 +158,6 @@ func LoadServerFromEnv() (Server, error) {
 		}
 		cfg.TemplateAllowPrivateNetworks = templateAllowPrivateNetworks
 	}
-	if value, ok := lookupTrimmedEnv(EnvRequireUserFacingBaseURL); ok {
-		requireUserFacingBaseURL, err := strconv.ParseBool(value)
-		if err != nil {
-			return Server{}, fmt.Errorf("parse %s: %w", EnvRequireUserFacingBaseURL, err)
-		}
-		cfg.RequireUserFacingBaseURL = requireUserFacingBaseURL
-	}
 	if value, ok := lookupTrimmedEnv(EnvTrustedProxyCIDRs); ok {
 		normalized, err := normalizeTrustedProxyCIDRs(value)
 		if err != nil {
@@ -234,8 +223,6 @@ func (cfg Server) Validate() error {
 		if parsedURL.Scheme == "" || parsedURL.Host == "" {
 			return fmt.Errorf("user-facing base URL must include scheme and host")
 		}
-	} else if cfg.RequireUserFacingBaseURL {
-		return fmt.Errorf("user-facing base URL is required when %s=true", EnvRequireUserFacingBaseURL)
 	}
 	if _, err := normalizeTrustedProxyCIDRs(cfg.TrustedProxyCIDRs); err != nil {
 		return fmt.Errorf("parse trusted proxy CIDRs: %w", err)

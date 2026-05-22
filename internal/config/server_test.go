@@ -40,7 +40,6 @@ func TestLoadServerFromEnv(t *testing.T) {
 				EnvDefaultTemplateFetchCacheTTL: " 30m ",
 				EnvTemplateFetchCacheTTL:        " 5m ",
 				EnvTemplateAllowPrivateNetworks: " true ",
-				EnvRequireUserFacingBaseURL:     " true ",
 				EnvTrustedProxyCIDRs:            " 172.16.0.0/12, 127.0.0.1 , , 2001:db8::/32 ",
 			},
 			want: Server{
@@ -58,7 +57,6 @@ func TestLoadServerFromEnv(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: 30 * time.Minute,
 				TemplateFetchCacheTTL:        5 * time.Minute,
 				TemplateAllowPrivateNetworks: true,
-				RequireUserFacingBaseURL:     true,
 				TrustedProxyCIDRs:            "172.16.0.0/12,127.0.0.1,2001:db8::/32",
 			},
 		},
@@ -112,25 +110,11 @@ func TestLoadServerFromEnv(t *testing.T) {
 			wantErr: "parse CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS",
 		},
 		{
-			name: "invalid require user-facing base url",
-			env: map[string]string{
-				EnvRequireUserFacingBaseURL: "bad",
-			},
-			wantErr: "parse CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL",
-		},
-		{
 			name: "invalid trusted proxy cidrs",
 			env: map[string]string{
 				EnvTrustedProxyCIDRs: "172.16.0.0/12, not-an-ip",
 			},
 			wantErr: "parse CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS",
-		},
-		{
-			name: "require user-facing base url without explicit value",
-			env: map[string]string{
-				EnvRequireUserFacingBaseURL: "true",
-			},
-			wantErr: "user-facing base URL is required when CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true",
 		},
 		{
 			name: "invalid subconverter-facing base url",
@@ -202,7 +186,6 @@ func TestServerValidate(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 				TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 				TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
-				RequireUserFacingBaseURL:     DefaultRequireUserFacingBaseURL,
 				TrustedProxyCIDRs:            "172.16.0.0/12,127.0.0.1",
 			},
 		},
@@ -320,22 +303,6 @@ func TestServerValidate(t *testing.T) {
 			wantErr: "user-facing base URL must include scheme and host",
 		},
 		{
-			name: "require user-facing base url when empty",
-			cfg: Server{
-				HTTPAddress:                 DefaultHTTPAddress,
-				SubconverterFacingBaseURL:   DefaultSubconverterFacingBaseURL,
-				FrontendDistDir:             DefaultFrontendDistDir,
-				MaxLongURLLength:            DefaultMaxLongURLLength,
-				MaxUpstreamRequestURLLength: DefaultMaxUpstreamRequestURLLength,
-				MaxURLsPerField:             DefaultMaxURLsPerField,
-				ShortLinkDBPath:             DefaultShortLinkDBPath,
-				ShortLinkCapacity:           DefaultShortLinkCapacity,
-				DefaultTemplateURL:          DefaultDefaultTemplateURL,
-				RequireUserFacingBaseURL:    true,
-			},
-			wantErr: "user-facing base URL is required when CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true",
-		},
-		{
 			name: "invalid trusted proxy cidrs",
 			cfg: Server{
 				HTTPAddress:                  DefaultHTTPAddress,
@@ -351,7 +318,6 @@ func TestServerValidate(t *testing.T) {
 				DefaultTemplateFetchCacheTTL: DefaultDefaultTemplateFetchCacheTTL,
 				TemplateFetchCacheTTL:        DefaultTemplateFetchCacheTTL,
 				TemplateAllowPrivateNetworks: DefaultTemplateAllowPrivateNetworks,
-				RequireUserFacingBaseURL:     DefaultRequireUserFacingBaseURL,
 				TrustedProxyCIDRs:            "bad-entry",
 			},
 			wantErr: "parse trusted proxy CIDRs",
@@ -462,7 +428,6 @@ func setServerEnv(t *testing.T, values map[string]string) {
 	t.Setenv(EnvDefaultTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateFetchCacheTTL, "")
 	t.Setenv(EnvTemplateAllowPrivateNetworks, "")
-	t.Setenv(EnvRequireUserFacingBaseURL, "")
 
 	for key, value := range values {
 		t.Setenv(key, value)
