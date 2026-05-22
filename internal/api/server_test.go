@@ -26,6 +26,11 @@ type fakeConversionSource struct {
 	defaultTemplateURL string
 }
 
+const (
+	defaultFixtureName                     = "3pass-ss2022-test-subscription"
+	dualLandingChainPortForwardFixtureName = "dual-landing-chain-port-forward"
+)
+
 func (source *fakeConversionSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
 	source.gotRequest = request
 	return source.result, source.err
@@ -61,6 +66,41 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	}
 	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
 		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	}
+}
+
+func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
+	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(requestBody))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Content-Type"); got != jsonContentType {
+		t.Fatalf("content-type mismatch: got %q want %q", got, jsonContentType)
+	}
+
+	var response service.Stage1ConvertResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
+		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	}
+	if len(response.Stage2Init.Rows) != 7 {
+		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 7", len(response.Stage2Init.Rows))
+	}
+	if len(response.Stage2Init.ForwardRelays) != 2 {
+		t.Fatalf("len(response.Stage2Init.ForwardRelays) = %d, want 2", len(response.Stage2Init.ForwardRelays))
 	}
 }
 
@@ -169,6 +209,35 @@ func TestGenerateHandler_HappyPath(t *testing.T) {
 	}
 }
 
+func TestGenerateHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
+	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"))
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(requestBody))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Content-Type"); got != jsonContentType {
+		t.Fatalf("content-type mismatch: got %q want %q", got, jsonContentType)
+	}
+
+	var response service.GenerateResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
+		t.Fatalf("dual-landing generate response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	}
+}
+
 func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	var requestPayload service.GenerateRequest
@@ -223,6 +292,88 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 	}
 	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
 		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
+	}
+}
+
+func TestResolveURLHandler_DualLandingChainPortForwardLongURL(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	var requestPayload service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &requestPayload)
+	var expectedShortLinkResponse service.ShortLinkResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.response.json"), &expectedShortLinkResponse)
+
+	legacyLongURL, err := service.EncodeLongURL(
+		"https://legacy.example.com/base",
+		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}, service.NewInMemoryShortLinkStore())
+
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"`+legacyLongURL+`"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response service.ResolveURLResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+
+	assertResolveURLReplayableResponse(t, response, requestPayload, expectedShortLinkResponse.LongURL, "")
+	if response.LongURL == legacyLongURL {
+		t.Fatalf("expected resolve-url longUrl to canonicalize public base URL, got %q", response.LongURL)
+	}
+}
+
+func TestResolveURLHandler_DualLandingChainPortForwardShortURL(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	var requestPayload service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &requestPayload)
+	var expectedShortLinkResponse service.ShortLinkResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.response.json"), &expectedShortLinkResponse)
+
+	shortLinks := service.NewInMemoryShortLinkStore()
+	shortID := strings.TrimPrefix(expectedShortLinkResponse.ShortURL, "http://localhost:11200/sub/")
+	if shortID == expectedShortLinkResponse.ShortURL {
+		t.Fatalf("failed to extract short ID from %q", expectedShortLinkResponse.ShortURL)
+	}
+	shortLinks.Save(shortID, expectedShortLinkResponse.LongURL)
+
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}, shortLinks)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"`+expectedShortLinkResponse.ShortURL+`"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response service.ResolveURLResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+
+	assertResolveURLReplayableResponse(t, response, requestPayload, expectedShortLinkResponse.LongURL, expectedShortLinkResponse.ShortURL)
+	if response.ShortURL != expectedShortLinkResponse.ShortURL {
+		t.Fatalf("shortUrl mismatch: got %q want %q", response.ShortURL, expectedShortLinkResponse.ShortURL)
+	}
+	if response.LongURL != expectedShortLinkResponse.LongURL {
+		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, expectedShortLinkResponse.LongURL)
+	}
+	if len(response.Stage2Snapshot.Rows) != 7 {
+		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 7", len(response.Stage2Snapshot.Rows))
 	}
 }
 
@@ -370,6 +521,109 @@ func TestShortLinksHandler_HappyPath(t *testing.T) {
 	}
 }
 
+func TestShortLinksHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	var requestPayload service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &requestPayload)
+	var expectedResponse service.ShortLinkResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.response.json"), &expectedResponse)
+
+	legacyLongURL, err := service.EncodeLongURL(
+		"https://legacy.example.com/base",
+		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}, service.NewInMemoryShortLinkStore())
+
+	request := httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"`+legacyLongURL+`"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response service.ShortLinkResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if !reflect.DeepEqual(response, expectedResponse) {
+		t.Fatalf("dual-landing short link response mismatch: got %#v want %#v", response, expectedResponse)
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"`+legacyLongURL+`"}`))
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch on second request: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	var secondResponse service.ShortLinkResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&secondResponse); err != nil {
+		t.Fatalf("decode second response JSON: %v", err)
+	}
+	if !reflect.DeepEqual(secondResponse, expectedResponse) {
+		t.Fatalf("dual-landing short link idempotency mismatch: got %#v want %#v", secondResponse, expectedResponse)
+	}
+}
+
+func TestShortLinksHandler_UsesTrustedForwardedHeadersForPublicShortURL(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	var requestPayload service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &requestPayload)
+
+	legacyLongURL, err := service.EncodeLongURL(
+		"https://legacy.example.com/base",
+		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"",
+		"http://localhost:11200",
+		8192,
+		service.InputLimits{},
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"`+legacyLongURL+`"}`))
+	request.RemoteAddr = "172.18.0.2:12345"
+	request.Header.Set("X-Forwarded-Proto", "https")
+	request.Header.Set("X-Forwarded-Host", "public.example.com")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response service.ShortLinkResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if !strings.HasPrefix(response.LongURL, "https://public.example.com/sub?data=") {
+		t.Fatalf("longUrl mismatch: got %q", response.LongURL)
+	}
+	if !strings.HasPrefix(response.ShortURL, "https://public.example.com/sub/") {
+		t.Fatalf("shortUrl mismatch: got %q", response.ShortURL)
+	}
+}
+
 func TestShortLinksHandler_MapsInvalidLongURLToSpecModel(t *testing.T) {
 	handler := mustNewTestHandlerWithShortLinks(t, &fakeConversionSource{}, service.NewInMemoryShortLinkStore())
 
@@ -478,6 +732,38 @@ func TestSubscriptionHandler_HappyPath(t *testing.T) {
 	}
 	if strings.TrimSpace(recorder.Body.String()) != strings.TrimSpace(expectedConfig) {
 		t.Fatalf("subscription body mismatch:\n--- got ---\n%s\n--- want ---\n%s", recorder.Body.String(), expectedConfig)
+	}
+}
+
+func TestSubscriptionHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
+
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if got := recorder.Header().Get("Content-Type"); got != yamlContentType {
+		t.Fatalf("content-type mismatch: got %q want %q", got, yamlContentType)
+	}
+	if got := recorder.Header().Get("Cache-Control"); got != noStoreHeader {
+		t.Fatalf("cache-control mismatch: got %q want %q", got, noStoreHeader)
+	}
+	if got := recorder.Header().Get("Content-Disposition"); got != `inline; filename="subscription.yaml"` {
+		t.Fatalf("content-disposition mismatch: got %q", got)
+	}
+	if strings.TrimSpace(recorder.Body.String()) != strings.TrimSpace(expectedConfig) {
+		t.Fatalf("dual-landing subscription body mismatch:\n--- got ---\n%s\n--- want ---\n%s", recorder.Body.String(), expectedConfig)
 	}
 }
 
@@ -898,6 +1184,40 @@ func TestGenerateHandler_AllowsInternalLongURLBeyondPublicBudget(t *testing.T) {
 	}
 }
 
+func TestGenerateHandler_UsesTrustedForwardedHeadersForPublicLongURL(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"))
+
+	templateStore := service.NewInMemoryTemplateContentStore()
+	handler, err := NewHandler(
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		templateStore,
+		service.NewInMemoryShortLinkStore(),
+		"",
+		"http://localhost:11200",
+		2048,
+		service.InputLimits{},
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(requestBody))
+	request.RemoteAddr = "172.18.0.2:12345"
+	request.Header.Set("X-Forwarded-Proto", "https")
+	request.Header.Set("X-Forwarded-Host", "public.example.com")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), `"longUrl":"https://public.example.com/sub?data=`) {
+		t.Fatalf("generate response should include forwarded public longUrl, got body=%s", recorder.Body.String())
+	}
+}
+
 func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: singleLandingResult("Unknown Landing", "ss", false),
@@ -1277,6 +1597,29 @@ func mustDecodeLongURLPayloadFromString(t *testing.T, longURL string) service.Lo
 	return payload
 }
 
+func assertResolveURLReplayableResponse(t *testing.T, response service.ResolveURLResponse, requestPayload service.GenerateRequest, wantLongURL string, wantShortURL string) {
+	t.Helper()
+
+	if response.LongURL != wantLongURL {
+		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, wantLongURL)
+	}
+	if response.ShortURL != wantShortURL {
+		t.Fatalf("shortUrl mismatch: got %q want %q", response.ShortURL, wantShortURL)
+	}
+	if response.RestoreStatus != "replayable" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
+	}
+	if !reflect.DeepEqual(response.Stage1Input, requestPayload.Stage1Input) {
+		t.Fatalf("stage1Input mismatch: got %#v want %#v", response.Stage1Input, requestPayload.Stage1Input)
+	}
+	if !reflect.DeepEqual(response.Stage2Snapshot, requestPayload.Stage2Snapshot) {
+		t.Fatalf("stage2Snapshot mismatch: got %#v want %#v", response.Stage2Snapshot, requestPayload.Stage2Snapshot)
+	}
+	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
+	}
+}
+
 func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, wantStatus int, want service.BlockingError) {
 	t.Helper()
 
@@ -1355,6 +1698,10 @@ func singleLandingResult(landingName string, landingType string, omitServer bool
 }
 
 func fixtureDirectory(t *testing.T) string {
+	return fixtureDirectoryNamed(t, defaultFixtureName)
+}
+
+func fixtureDirectoryNamed(t *testing.T, fixtureName string) string {
 	t.Helper()
 
 	_, currentFile, _, ok := runtime.Caller(0)
@@ -1369,7 +1716,7 @@ func fixtureDirectory(t *testing.T) string {
 		"internal",
 		"review",
 		"testdata",
-		"3pass-ss2022-test-subscription",
+		fixtureName,
 	)
 }
 
