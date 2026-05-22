@@ -1,10 +1,19 @@
-# 3-pass 与最小完整流程 smoke 基线：`3pass-ss2022-test-subscription`
+# Smoke fixture：`3pass-ss2022-test-subscription`
 
-本文只说明最小 smoke 基线与目录职责。
+本文只说明当前 Smoke fixture 与目录职责。
 
 ## 用途
 
-本用例固定一组最小但完整的 `subconverter` 3-pass 基线，并覆盖默认链式代理 happy path 的最小业务闭环：
+本用例固定一组最小但完整的 `subconverter` 3-pass 基线，并覆盖默认链式代理 happy path 的最小业务闭环。
+
+对外文档层将这组数据定义为 `Smoke` 分层；底层 fixture ID 仍保持 `3pass-ss2022-test-subscription`，避免影响目录名、命令参数与现有测试代码。
+
+当前默认约定是：
+
+- 新功能若没有明显依赖双落地 / 双中转 / template / port-forward 这类复杂拓扑，优先先补到 Smoke
+- `web/e2e/deployed-smoke.spec.ts` 的默认 fallback 输入继续跟随这组 Smoke 数据
+
+固定覆盖范围包括：
 
 - `landing-discovery pass`
 - `transit-discovery pass`
@@ -18,7 +27,21 @@
 
 目录：`internal/review/testdata/3pass-ss2022-test-subscription/`
 
-该目录是当前保留的最小 smoke 基线目录，供 `internal/review`、`internal/service` 与 `internal/api` 相关自动化测试回放。
+该目录是当前保留的 Smoke fixture 目录，供 `internal/review`、`internal/service` 与 `internal/api` 相关自动化测试回放。
+
+其中 `stage1/input/*` 当前已改由仓库根目录的 canonical 场景文件派生：`testdata/canonical-scenarios/3pass-ss2022-test-subscription.stage1.json`。
+
+当前 `internal/review` 对这组 tracked fixture 的 Stage 1 加载也会优先直接读取这份 canonical JSON，并构造 review 语义下的 `service.Stage1Input`；目录里的 `stage1/input/*` 继续保留为生成物、审计材料与 `fixture-freshness` 的 drift 检查目标，而不是 tracked 场景的回源输入。
+
+刷新这组 Smoke fixture 的 Stage 1 输入时，使用：
+
+```bash
+go run ./cmd/testfixturegen -scenario 3pass-ss2022-test-subscription
+```
+
+当前该命令对这组 Smoke fixture 只负责刷新 `stage1/input/*`。`stage2/output/*` 继续保留为历史固定基线，不跟随 canonical 自动重录。
+
+当前这个 canonical 场景继续固定 Smoke 真正消费的规范化 Stage 1 输入，不额外引入双落地场景里那种更丰富的 transit/template 附属材料。它现在的职责主要是：作为最小内部回放基线，以及 `web/e2e/deployed-smoke.spec.ts` 的默认 fallback 输入来源；Cloudflare Worker 公网 fixture 已转向 `dual-landing-chain-port-forward` 这套更完整的 Comprehensive 数据。
 
 该目录固定保存以下基线材料：
 
@@ -64,6 +87,6 @@
 ## 边界
 
 - 仓库内不再保留文件驱动的手动前端回放工作区
-- 更完整的固定回放样例见 [dual-landing-chain-port-forward](dual-landing-chain-port-forward.md)
+- 更完整的 Comprehensive fixture 见 [dual-landing-chain-port-forward](dual-landing-chain-port-forward.md)
 - 若后续继续扩展高级设置、手动 override、端口转发或恢复冲突，应在 `internal/review/testdata/` 下新增并列 fixture
 - 真实人工验证统一走实际前端服务、`/api/*` 与订阅路径，不复用旧的文本输入回放链

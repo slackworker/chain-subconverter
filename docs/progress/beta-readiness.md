@@ -1,6 +1,6 @@
 # Beta 发布缺口评估
 
-> 最近更新：2026-05-18
+> 最近更新：2026-05-22
 
 实时状态见 [STATUS.md](STATUS.md)；执行计划见 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md)。
 
@@ -9,13 +9,13 @@
 - **阶段**：3.0 开发后期 / 发布整理；**未进入 Beta 冻结**。
 - **分支与标签**：`dev / beta / main` → `dev-latest / beta-latest / latest`。
 - **UI**：Beta 验收以默认 `/`（`default` scheme）为主；`/ui/a|b|c` 不阻塞。
-- **自动化**：Go 双 fixture（`go test ./...`）；前端 Vitest + 本地/容器化 Playwright happy path；**CI 尚无 E2E**。
+- **自动化**：`ci.yml` 含 Go test、review/worker fixture freshness、Vitest、`web-mock-e2e`（mocked Playwright，blocking）、四 scheme build；本地/容器化完整 Playwright（见 [test-system-review.md](../testing/test-system-review.md)）。
 
 ## 距 Beta 仍缺
 
 1. **`beta-latest` 实战**：至少一轮发布 + 第三方设备回归并归档（见 [release-runbook](../testing/release-runbook.md) 模板）。
 2. **反馈闭环**：`.github/ISSUE_TEMPLATE/` 已补；持续用 Issue/回归记录归档，而非零散笔记。
-3. **E2E 加深**：阻断路径、更广 scheme 矩阵；可选纳入 CI（当前非 blocking）。
+3. **E2E 加深**：阻断路径、更广 scheme 矩阵；当前 blocking 基线只保留两条 mocked happy path。
 4. **质量债（非硬阻塞）**：`subconverter` 浮动 tag 需在回归中注明；B/C workflow log 视觉与 default 未完全统一。
 
 ## Beta 硬门槛

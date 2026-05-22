@@ -61,7 +61,7 @@
 - 单入口直连部署通常可以工作。
 - 常见 Docker bridge + 宿主机反代场景可通过 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 改善 fallback 推断；官方 Compose 示例默认给出 `172.16.0.0/12`。若使用 `network_mode: host` 且对端为 loopback，需另行加入 `127.0.0.1/32` 等实际 peer。
 - 如果前面有 HTTPS 终止反代，而应用本身只看到明文 HTTP，请务必显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL=https://<your-host>`。
-- 如果该部署不允许继续依赖请求头自动推断，应同时设置 `CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true`，让错误配置在启动阶段直接失败。
+- 如果该部署不希望继续依赖请求头自动推断，就应显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，不要留空。
 - 如果公网或多入口场景下不显式设置该值，生成链接可能错误，且存在被 Host 头污染的风险。
 
 ## 4. 资源保护（基础级）
@@ -87,14 +87,13 @@
 
 1. 仅暴露 `app` 的 HTTP 入口，不要暴露 `subconverter`。
 2. 为第三方设备部署保留持久卷，避免短链数据在容器重建后丢失。
-3. 有 HTTPS 反代、固定域名或公网入口时，显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`。
-4. 对公网、固定域名或 HTTPS 反代部署，建议同时设置 `CHAIN_SUBCONVERTER_REQUIRE_USER_FACING_BASE_URL=true`。
-5. 优先固定 `APP_IMAGE` 为明确版本 tag（如 `latest` 对应的一次性 digest 或版本号），避免无记录地长期漂移。
-6. 限制可访问人群；勿将当前版本直接当作公开互联网多租户服务。
-7. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
-8. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
-9. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先结合反代或网关层继续限速。
-10. 若入口前存在反代，确认 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 覆盖的是实际反代 peer 网段，而不是笼统地扩大到所有私网。
+3. 有 HTTPS 反代、固定域名或公网入口时，显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，不要依赖自动推断。
+4. 优先固定 `APP_IMAGE` 为明确版本 tag（如 `latest` 对应的一次性 digest 或版本号），避免无记录地长期漂移。
+5. 限制可访问人群；勿将当前版本直接当作公开互联网多租户服务。
+6. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
+7. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
+8. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先结合反代或网关层继续限速。
+9. 若入口前存在反代，确认 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 覆盖的是实际反代 peer 网段，而不是笼统地扩大到所有私网。
 
 ## 当前不承诺防护的内容
 

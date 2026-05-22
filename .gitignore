@@ -17,6 +17,8 @@ vendor/
 node_modules/
 web/dist/
 web/.vite/
+web/test-results/
+web/playwright-report/
 *.tsbuildinfo
 .env
 .env.*
@@ -63,3 +65,6 @@ logs/
 # =====================
 docs/temp/*
 !docs/temp/README.md
+
+# Local-only deployment regression details (pair with docs/testing/third-party-deployments.md)
+docs/testing/third-party-deployments.local.md

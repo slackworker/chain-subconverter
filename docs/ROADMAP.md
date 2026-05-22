@@ -1,6 +1,6 @@
 # 推进路线图
 
-本文只记录阶段目标、非目标、依赖与推荐顺序。
+本文只记录阶段目标、非目标、依赖与推荐顺序。已完成阶段的任务拆解见 Git 历史；当前状态以 [progress/STATUS.md](progress/STATUS.md) 为准。
 
 ## Phase 依赖
 
@@ -12,83 +12,45 @@ flowchart LR
     P3 --> P4["Phase 4\n前端与部署"]
 ```
 
-## Phase 1：subconverter 集成层收口
+## Phase 1：subconverter 集成层收口（已完成）
 
-**目标**：`internal/subconverter/` 从占位变为可用（已完成）
+**目标**：`internal/subconverter/` 从占位变为可用。
 
-| 任务 | 说明 |
-|------|------|
-| 实现 `Client` | 封装 3-pass HTTP 调用，URL 拼接与参数传递 |
-| 超时 & 并发控制 | `spec 0.1`：15s 超时、10 并发信号量、达上限立即失败 |
-| 错误映射 | 超时/连接失败/非成功 HTTP/不可解析结果 → `SUBCONVERTER_UNAVAILABLE` |
-| Golden test | 对接 `testdata/` 已有夹具做 mock 验证 |
+**结论**：`Client`、超时与并发、错误映射与 golden 测试已落地。详见 [STATUS.md](progress/STATUS.md)。
 
-## Phase 2：最小业务闭环
+## Phase 2：最小业务闭环（已完成）
 
-**目标**：基于固定测试数据与默认值，打通“落地信息 + 中转信息 -> `stage2Init` -> `longUrl` -> 最终订阅 YAML”的最小业务流程（已完成）
+**目标**：固定测试数据下打通「落地 + 中转 → `stage2Init` → `longUrl` → 订阅 YAML」。
 
-| 任务 | 说明 |
-|------|------|
-| 固定 `3-pass` happy path | 复用同一条转换管线，校验落地 / 中转 / full-base 三个 pass |
-| 默认 `stage2Init` | 对固定测试输入产出默认 `rows`、`availableModes`、`chainTargets[]` |
-| 规范 `longUrl` | 基于固定 `stage1Input + stage2Snapshot` 生成确定性长链接 |
-| 最终订阅 YAML 渲染 | 通过 `GET /sub?...` 或等价入口回放最终订阅 YAML |
-| Golden 验收 | 对齐测试样例中的 request / response / payload / YAML 固定产物 |
+**结论**：3-pass happy path、默认 `stage2Init`、`longUrl` 与 YAML 回放已固化到 [3pass-ss2022-test-subscription.md](testing/3pass-ss2022-test-subscription.md) 与 `internal/service` / `internal/api` 测试。
 
-明确不纳入本阶段：
+**本阶段未纳入**：短链、完整 `resolve-url` / `blockingErrors`、端口转发全量、前端与部署（见 Phase 3–4）。
 
-- 短链接与 SQLite 存储
-- `resolve-url` 恢复判定与 `restoreStatus` 语义
-- 完整 `messages[]` / `blockingErrors[]` / HTTP 失败语义收口
-- 端口转发完整业务面与更多可选配置组合
-- 前端 UI、页面恢复交互与部署编排
+## Phase 2.5：阶段性整理（已完成）
 
-## Phase 2.5：阶段性整理
+**目标**：文档、包边界与下一阶段起点收口。
 
-**目标**：在最小业务闭环完成后，先做一次收口整理，再继续扩展其他业务与前端（已完成）
+**结论**：已写入 [STATUS.md](progress/STATUS.md) 与 fixture 文档。安全口径（含 SSRF）仍在 ROADMAP/STATUS 跟踪，待对应实现阶段再决定是否并入 spec。
+
+## Phase 3：扩展业务与 API 收口（已完成）
+
+**目标**：补齐完整后端业务面与对外契约。
+
+**结论**：`stage1/convert`、`generate`、`resolve-url`、`short-links`、订阅读取、失败语义、短链存储与配置限制已落地。细节见 [spec/03-backend-api.md](spec/03-backend-api.md) 与 [STATUS.md](progress/STATUS.md)。
+
+## Phase 4：前端、部署与发布整理（进行中）
+
+**目标**：在后端扩展业务稳定后，完成前端默认入口、部署路径、分支/标签策略与文档收口。
+
+当前执行入口见 [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md)（Beta 冻结后并入 STATUS 并删除该 plan）。
 
 | 任务 | 说明 |
 |------|------|
-| 文档收口 | 把阶段目标、验收基线、非目标与术语引用边界写清楚 |
-| 结构整理 | 清理最小闭环阶段产生的临时命名、重复逻辑与职责漂移 |
-| 边界确认 | 重新确认服务层、API 层与测试夹具之间的职责边界 |
-| 下一阶段盘点 | 为扩展业务、前端与部署准备更稳定的起点 |
-
-完成口径：上述收口结果现已固化到 [progress/STATUS.md](progress/STATUS.md)、[testing/3pass-ss2022-test-subscription.md](testing/3pass-ss2022-test-subscription.md) 以及 `internal/api`、`internal/service` 的包级说明中。
-
-待定事项（本阶段仅跟踪，不入 spec 正文）：
-
-- 安全口径归位（含 SSRF 相关历史策略）当前仅在 `ROADMAP/STATUS` 跟踪；进入对应实现阶段后再决定是否并入权威 spec
-
-当前状态见 [progress/STATUS.md](progress/STATUS.md)。
-
-## Phase 3：扩展业务与 API 收口
-
-**目标**：在最小闭环稳定后，补齐完整后端业务面与对外契约（已完成）
-
-本阶段细化拆解已移出主导航，当前只保留完成结论与已落地能力。
-
-| 任务 | 说明 |
-|------|------|
-| `internal/api/` | `stage1/convert`、`generate`、`resolve-url`、`short-links`、订阅读取（`GET /sub?...` / `GET /sub/<id>`） |
-| 失败语义收口 | `messages[]`、`blockingErrors[]`、HTTP 状态码与字段级错误映射 |
-| `resolve-url` | 恢复可重放判定与 `restoreStatus` 冲突语义 |
-| `internal/store/` | SQLite 短链接索引（幂等 + LRU 淘汰） |
-| `internal/config/` | 应用层限制项：输入大小、URL 数量、长链接长度、短链容量 |
-
-## Phase 4：前端、部署与发布整理
-
-**目标**：在后端扩展业务稳定后，完成前端默认入口、部署路径、分支/标签策略与文档收口（进行中）
-
-当前执行入口见 [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md)。
-
-| 任务 | 说明 |
-|------|------|
-| 默认 UI 固定 | 默认入口继续使用 `/` + `default` scheme；A/B/C 保留为实验入口 |
-| 发布模型收口 | 分支模型收口为 `dev / beta / main`；滚动标签收口为 `dev-latest / beta-latest / latest` |
-| 用户文档整理 | README、RELEASES、deploy 只保留对外真正需要的说明 |
-| 内部状态整理 | STATUS、计划、路线图、runbook 与当前实现保持同步 |
-| 固定回归基线 | 已含 `3pass-ss2022` 与 `dual-landing-chain-port-forward`；后续补 E2E 阻断路径 |
+| 默认 UI 固定 | 默认入口 `/` + `default` scheme；A/B/C 为实验入口 |
+| 发布模型收口 | `dev / beta / main` → `dev-latest / beta-latest / latest` |
+| 用户文档整理 | README、RELEASES、deploy 只保留对外必要说明 |
+| 内部状态整理 | STATUS、计划、路线图、runbook 与实现同步 |
+| 固定回归基线 | `3pass-ss2022` + `dual-landing-chain-port-forward`；补 E2E 阻断路径（非 blocking） |
 
 > 具体状态与缺口见 [progress/STATUS.md](progress/STATUS.md)。
 
@@ -97,5 +59,5 @@ flowchart LR
 按最小增量推进：
 
 1. 用 `beta` 跑通 `beta-latest` 发布与第三方设备回归并归档。
-2. 补 Playwright 阻断路径；视需要纳入 CI。
+2. 补 Playwright 阻断路径；mock smoke 已在 CI（`web-mock-e2e`，非 blocking），升级 blocking 视需要。
 3. 持续精简 `docs/temp/` 与状态页，避免文档膨胀。

@@ -45,7 +45,7 @@ cd web && npm run build && npm run build:b && npm run build:c
 发布前完整检查（含 E2E）见 [release-runbook](release-runbook.md)。本地 E2E 需先 `./scripts/dev-up.sh default`，再：
 
 ```bash
-cd web && npm run test:e2e -- default-happy-path.spec.ts
+cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
 ```
 
 ### 2. 启动本地 UI

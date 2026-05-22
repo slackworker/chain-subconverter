@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-05-18
+> 最近更新：2026-05-22（文档清理：temp 讨论稿删除、最近验证剪枝、ROADMAP 瘦身）
 
 ## 当前结论
 
@@ -33,52 +33,36 @@
 - `GET /api/runtime-config` 现已同时下发默认模板 URL 与公开 longUrl 预算；前端生成流程已接入 `>8192` 自动短链与禁止回落展示超预算 longUrl。
 - 第三方设备部署已收口为单段 Compose 命令；默认优先走一体化 Compose，也允许按文档切换为双 Docker 分离部署。
 - 四个写接口现已在 HTTP 层共享最简 per-IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整或设 `0` 关闭。
-- 发布工作流与 CI 现已按 `dev / beta / main` 三线调整：`main -> latest`、`beta -> beta-latest`、`dev -> workflow_dispatch 手动镜像`。
+- 发布工作流与 CI 现已按 `dev / beta / main` 三线调整：`main -> latest`、`beta -> beta-latest`、`dev -> workflow_dispatch 手动 dev-latest 镜像（保留快路径）`。
 
 ## 当前缺口
 
-- `docs/temp/` 与历史材料中可能仍有旧发布口径，需按需清理，避免误入主导航。
+- `docs/temp/` 仅保留 `README.md` 入 Git；2026-05-22 已删除本地讨论稿（frontend workflow / blocking E2E），结论见 [test-system-review.md](../testing/test-system-review.md)。
+- 进入 Beta 冻结并完成 W3 回归归档后，将 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md) 剩余条目并入本页并删除该 plan 文件（见 [docs/README.md](../README.md) `plan/` 约定）。
 - `beta` 分支与 Beta 回归节奏已纳入当前模型，但正式进入 Beta 冻结前仍需补齐回归记录、反馈闭环与发布说明。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
-- 浏览器级 E2E 已补上默认 `/` 的最小 Playwright happy path，覆盖“转换并自动填充 -> 生成长链接 -> 切短链 -> 反向解析恢复”；阻断路径与更广方案矩阵仍待补齐。
+- 浏览器级 E2E 已补上两条 mocked Playwright smoke：默认 `/` 最小 happy path，以及 port-forward 的关键交互 / 恢复路径；阻断路径与更广方案矩阵仍待补齐。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
-- 模板 URL 的最小 SSRF 拒绝名单、`RequireUserFacingBaseURL` 与基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
+- 模板 URL 的最小 SSRF 拒绝名单、`USER_FACING_BASE_URL` 优先且缺省自动推断、以及基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
 
 ## 测试基线补充
 
 - 固定回归基线已扩展到两套并列 fixture：
-	- `3pass-ss2022-test-subscription`：最小 smoke
-	- `dual-landing-chain-port-forward`：双落地、双中转订阅、双 relay、长/短链接回放
-- 前端已引入 Vitest，当前覆盖 `web/src/lib/stage1.ts`、`web/src/lib/state.ts`、`web/src/lib/notices.ts` 的纯业务逻辑单测。
-- `web` 已新增 Playwright 最小 happy path spec，默认通过 `playwright.config.ts` 复用 `./scripts/dev-up.sh default` 的固定端口运行时。
-- CI 已新增 `Web Unit Test` job，单独执行 `cd web && npm run test`。
+	- `3pass-ss2022-test-subscription`：Smoke fixture，最小默认回放与 deployed smoke 默认输入
+	- `dual-landing-chain-port-forward`：Comprehensive fixture，覆盖双落地、双中转订阅、双 relay、`stage1/convert` API 金样与长/短链接回放
+- Go 测试现已为 `dual-landing-chain-port-forward` 补齐 `internal/api` handler happy path 回放：`stage1/convert`、`short-links`、`resolve-url`（long URL / short URL），并继续由 `internal/service` / `internal/review` 持有对应的语义与 artifact 回归。
+- 前端已引入 Vitest，当前覆盖 `web/src/lib/stage1.ts`、`web/src/lib/stage2.ts`、`web/src/lib/state.ts`、`web/src/lib/notices.ts` 与 `web/src/hooks/useAppWorkflow.ts` 的纯业务逻辑单测。
+- `web` 已新增两条 mocked Playwright smoke spec，默认通过 `playwright.config.ts` 复用 `./scripts/dev-up.sh default` 的固定端口运行时。
+- CI（`ci.yml`）：`go test`、review/worker fixture freshness、`Web Unit Test`（Vitest）、`web-mock-e2e`（`test:e2e:mock`，blocking）、四 scheme build、`compose config`。详见 [testing/test-system-review.md](../testing/test-system-review.md)。
 
 ## 最近验证
 
-- `2026-05-18`: 容器化 Playwright（v1.60.0）against host `./scripts/dev-up.sh default`：`cd web && npm run test:e2e -- default-happy-path.spec.ts`
-- `2026-05-18`: `cd web && npm test`
-- `2026-05-18`: `go test ./internal/review -run TestBuildDualLandingChainPortForwardArtifacts_HappyPath -v`
-- `2026-05-18`: `go test ./internal/service -run 'TestBuildStage2Init_DualLandingChainPortForwardFixture|TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable|TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL' -v`
-- `2026-05-17`: 已创建本地 `beta` 分支，当前仓库分支模型与工作流口径一致
-- `2026-05-17`: `go test ./...`
-- `2026-05-17`: `cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c`
-- `2026-05-17`: `docker compose -f deploy/docker-compose.yml config`
-- `2026-05-17`: `.github/workflows/docker-publish.yml` 与 `.github/workflows/ci.yml` 已切换到 `dev / beta / main` 分支模型，编辑器诊断通过
-- `2026-05-15`: `go test ./cmd/server ./internal/config ./internal/api`
-- `2026-05-15`: `go test ./internal/service ./internal/subconverter ./internal/config ./internal/api`
-- `2026-05-15`: `cd web && npm run build`
-- `2026-05-14`: `go test ./internal/api ./internal/config ./cmd/server`
-- `2026-05-14`: `go test ./internal/service ./internal/config ./internal/api ./cmd/server`
-- `2026-05-14`: `go test ./internal/api -run TestStage1ConvertHandler_RateLimitsByClientIP`
-- `2026-04-28`: `docker compose -f deploy/docker-compose.yml config`
-- `2026-04-28`: 单段部署命令生成的 `docker-compose.yml` 通过 `docker compose -f - config`
-- `2026-04-21`: `go test ./internal/service ./internal/api`
-- `2026-04-21`: `npm run build:a`、`npm run build:b`、`npm run build:c`
-- `2026-04-19`: `./scripts/dev-up.sh a`
-- `2026-04-19`: 通过前端代理调用 `POST /api/stage1/convert`
-- `2026-04-18`: `go test ./...`
-- `2026-04-18`: `npm run build`、`npm run build:b`
-- `2026-04-18`: `docker compose -f deploy/docker-compose.yml config`
+> 更早命令记录见 Git 历史；本段只保留近两周摘要。
+
+- `2026-05-22`: 文档清理；Worker 公网 `Landing-Subscription?target=URI` 复核 **7** 行
+- `2026-05-21`: dual-landing 全链路 — `testfixturegen`、`go test`（api / review / service）、`cd web && npm run test`、`npm run test:e2e`（default + port-forward happy path）
+- `2026-05-18`: 容器化 Playwright against `./scripts/dev-up.sh default`；`npm test`；dual-landing review/service 回放
+- `2026-05-17`: 本地 `beta` 分支；`go test ./...`；四 scheme build；`compose config`；`ci.yml` / `docker-publish.yml` 切到 `dev / beta / main`
 
 ## 相关文档
 

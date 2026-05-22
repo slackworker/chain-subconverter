@@ -42,17 +42,19 @@
 ```bash
 go test ./...
 cd web && npm run test
-cd web && npm run test:e2e -- default-happy-path.spec.ts
+cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
 cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
 docker compose -f deploy/docker-compose.yml config
 ```
 
 其中 `go test ./...` 当前已覆盖：
 
-- 最小 smoke fixture：`3pass-ss2022-test-subscription`
-- 双落地链式 + 端口转发 fixture：`dual-landing-chain-port-forward`
+- Smoke fixture：`3pass-ss2022-test-subscription`
+- Comprehensive fixture：`dual-landing-chain-port-forward`
 
-当前浏览器级 E2E 自动化基线已补上默认 `/` 的最小 Playwright happy path；其运行时优先复用 `./scripts/dev-up.sh default` 的固定端口。阻断路径与更广 UI 矩阵仍未纳入 blocking baseline。
+新功能默认先补 `Smoke`；只有明显依赖双落地 / 双中转 / template / port-forward 等复杂拓扑时，才只补 `Comprehensive`。
+
+当前浏览器级 E2E 自动化基线已补上两条 mocked Playwright smoke：默认 `/` 最小 happy path，以及 port-forward 的关键交互 / 恢复路径；其运行时优先复用 `./scripts/dev-up.sh default` 的固定端口。阻断路径与更广 UI 矩阵仍未纳入 blocking baseline。
 
 若当前 WSL 缺少 Playwright 浏览器系统库，可先启动：
 
@@ -69,7 +71,7 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 	-e CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
 	-v "$PWD":/work -w /work/web \
 	mcr.microsoft.com/playwright:v1.60.0-noble \
-	npm run test:e2e -- default-happy-path.spec.ts
+	npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
 ```
 
 2. 本地开发路径 smoke
@@ -92,6 +94,14 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 2. 优先执行同文中的一体化单段命令，生成并启动 `docker-compose.yml`；若采用双 Docker 分离部署，则按同文额外设置 `CHAIN_SUBCONVERTER_SUBCONVERTER_UPSTREAM_BASE_URL` 与 `CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL`。
 3. 记录实际访问入口：`http://<device-ip>:<host-port>/`；如有额外方案验证，再补充其他 `scheme`（如 `/ui/a`）。
 
+可选 Playwright 冒烟（`scripts/third-party-smoke.sh` → `deployed-smoke.spec.ts`）**必须**显式设置目标部署入口，无仓库内默认内网部署 URL：
+
+```bash
+CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" ./scripts/third-party-smoke.sh
+```
+
+命令与变量说明亦见 [third-party-deployments.md](third-party-deployments.md)、[../../deploy/README.md](../../deploy/README.md)。
+
 ## 发布后最小回归
 
 在目标设备上至少确认：
@@ -111,6 +121,8 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 - 容器重启后原短链仍可恢复
 
 ## 反馈记录模板
+
+已落盘的第三方设备回归见 [third-party-deployments.md](third-party-deployments.md)（仓库仅结论；可复测细节写在同目录 `third-party-deployments.local.md`，gitignore；模板见 `third-party-deployments.local.example.md`）。
 
 每轮发布或回归至少记录以下字段：
 
