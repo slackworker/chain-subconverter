@@ -32,6 +32,34 @@ describe("state helpers", () => {
 		});
 	});
 
+	it("restores enablePortForward from persisted relay items after a payload roundtrip", () => {
+		expect(
+			hydrateStage1Input(
+				toStage1InputPayload({
+					...initialStage1Input,
+					landingRawText: "landing://demo",
+					transitRawText: "transit://demo",
+					forwardRelayItems: ["relay.example.com:7443"],
+					advancedOptions: {
+						...initialStage1Input.advancedOptions,
+						enablePortForward: true,
+						exclude: ["US"],
+					},
+				}),
+			),
+		).toEqual({
+			...initialStage1Input,
+			landingRawText: "landing://demo",
+			transitRawText: "transit://demo",
+			forwardRelayItems: ["relay.example.com:7443"],
+			advancedOptions: {
+				...initialStage1Input.advancedOptions,
+				enablePortForward: true,
+				exclude: ["US"],
+			},
+		});
+	});
+
 	it("derives enablePortForward from forwardRelayItems during hydration", () => {
 		expect(
 			hydrateStage1Input({
@@ -61,6 +89,24 @@ describe("state helpers", () => {
 				enablePortForward: true,
 			},
 		});
+	});
+
+	it("keeps enablePortForward disabled when hydration restores no relay items", () => {
+		expect(
+			hydrateStage1Input({
+				landingRawText: "landing://demo",
+				transitRawText: "transit://demo",
+				forwardRelayItems: [],
+				advancedOptions: {
+					emoji: false,
+					udp: true,
+					skipCertVerify: true,
+					config: null,
+					include: ["HK"],
+					exclude: null,
+				},
+			}).advancedOptions.enablePortForward,
+		).toBe(false);
 	});
 
 	it("keeps the initial app state aligned with the Stage 1 defaults", () => {

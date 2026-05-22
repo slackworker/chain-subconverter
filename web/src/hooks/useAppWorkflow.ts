@@ -1,7 +1,6 @@
 import { useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
-import { getChainTargetGroups } from "../lib/chainTargets";
 import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
@@ -17,11 +16,12 @@ import {
 	getVisibleMessages,
 	shouldPromoteStage2StaleNotice,
 } from "../lib/notices";
+import { getChainTargetChoiceGroups, getForwardRelayChoices, pickNextTarget } from "../lib/stage2";
 import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
 import type { ResponseOriginStage, WorkflowLogEntry, WorkflowLogLevel } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
-import type { ChainTargetGroup } from "../lib/chainTargets";
+import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
 
 export type WorkflowTone = "neutral" | "warning" | "success";
 
@@ -34,16 +34,6 @@ interface RequestFailureContext {
 	stageLabel: string;
 	actionLabel: string;
 	requestPath: string;
-}
-
-export interface TargetChoice {
-	value: string;
-	label: string;
-	disabled: boolean;
-}
-
-export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"> {
-	choices: TargetChoice[];
 }
 
 type Stage2SnapshotRow = typeof initialAppState.stage2Snapshot.rows[number];
@@ -198,58 +188,6 @@ function getModeOptions(stage2Init: Stage2Init | null) {
 	return stage2Init?.availableModes ?? [];
 }
 
-function getSelectedForwardRelays(rows: Stage2SnapshotRows) {
-	const selected = new Set<string>();
-	for (const row of rows) {
-		if (row.mode !== "port_forward" || row.targetName === null) {
-			continue;
-		}
-		selected.add(row.targetName);
-	}
-	return selected;
-}
-
-function toChainTargetChoiceGroup(group: ChainTargetGroup): ChainTargetChoiceGroup {
-	return {
-		kind: group.kind,
-		priority: group.priority,
-		title: group.title,
-		description: group.description,
-		emptyText: group.emptyText,
-		choices: group.targets.map((target) => ({
-			value: target.name,
-			label: target.isEmpty ? `${target.name}（策略组为空）` : target.name,
-			disabled: target.isEmpty === true,
-		})),
-	};
-}
-
-function getChainTargetChoiceGroups(stage2Init: Stage2Init | null) {
-	if (stage2Init === null) {
-		return [];
-	}
-
-	return getChainTargetGroups(stage2Init.chainTargets).map(toChainTargetChoiceGroup);
-}
-
-function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string) {
-	if (stage2Init === null) {
-		return [];
-	}
-
-	const currentRow = stage2Rows.find((row: Stage2SnapshotRow) => row.landingNodeName === landingNodeName) ?? null;
-	const selectedRelays = getSelectedForwardRelays(stage2Rows);
-	if (currentRow?.mode === "port_forward" && currentRow.targetName !== null) {
-		selectedRelays.delete(currentRow.targetName);
-	}
-
-	return stage2Init.forwardRelays.map((relay) => ({
-		value: relay.name,
-		label: relay.name,
-		disabled: selectedRelays.has(relay.name),
-	}));
-}
-
 function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string, mode: Stage2Row["mode"]) {
 	if (mode === "chain") {
 		return getChainTargetChoiceGroups(stage2Init)
@@ -313,17 +251,6 @@ function getChangedStage1Fields(current: Stage1Input, next: Stage1Input) {
 	}
 
 	return Array.from(changedFields);
-}
-
-function pickNextTarget(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string, mode: Stage2Row["mode"], currentTarget: string | null) {
-	if (mode === "none") {
-		return null;
-	}
-	const choices = getSelectableChoices(stage2Init, stage2Rows, landingNodeName, mode);
-	if (choices.some((choice) => choice.value === currentTarget)) {
-		return currentTarget;
-	}
-	return null;
 }
 
 export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH) {
