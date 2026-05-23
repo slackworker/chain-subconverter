@@ -14,14 +14,46 @@
 
 ### 在线体验
 
-公网 demo preview（`app` 与 `subconverter` 双 Docker 分离部署；2026-05-23 回归通过，详见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)）：
-
-| 平台 | 入口 |
-|------|------|
-| Railway | https://chain-subconverter-production.up.railway.app/ |
-| Koyeb | https://fantastic-loise-slackers-134ea8cc.koyeb.app/ |
+公网预览：<https://fantastic-loise-slackers-134ea8cc.koyeb.app/>
 
 仅供体验 UI 与转换流程；请勿提交真实节点或敏感订阅。
+
+以下为示例测试数据（假节点），可粘贴到上述预览站体验完整流程：
+
+**落地 URI（6 条，每行一条）**
+
+```
+ss://2022-blake3-aes-256-gcm:alpha-ss-hk-secret@198.51.100.10:443#Alpha-SS-HK
+vless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Alpha-Reality-HK-PortForward
+vless://11111111-1111-4111-8111-111111111112@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&type=tcp#Alpha-Reality-HK-Direct
+ss://2022-blake3-aes-256-gcm:beta-ss-jp-secret@198.51.100.11:443#Beta-SS-JP
+vless://22222222-2222-4222-8222-222222222221@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Beta-Reality-JP-PortForward
+vless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&type=tcp#Beta-Reality-JP-Direct
+```
+
+**手动 SOCKS5（「+ 添加 SOCKS5」表单）**
+
+| 字段 | 值 |
+|------|-----|
+| 名称 | `Manual-SOCKS5-HK-Fallback` |
+| 服务器 | `manual-socks-hk.example.test` |
+| 端口 | `1080` |
+| 用户名 | `demo-user` |
+| 密码 | `demo-pass` |
+
+**中转订阅 URL（2 条，填入「中转」；Base64 / ClashMeta 各一行）**
+
+```
+https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1
+https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta
+```
+
+**端口转发 relay（2 条，每行一条）**
+
+```
+relay-a.example.com:7443
+relay-b.example.com:8443
+```
 
 ### 自部署
 
@@ -35,18 +67,11 @@
 - 默认入口为 `/`；未针对手机浏览器专门优化，小屏体验不保证。
 - 在线预览或他人托管实例请自行评估可用性与隐私；生产环境建议自部署。
 
-## 文档
+## 更多
 
-- 部署：[deploy/README.md](deploy/README.md)
-- 安全：[SECURITY.md](SECURITY.md)
-- 版本发布：[RELEASES.md](RELEASES.md)（2.x 及更早见 [_legacy/RELEASES.md](_legacy/RELEASES.md)）
-- 完整索引：[docs/README.md](docs/README.md)
-
-## 面向开发者
-
-- 开发治理与 spec 入口：[docs/spec/00-governance.md](docs/spec/00-governance.md)
-- 当前实现状态与阶段缺口：[docs/progress/STATUS.md](docs/progress/STATUS.md)
-- 本地开发与联调：[docs/testing/local-dev-smoke.md](docs/testing/local-dev-smoke.md)
+- 部署说明：[deploy/README.md](deploy/README.md)
+- 安全说明：[SECURITY.md](SECURITY.md)
+- 版本记录：[RELEASES.md](RELEASES.md)
 
 ## License
 
