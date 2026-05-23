@@ -18,6 +18,13 @@ func WithWriteRequestsPerMinute(requestsPerMinute int) HandlerOption {
 	}
 }
 
+func WithReadRequestsPerMinute(requestsPerMinute int) HandlerOption {
+	return func(handler *Handler) error {
+		handler.readRateLimiter = newIPRateLimiter(requestsPerMinute)
+		return nil
+	}
+}
+
 type ipRateLimiter struct {
 	mu       sync.Mutex
 	limiters map[string]*rate.Limiter

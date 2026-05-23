@@ -30,6 +30,7 @@ type Handler struct {
 	maxLongURLLength    int
 	inputLimits         service.InputLimits
 	writeRateLimiter    *ipRateLimiter
+	readRateLimiter     *ipRateLimiter
 	requestOrigin       *requestOriginResolver
 	managedTemplatePath string
 	shortSubPath        string
@@ -93,8 +94,8 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	mux.HandleFunc("POST /api/resolve-url", handler.rateLimitWrite(handler.handleResolveURL))
 	mux.HandleFunc("GET /api/runtime-config", handler.handleRuntimeConfig)
 	mux.HandleFunc(managedTemplatePath, handler.handleManagedTemplate)
-	mux.HandleFunc("GET "+shortSubPath, handler.handleShortSubscription)
-	mux.HandleFunc("GET "+subPath, handler.handleSubscription)
+	mux.HandleFunc("GET "+shortSubPath, handler.rateLimitRead(handler.handleShortSubscription))
+	mux.HandleFunc("GET "+subPath, handler.rateLimitRead(handler.handleSubscription))
 	mux.HandleFunc("GET /healthz", handler.handleHealthz)
 	handler.mux = mux
 
@@ -106,12 +107,20 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 func (handler *Handler) rateLimitWrite(next http.HandlerFunc) http.HandlerFunc {
-	if handler.writeRateLimiter == nil {
+	return handler.rateLimit(next, handler.writeRateLimiter)
+}
+
+func (handler *Handler) rateLimitRead(next http.HandlerFunc) http.HandlerFunc {
+	return handler.rateLimit(next, handler.readRateLimiter)
+}
+
+func (handler *Handler) rateLimit(next http.HandlerFunc, limiter *ipRateLimiter) http.HandlerFunc {
+	if limiter == nil {
 		return next
 	}
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if handler.writeRateLimiter.allow(handler.requestOriginFor(request).clientIP) {
+		if limiter.allow(handler.requestOriginFor(request).clientIP) {
 			next(writer, request)
 			return
 		}

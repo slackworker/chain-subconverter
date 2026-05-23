@@ -32,7 +32,7 @@
 - Docker 镜像已接入前端构建，后端已具备 SPA 静态资源托管能力。
 - `GET /api/runtime-config` 现已同时下发默认模板 URL 与公开 longUrl 预算；前端生成流程已接入 `>8192` 自动短链与禁止回落展示超预算 longUrl。
 - 第三方设备部署已收口为单段 Compose 命令；默认优先走一体化 Compose，也允许按文档切换为双 Docker 分离部署。
-- 四个写接口现已在 HTTP 层共享最简 per-IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整或设 `0` 关闭。
+- 四个写接口与 `/sub*` 订阅读取现已在 HTTP 层分别使用最简 per-IP token bucket；`CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 与 `CHAIN_SUBCONVERTER_READ_REQUESTS_PER_MINUTE` 默认都为 `60 req/min`，分别可调或设 `0` 关闭。
 - 发布工作流与 CI 现已按 `dev / beta / main` 三线调整：`main -> latest`、`beta -> beta-latest`、`dev -> workflow_dispatch 手动 dev-latest 镜像（保留快路径）`。
 
 ## 当前缺口
@@ -43,7 +43,7 @@
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - 浏览器级 E2E 已补上两条 mocked Playwright smoke：默认 `/` 最小 happy path，以及 port-forward 的关键交互 / 恢复路径；阻断路径与更广方案矩阵仍待补齐。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
-- 模板 URL 的最小 SSRF 拒绝名单、`USER_FACING_BASE_URL` 优先且缺省自动推断、以及基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
+- 模板 URL 的最小 SSRF 拒绝名单、`USER_FACING_BASE_URL` 优先且缺省自动推断、以及读/写基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
 
 ## 测试基线补充
 

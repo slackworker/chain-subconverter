@@ -71,6 +71,7 @@
 - 阶段 1 输入长度、URL 数量、长链接长度均有上限。
 - `subconverter` 调用有超时与并发上限。
 - 四个写接口共享每 IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 调整；设为 `0` 可关闭。若直接对端命中 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS`，限速会按 `X-Forwarded-For` 中解析出的客户端 IP 分桶；否则按 `RemoteAddr` 分桶。
+- `GET /sub` 与 `GET /sub/<id>` 共享独立的每 IP token bucket，默认 `60 req/min`，可通过 `CHAIN_SUBCONVERTER_READ_REQUESTS_PER_MINUTE` 调整；设为 `0` 可关闭。客户端 IP 识别规则与写接口一致。
 - 默认模板路径有单独缓存 TTL。
 - Compose 部署默认把短链接 SQLite 文件放到持久卷。
 
@@ -92,7 +93,7 @@
 5. 限制可访问人群；勿将当前版本直接当作公开互联网多租户服务。
 6. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
 7. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
-8. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先结合反代或网关层继续限速。
+8. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 或 `CHAIN_SUBCONVERTER_READ_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先按读/写流量分别调节，并结合反代或网关层继续限速。
 9. 若入口前存在反代，确认 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 覆盖的是实际反代 peer 网段，而不是笼统地扩大到所有私网。
 
 ## 当前不承诺防护的内容

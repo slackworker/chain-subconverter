@@ -15,6 +15,7 @@ const (
 	DefaultSubconverterFacingBaseURL    = DefaultUserFacingBaseURL
 	DefaultFrontendDistDir              = "web/dist"
 	DefaultWriteRequestsPerMinute       = 60
+	DefaultReadRequestsPerMinute        = 60
 	DefaultMaxLongURLLength             = 8192
 	DefaultMaxUpstreamRequestURLLength  = 16384
 	DefaultMaxURLsPerField              = 32
@@ -31,6 +32,7 @@ const (
 	EnvSubconverterFacingBaseURL    = "CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL"
 	EnvFrontendDistDir              = "CHAIN_SUBCONVERTER_FRONTEND_DIST_DIR"
 	EnvWriteRequestsPerMinute       = "CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE"
+	EnvReadRequestsPerMinute        = "CHAIN_SUBCONVERTER_READ_REQUESTS_PER_MINUTE"
 	EnvMaxLongURLLength             = "CHAIN_SUBCONVERTER_MAX_LONG_URL_LENGTH"
 	EnvMaxUpstreamRequestURLLength  = "CHAIN_SUBCONVERTER_MAX_UPSTREAM_REQUEST_URL_LENGTH"
 	EnvMaxURLsPerField              = "CHAIN_SUBCONVERTER_MAX_URLS_PER_FIELD"
@@ -49,6 +51,7 @@ type Server struct {
 	SubconverterFacingBaseURL    string
 	FrontendDistDir              string
 	WriteRequestsPerMinute       int
+	ReadRequestsPerMinute        int
 	MaxLongURLLength             int
 	MaxUpstreamRequestURLLength  int
 	MaxURLsPerField              int
@@ -68,6 +71,7 @@ func DefaultServer() Server {
 		SubconverterFacingBaseURL:    DefaultSubconverterFacingBaseURL,
 		FrontendDistDir:              DefaultFrontendDistDir,
 		WriteRequestsPerMinute:       DefaultWriteRequestsPerMinute,
+		ReadRequestsPerMinute:        DefaultReadRequestsPerMinute,
 		MaxLongURLLength:             DefaultMaxLongURLLength,
 		MaxUpstreamRequestURLLength:  DefaultMaxUpstreamRequestURLLength,
 		MaxURLsPerField:              DefaultMaxURLsPerField,
@@ -102,6 +106,13 @@ func LoadServerFromEnv() (Server, error) {
 			return Server{}, fmt.Errorf("parse %s: %w", EnvWriteRequestsPerMinute, err)
 		}
 		cfg.WriteRequestsPerMinute = writeRequestsPerMinute
+	}
+	if value, ok := lookupTrimmedEnv(EnvReadRequestsPerMinute); ok {
+		readRequestsPerMinute, err := strconv.Atoi(value)
+		if err != nil {
+			return Server{}, fmt.Errorf("parse %s: %w", EnvReadRequestsPerMinute, err)
+		}
+		cfg.ReadRequestsPerMinute = readRequestsPerMinute
 	}
 	if value, ok := lookupTrimmedEnv(EnvMaxLongURLLength); ok {
 		maxLongURLLength, err := strconv.Atoi(value)
@@ -181,6 +192,9 @@ func (cfg Server) Validate() error {
 	}
 	if cfg.WriteRequestsPerMinute < 0 {
 		return fmt.Errorf("write requests per minute must not be negative")
+	}
+	if cfg.ReadRequestsPerMinute < 0 {
+		return fmt.Errorf("read requests per minute must not be negative")
 	}
 	if cfg.MaxLongURLLength <= 0 {
 		return fmt.Errorf("max long URL length must be greater than zero")

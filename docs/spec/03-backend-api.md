@@ -188,13 +188,13 @@
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE.message` 必须是面向最终用户的业务化提示，不得出现 pass 名称、容器主机名、内部请求 URL、查询串或原始技术错误串
 - `SUBCONVERTER_UNAVAILABLE` 如返回 `context.diagnostic`，公开字段只允许使用 `problemClass` 与 `userInputSource`
-- `RATE_LIMITED` 用于写接口命中服务端 per-IP 限速；当前只用于 `POST /api/stage1/convert`、`POST /api/generate`、`POST /api/short-links`、`POST /api/resolve-url`，必须返回 `scope = global`，可返回 `retryable = true`；限速分桶默认按连接对端地址识别客户端，只有当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时才允许改用 `X-Forwarded-For` 推断客户端 IP
+- `RATE_LIMITED` 用于命中服务端 per-IP 限速；当前用于 `POST /api/stage1/convert`、`POST /api/generate`、`POST /api/short-links`、`POST /api/resolve-url`、`GET /sub` 与 `GET /sub/<id>`，必须返回 `scope = global`，可返回 `retryable = true`；限速分桶默认按连接对端地址识别客户端，只有当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时才允许改用 `X-Forwarded-For` 推断客户端 IP
 
 ### 5. HTTP 状态码
 
 - `200`：请求成功；`blockingErrors[]` 必须为空
 - `400`：请求体结构、字段类型或 URL 形态不符合接口契约；`blockingErrors[]` 必须包含 `INVALID_REQUEST` 或 `INVALID_URL`
-- `429`：写接口命中服务端限速；`blockingErrors[]` 必须包含 `RATE_LIMITED`
+- `429`：命中服务端限速；`blockingErrors[]` 必须包含 `RATE_LIMITED`
 - `422`：请求体结构合法，但业务校验未通过；`blockingErrors[]` 必须非空
 - `503`：依赖暂时不可用；`blockingErrors[]` 必须非空；若返回 `retryable`，其值必须为 `true`
 - `500`：未知内部错误；`blockingErrors[]` 必须非空
@@ -498,7 +498,7 @@
 - 外部契约始终等价于“短链接是长链接的别名”
 - 除 `download=1` 外，本入口额外 query 的兼容覆写与透传规则与长链接入口一致；统一见下文“长链接编码规范”
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
-- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`503` 可返回 `retryable = true`
+- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`429` `RATE_LIMITED`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`429` 与 `503` 可返回 `retryable = true`
 
 ### 7. `GET /sub?...`
 
@@ -516,6 +516,7 @@
 - HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`
 - 增量失败语义（下表以「解码管线」指 `query parse → data(base64url → gunzip → JSON parse) → 兼容参数解析 / 覆写 → schema 结构校验 → 输入上限校验`）：
   - `400` `INVALID_REQUEST`：`data` 参数缺失
+  - `429` `RATE_LIMITED`：命中服务端读接口限速；`scope = global`
   - `422` `INVALID_LONG_URL`：解码管线任一步骤失败；`scope = global`
   - `500` `RENDER_FAILED`：解码成功、依赖可用，但 YAML 渲染管线因内部原因失败；`scope = global`
 

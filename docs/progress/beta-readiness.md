@@ -26,7 +26,7 @@
 
 - `beta` 分支与 `beta-latest` 发布路径稳定可用。
 - 第三方设备按 [deploy/README.md](../../deploy/README.md) 完成默认 `/` 最小回归。
-- 发布/部署/状态/runbook 分支标签口径一致；[SECURITY.md](../../SECURITY.md) 与部署变量可核对（`USER_FACING_BASE_URL`、SSRF 最小防护、写接口限速）。
+- 发布/部署/状态/runbook 分支标签口径一致；[SECURITY.md](../../SECURITY.md) 与部署变量可核对（`USER_FACING_BASE_URL`、SSRF 最小防护、读/写接口限速）。
 - 无未关闭 P0；回归记录可持续查阅。
 
 ## 推荐顺序

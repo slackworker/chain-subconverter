@@ -1128,6 +1128,103 @@ func TestStage1ConvertHandler_IgnoresForwardedClientIPFromUntrustedPeer(t *testi
 	})
 }
 
+func TestSubscriptionHandlers_RateLimitReadsByClientIP(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	shortLinks := service.NewInMemoryShortLinkStore()
+	shortLinks.Save("7NpK2mQx9a", generateResponse.LongURL)
+	handler := mustNewTestHandlerWithShortLinks(
+		t,
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		shortLinks,
+		WithReadRequestsPerMinute(1),
+	)
+
+	firstRequest := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
+	firstRequest.RemoteAddr = "198.51.100.10:12345"
+	firstRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstRecorder, firstRequest)
+	if firstRecorder.Code != http.StatusOK {
+		t.Fatalf("first status mismatch: got %d want %d, body=%s", firstRecorder.Code, http.StatusOK, firstRecorder.Body.String())
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodGet, "/sub/7NpK2mQx9a", nil)
+	secondRequest.RemoteAddr = "198.51.100.10:54321"
+	secondRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(secondRecorder, secondRequest)
+
+	assertBlockingError(t, secondRecorder, http.StatusTooManyRequests, service.BlockingError{
+		Code:      "RATE_LIMITED",
+		Message:   "rate limit exceeded",
+		Scope:     "global",
+		Retryable: boolPtr(true),
+	})
+}
+
+func TestSubscriptionHandlers_RateLimitReadsByTrustedForwardedClientIP(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	shortLinks := service.NewInMemoryShortLinkStore()
+	shortLinks.Save("7NpK2mQx9a", generateResponse.LongURL)
+	handler := mustNewTestHandlerWithShortLinks(
+		t,
+		&fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		shortLinks,
+		WithReadRequestsPerMinute(1),
+		WithTrustedProxyCIDRs("172.16.0.0/12"),
+	)
+
+	firstRequest := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
+	firstRequest.RemoteAddr = "172.18.0.2:12345"
+	firstRequest.Header.Set("X-Forwarded-For", "198.51.100.10")
+	firstRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstRecorder, firstRequest)
+	if firstRecorder.Code != http.StatusOK {
+		t.Fatalf("first status mismatch: got %d want %d, body=%s", firstRecorder.Code, http.StatusOK, firstRecorder.Body.String())
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodGet, "/sub/7NpK2mQx9a", nil)
+	secondRequest.RemoteAddr = "172.18.0.2:54321"
+	secondRequest.Header.Set("X-Forwarded-For", "198.51.100.10")
+	secondRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(secondRecorder, secondRequest)
+
+	assertBlockingError(t, secondRecorder, http.StatusTooManyRequests, service.BlockingError{
+		Code:      "RATE_LIMITED",
+		Message:   "rate limit exceeded",
+		Scope:     "global",
+		Retryable: boolPtr(true),
+	})
+}
+
+func TestRuntimeConfigHandler_IsNotRateLimitedByReadBudget(t *testing.T) {
+	handler := mustNewTestHandler(
+		t,
+		&fakeConversionSource{defaultTemplateURL: "https://templates.example.com/default.ini"},
+		WithReadRequestsPerMinute(1),
+	)
+
+	firstRequest := httptest.NewRequest(http.MethodGet, "/api/runtime-config", nil)
+	firstRequest.RemoteAddr = "198.51.100.10:12345"
+	firstRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(firstRecorder, firstRequest)
+	if firstRecorder.Code != http.StatusOK {
+		t.Fatalf("first status mismatch: got %d want %d, body=%s", firstRecorder.Code, http.StatusOK, firstRecorder.Body.String())
+	}
+
+	secondRequest := httptest.NewRequest(http.MethodGet, "/api/runtime-config", nil)
+	secondRequest.RemoteAddr = "198.51.100.10:54321"
+	secondRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(secondRecorder, secondRequest)
+	if secondRecorder.Code != http.StatusOK {
+		t.Fatalf("second status mismatch: got %d want %d, body=%s", secondRecorder.Code, http.StatusOK, secondRecorder.Body.String())
+	}
+}
+
 func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: singleLandingResult("HK Landing", "ss", false),
@@ -1463,17 +1560,17 @@ func TestRuntimeConfigHandler_ReturnsDefaultTemplateURL(t *testing.T) {
 	}
 }
 
-func mustNewTestHandler(t *testing.T, source service.ConversionSource) *Handler {
+func mustNewTestHandler(t *testing.T, source service.ConversionSource, options ...HandlerOption) *Handler {
 	t.Helper()
 
-	return mustNewTestHandlerWithShortLinks(t, source, service.NewInMemoryShortLinkStore())
+	return mustNewTestHandlerWithShortLinks(t, source, service.NewInMemoryShortLinkStore(), options...)
 }
 
-func mustNewTestHandlerWithShortLinks(t *testing.T, source service.ConversionSource, shortLinkStore service.ShortLinkStore) *Handler {
+func mustNewTestHandlerWithShortLinks(t *testing.T, source service.ConversionSource, shortLinkStore service.ShortLinkStore, options ...HandlerOption) *Handler {
 	t.Helper()
 
 	templateStore := service.NewInMemoryTemplateContentStore()
-	handler, err := NewHandler(source, templateStore, shortLinkStore, "http://localhost:11200", "http://localhost:11200", 8192, service.InputLimits{})
+	handler, err := NewHandler(source, templateStore, shortLinkStore, "http://localhost:11200", "http://localhost:11200", 8192, service.InputLimits{}, options...)
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}

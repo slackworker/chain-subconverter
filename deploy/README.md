@@ -28,6 +28,7 @@ SHORT_LINK_CAPACITY="1000"
 # USER_FACING_BASE_URL=""
 # TEMPLATE_ALLOW_PRIVATE_NETWORKS="false"
 # WRITE_REQUESTS_PER_MINUTE="60"
+# READ_REQUESTS_PER_MINUTE="60"
 
 mkdir -p "$APP_DIR"
 cd "$APP_DIR"
@@ -57,6 +58,7 @@ services:
       # CHAIN_SUBCONVERTER_USER_FACING_BASE_URL: "${USER_FACING_BASE_URL}"
       # CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS: "${TEMPLATE_ALLOW_PRIVATE_NETWORKS}"
       # CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE: "${WRITE_REQUESTS_PER_MINUTE}"
+      # CHAIN_SUBCONVERTER_READ_REQUESTS_PER_MINUTE: "${READ_REQUESTS_PER_MINUTE}"
       CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS: "${TRUSTED_PROXY_CIDRS}"
       CHAIN_SUBCONVERTER_SUBCONVERTER_FACING_BASE_URL: http://app:11200
       CHAIN_SUBCONVERTER_DEFAULT_TEMPLATE_URL: "${DEFAULT_TEMPLATE_URL}"
@@ -165,6 +167,7 @@ curl http://localhost:11200/healthz
 | `USER_FACING_BASE_URL` | `CHAIN_…_USER_FACING_BASE_URL` | 空 | 固定域名/多入口 | 浏览器与最终链接；勿填 `http://app:11200` |
 | `TEMPLATE_ALLOW_PRIVATE_NETWORKS` | `CHAIN_…_TEMPLATE_ALLOW_*` | `false` | 可信内网模板源 | 允许拉取私网模板 URL（SSRF 边界见 SECURITY） |
 | `WRITE_REQUESTS_PER_MINUTE` | `CHAIN_…_WRITE_*` | `60` | 调试 | 四写接口共享 per-IP 限速；`0` 关闭 |
+| `READ_REQUESTS_PER_MINUTE` | `CHAIN_…_READ_*` | `60` | 订阅轮询更频繁或公网入口 | `GET /sub` 与 `GET /sub/<id>` 共享 per-IP 限速；`0` 关闭 |
 | — | `CHAIN_…_HTTP_ADDRESS` | `:11200` | 极少 | 监听地址 |
 | — | `CHAIN_…_SUBCONVERTER_FACING_BASE_URL` | `http://app:11200` | 双 Docker | subconverter 回连 app；非对外入口 |
 | — | `CHAIN_…_SUBCONVERTER_UPSTREAM_BASE_URL` | `http://subconverter:25500/sub?` | 双 Docker | app 访问 subconverter |
@@ -175,4 +178,4 @@ curl http://localhost:11200/healthz
 
 ## 参考
 
-第三方用 GHCR 镜像（默认 `latest`），勿设备上源码构建。双 Docker 确认 `FACING` 可达；公开入口勿关写限速。外网测试订阅：[test-fixtures-worker](test-fixtures-worker/README.md)。本地联调：[local-dev-smoke](../docs/testing/local-dev-smoke.md)。发布回归：[release-runbook](../docs/testing/release-runbook.md)。fixture：`internal/review/testdata/`。
+第三方用 GHCR 镜像（默认 `latest`），勿设备上源码构建。双 Docker 确认 `FACING` 可达；公开入口勿关读/写限速。外网测试订阅：[test-fixtures-worker](test-fixtures-worker/README.md)。本地联调：[local-dev-smoke](../docs/testing/local-dev-smoke.md)。发布回归：[release-runbook](../docs/testing/release-runbook.md)。fixture：`internal/review/testdata/`。

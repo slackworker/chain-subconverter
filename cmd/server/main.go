@@ -67,6 +67,7 @@ func main() {
 		SubconverterBaseURL: subconverterCfg.UpstreamBaseURL,
 	},
 		api.WithWriteRequestsPerMinute(serverCfg.WriteRequestsPerMinute),
+		api.WithReadRequestsPerMinute(serverCfg.ReadRequestsPerMinute),
 		api.WithTrustedProxyCIDRs(serverCfg.TrustedProxyCIDRs),
 	)
 	if err != nil {
