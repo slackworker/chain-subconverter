@@ -425,6 +425,7 @@ start_subconverter_container() {
   docker run -d \
     --name "$container_name" \
     --restart unless-stopped \
+    --add-host=host.docker.internal:host-gateway \
     --health-cmd 'wget -q -O /dev/null http://127.0.0.1:25500/version || exit 1' \
     --health-interval 10s \
     --health-timeout 5s \
