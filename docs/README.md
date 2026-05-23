@@ -2,11 +2,11 @@
 
 ## 仓库入口
 
-如需了解对外产品说明、当前镜像口径与部署方式，优先查看：
+用户向文档分工：
 
-- [../README.md](../README.md)
-- [../RELEASES.md](../RELEASES.md)
-- [../deploy/README.md](../deploy/README.md)
+- [../README.md](../README.md) — 产品入口、主要能力、在线预览与快速开始
+- [../deploy/README.md](../deploy/README.md) — 部署命令、环境变量与场景速查
+- [../RELEASES.md](../RELEASES.md) — 已发布版本记录（2.x 及更早见 [_legacy/RELEASES.md](../_legacy/RELEASES.md)）
 
 ## 阅读入口
 

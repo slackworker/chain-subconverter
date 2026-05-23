@@ -4,7 +4,7 @@
 
 ## 当前结论
 
-- 本页只维护当前阶段状态与缺口；对外发布口径统一见 [../../RELEASES.md](../../RELEASES.md)。
+- 本页只维护当前阶段状态与缺口；用户入口见 [../../README.md](../../README.md)，版本历史见 [../../RELEASES.md](../../RELEASES.md)。
 - `Phase 0` 到 `Phase 3` 已完成；`Phase 4` 已进入开发后期与发布整理阶段。
 - 当前默认入口固定为 `/`，`/ui/a`、`/ui/b`、`/ui/c` 继续保留为实验入口。
 - 当前分支模型收口为 `dev / beta / main`：`dev` 用于日常开发与手动 `dev-latest`，`beta` 预留给 Beta 收口与 `beta-latest`，`main` 负责当前公开滚动镜像 `latest`。
@@ -59,7 +59,8 @@
 
 > 更早命令记录见 Git 历史；本段只保留近两周摘要。
 
-- `2026-05-22`: 文档清理；Worker 公网 `Landing-Subscription?target=URI` 复核 **7** 行
+- `2026-05-23`: 第三方部署回归记录收口为内网 / 公网 / 双 Docker 三种形态（见 `third-party-deployments.md`）
+- `2026-05-22`: Worker 公网 `Landing-Subscription?target=URI` 复核 **7** 行
 - `2026-05-21`: dual-landing 全链路 — `testfixturegen`、`go test`（api / review / service）、`cd web && npm run test`、`npm run test:e2e`（default + port-forward happy path）
 - `2026-05-18`: 容器化 Playwright against `./scripts/dev-up.sh default`；`npm test`；dual-landing review/service 回放
 - `2026-05-17`: 本地 `beta` 分支；`go test ./...`；四 scheme build；`compose config`；`ci.yml` / `docker-publish.yml` 切到 `dev / beta / main`

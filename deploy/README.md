@@ -7,7 +7,7 @@
 - 默认一体化 `docker-compose.yml`（`app + subconverter`），与下文第三方单段命令生成的 Compose 保持同一镜像口径与 `TRUSTED_PROXY_CIDRS` 等默认值
 - 推荐 `subconverter` 随 `app` 同 Compose 部署；已有独立 Docker 化 `subconverter` 时可改双 Docker 分离部署
 - SQLite 短链接索引经命名卷 `short-link-data` 持久化
-- 阶段状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)
+- 默认镜像 `ghcr.io/slackworker/chain-subconverter:latest`；预发布 tag 见 [GitHub Releases](https://github.com/slackworker/chain-subconverter/releases)
 
 ## 第三方设备 / 局域网
 
@@ -109,7 +109,7 @@ curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 
 局域网访问：`http://<device-ip>:<host-port>/`（`subconverter` 仅在私有网络 `subconverter-backend` 内，不对宿主机暴露端口）。
 
-Playwright 冒烟：`CHAIN_SUBCONVERTER_E2E_BASE_URL=http://<device-ip>:<port> ./scripts/third-party-smoke.sh`。发布回归见 [release-runbook](../docs/testing/release-runbook.md)。
+Playwright 冒烟：`CHAIN_SUBCONVERTER_E2E_BASE_URL=http://<device-ip>:<port> ./scripts/third-party-smoke.sh`。
 
 ## 部署场景速查
 
@@ -175,4 +175,4 @@ curl http://localhost:11200/healthz
 
 ## 参考
 
-第三方用 GHCR 镜像（默认 `latest`），勿设备上源码构建。双 Docker 确认 `FACING` 可达；公开入口勿关写限速。外网测试订阅：[test-fixtures-worker](test-fixtures-worker/README.md)。本地联调：[local-dev-smoke](../docs/testing/local-dev-smoke.md)。fixture：`internal/review/testdata/`。
+第三方用 GHCR 镜像（默认 `latest`），勿设备上源码构建。双 Docker 确认 `FACING` 可达；公开入口勿关写限速。外网测试订阅：[test-fixtures-worker](test-fixtures-worker/README.md)。本地联调：[local-dev-smoke](../docs/testing/local-dev-smoke.md)。发布回归：[release-runbook](../docs/testing/release-runbook.md)。fixture：`internal/review/testdata/`。

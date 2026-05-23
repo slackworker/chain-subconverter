@@ -13,79 +13,59 @@
 
 ---
 
-## 2026-05-22 — vps-01 / vps-02（dev-latest 更新部署）
+## 3.0 回归覆盖（三种部署形态）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`；`subconverter:integration-chain-subconverter`（未变）
-- **设备**：内网 LAN（vps-01）+ 公网 HTTPS 反代（vps-02）；自 `beta-latest` 就地更新 `app` 镜像（命名卷保留）
-- **USER_FACING_BASE_URL**：未改
-- **TRUSTED_PROXY_CIDRS**：未改
-- **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）；两台 digest 一致
+| 形态 | 设备 / 平台 | 最近回归 | 结果 |
+|------|-------------|----------|------|
+| **内网一体化** | vps-01（LAN Compose） | 2026-05-23 | **通过** |
+| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-05-23 | **通过** |
+| **双 Docker 分离** | Railway + Koyeb（demo preview） | 2026-05-23 | **通过** |
+
+外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
+
+---
+
+## 内网一体化 — vps-01（2026-05-23，`beta-latest`）
+
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:a1bd2238386485ae4225993b673ad77b3e04234030f91b38b0c7cc23c7966a65`，与 vps-02 一致）；`subconverter:integration-chain-subconverter`
+- **设备**：内网 LAN Compose，`HOST_PORT=11200`
+- **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
+- **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）
 - **结果**：**通过**
-- **后续**：开发验证结束后可回切 `beta-latest` 或跟进 `main`/`latest`；SSH / 入口 URL / 复验命令见本地文件
+- **细节**：SSH、入口 URL、smoke 命令见本地文件
 
 ---
 
-## 2026-05-20 — Worker fixture 对齐 dual-landing（公网已部署）
+## 公网 HTTPS 一体化 — vps-02（2026-05-23，`beta-latest`）
 
-- **镜像 / 产物**：`deploy/test-fixtures-worker`；源语义见 [dual-landing-chain-port-forward.md](dual-landing-chain-port-forward.md)
-- **设备**：Cloudflare Workers 公网测试订阅源（`chain-subconverter-test-fixtures.slackworker.workers.dev`）
-- **本地校验**：`npm test`、`sync-canonical-fixtures`（含 `--check`）、本地 `Landing-Subscription?target=URI` 非空行数 **7** — 均通过
-- **公网复核**（2026-05-22）：`…/dual-landing/download/Landing-Subscription?target=URI` 非空行 **7**，与 canonical `6 + 1` landing 一致
-- **结果**：**通过**（仓库与公网对齐；后续语料变更仍按 worker README 执行 `sync` + `wrangler deploy`）
-- **产物字节数（本地 `public/`，供 deploy 前后对照）**
-
-| 端点 | 字节数 |
-|------|--------|
-| `Landing-Subscription` / `?target=ClashMeta` / `?target=URI` | 1408 / 1606 / 1055 |
-| `Airport-Subscription-1` 三变体 | 1912 / 2186 / 1435 |
-| `Airport-Subscription-2` 三变体 | 1908 / 2143 / 1431 |
-| `Airport-Subscription` 聚合三变体 | 3820 / 4320 / 2866 |
-
-- **用法**：单中转优先 `-1`/`-2`；兼容旧脚本用聚合 `Airport-Subscription`；双中转 Playwright 用 `CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT` + `_2`（见 deploy README / 本地文件中的完整 URL）
-
----
-
-## 2026-05-19 — Cloudflare Workers 外网测试订阅源（初版 6 端点）
-
-- **设备**：Workers 静态 fixture（`deploy/test-fixtures-worker`）
-- **语料**：仓库 `testdata/canonical-scenarios/` → `npm run sync`；不再依赖内网私有订阅源
-- **结果**：**通过** — 6 个 `GET` 均为 **200**，`text/plain; charset=utf-8`
-- **特征（初版，deploy 前）**：`Landing-*` 为最小 3pass 落地；`Airport-Subscription` 为单份 3pass transit 语料（后续已拆为 dual-landing + A/B）
-
----
-
-## 2026-05-19 — 公网 VPS（HTTPS 反代，trusted-proxy 修正后）
-
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`
-- **设备**：公网 VPS（OpenResty → 本机 `127.0.0.1:11200`）
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest`）；`subconverter:integration-chain-subconverter`
+- **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
-- **TRUSTED_PROXY_CIDRS**：live compose 已补 `172.16.0.0/12`
-- **回归**：公网 HTTPS、`deployed-smoke`（origin 须与 `E2E_BASE_URL` 一致）、Worker 订阅源、generate / short-links / 订阅读取
+- **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致生成链接为 `http://`）
+- **回归**：公网 HTTPS、`deployed-smoke`（origin 须与 `E2E_BASE_URL` 一致）、generate / short-links / 订阅读取
 - **结果**：**通过**
-- **关键发现**：此前 live compose 缺 `TRUSTED_PROXY_CIDRS`，公网入口生成的链接基址被推断为 `http://`；补全并 recreate 后 smoke 与 API 均正常
-- **stage1**：Worker `Landing-Subscription` + `Airport-Subscription` → **200**，`stage2Init.rows` = **7**（6 自动落地 + 1 手动 SOCKS5）
+- **细节**：SSH、域名、smoke 命令见本地文件
 
 ---
 
-## 2026-05-18 — 公网 VPS（beta-latest，初轮）
+## 历史 — `dev-latest`（2026-05-22）
 
-- **镜像 tag**：`beta-latest` + `subconverter:integration-chain-subconverter`
-- **设备**：公网 VPS（同上前身配置）
-- **变更**：自 `dev-latest` 升级；端口改为 `127.0.0.1:11200`（配合反代）
-- **TRUSTED_PROXY_CIDRS**：默认（本轮后于 05-19 修正）
-- **结果**：**通过** — healthz、API、订阅/短链、隧道 smoke；UI 全矩阵未测
-- **非阻塞**：Playwright 曾未等 `runtime-config`；已在 spec 中修复
+vps-01 / vps-02 在 **2026-05-22** 以 `dev-latest`（digest `sha256:5170df8c9c3844be31e1ac3612c4679c8d966afbbb176926c491c0eb80ddeeca`）完成同等形态回归，结论均为 **通过**。
 
 ---
 
-## 2026-05-18 — 内网 LAN 设备（beta-latest）
+## 双 Docker 分离 — Railway + Koyeb（2026-05-23）
 
-- **镜像 tag**：`beta-latest`（与公网 VPS 同 digest）
-- **设备**：内网 LAN 侧 Compose，`HOST_PORT=11200`
-- **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未改
-- **回归**：Compose pull/up、API、订阅/短链、重启恢复、WSL Playwright `deployed-smoke`
-- **结果**：**通过**（~5s）；空中转 stage1 **503** 为预期
-- **输入**：两条内联 SS（TEST-NET 落地 + 设备示例中转节点）；inventory 细节见本地文件
+- **部署形态**：`app` 与 `subconverter` 分属独立 Docker 项目；`UPSTREAM` / `FACING` 跨公网互访
+- **chain-subconverter 入口**（可作项目 **demo preview**）：
+  - Railway：`https://chain-subconverter-production.up.railway.app/`
+  - Koyeb：`https://fantastic-loise-slackers-134ea8cc.koyeb.app/`
+- **subconverter 入口**：Railway `https://sparkling-luck-production.up.railway.app/`（`GET /version` → `subconverter v0.9.1-70ad654-mihomo backend`）
+- **镜像 tag**：本轮未从响应头确认；subconverter 版本见 `/version`
+- **回归**：`healthz`、`/api/runtime-config`、`/` UI；WSL `deployed-smoke`（Worker dual-transit）；subconverter `/version`
+- **结果**：**通过**
+- **关键发现**：双 Docker 分离下 stage1 → generate → 订阅读取 → short-link round-trip 均正常；生成链接 origin 与各自 HTTPS 入口一致
+- **后续**：可作为对外 demo preview；复验命令见本地文件
 
 ---
 
@@ -96,4 +76,4 @@
 CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" ./scripts/third-party-smoke.sh
 ```
 
-完整 `E2E_*` 与 SSH/隧道示例：[third-party-deployments.local.md](third-party-deployments.local.md)。
+完整 `E2E_*` 与 SSH/运维示例：[third-party-deployments.local.md](third-party-deployments.local.md)。

@@ -1,6 +1,6 @@
 # Beta 发布缺口评估
 
-> 最近更新：2026-05-22
+> 最近更新：2026-05-23
 
 实时状态见 [STATUS.md](STATUS.md)；执行计划见 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md)。
 
@@ -13,7 +13,7 @@
 
 ## 距 Beta 仍缺
 
-1. **`beta-latest` 实战**：至少一轮发布 + 第三方设备回归并归档（见 [release-runbook](../testing/release-runbook.md) 模板）。
+1. **`beta-latest` 实战**：vps-01 / vps-02 已于 **2026-05-23** 完成 `beta-latest` 部署与 `deployed-smoke` 回归（见 [third-party-deployments.md](../testing/third-party-deployments.md)）；后续按 release-runbook 持续归档新版本。
 2. **反馈闭环**：`.github/ISSUE_TEMPLATE/` 已补；持续用 Issue/回归记录归档，而非零散笔记。
 3. **E2E 加深**：阻断路径、更广 scheme 矩阵；当前 blocking 基线只保留两条 mocked happy path。
 4. **质量债（非硬阻塞）**：`subconverter` 浮动 tag 需在回归中注明；B/C workflow log 视觉与 default 未完全统一。

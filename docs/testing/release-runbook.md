@@ -5,7 +5,7 @@
 ## 用途边界
 
 - 本文是当前 runbook，不定义 spec。
-- 对外发布说明与相对 2.0 的功能更新摘要统一见 [../../RELEASES.md](../../RELEASES.md)。
+- 已发布版本说明见 [../../RELEASES.md](../../RELEASES.md)；产品能力摘要与在线预览见 [../../README.md](../../README.md)。
 - 部署命令与环境变量以 [../../deploy/README.md](../../deploy/README.md) 为准。
 - 本地 HMR 联调入口以 [local-dev-smoke](local-dev-smoke.md) 为准。
 
