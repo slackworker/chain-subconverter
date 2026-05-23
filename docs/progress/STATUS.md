@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最近更新：2026-05-22（文档清理：temp 讨论稿删除、最近验证剪枝、ROADMAP 瘦身）
+> 最近更新：2026-05-23（W3 第三方回归归档；plan / beta-readiness 与现状对齐）
 
 ## 当前结论
 
@@ -39,7 +39,7 @@
 
 - `docs/temp/` 仅保留 `README.md` 入 Git；2026-05-22 已删除本地讨论稿（frontend workflow / blocking E2E），结论见 [test-system-review.md](../testing/test-system-review.md)。
 - 进入 Beta 冻结并完成 W3 回归归档后，将 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md) 剩余条目并入本页并删除该 plan 文件（见 [docs/README.md](../README.md) `plan/` 约定）。
-- `beta` 分支与 Beta 回归节奏已纳入当前模型，但正式进入 Beta 冻结前仍需补齐回归记录、反馈闭环与发布说明。
+- 第三方设备回归记录已于 **2026-05-23** 归档（内网 / 公网 / 双 Docker，见 [third-party-deployments.md](../testing/third-party-deployments.md)）；正式进入 Beta 冻结前仍需反馈闭环与 `RELEASES.md` 发布说明。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - 浏览器级 E2E 已补上两条 mocked Playwright smoke：默认 `/` 最小 happy path，以及 port-forward 的关键交互 / 恢复路径；阻断路径与更广方案矩阵仍待补齐。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。

@@ -58,6 +58,6 @@ flowchart LR
 
 按最小增量推进：
 
-1. 用 `beta` 跑通 `beta-latest` 发布与第三方设备回归并归档。
+1. Beta 冻结宣布：`beta` 合并发布 + 更新 digest / `RELEASES.md`；plan 并入 STATUS 并删除 plan 文件（W3 回归已于 2026-05-23 归档）。
 2. 补 Playwright 阻断路径；mock smoke 已在 CI（`web-mock-e2e`，非 blocking），升级 blocking 视需要。
 3. 持续精简 `docs/temp/` 与状态页，避免文档膨胀。
