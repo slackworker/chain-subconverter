@@ -78,10 +78,12 @@
 
 | 触发条件 | 只改哪里 | 固定命令（按顺序） | 结果判定 |
 |-----|------|------|------|
-| 改场景语义（默认） | `testdata/canonical-scenarios/*.stage1.json` | `go run ./cmd/testfixturegen -repo-root .`<br>`cd deploy/test-fixtures-worker && npm run sync && npm run check`<br>`go test ./...` | 三步全绿，即 canonical 与两类派生（review / worker）一致 |
+| 改场景语义（默认） | `testdata/canonical-scenarios/*.stage1.json` | `go run ./cmd/testfixturegen -repo-root .`<br>`cd deploy/test-fixtures-worker && npm run sync && npm run check`<br>`go test ./...` | 三步全绿，即 canonical 与三类派生（review / worker / manual-doc）一致 |
 | 编排/转换语义变化（可选重录） | 在上行基础上，重录 review frozen | 见下节「Frozen 重录（runbook）」二选一 | frozen 与当前语义一致，review 回放不再误报 |
 
-维护心智模型统一为：`1 个编辑点（canonical） + 2 种派生（review / worker） + 1 类可选重录（frozen）`。
+维护心智模型统一为：`1 个编辑点（canonical） + 3 种派生（review / worker / manual-doc） + 1 类可选重录（frozen）`。
+
+- `manual-doc`：`docs/testing/dual-landing-manual-reference.md`，由 `deploy/test-fixtures-worker` 的 `npm run sync` / `npm run check` 从 canonical + review frozen 生成，供 README 在线体验链出；勿手改正文。
 
 ## Frozen 重录（runbook，二选一）
 

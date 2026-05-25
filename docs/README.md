@@ -45,6 +45,7 @@
 | [ROADMAP](ROADMAP.md) | 阶段路线图与当前推荐下一步 |
 | [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | Smoke fixture：最小默认回放基线 |
 | [testing/dual-landing-chain-port-forward](testing/dual-landing-chain-port-forward.md) | Comprehensive fixture：双落地 + 端口转发完整回放基线 |
+| [testing/dual-landing-manual-reference](testing/dual-landing-manual-reference.md) | 在线预览手工测试数据发布页（假节点、双 Stage2 snapshot、short ID 金样） |
 | [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地开发与 smoke runbook |
 | [testing/release-runbook](testing/release-runbook.md) | 当前发布与回归 runbook |
 | [testing/third-party-deployments](testing/third-party-deployments.md) | 第三方设备部署回归**结论**（细节在同目录 `third-party-deployments.local.md`，gitignore） |

@@ -5,6 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+	buildDualLandingManualReferenceMarkdown,
+	DUAL_LANDING_MANUAL_REFERENCE_PATH,
+} from "../../../scripts/lib/dual-landing-manual-reference.mjs";
+import {
 	buildLandingURILinesWithManualSocks,
 	buildSubscriptionFiles,
 } from "../../../scripts/lib/subscription-artifacts.mjs";
@@ -116,8 +120,11 @@ for (const file of generatedFiles) {
 	}
 }
 
+const manualReferencePath = path.join(repoRoot, DUAL_LANDING_MANUAL_REFERENCE_PATH);
+writeOrCheckFile(manualReferencePath, buildDualLandingManualReferenceMarkdown(repoRoot));
+
 if (!checkMode) {
 	process.stdout.write(
-		`synced ${generatedFiles.length} worker fixtures to ${workerDownloadRoots.length} paths from dual-landing canonical data\n`,
+		`synced ${generatedFiles.length} worker fixtures to ${workerDownloadRoots.length} paths and manual reference doc from dual-landing canonical data\n`,
 	);
 }

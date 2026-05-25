@@ -16,42 +16,9 @@
 
 仅供体验 UI 与转换流程；请勿提交真实节点或敏感订阅。
 
-以下为示例测试数据（假节点），可粘贴到上述预览站体验完整流程：
-
-**落地 URI（6 条，每行一条）**
-
-```
-ss://2022-blake3-aes-256-gcm:alpha-ss-hk-secret@198.51.100.10:443#Alpha-SS-HK
-vless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Alpha-Reality-HK-PortForward
-vless://11111111-1111-4111-8111-111111111112@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&type=tcp#Alpha-Reality-HK-Direct
-ss://2022-blake3-aes-256-gcm:beta-ss-jp-secret@198.51.100.11:443#Beta-SS-JP
-vless://22222222-2222-4222-8222-222222222221@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Beta-Reality-JP-PortForward
-vless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&type=tcp#Beta-Reality-JP-Direct
-```
-
-**手动 SOCKS5（「+ 添加 SOCKS5」表单）**
-
-| 字段 | 值 |
-|------|-----|
-| 名称 | `Manual-SOCKS5-HK-Fallback` |
-| 服务器 | `manual-socks-hk.example.test` |
-| 端口 | `1080` |
-| 用户名 | `demo-user` |
-| 密码 | `demo-pass` |
-
-**中转订阅 URL（2 条，填入「中转」；Base64 / ClashMeta 各一行）**
-
-```
-https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1
-https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta
-```
-
-**端口转发 relay（2 条，每行一条）**
-
-```
-relay-a.example.com:7443
-relay-b.example.com:8443
-```
+1. 打开上述预览站。
+2. 打开 [docs/testing/dual-landing-manual-reference.md](docs/testing/dual-landing-manual-reference.md)，按页内顺序操作：**先落地（6 条 URI + SOCKS5）→ 再中转（2 条 Worker URL）→ 端口转发与高级选项 → 转换**。
+3. 发布页标明每条数据对应哪个输入框，并含 Stage2 双 snapshot 与 short ID 金样，便于整条前端流程对照。
 
 ### 自部署
 
