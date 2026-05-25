@@ -32,14 +32,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
-      "include": [
-        "HK",
-        "JP"
-      ],
-      "exclude": [
-        "Expired"
-      ]
+      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
     }
   },
   "transitFixtures": [

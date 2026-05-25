@@ -163,7 +163,7 @@ func TestRenderReviewStage1InputFiles(t *testing.T) {
 	assertRenderedFile(t, files, LandingFileName, "landing-a\nlanding-b\ntg://socks?server=manual-socks.example.test&port=1080&remarks=Manual-SOCKS5-Test\n")
 	assertRenderedFile(t, files, TransitFileName, "transit-a\ntransit-b\n")
 	assertRenderedFile(t, files, ForwardRelaysFileName, "relay-a:7443\n")
-	assertRenderedFile(t, files, AdvancedOptionsFileName, "emoji: true\nudp: true\nskipCertVerify: false\nconfig: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini\ninclude:\n  - HK\n  - JP\nexclude:\n  - Expired\n")
+	assertRenderedFile(t, files, AdvancedOptionsFileName, "emoji: true\nudp: true\nskipCertVerify: false\nconfig: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini\ninclude:\nexclude:\n")
 }
 
 func TestCanonicalStage1Input_ToReviewStage1Input(t *testing.T) {
