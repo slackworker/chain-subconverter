@@ -170,7 +170,7 @@ export function renderDualLandingManualReference({
 		"",
 		"# dual-landing 手工测试数据",
 		"",
-		`[在线体验](../../README.md#在线体验) · [fixture 说明](dual-landing-chain-port-forward.md) · 预览站 ${previewUrl}（假节点，勿填真实订阅）`,
+		`[在线预览 Demo](${previewUrl}) · [fixture 说明](dual-landing-chain-port-forward.md) · [README](../../README.md)`,
 		"",
 		"顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。",
 		"",
