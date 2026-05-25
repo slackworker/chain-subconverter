@@ -6,9 +6,9 @@
 
 ## v3.0.0-beta.2
 
-**Tag:** `v3.0.0-beta.2`（待打）  
+**Tag:** `v3.0.0-beta.2`  
 **日期:** 2026-05-25  
-**镜像:** `ghcr.io/slackworker/chain-subconverter:v3.0.0-beta.2`（`beta` 分支滚动标签 `beta-latest` 指向同期构建）
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:afa71279f0513f51bdda0f503c2629164f4a5c46a70747a54f28f959df438546`；版本 tag 镜像与 `beta-latest` 同期，自部署优先用滚动标签）
 
 ### 概述
 
@@ -26,10 +26,10 @@
 与 beta.1 相同，将 `APP_IMAGE` 设为：
 
 ```bash
-APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.0.0-beta.2"
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 ```
 
-或继续使用 `beta-latest`（跟进 Beta 线修复时需自行核对 digest/变更）。
+或钉死 digest / 版本 tag（需自行核对 GHCR 是否已发布对应 manifest）。
 
 从 **beta.1** 升级：拉取新镜像并重启 Compose 即可；短链数据卷可保留，无需改配置格式。
 
@@ -98,7 +98,7 @@ README 中附有假节点示例数据，可直接粘贴试用完整流程。
 - **设备**：未针对手机浏览器专门优化。
 - **HTTPS / 反代**：若前面有 HTTPS 终止或固定域名，请按 [deploy/README.md](deploy/README.md) 设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，避免生成错误链接。
 
-运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)（2026-05-23 内网 / 公网一体化与双 Docker 分离形态均已通过）。
+运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)（2026-05-25 vps-01/02 内网与公网一体化 beta.2 **通过**；2026-05-23 双 Docker 分离形态 **通过**）。
 
 ### 反馈
 

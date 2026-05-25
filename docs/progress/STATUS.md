@@ -1,12 +1,12 @@
 # 当前状态
 
-> 最近更新：2026-05-25（准备发布 `v3.0.0-beta.2`）
+> 最近更新：2026-05-25（`v3.0.0-beta.2` 已发布）
 
 ## 当前结论
 
 - 本页只维护当前阶段状态与缺口；用户入口见 [../../README.md](../../README.md)，版本历史见 [../../RELEASES.md](../../RELEASES.md)。
 - `Phase 0` 到 `Phase 3` 已完成；`Phase 4` 已进入开发后期与发布整理阶段。
-- **已发布** [`v3.0.0-beta.1`](../../RELEASES.md#v300-beta1)（2026-05-24）；**当前目标**：合并 `dev` → `beta`、打 tag `v3.0.0-beta.2` 并发布镜像（说明见 [RELEASES.md](../../RELEASES.md#v300-beta2)）。
+- **已发布** [`v3.0.0-beta.1`](../../RELEASES.md#v300-beta1)（2026-05-24）、[`v3.0.0-beta.2`](../../RELEASES.md#v300-beta2)（2026-05-25）；`beta-latest` 与 beta.2 同期（digest 见 [third-party-deployments.md](../testing/third-party-deployments.md)）。
 - 当前默认入口固定为 `/`，`/ui/a`、`/ui/b`、`/ui/c` 继续保留为实验入口。
 - 当前分支模型收口为 `dev / beta / main`：`dev` 用于日常开发与手动 `dev-latest`，`beta` 预留给 Beta 收口与 `beta-latest`，`main` 负责当前公开滚动镜像 `latest`。
 - `G1` 前端共享业务层已签收；共享边界以 [spec/02-frontend-spec](../spec/02-frontend-spec.md) 为准，不再单独维护一份 G1 验收说明。
@@ -37,10 +37,9 @@
 
 ## 当前缺口
 
-- **发布 `v3.0.0-beta.2`**：`dev` 已含 4 个待发布 commit（Stage 2 列宽/状态、fixture 与 include-exclude E2E、文档）；待 `beta` 合并、tag、CI 镜像与（可选）第三方 digest 更新。
 - `docs/temp/` 仅保留 `README.md` 入 Git；2026-05-22 已删除本地讨论稿（frontend workflow / blocking E2E），结论见 [test-system-review.md](../testing/test-system-review.md)。
 - 进入 Beta 冻结并完成 W3 回归归档后，将 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md) 剩余条目并入本页并删除该 plan 文件（见 [docs/README.md](../README.md) `plan/` 约定）。
-- 第三方设备回归记录已于 **2026-05-23** 归档（内网 / 公网 / 双 Docker，见 [third-party-deployments.md](../testing/third-party-deployments.md)）；beta.2 发布后建议抽样复跑默认 `/` smoke 并更新 digest。
+- 第三方设备回归：**2026-05-25** vps-01/02 beta.2 `deployed-smoke` **通过**；**2026-05-23** 双 Docker 分离与 beta.1 内网/公网已归档（见 [third-party-deployments.md](../testing/third-party-deployments.md)）。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - 浏览器级 E2E：blocking 仍为两条 mocked smoke（default + port-forward happy path）；另增 `include-exclude-filter` 集成用例（非 blocking，发布前可选跑）。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
@@ -60,7 +59,7 @@
 
 > 更早命令记录见 Git 历史；本段只保留近两周摘要。
 
-- `2026-05-25`: `dev` 相对 `v3.0.0-beta.1` 含 4 commit（Stage 2 列宽/状态、dual-landing fixture、include-exclude E2E、文档）；发布前按 [release-runbook.md](../testing/release-runbook.md) 跑自动化基线
+- `2026-05-25`: 发布 `v3.0.0-beta.2`；vps-01/02 `beta-latest` pull + `deployed-smoke` **通过**（digest `sha256:afa71279…`）
 - `2026-05-24`: 发布 `v3.0.0-beta.1`（`RELEASES.md` + README）
 - `2026-05-23`: 第三方部署回归记录收口为内网 / 公网 / 双 Docker 三种形态（见 `third-party-deployments.md`）
 - `2026-05-22`: Worker 公网 `Landing-Subscription?target=URI` 复核 **7** 行
