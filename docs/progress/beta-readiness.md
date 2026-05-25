@@ -1,13 +1,13 @@
 # Beta 发布缺口评估
 
-> 最近更新：2026-05-23
+> 最近更新：2026-05-25
 
 实时状态见 [STATUS.md](STATUS.md)；执行计划见 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md)。
 
 ## 当前基线
 
-- **阶段**：3.0 发布整理尾声；**待 Beta 冻结宣布**（W3 回归已归档，见 [third-party-deployments.md](../testing/third-party-deployments.md)）。
-- **分支与标签**：`dev / beta / main` → `dev-latest / beta-latest / latest`。
+- **阶段**：3.0 Beta 线已启动；**`v3.0.0-beta.1` 已发布**（2026-05-24）；**准备发布 `v3.0.0-beta.2`**（`dev` 待合并 `beta` + 打 tag）。
+- **分支与标签**：`dev / beta / main` → `dev-latest / beta-latest / latest`；版本 tag 见 [RELEASES.md](../../RELEASES.md)。
 - **UI**：Beta 验收以默认 `/`（`default` scheme）为主；`/ui/a|b|c` 不阻塞。
 - **自动化**：`ci.yml` 含 Go test、review/worker fixture freshness、Vitest、`web-mock-e2e`（mocked Playwright，blocking）、四 scheme build；本地/容器化完整 Playwright（见 [test-system-review.md](../testing/test-system-review.md)）。
 
@@ -15,12 +15,13 @@
 
 - **`beta-latest` 实战**（**2026-05-23**）：vps-01 / vps-02 内网与公网一体化、`beta-latest` + `deployed-smoke` **通过**；Railway + Koyeb 双 Docker 分离形态 **通过**（见 [third-party-deployments.md](../testing/third-party-deployments.md)）。
 
-## 距 Beta 仍缺
+## 距下一版 Beta（beta.2）仍缺
 
-1. **Beta 冻结宣布**：`beta` 合并发布、`RELEASES.md` 首条 Beta 条目、plan 并入 [STATUS.md](STATUS.md) 并删除 plan 文件。
-2. **反馈闭环**：`.github/ISSUE_TEMPLATE/` 已补；持续用 Issue/回归记录归档，而非零散笔记。
-3. **E2E 加深**：阻断路径、更广 scheme 矩阵；当前 blocking 基线只保留两条 mocked happy path。
-4. **质量债（非硬阻塞）**：`subconverter` 浮动 tag 需在回归中注明；B/C workflow log 视觉与 default 未完全统一。
+1. **发布动作**：`dev` → `beta` 合并；打 `v3.0.0-beta.2`；等 `ci.yml` + `docker-publish` 产出镜像；记录 digest（可选更新 [third-party-deployments.md](../testing/third-party-deployments.md)）。
+2. **发布前检查**：按 [release-runbook.md](../testing/release-runbook.md) 跑 `go test`、`npm run test`、`test:e2e:mock`、四 scheme build、`compose config`；可选加跑 `include-exclude-filter.spec.ts`。
+3. **反馈闭环**：`.github/ISSUE_TEMPLATE/` 已补；持续用 Issue/回归记录归档。
+4. **E2E 加深（非 beta.2 硬阻塞）**：阻断路径、更广 scheme 矩阵；blocking 仍为两条 mocked happy path。
+5. **质量债**：`subconverter` 浮动 tag 需在回归中注明；B/C workflow log 视觉与 default 未完全统一；plan 文件待 beta 线稳定后并入 STATUS。
 
 ## Beta 硬门槛
 
@@ -31,9 +32,10 @@
 
 ## 推荐顺序
 
-1. `beta` 合并发布 + 更新 digest / `RELEASES.md`；归档本轮回归 digest；plan 并入 STATUS 并删除 plan 文件。
-2. 补 E2E 阻断路径；视需要接入 CI。
-3. 条件满足后再引入 `vX.Y.Z-beta.N`。
+1. 本地/CI 跑通 [release-runbook](../testing/release-runbook.md) 发布前检查。
+2. `dev` 合并到 `beta`，打 tag `v3.0.0-beta.2`，等 GHCR 镜像就绪。
+3. 抽样第三方设备 smoke + 更新 digest / 回归记录；视需要刷新在线预览（Koyeb）。
+4. 后续 beta.N：补 E2E 阻断路径；plan 并入 STATUS 并删除 plan 文件。
 
 ## 相关文档
 

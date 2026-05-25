@@ -4,6 +4,41 @@
 
 ---
 
+## v3.0.0-beta.2
+
+**Tag:** `v3.0.0-beta.2`（待打）  
+**日期:** 2026-05-25  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:v3.0.0-beta.2`（`beta` 分支滚动标签 `beta-latest` 指向同期构建）
+
+### 概述
+
+在 [v3.0.0-beta.1](#v300-beta1) 基础上的第二轮 Beta 修订，侧重默认 `/` 的 Stage 2 体验、状态初始化与测试/文档收口；无破坏性 API 变更。
+
+### 变更摘要
+
+- **Stage 2 表格**：默认 `/` 与 scheme `a` 引入自适应列宽与响应式测量，长节点名/relay 列更易读。
+- **Stage 2 状态**：修正初始化逻辑，避免未完成 stage1 转换时误展示可生成状态。
+- **回归基线**：`dual-landing-chain-port-forward` 默认 fixture 不再预置 include/exclude；新增 include/exclude 过滤的 Playwright 集成用例（`web/e2e/include-exclude-filter.spec.ts`，发布前本地/容器化 E2E 可选跑）。
+- **文档**：README 在线体验指向 [dual-landing-manual-reference](docs/testing/dual-landing-manual-reference.md)；[test-system-review](docs/testing/test-system-review.md) 与发布 runbook 口径同步。
+
+### 自部署
+
+与 beta.1 相同，将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.0.0-beta.2"
+```
+
+或继续使用 `beta-latest`（跟进 Beta 线修复时需自行核对 digest/变更）。
+
+从 **beta.1** 升级：拉取新镜像并重启 Compose 即可；短链数据卷可保留，无需改配置格式。
+
+### Beta 说明
+
+仍属预发布；安全与部署注意同 beta.1（见下文「Beta 说明」与 [SECURITY.md](SECURITY.md)）。
+
+---
+
 ## v3.0.0-beta.1
 
 **Tag:** `v3.0.0-beta.1`  

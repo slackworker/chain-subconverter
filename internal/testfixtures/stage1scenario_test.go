@@ -152,8 +152,6 @@ func TestRenderReviewStage1InputFiles(t *testing.T) {
 			UDP:            &udp,
 			SkipCertVerify: &skipCertVerify,
 			Config:         &config,
-			Include:        []string{"HK", "JP"},
-			Exclude:        []string{"Expired"},
 		},
 	})
 	if err != nil {
