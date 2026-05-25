@@ -1516,6 +1516,55 @@
 	width: 30%;
 }
 
+/* Stage2 内容驱动最小宽度 + 剩余宽度按权重分配（--s2-col-* 由 useStage2TableColumns 写入） */
+.a-table-wrap--stage2-adaptive {
+	--s2-col-1: 28%;
+	--s2-col-2: 10%;
+	--s2-col-3: 22%;
+	--s2-col-4: 40%;
+}
+
+.a-table--stage2-adaptive col:nth-child(1) {
+	width: var(--s2-col-1);
+}
+
+.a-table--stage2-adaptive col:nth-child(2) {
+	width: var(--s2-col-2);
+}
+
+.a-table--stage2-adaptive col:nth-child(3) {
+	width: var(--s2-col-3);
+}
+
+.a-table--stage2-adaptive col:nth-child(4) {
+	width: var(--s2-col-4);
+}
+
+.a-table--stage2-adaptive {
+	width: max(100%, var(--s2-table-min-width, 0px));
+	min-width: var(--s2-table-min-width, 0px);
+}
+
+/* 列宽不足时优先横向滚动，避免目标/落地文本在列内换行或叠压 */
+.a-table--stage2-adaptive td:nth-child(3) .a-mode-cell .a-select,
+.a-table--stage2-adaptive td:nth-child(4) .a-target-picker,
+.a-table--stage2-adaptive td:nth-child(4) .a-select,
+.a-table--stage2-adaptive td:nth-child(4) .a-target-menu__trigger {
+	white-space: nowrap;
+}
+
+/* 配置方式列：列宽由测量驱动，禁止 flex 把 select 压窄导致选项文字被裁切 */
+.a-table--stage2-adaptive td:nth-child(3) .a-mode-cell {
+	min-width: min-content;
+}
+
+.a-table--stage2-adaptive td:nth-child(3) .a-mode-cell .a-select {
+	flex: 0 1 auto;
+	min-width: max-content;
+	max-width: none;
+	width: 100%;
+}
+
 .a-table th,
 .a-table td {
 	padding: 0.65rem 0.75rem;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { AppPageProps } from "../../lib/composition";
@@ -21,6 +21,7 @@ import type { WorkflowLogEntry } from "../../lib/state";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
+import { useStage2TableColumns } from "./useStage2TableColumns";
 import "./index.css";
 
 const LOCALE_STORAGE_KEY = "chain-subconverter-ui.locale";
@@ -630,6 +631,47 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
 	const stage2TableWrapRef = useRef<HTMLDivElement | null>(null);
 
+	const stage2ColumnMeasureInput = useMemo(() => {
+		if (stage2Rows.length === 0) {
+			return null;
+		}
+
+		return {
+			headers: [copy.colLanding, copy.colType, copy.colMode, copy.colTarget] as const,
+			rows: stage2Rows.map((row) => {
+				const meta = getStage2RowMeta(row.landingNodeName);
+				const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
+				const modeOptionLabels = displayModeOptions.map((mode) => {
+					const restriction = meta?.restrictedModes?.[mode];
+					const label = getModeLabel(mode, locale);
+					return restriction ? `${label}（${restriction.reasonText}）` : label;
+				});
+				const targetLabel =
+					getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
+					(row.mode === "none" ? "--" : copy.selectTarget);
+
+				return {
+					landingNodeName: row.landingNodeName,
+					landingNodeType: meta?.landingNodeType ?? "--",
+					modeOptionLabels,
+					targetLabel,
+				};
+			}),
+		};
+	}, [
+		stage2Rows,
+		state.stage2Init,
+		locale,
+		copy.colLanding,
+		copy.colType,
+		copy.colMode,
+		copy.colTarget,
+		copy.selectTarget,
+		getStage2RowMeta,
+	]);
+
+	const stage2ColumnStyle = useStage2TableColumns(stage2TableWrapRef, stage2ColumnMeasureInput);
+
 	const preferShort = state.preferShortUrl;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
 	const portForwardEnabled = state.stage1Input.advancedOptions.enablePortForward;
@@ -1202,8 +1244,18 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 						</p>
 					) : null}
 
-					<div className="a-table-wrap" ref={stage2TableWrapRef}>
-						<table className="a-table">
+					<div
+						className="a-table-wrap a-table-wrap--stage2-adaptive"
+						ref={stage2TableWrapRef}
+						style={stage2ColumnStyle}
+					>
+						<table className="a-table a-table--stage2-adaptive">
+							<colgroup>
+								<col />
+								<col />
+								<col />
+								<col />
+							</colgroup>
 							<thead>
 								<tr>
 									<th scope="col">{copy.colLanding}</th>
