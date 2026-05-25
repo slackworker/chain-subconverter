@@ -78,7 +78,7 @@ export const initialAppState: AppState = {
 		rows: [],
 	},
 	generatedUrls: null,
-	stage2Stale: true,
+	stage2Stale: false,
 	restoreStatus: "idle",
 	responseOriginStage: null,
 	messages: [],

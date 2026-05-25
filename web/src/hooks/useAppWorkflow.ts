@@ -285,12 +285,13 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					? { label: "Converted", tone: "success" }
 					: { label: "Editing", tone: "neutral" };
 
+	const hasStage2Baseline = state.stage2Init !== null || stage2Rows.length > 0;
 	const stage2Status: WorkflowStatus = isConflictReadonly
 		? { label: "Conflict", tone: "warning" }
-		: state.stage2Stale
+		: state.stage2Stale && hasStage2Baseline
 			? { label: "Stage 2 Stale", tone: "warning" }
 			: state.stage2Init === null
-				? { label: "Awaiting Init", tone: "warning" }
+				? { label: "Awaiting Init", tone: "neutral" }
 				: { label: "Ready", tone: "success" };
 
 	const stage3Status: WorkflowStatus = state.generatedUrls === null

@@ -184,6 +184,16 @@ async function initializeStage2ReadyState(workflow: RenderedWorkflow, overrides:
 }
 
 describe("useAppWorkflow", () => {
+	it("shows awaiting-init Stage 2 status on a fresh page instead of stale", () => {
+		const workflow = renderWorkflow();
+
+		expect(workflow.current.state.stage2Stale).toBe(false);
+		expect(workflow.current.stage2Status).toEqual({
+			label: "Awaiting Init",
+			tone: "neutral",
+		});
+	});
+
 	it("initializes Stage 2 and workflow log entries after Stage 1 convert succeeds", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
