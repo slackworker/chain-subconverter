@@ -22,10 +22,7 @@ const dualLandingScenarioPath = path.join(
 	"dual-landing-chain-port-forward.stage1.json",
 );
 const workerPublicRoot = path.join(repoRoot, "deploy", "test-fixtures-worker", "public");
-const workerDownloadRoots = [
-	path.join(workerPublicRoot, "dual-landing", "download"),
-	path.join(workerPublicRoot, "7xK9pLm2Qr4vB6yN8sT3", "download"),
-];
+const workerDownloadRoot = path.join(workerPublicRoot, "dual-landing", "download");
 
 const checkMode = process.argv.includes("--check");
 
@@ -115,9 +112,7 @@ const generatedFiles = [
 ];
 
 for (const file of generatedFiles) {
-	for (const workerDownloadRoot of workerDownloadRoots) {
-		writeOrCheckFile(path.join(workerDownloadRoot, file.name), file.content);
-	}
+	writeOrCheckFile(path.join(workerDownloadRoot, file.name), file.content);
 }
 
 const manualReferencePath = path.join(repoRoot, DUAL_LANDING_MANUAL_REFERENCE_PATH);
@@ -125,6 +120,6 @@ writeOrCheckFile(manualReferencePath, buildDualLandingManualReferenceMarkdown(re
 
 if (!checkMode) {
 	process.stdout.write(
-		`synced ${generatedFiles.length} worker fixtures to ${workerDownloadRoots.length} paths and manual reference doc from dual-landing canonical data\n`,
+		`synced ${generatedFiles.length} worker fixtures to dual-landing/download and manual reference doc from dual-landing canonical data\n`,
 	);
 }

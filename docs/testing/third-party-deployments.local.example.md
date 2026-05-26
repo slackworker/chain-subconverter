@@ -25,6 +25,8 @@
 
 ### 本地自动复验（WSL）
 
+`E2E_*` 订阅 URL 取值见 [dual-landing-manual-reference.md](dual-landing-manual-reference.md)；可复制 [local-dev-smoke.md](local-dev-smoke.md)「公网 E2E」中的完整命令。
+
 ```bash
 CHAIN_SUBCONVERTER_E2E_BASE_URL="http://<lan-ip>:11200/" \
 CHAIN_SUBCONVERTER_E2E_LANDING_INPUT="https://<fixtures-worker>/dual-landing/download/Landing-Subscription" \

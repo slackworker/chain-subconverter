@@ -24,23 +24,19 @@
 
 运行结果写入：`.tmp/dev-up/runtime.env`
 
-## 最小 smoke 顺序
+## 发布前完整检查
 
-### 1. 自动化基线
+发版 / beta 前按 [release-runbook](release-runbook.md) 冻结项确认后，在仓库根执行：
 
 ```bash
 go test ./...
 cd web && npm run test
-cd web && npm run build && npm run build:b && npm run build:c
-```
-
-发布前完整检查（含 E2E）见 [release-runbook](release-runbook.md)。本地 E2E 需先 `./scripts/dev-up.sh default`，再：
-
-```bash
 cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
+cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
+docker compose -f deploy/docker-compose.yml config
 ```
 
-WSL 若缺少 Playwright 浏览器系统库：先 `./scripts/dev-up.sh default`，再在仓库根用容器连本机 Vite（端口以 `runtime.env` 为准，下例为默认 `5173`）：
+E2E 需先 `./scripts/dev-up.sh default`。WSL 若缺少 Playwright 浏览器系统库：先 `./scripts/dev-up.sh default`，再在仓库根用容器连本机 Vite（端口以 `runtime.env` 为准，下例为默认 `5173`）：
 
 ```bash
 docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
@@ -50,6 +46,18 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 	-v "$PWD":/work -w /work/web \
 	mcr.microsoft.com/playwright:v1.60.0-noble \
 	npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
+```
+
+本地 smoke：`./scripts/dev-up.sh default` — 确认 `healthz`、`stage1/convert`、Stage 3、workflow log。
+
+## 最小 smoke 顺序
+
+### 1. 自动化基线（日常）
+
+```bash
+go test ./...
+cd web && npm run test
+cd web && npm run build && npm run build:b && npm run build:c
 ```
 
 ### 2. 启动本地 UI
@@ -74,6 +82,20 @@ http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b|c 时）
 - 修改 Stage 1 后，Stage 2 进入 stale，且“生成链接”按钮禁用
 - Stage 3 可执行打开、复制、下载、`resolve-url`、`short-links`
 - `resolve-url` / `short-links` 输入非法 URL 时，错误回到 Stage 3，而不是误落到全局
+
+## 公网 E2E（第三方部署）
+
+订阅 URL 以 [dual-landing-manual-reference.md](dual-landing-manual-reference.md) 为准（勿复制到多处）。在仓库根执行；公网 app 入口勿写入 Git，见 [third-party-deployments.local.md](third-party-deployments.local.md)：
+
+```bash
+CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" \
+CHAIN_SUBCONVERTER_E2E_LANDING_INPUT="https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Landing-Subscription" \
+CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT="https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1" \
+CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT_2="https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2" \
+./scripts/third-party-smoke.sh
+```
+
+Worker 同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)。
 
 ## 高频排障
 

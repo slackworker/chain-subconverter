@@ -20,7 +20,7 @@
 | [STATUS.md](STATUS.md) | 状态、backlog、最近验证 |
 | [ROADMAP.md](ROADMAP.md) | 阶段结论、维护期非目标 |
 | [MAINTENANCE.md](MAINTENANCE.md) | 何时改哪份文档 |
-| [testing/release-runbook.md](testing/release-runbook.md) | 发布前检查命令 |
+| [testing/release-runbook.md](testing/release-runbook.md) | 发布前检查清单（命令见 local-dev-smoke） |
 | [testing/third-party-deployments.md](testing/third-party-deployments.md) | 设备回归结论 |
 
 ## 开发者与 AI Agent

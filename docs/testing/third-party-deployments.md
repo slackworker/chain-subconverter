@@ -78,7 +78,7 @@ vps-01 / vps-02 在 **2026-05-22** 以 `dev-latest`（digest `sha256:5170df8c9c3
 ## 复测入口（无敏感信息）
 
 ```bash
-# 必须显式指定目标；可选覆盖落地/中转订阅 URL（见 deploy/test-fixtures-worker/README）
+# 必须显式指定目标；落地/中转订阅 URL 见 dual-landing-manual-reference.md
 CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" ./scripts/third-party-smoke.sh
 ```
 

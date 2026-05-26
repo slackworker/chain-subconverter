@@ -1,6 +1,5 @@
 /**
- * Serves static subscription fixtures under /dual-landing/download/*
- * and the legacy /7xK9pLm2Qr4vB6yN8sT3/download/* compatibility alias.
+ * Serves static subscription fixtures under /dual-landing/download/*.
  * Maps ?target=ClashMeta|URI to sibling asset files (*.clashmeta, *.uri).
  */
 export default {

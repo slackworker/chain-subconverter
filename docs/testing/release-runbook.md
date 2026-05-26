@@ -2,6 +2,8 @@
 
 发版 / beta.N 前**检查清单**。分支与镜像口径见 [../STATUS.md](../STATUS.md)；部署见 [deploy/README.md](../../deploy/README.md)；结论归档 [third-party-deployments.md](third-party-deployments.md)。
 
+**命令与 smoke 步骤**只在 [local-dev-smoke.md](local-dev-smoke.md) 维护；本文不重复命令块。
+
 ## 发布前冻结项
 
 - `APP_IMAGE`、`SUBCONVERTER_IMAGE`、对外端口、`USER_FACING_BASE_URL`（若需要）
@@ -10,26 +12,14 @@
 
 ## 发布前检查
 
-```bash
-go test ./...
-cd web && npm run test
-cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
-cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
-docker compose -f deploy/docker-compose.yml config
-```
-
-- fixture 策略见 [test-system-review.md](test-system-review.md)
-- E2E / Playwright 环境见 [local-dev-smoke.md](local-dev-smoke.md)
-
-本地 smoke：`./scripts/dev-up.sh default` — 确认 `healthz`、`stage1/convert`、Stage 3、workflow log。
+- [ ] 自动化：`go test`、web 单测、E2E（`default-happy-path`、`port-forward-happy-path`）、四套 `build:<scheme>`、`docker compose config` — 见 [local-dev-smoke.md](local-dev-smoke.md)「发布前完整检查」
+- [ ] fixture 策略见 [test-system-review.md](test-system-review.md)
+- [ ] E2E / Playwright 环境见 [local-dev-smoke.md](local-dev-smoke.md)
+- [ ] 本地 smoke：`./scripts/dev-up.sh default` — 确认 `healthz`、`stage1/convert`、Stage 3、workflow log
 
 ## 第三方设备
 
-按 [deploy/README.md](../../deploy/README.md) 部署并记录访问入口。可选：
-
-```bash
-CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" ./scripts/third-party-smoke.sh
-```
+按 [deploy/README.md](../../deploy/README.md) 部署并记录访问入口。公网 E2E 与 Worker 订阅 URL 见 [local-dev-smoke.md](local-dev-smoke.md)、[dual-landing-manual-reference.md](dual-landing-manual-reference.md)。
 
 记录字段见 [third-party-deployments.md](third-party-deployments.md)。
 
