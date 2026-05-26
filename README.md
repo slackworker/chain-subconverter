@@ -12,13 +12,9 @@
 
 ### 在线体验
 
-公网预览：<https://fantastic-loise-slackers-134ea8cc.koyeb.app/>
+公网预览：<https://fantastic-loise-slackers-134ea8cc.koyeb.app/>（仅体验 UI 与流程；**请勿提交真实节点或敏感订阅**）
 
-仅供体验 UI 与转换流程；请勿提交真实节点或敏感订阅。
-
-1. 打开上述预览站。
-2. 打开 [docs/testing/dual-landing-manual-reference.md](docs/testing/dual-landing-manual-reference.md)，按页内顺序操作：**先落地（6 条 URI + SOCKS5）→ 再中转（2 条 Worker URL）→ 端口转发与高级选项 → 转换**。
-3. 发布页标明每条数据对应哪个输入框，并含 Stage2 双 snapshot 与 short ID 金样，便于整条前端流程对照。
+假数据参考：按 [docs/testing/dual-landing-manual-reference.md](docs/testing/dual-landing-manual-reference.md) 粘贴输入即可走完整流程。
 
 ### 自部署
 
@@ -26,6 +22,14 @@
 2. 打开 `http://<device-ip>:<host-port>/`。
 3. 按页面流程完成落地节点 / 中转节点配置并生成结果。
 4. 按需要使用长链接、短链接或反向解析继续编辑。
+
+## 文档入口
+
+- 部署命令、环境变量与场景选择： [deploy/README.md](deploy/README.md)
+- 常见部署问题与排障： [deploy/FAQ.md](deploy/FAQ.md)
+- 安全边界与非承诺范围： [SECURITY.md](SECURITY.md)
+- 版本记录： [RELEASES.md](RELEASES.md)
+- 开发者与 AI Agent 内部索引： [docs/README.md](docs/README.md)
 
 ## 使用注意
 

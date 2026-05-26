@@ -2,6 +2,8 @@
 
 本文只说明当前推荐保留的轻量测试结构、各层职责与维护边界。
 
+当前发布状态、Beta 进度与文档整理进度不在本文维护；统一看 [../progress/STATUS.md](../progress/STATUS.md)。
+
 文中 `Smoke / Comprehensive` 指测试分层；`3pass-ss2022-test-subscription` 与 `dual-landing-chain-port-forward` 仍是底层 fixture ID，不在本轮文档收口中重命名。
 
 ## 目标

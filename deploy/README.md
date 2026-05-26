@@ -2,6 +2,8 @@
 
 本目录只承载部署相关内容。
 
+常见问题与排障见 [FAQ.md](FAQ.md)。
+
 ## 范围
 
 - 默认一体化 `docker-compose.yml`（`app + subconverter`），与下文第三方单段命令生成的 Compose 保持同一镜像口径与 `TRUSTED_PROXY_CIDRS` 等默认值
@@ -101,17 +103,7 @@ docker compose ps
 curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
 ```
 
-### 验证
-
-```bash
-cd "${APP_DIR:-$HOME/chain-subconverter}"
-docker compose ps
-curl "http://127.0.0.1:${HOST_PORT:-11200}/healthz"
-```
-
 局域网访问：`http://<device-ip>:<host-port>/`（`subconverter` 仅在私有网络 `subconverter-backend` 内，不对宿主机暴露端口）。
-
-Playwright 冒烟：`CHAIN_SUBCONVERTER_E2E_BASE_URL=http://<device-ip>:<port> ./scripts/third-party-smoke.sh`。
 
 ## 部署场景速查
 
@@ -122,6 +114,19 @@ Playwright 冒烟：`CHAIN_SUBCONVERTER_E2E_BASE_URL=http://<device-ip>:<port> .
 | 固定公网域名 / 多入口 | 设 `USER_FACING_BASE_URL`，不要依赖自动推断 |
 | 仅换镜像 tag | 「仅更新镜像」四行 |
 | 改端口、镜像或任意 env | 重跑整段 bash |
+
+## 部署卫生与运维建议
+
+对外或预发布环境至少确认：
+
+1. 只暴露 `app`，不要暴露 `subconverter`。
+2. 保留命名卷 `short-link-data`（短链数据持久化）。
+3. 有 HTTPS/固定域名/公网入口时，显式设置 `USER_FACING_BASE_URL`。
+4. 镜像尽量固定到明确 tag 或 digest，避免无记录漂移。
+5. 只有确实需要访问内网模板源时才开启 `TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`（安全边界见 [../SECURITY.md](../SECURITY.md)）。
+6. 对外入口不要关闭读/写限速；如需放宽，优先逐项调大并继续依赖网关层限速。
+
+需要具体故障解释时，继续看 [FAQ.md](FAQ.md)；安全边界与非承诺范围见 [../SECURITY.md](../SECURITY.md)。
 
 ## 双 Docker 分离部署（可选）
 
@@ -137,19 +142,6 @@ environment:
 ```
 
 `UPSTREAM` = app→subconverter；`FACING` = subconverter→app（勿与 `USER_FACING` 混用）。同机两项目：共享 Docker network + 服务名互访；跨机时填对端 IP/域名与端口。建议仍避免把 `subconverter` 作为面向用户的公开入口（见 [SECURITY](../SECURITY.md)）。
-
-## 仓库内 Compose 预览
-
-日常联调 `./scripts/dev-up.sh <scheme>`；本地未发布镜像亦走 `dev-up` 或 `docker build` 后改 `app.image`。
-
-```bash
-docker compose -f deploy/docker-compose.yml pull
-docker compose -f deploy/docker-compose.yml up -d --force-recreate
-docker compose -f deploy/docker-compose.yml ps
-curl http://localhost:11200/healthz
-```
-
-同步 compose/镜像：`git pull` 后 `docker compose -f deploy/docker-compose.yml pull && up -d`。
 
 ## 环境变量
 
@@ -174,8 +166,8 @@ curl http://localhost:11200/healthz
 | — | `CHAIN_…_DEFAULT_TEMPLATE_FETCH_CACHE_TTL` | `5m` | 高级 | 默认模板抓取缓存 |
 | — | `CHAIN_…_SHORT_LINK_DB_PATH` | `/data/short-links.sqlite3` | 高级 | 配合卷 `short-link-data` |
 
-`USER_FACING` ≠ `FACING`。未设前者时按 `Host`/TLS 或受信 `X-Forwarded-*` 推断。SSRF/缓存 TTL 等见 [SECURITY](../SECURITY.md)、[backend-api spec](../docs/spec/03-backend-api.md)。
+`USER_FACING` ≠ `FACING`。未设前者时按 `Host`/TLS 或受信 `X-Forwarded-*` 推断。SSRF 等边界见 [SECURITY](../SECURITY.md)。
 
 ## 参考
 
-第三方用 GHCR 镜像（默认 `latest`），勿设备上源码构建。双 Docker 确认 `FACING` 可达；公开入口勿关读/写限速。外网测试订阅：[test-fixtures-worker](test-fixtures-worker/README.md)。本地联调：[local-dev-smoke](../docs/testing/local-dev-smoke.md)。发布回归：[release-runbook](../docs/testing/release-runbook.md)。fixture：`internal/review/testdata/`。
+第三方用 GHCR 镜像（默认 `latest`），勿设备上源码构建。双 Docker 确认 `FACING` 可达；公开入口勿关读/写限速。

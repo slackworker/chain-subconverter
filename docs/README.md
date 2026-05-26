@@ -1,67 +1,44 @@
-# chain-subconverter 文档
+# chain-subconverter 内部文档索引
 
-## 仓库入口
+> 面向开发者与 AI Agent。最终用户请先看 [../README.md](../README.md)、[../deploy/README.md](../deploy/README.md)、[../deploy/FAQ.md](../deploy/FAQ.md)、[../SECURITY.md](../SECURITY.md) 与 [../RELEASES.md](../RELEASES.md)。
 
-用户向文档分工：
+本文档是当前仓库的唯一内部导航入口；只负责分流，不重复维护事实。
 
-- [../README.md](../README.md) — 产品入口、主要能力、在线预览与快速开始
-- [../deploy/README.md](../deploy/README.md) — 部署命令、环境变量与场景速查
-- [../RELEASES.md](../RELEASES.md) — 已发布版本记录（2.x 及更早见 [_legacy/RELEASES.md](../_legacy/RELEASES.md)）
+## 先看什么
 
-## 阅读入口
+1. 刚进入仓库：先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
+2. 需要知道现在做到哪里：先看 [progress/STATUS](progress/STATUS.md)。
+3. 需要权威契约：按主题进入 [spec/02-frontend-spec](spec/02-frontend-spec.md)、[spec/03-backend-api](spec/03-backend-api.md)、[spec/04-business-rules](spec/04-business-rules.md)、[spec/05-tech-stack](spec/05-tech-stack.md)。
+4. 需要运行或回归步骤：进入 [testing/local-dev-smoke](testing/local-dev-smoke.md)、[testing/release-runbook](testing/release-runbook.md) 与 [testing/test-system-review](testing/test-system-review.md)。
+5. 需要局部子系统细节：只在维护对应子系统时再读 [../web/README.md](../web/README.md) 或 [../deploy/test-fixtures-worker/README.md](../deploy/test-fixtures-worker/README.md)。
 
-本文档是当前仓库文档的唯一导航入口。
+## 文档分层
 
-1. 先读 [spec/00-governance](spec/00-governance.md) 与 [spec/01-overview](spec/01-overview.md)。
-2. 需要看当前执行重点、分支/标签策略或阶段缺口时，读 [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md)、[progress/STATUS](progress/STATUS.md) 与 [progress/beta-readiness](progress/beta-readiness.md)。
-3. 需要看详细契约与业务规则时，按主题进入 `spec/02-05`。
-4. 需要看固定回归基线、本地 smoke 或发布回归流程时，进入 `testing/`。
-
-## 目录约定
-
-`docs/` 只保留当前开发直接需要的文档类型：
-
-| 目录 | 用途 |
+| 路径 | 角色 |
 |------|------|
-| `spec/` | 当前权威规格；规则冲突按 `spec/00-governance.md` 裁决 |
-| `plan/` | 当前执行计划；只保留仍在推进的计划 |
-| `progress/` | 当前状态快照、Beta 缺口与阶段记录 |
-| `testing/` | 固定验收样例、本地 smoke 与发布回归说明 |
-| `temp/` | 临时待删区；非权威、默认不纳入版本控制 |
+| 根目录 `README` / `deploy` / `SECURITY` / `RELEASES` | 用户向入口；不承载内部执行状态 |
+| `docs/spec/` | 权威规格；冲突先问用户，见 [spec/00-governance](spec/00-governance.md) |
+| `docs/progress/STATUS.md` | 当前状态单点入口 |
+| `docs/plan/` | 临时执行计划；只保留仍在推进、且写明退出条件的计划 |
+| `docs/progress/` 其他文件 | 阶段性补充状态；应尽量并入 `STATUS` 后删除 |
+| `docs/testing/` | runbook、固定回归基线、测试体系说明 |
+| 子目录 README | 局部维护说明；不作为仓库主导航 |
+| `docs/temp/` | 临时待删区；不参与裁决，规则见 [temp/README](temp/README.md) |
 
-## 当前核心文档
+## 当前常用入口
 
-| 文档 | 说明 |
-|------|------|
-| [spec/00-governance](spec/00-governance.md) | 治理与总则：澄清回补、冲突裁决、轻量编写 |
-| [spec/01-overview](spec/01-overview.md) | 项目概览：目标、数据流、术语与约束 |
-| [spec/02-frontend-spec](spec/02-frontend-spec.md) | 前端 UI 规格 |
-| [spec/03-backend-api](spec/03-backend-api.md) | 后端 API 契约 |
-| [spec/04-business-rules](spec/04-business-rules.md) | 业务规则：转换并自动填充、阶段 2 初始化、阶段 2 配置操作 |
-| [spec/05-tech-stack](spec/05-tech-stack.md) | 技术选型与项目结构 |
-| [plan/3.0-release-stabilization](plan/3.0-release-stabilization.md) | 当前发布整理计划 |
-| [progress/STATUS](progress/STATUS.md) | 当前状态快照：已稳定范围、当前缺口与最近验证 |
-| [progress/beta-readiness](progress/beta-readiness.md) | Beta 前置条件、剩余缺口与进入 Beta 的推荐顺序 |
-| [ROADMAP](ROADMAP.md) | 阶段路线图与当前推荐下一步 |
-| [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md) | Smoke fixture：最小默认回放基线 |
-| [testing/dual-landing-chain-port-forward](testing/dual-landing-chain-port-forward.md) | Comprehensive fixture：双落地 + 端口转发完整回放基线 |
-| [testing/dual-landing-manual-reference](testing/dual-landing-manual-reference.md) | 在线预览手工测试数据发布页（假节点、双 Stage2 snapshot、short ID 金样） |
-| [testing/local-dev-smoke](testing/local-dev-smoke.md) | 本地开发与 smoke runbook |
-| [testing/release-runbook](testing/release-runbook.md) | 当前发布与回归 runbook |
-| [testing/third-party-deployments](testing/third-party-deployments.md) | 第三方设备部署回归**结论**（细节在同目录 `third-party-deployments.local.md`，gitignore） |
-| [testing/test-system-review](testing/test-system-review.md) | 测试体系 Review：分层职责、CI 门禁与当前缺口 |
+- 治理与总览： [spec/00-governance](spec/00-governance.md)、[spec/01-overview](spec/01-overview.md)
+- 当前状态： [progress/STATUS](progress/STATUS.md)
+- 路线与阶段顺序： [ROADMAP](ROADMAP.md)
+- 本地开发： [testing/local-dev-smoke](testing/local-dev-smoke.md)
+- 发布回归： [testing/release-runbook](testing/release-runbook.md)、[testing/third-party-deployments](testing/third-party-deployments.md)
+- 测试体系： [testing/test-system-review](testing/test-system-review.md)
+- 固定 fixture： [testing/3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md)、[testing/dual-landing-chain-port-forward](testing/dual-landing-chain-port-forward.md)
 
-## 临时区规则
+## 维护约定
 
-`docs/temp/` 只用于放置以下材料：
-
-- 已完成阶段的细化计划
-- 待删除的 legacy、archive、迁移映射
-- 短期整理过程中的临时说明
-
-使用约束：
-
-- `docs/temp/` 内文档不参与当前开发裁决。
-- 主导航不再引用 `docs/temp/` 内历史材料。
-- 若无明确保留理由，临时区内容应在后续整理中直接删除，而不是继续归档。
-- 临时区规则见 [temp/README](temp/README.md)。
+- 同一事实只维护一处；本页只索引，不复制权威内容。
+- 状态写 [progress/STATUS](progress/STATUS.md)，勿重复进 `ROADMAP`、根 `README` 或 runbook。
+- `plan/` 须可删、写清退出条件；结束后并入 `STATUS` 再删。
+- FAQ 不抄 spec/runbook；文档越层扩写时拆回 spec、`STATUS` 或用户向根文档。
+- `docs/temp/` 不参与裁决，规则见 [temp/README](temp/README.md)。

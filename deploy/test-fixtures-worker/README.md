@@ -1,5 +1,7 @@
 # 外网测试订阅源（Cloudflare Workers）
 
+本文是 `deploy/test-fixtures-worker/` 的局部维护说明，不作为仓库主导航；项目整体状态与文档入口见 [../../docs/README.md](../../docs/README.md)。
+
 将仓库内已跟踪的 canonical 固定基线同步为静态文件，部署到 Cloudflare Workers 后供 chain-subconverter **公网部署**阶段拉取（中转 / 落地 URL）。当前约定是：`Landing-*` 直接对应 `dual-landing-chain-port-forward.stage1.json` 的 `landingItems + manualSocks5Items.generatedURI`（当前共 `6 + 1` 条），`Airport-Subscription-1/2` 直接对应同一场景的两份 transit URI 语料，`Airport-Subscription` 则作为由这两份语料拼接而成的兼容聚合别名。
 
 ## 当前本地产物 / 下次部署后的入口

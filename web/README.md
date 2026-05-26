@@ -98,4 +98,4 @@ Phase 4 前端工程目录。
 
 当前状态见 [../docs/progress/STATUS.md](../docs/progress/STATUS.md)。
 
-当前实施顺序见 [../docs/plan/3.0-release-stabilization.md](../docs/plan/3.0-release-stabilization.md)。
+阶段顺序与后续方向见 [../docs/ROADMAP.md](../docs/ROADMAP.md)。

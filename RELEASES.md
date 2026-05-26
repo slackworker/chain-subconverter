@@ -1,6 +1,6 @@
 # 发布说明
 
-按版本记录变更。2.x 及更早见 [_legacy/RELEASES.md](_legacy/RELEASES.md)。
+只记录当前 3.x 关键版本；完整历史见 [GitHub Releases](https://github.com/slackworker/chain-subconverter/releases) 与对应 tag。
 
 ---
 
@@ -8,7 +8,7 @@
 
 **Tag:** `v3.0.0-beta.2`  
 **日期:** 2026-05-25  
-**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:afa71279f0513f51bdda0f503c2629164f4a5c46a70747a54f28f959df438546`；版本 tag 镜像与 `beta-latest` 同期，自部署优先用滚动标签）
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
 
 ### 概述
 
@@ -18,8 +18,7 @@
 
 - **Stage 2 表格**：默认 `/` 与 scheme `a` 引入自适应列宽与响应式测量，长节点名/relay 列更易读。
 - **Stage 2 状态**：修正初始化逻辑，避免未完成 stage1 转换时误展示可生成状态。
-- **回归基线**：`dual-landing-chain-port-forward` 默认 fixture 不再预置 include/exclude；新增 include/exclude 过滤的 Playwright 集成用例（`web/e2e/include-exclude-filter.spec.ts`，发布前本地/容器化 E2E 可选跑）。
-- **文档**：README 在线体验指向 [dual-landing-manual-reference](docs/testing/dual-landing-manual-reference.md)；[test-system-review](docs/testing/test-system-review.md) 与发布 runbook 口径同步。
+- **文档与回归**：补齐回归与文档口径，减少试用误解与踩坑。
 
 ### 自部署
 
@@ -47,14 +46,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 
 ### 概述
 
-3.0 首个 Beta，面向拥有**落地节点**（及可选**中转节点**）、希望通过网页完成 **Mihomo 链式代理**与**端口转发**配置的用户。相较 2.x 的无状态 URL 传参模式，3.0 在自部署场景下支持**短链 / 长链与 11 位 short ID 反向解析**，配置可跨设备恢复编辑，无需单独维护节点清单。
-
-### 主要能力
-
-- **轻量、易部署**：Docker 环境下一键拉起 `app + subconverter` 完整服务，适用于 NAS、软路由、VPS。
-- **纯 GUI、零代码**：网页表单与下拉即可完成链式代理与端口转发，无需手写 YAML 或脚本。
-- **反向解析与轻量管理**：粘贴长链、短链或 short ID 即可恢复落地与中转配置并继续编辑。
-- **隐私**：自部署时节点与配置数据仅存本机（短链索引在持久卷），不会上传到第三方服务。
+3.0 首个 Beta：默认 `/` 入口 + 自部署短链/反向解析；更偏向 Mihomo 链式代理与端口转发场景。
 
 ### 在线体验
 
@@ -62,7 +54,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 
 <https://fantastic-loise-slackers-134ea8cc.koyeb.app/>
 
-README 中附有假节点示例数据，可直接粘贴试用完整流程。
+假节点示例数据见根目录 `README.md`（在线预览仅体验流程，请勿填真实节点）。
 
 ### 自部署
 

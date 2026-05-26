@@ -2,6 +2,8 @@
 
 本文只保留本地联调的运行入口、最小 smoke 顺序与高频排障提示。
 
+当前阶段状态、Beta 收口与发布节奏不在本文维护；统一看 [../progress/STATUS.md](../progress/STATUS.md) 与 [release-runbook.md](release-runbook.md)。
+
 适用环境：`VS Code + WSL + Docker Desktop`
 
 ## 用途边界
@@ -9,6 +11,7 @@
 - 本文是运行 runbook，不定义业务规则。
 - 前端边界与交互语义以 [../spec/02-frontend-spec.md](../spec/02-frontend-spec.md) 为准。
 - API 错误契约与字段语义以 [../spec/03-backend-api.md](../spec/03-backend-api.md) 为准。
+- 若本文开始承担状态同步或发布决策，说明边界已漂移，应把内容移回 `STATUS` 或发布 runbook。
 
 ## 推荐入口
 

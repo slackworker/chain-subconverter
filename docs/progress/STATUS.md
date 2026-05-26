@@ -9,6 +9,7 @@
 - **已发布** [`v3.0.0-beta.1`](../../RELEASES.md#v300-beta1)（2026-05-24）、[`v3.0.0-beta.2`](../../RELEASES.md#v300-beta2)（2026-05-25）；`beta-latest` 与 beta.2 同期（digest 见 [third-party-deployments.md](../testing/third-party-deployments.md)）。
 - 当前默认入口固定为 `/`，`/ui/a`、`/ui/b`、`/ui/c` 继续保留为实验入口。
 - 当前分支模型收口为 `dev / beta / main`：`dev` 用于日常开发与手动 `dev-latest`，`beta` 预留给 Beta 收口与 `beta-latest`，`main` 负责当前公开滚动镜像 `latest`。
+- 原 Beta readiness 页面与 3.0 发布整理 plan 的活跃内容已并入本页；后续 beta.N 收口只在本页维护。
 - `G1` 前端共享业务层已签收；共享边界以 [spec/02-frontend-spec](../spec/02-frontend-spec.md) 为准，不再单独维护一份 G1 验收说明。
 
 ## Phase 进度
@@ -38,12 +39,19 @@
 ## 当前缺口
 
 - `docs/temp/` 仅保留 `README.md` 入 Git；2026-05-22 已删除本地讨论稿（frontend workflow / blocking E2E），结论见 [test-system-review.md](../testing/test-system-review.md)。
-- 进入 Beta 冻结并完成 W3 回归归档后，将 [plan/3.0-release-stabilization.md](../plan/3.0-release-stabilization.md) 剩余条目并入本页并删除该 plan 文件（见 [docs/README.md](../README.md) `plan/` 约定）。
 - 第三方设备回归：**2026-05-25** vps-01/02 beta.2 `deployed-smoke` **通过**；**2026-05-23** 双 Docker 分离与 beta.1 内网/公网已归档（见 [third-party-deployments.md](../testing/third-party-deployments.md)）。
+- 反馈闭环已切到 Issue 模板与回归记录：后续 beta.N 的发布问题继续记入 issue 与 [third-party-deployments.md](../testing/third-party-deployments.md)，不再单独维护 Beta readiness 页面。
 - 真实前端验收仍依赖外部模板、外部订阅源与运行镜像状态，可复现性仍待继续固化。
 - 浏览器级 E2E：blocking 仍为两条 mocked smoke（default + port-forward happy path）；另增 `include-exclude-filter` 集成用例（非 blocking，发布前可选跑）。
 - B/C 方案尚未把 workflow log 的视觉形态统一到与默认 `/` 同一产品口径；当前共享语义已统一，但方案层呈现仍待继续收口。
 - 模板 URL 的最小 SSRF 拒绝名单、`USER_FACING_BASE_URL` 优先且缺省自动推断、以及读/写基础限速已落地；剩余安全缺口主要是更严格的出站控制、部署侧 egress 收敛与发布前验证记录。
+
+## 后续 beta.N 收口顺序
+
+1. 先按 [release-runbook.md](../testing/release-runbook.md) 跑发布前检查。
+2. 从已验证快照推进 `beta` 分支与版本 tag，并等待 GHCR `beta-latest` 就绪。
+3. 抽样第三方设备 smoke，更新 digest 与 [third-party-deployments.md](../testing/third-party-deployments.md) 记录；需要时刷新在线预览。
+4. 继续补非阻塞的 E2E 阻断路径、B/C 视觉收口与文档精简，但不再另开独立状态页追踪这些事项。
 
 ## 测试基线补充
 
@@ -71,8 +79,6 @@
 
 - 阶段顺序与整体路线：[`docs/ROADMAP.md`](../ROADMAP.md)
 - 权威边界与契约：[`docs/spec/`](../spec/)
-- 当前执行计划：[`docs/plan/3.0-release-stabilization.md`](../plan/3.0-release-stabilization.md)
-- Beta 前置条件：[`docs/progress/beta-readiness.md`](beta-readiness.md)
 - 本地 UI 启动与 smoke 入口：[`docs/testing/local-dev-smoke.md`](../testing/local-dev-smoke.md)
 - 当前发布与回归 runbook：[`docs/testing/release-runbook.md`](../testing/release-runbook.md)
 - 第三方设备 Compose 启动命令：[`deploy/README.md`](../../deploy/README.md)

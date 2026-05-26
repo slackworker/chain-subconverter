@@ -2,11 +2,13 @@
 
 ## 当前范围
 
-本文件描述当前 **3.0 开发后期 / 预发布前** 的安全边界、部署假设与已知限制。
+本文件只描述当前 **3.0 Beta / 预发布阶段** 的安全模型、默认假设与非承诺范围。
+
+部署命令、运维建议与常见排障请看 [deploy/README.md](deploy/README.md) 与 [deploy/FAQ.md](deploy/FAQ.md)。
 
 - 定位：可信自部署 / 内测或小范围预发布。
 - 不承诺公网多租户、零信任或强对抗场景下的完整防护。
-- 发布线：`dev / beta / main`；滚动标签 `dev-latest` / `beta-latest` / `latest`。对外部署优先固定明确镜像 tag，而非长期漂移滚动标签。
+- 对外部署优先固定明确镜像 tag 或 digest，而非长期漂移滚动标签。
 
 ## 部署假设
 
@@ -17,7 +19,7 @@
 - 若存在 HTTPS 反向代理、固定域名或多入口访问，部署者会显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`。
 - 短链接数据通过持久卷保存；无卷的临时预览环境只适合无状态测试。
 
-如果以上任一条件不成立，应视为超出当前默认安全模型。
+如果以上任一条件不成立，应视为超出当前默认安全模型，应由部署者额外补齐网络、身份、审计与流量防护。
 
 ## 当前实现中的重要边界
 
@@ -46,7 +48,7 @@
 - 域名白名单
 - 出站 egress 控制
 
-默认情况下，若模板 URL 指向 `127.0.0.0/8`、`::1/128`、`169.254.0.0/16`、`fe80::/10`、`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`、`fc00::/7`、`0.0.0.0/8` 或 `224.0.0.0/4` 等地址段，服务端会直接拒绝该请求。
+默认情况下，若模板 URL 指向 loopback、link-local、RFC1918/ULA、多播、未指定地址等私有/保留网段，服务端会直接拒绝该请求。
 
 同时保留一个显式开关 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`，只给可信自部署环境访问内网模板源时使用。开启后，相当于把模板抓取能力重新暴露给私网目标，部署者需要自行承担相应风险。
 
@@ -82,19 +84,13 @@
 
 因此，当前实现适合低并发、可信网络与可控流量来源。
 
-## 运维建议
+## 部署硬化入口
 
-对外或预发布环境至少执行：
+若你在做实际部署，而不是只想理解安全边界：
 
-1. 仅暴露 `app` 的 HTTP 入口，不要暴露 `subconverter`。
-2. 为第三方设备部署保留持久卷，避免短链数据在容器重建后丢失。
-3. 有 HTTPS 反代、固定域名或公网入口时，显式设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，不要依赖自动推断。
-4. 优先固定 `APP_IMAGE` 为明确版本 tag（如 `latest` 对应的一次性 digest 或版本号），避免无记录地长期漂移。
-5. 限制可访问人群；勿将当前版本直接当作公开互联网多租户服务。
-6. 如条件允许，在网络层限制服务端对内网与 metadata 地址的访问。
-7. 只有在确实需要访问内网模板源时，才设置 `CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS=true`。
-8. 不要在对外入口把 `CHAIN_SUBCONVERTER_WRITE_REQUESTS_PER_MINUTE` 或 `CHAIN_SUBCONVERTER_READ_REQUESTS_PER_MINUTE` 设为 `0`；如需放宽限额，优先按读/写流量分别调节，并结合反代或网关层继续限速。
-9. 若入口前存在反代，确认 `CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS` 覆盖的是实际反代 peer 网段，而不是笼统地扩大到所有私网。
+- 部署命令与环境变量：看 [deploy/README.md](deploy/README.md)
+- 常见错误主机名 / HTTPS / 模板 URL / 限速问题：看 [deploy/FAQ.md](deploy/FAQ.md)
+- 当前不承诺覆盖的风险：继续看本文件下文
 
 ## 当前不承诺防护的内容
 
