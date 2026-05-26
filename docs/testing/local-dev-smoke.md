@@ -1,17 +1,6 @@
 # 本地 UI 启动与 Smoke
 
-本文只保留本地联调的运行入口、最小 smoke 顺序与高频排障提示。
-
-当前阶段状态、Beta 收口与发布节奏不在本文维护；统一看 [../progress/STATUS.md](../progress/STATUS.md) 与 [release-runbook.md](release-runbook.md)。
-
-适用环境：`VS Code + WSL + Docker Desktop`
-
-## 用途边界
-
-- 本文是运行 runbook，不定义业务规则。
-- 前端边界与交互语义以 [../spec/02-frontend-spec.md](../spec/02-frontend-spec.md) 为准。
-- API 错误契约与字段语义以 [../spec/03-backend-api.md](../spec/03-backend-api.md) 为准。
-- 若本文开始承担状态同步或发布决策，说明边界已漂移，应把内容移回 `STATUS` 或发布 runbook。
+状态见 [../STATUS.md](../STATUS.md)；契约见 spec；本文只写本地联调步骤。环境：`VS Code + WSL + Docker Desktop`。
 
 ## 推荐入口
 
@@ -49,6 +38,18 @@ cd web && npm run build && npm run build:b && npm run build:c
 
 ```bash
 cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
+```
+
+WSL 若缺少 Playwright 浏览器系统库：先 `./scripts/dev-up.sh default`，再在仓库根用容器连本机 Vite（端口以 `runtime.env` 为准，下例为默认 `5173`）：
+
+```bash
+docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
+	--user "$(id -u):$(id -g)" -e HOME=/tmp \
+	-e CHAIN_SUBCONVERTER_E2E_BASE_URL=http://host.docker.internal:5173 \
+	-e CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
+	-v "$PWD":/work -w /work/web \
+	mcr.microsoft.com/playwright:v1.60.0-noble \
+	npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
 ```
 
 ### 2. 启动本地 UI

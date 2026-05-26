@@ -1,27 +1,18 @@
-# 临时文档区
+# docs/temp
 
-本目录只用于暂存待删除或短期过渡中的文档材料，不属于当前开发主导航。
+本目录为**本地临时区**，默认不纳入版本控制（见仓库根 `.gitignore`）。仅本 `README.md` 入 Git，用于说明规则。
 
-## 放入条件
+## 用途
 
-- 已完成阶段的细化计划
-- 旧版 legacy、archive、迁移映射
-- 正在整理、尚未决定是否保留的临时说明
+- 单次整理/评审草稿
+- 迁移过程中的临时映射（用完即删）
 
-## 使用约束
+## 规则
 
-- 本目录内文档不参与当前开发、评审与实现裁决。
-- 若某份文档已经失去直接开发价值，应优先移入本目录，而不是继续扩展 archive 层级。
-- 本目录默认不纳入版本控制（见根 `.gitignore`）；**仅** `README.md` 纳入 Git，其余本地暂存后应删除，勿长期堆积。
-- 已完成的评审/计划应把结论写入 `docs/testing/`、`docs/spec/`、`docs/progress/` 等权威路径后，删除对应 temp 副本，避免与权威文档（如 [test-system-review.md](../testing/test-system-review.md)）口径冲突。
+- 不参与治理裁决；[docs/README.md](../README.md) 不链接 temp 内具体文件。
+- 结论必须写入权威路径：`spec/`、`testing/`、[STATUS.md](../STATUS.md) 等，然后**删除** temp 内对应草稿。
+- 不要长期归档到 temp；无保留理由则直接删除。
 
-## 2026-05-22 清理说明
+## 需要同类信息时
 
-已删除本地 temp 中的过时材料，包括但不限于：
-
-- 测试执行计划（已全部 `[x]`，结论已在 `third-party-deployments.md` 与 worker README）
-- 测试梳理评审（含「CI 无 fixture check」等已过时表述；CI 以 `test-system-review.md` 为准）
-- `history/`、`completed-phases/` 旧阶段拆解与 legacy 映射
-- UI / Docker 构建一次性评审稿（改动已落地或无需进主导航）
-
-若需同类信息，请查 [docs/README.md](../README.md) 索引，勿在 temp 中重建长期副本。
+查 [docs/README.md](../README.md) 索引，勿在 temp 重建长期副本。

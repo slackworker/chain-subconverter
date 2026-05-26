@@ -10,8 +10,6 @@
 - `subconverter` 必须继续以部署侧私有 HTTP 服务形式集成；默认优先与 `app` 同 Compose 内部署，也允许以独立 Docker 服务形式提供，但都不得把其请求细节散落到业务层。
 - 当前允许保留仅含 `app + subconverter` 的 API-only Compose 作为本地验证路径。
 
-当前状态见 [../progress/STATUS.md](../progress/STATUS.md)。
-
 ## 1. 默认实现方向
 
 在当前收口与微调阶段，默认按以下方向对齐实现与文档；若治理结论调整，以最新确认文档为准。

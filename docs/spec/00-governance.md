@@ -16,9 +16,9 @@
 
 - 用户向：根目录与 `deploy/`（`README`、`deploy/`、`SECURITY`、`RELEASES`、FAQ）。
 - 内部：仅 [docs/README.md](../README.md)；`AGENTS.md` 只做极简跳转。
-- 契约在 `docs/spec/`；状态在 `progress/STATUS.md`；路线在 `ROADMAP.md`（不写实时进度）；runbook 在 `docs/testing/`。
+- 契约在 `docs/spec/`；状态在 [STATUS.md](../STATUS.md)；路线在 [ROADMAP.md](../ROADMAP.md)（不写实时进度）；runbook 在 `docs/testing/`。
 - 不得跨层复制 spec 事实；子目录 README 仅局部细节，不作主导航。
 
 ## 维护
 
-见 [docs/README.md](../README.md)「维护约定」。
+见 [MAINTENANCE.md](../MAINTENANCE.md)。
