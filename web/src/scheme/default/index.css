@@ -1492,6 +1492,7 @@
 .a-table {
         width: 100%;
         min-width: 30rem;
+	border-collapse: collapse;
 	font-size: 0.88rem;
 	table-layout: fixed;
 }
@@ -1585,6 +1586,11 @@
 .a-table th {
 	background: var(--color-gutter);
 	font-weight: 650;
+}
+
+/* 列分界：仅表头保留 elevated 色缝隙，表体按列表呈现、不加列间竖线 */
+.a-table thead th:not(:last-child) {
+	box-shadow: inset -2px 0 0 var(--color-elevated);
 }
 
 .a-table__empty {
