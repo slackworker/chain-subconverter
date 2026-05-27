@@ -1341,6 +1341,15 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											groupStart ? "is-group-start" : "",
 											groupEnd ? "is-group-end" : "",
 										].filter(Boolean).join(" ");
+										const rowIconActionsClassName = [
+											"a-stage2-row-icon-actions",
+											"a-stage2-row-icon-actions--toolbar",
+											"a-stage2-row-icon-actions--with-rail",
+											groupedBySource ? "is-grouped" : "is-solo",
+											sourceRow ? "is-source" : "is-derived",
+											groupStart ? "is-group-start" : "",
+											groupEnd ? "is-group-end" : "",
+										].filter(Boolean).join(" ");
 
 										return (
 											<tr key={rowKey} className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
@@ -1356,7 +1365,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 															aria-label={copy.proxyNameLabel}
 															onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
 														/>
-														<div className="a-stage2-row-icon-actions a-stage2-row-icon-actions--toolbar">
+														<div className={rowIconActionsClassName}>
 																{sourceRow ? (
 																	<button
 																		type="button"
