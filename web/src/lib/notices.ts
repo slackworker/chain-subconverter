@@ -1,5 +1,5 @@
 import type { ResponseOriginStage } from "./state";
-import type { BlockingError, Message } from "../types/api";
+import type { BlockingError, Message, Stage2Row } from "../types/api";
 
 type NoticePlacement = "global" | "stage-local";
 
@@ -69,8 +69,34 @@ export function getStage3FieldErrors(errors: BlockingError[], field: string) {
 	return errors.filter((error) => error.scope === "stage3_field" && error.context?.field === field);
 }
 
-export function getRowErrors(errors: BlockingError[], landingNodeName: string) {
-	return errors.filter((error) => error.scope === "stage2_row" && error.context?.landingNodeName === landingNodeName);
+function getStage2RowMatchKeys(row: Stage2Row | string) {
+	const values = typeof row === "string"
+		? [row]
+		: [row.rowId, row.proxyName, row.landingNodeName, row.sourceLandingNodeName];
+	const keys = new Set<string>();
+	for (const value of values) {
+		const trimmed = String(value ?? "").trim();
+		if (trimmed !== "") {
+			keys.add(trimmed);
+		}
+	}
+	return keys;
+}
+
+function matchesStage2RowError(error: BlockingError, row: Stage2Row | string) {
+	if (error.scope !== "stage2_row") {
+		return false;
+	}
+	const keys = getStage2RowMatchKeys(row);
+	if (keys.size === 0) {
+		return false;
+	}
+	return ["rowId", "proxyName", "landingNodeName", "sourceLandingNodeName"]
+		.some((contextKey) => keys.has(String(error.context?.[contextKey] ?? "").trim()));
+}
+
+export function getRowErrors(errors: BlockingError[], row: Stage2Row | string) {
+	return errors.filter((error) => matchesStage2RowError(error, row));
 }
 
 export function clearStage1FieldErrors(errors: BlockingError[], fields: string | string[]) {
@@ -82,8 +108,8 @@ export function clearStage1FieldErrors(errors: BlockingError[], fields: string |
 	return errors.filter((error) => !(error.scope === "stage1_field" && targetFields.has(String(error.context?.field ?? ""))));
 }
 
-export function clearStage2RowErrors(errors: BlockingError[], landingNodeName: string) {
-	return errors.filter((error) => !(error.scope === "stage2_row" && error.context?.landingNodeName === landingNodeName));
+export function clearStage2RowErrors(errors: BlockingError[], row: Stage2Row | string) {
+	return errors.filter((error) => !matchesStage2RowError(error, row));
 }
 
 export function clearStage3FieldErrors(errors: BlockingError[], fields: string | string[]) {

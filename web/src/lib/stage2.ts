@@ -15,6 +15,40 @@ export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"
 
 export type Stage2SnapshotRows = Stage2Row[];
 
+function getStage2RowIdentifiers(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
+	const identifiers = [row.rowId, row.proxyName, row.landingNodeName, row.sourceLandingNodeName];
+	const seen = new Set<string>();
+	const result: string[] = [];
+	for (const value of identifiers) {
+		const trimmed = value?.trim() ?? "";
+		if (trimmed === "" || seen.has(trimmed)) {
+			continue;
+		}
+		seen.add(trimmed);
+		result.push(trimmed);
+	}
+	return result;
+}
+
+export function getStage2RowKey(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
+	return getStage2RowIdentifiers(row)[0] ?? "";
+}
+
+export function matchesStage2RowKey(
+	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
+	rowKey: string,
+) {
+	const trimmedRowKey = rowKey.trim();
+	if (trimmedRowKey === "") {
+		return false;
+	}
+	return getStage2RowIdentifiers(row).includes(trimmedRowKey);
+}
+
+export function findStage2RowByKey(rows: Stage2SnapshotRows, rowKey: string) {
+	return rows.find((row) => matchesStage2RowKey(row, rowKey)) ?? null;
+}
+
 function getSelectedForwardRelays(rows: Stage2SnapshotRows) {
 	const selected = new Set<string>();
 	for (const row of rows) {
@@ -49,12 +83,12 @@ export function getChainTargetChoiceGroups(stage2Init: Stage2Init | null) {
 	return getChainTargetGroups(stage2Init.chainTargets).map(toChainTargetChoiceGroup);
 }
 
-export function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string) {
+export function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, rowKey: string) {
 	if (stage2Init === null) {
 		return [];
 	}
 
-	const currentRow = stage2Rows.find((row) => row.landingNodeName === landingNodeName) ?? null;
+	const currentRow = findStage2RowByKey(stage2Rows, rowKey);
 	const selectedRelays = getSelectedForwardRelays(stage2Rows);
 	if (currentRow?.mode === "port_forward" && currentRow.targetName !== null) {
 		selectedRelays.delete(currentRow.targetName);
@@ -106,7 +140,7 @@ export function getStage2TargetDisplayLabel(
 			.find((choice) => choice.value === row.targetName)?.label ?? row.targetName;
 	}
 
-	return getForwardRelayChoices(stage2Init, stage2Rows, row.landingNodeName)
+	return getForwardRelayChoices(stage2Init, stage2Rows, getStage2RowKey(row))
 		.find((choice) => choice.value === row.targetName)?.label ?? row.targetName;
 }
 

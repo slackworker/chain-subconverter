@@ -298,6 +298,13 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
 	}
+	if len(response.Stage2Snapshot.Rows) != 1 {
+		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 1", len(response.Stage2Snapshot.Rows))
+	}
+	row := response.Stage2Snapshot.Rows[0]
+	if row.RowID != "🇺🇸 SS2022-Test-256-US" || row.SourceLandingNodeName != "🇺🇸 SS2022-Test-256-US" || row.ProxyName != "🇺🇸 SS2022-Test-256-US" {
+		t.Fatalf("derived row identity mismatch: got %+v", row)
+	}
 	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
 		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
 	}
@@ -1336,7 +1343,13 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 		Code:    "EMPTY_CHAIN_TARGET",
 		Message: "chain target is empty",
 		Scope:   "stage2_row",
-		Context: map[string]any{"landingNodeName": "Unknown Landing", "field": "targetName"},
+		Context: map[string]any{
+			"rowId":                 "Unknown Landing",
+			"sourceLandingNodeName": "Unknown Landing",
+			"proxyName":             "Unknown Landing",
+			"landingNodeName":       "Unknown Landing",
+			"field":                 "targetName",
+		},
 	})
 }
 

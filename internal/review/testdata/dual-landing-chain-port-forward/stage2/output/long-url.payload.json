@@ -19,36 +19,57 @@
   "stage2Snapshot": {
     "rows": [
       {
+        "rowId": "🇭🇰 Alpha-SS-HK",
+        "sourceLandingNodeName": "🇭🇰 Alpha-SS-HK",
+        "proxyName": "🇭🇰 Alpha-SS-HK",
         "landingNodeName": "🇭🇰 Alpha-SS-HK",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
       {
+        "rowId": "🇭🇰 Alpha-Reality-HK-PortForward",
+        "sourceLandingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
+        "proxyName": "🇭🇰 Alpha-Reality-HK-PortForward",
         "landingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
         "mode": "port_forward",
         "targetName": "relay-a.example.com:7443"
       },
       {
+        "rowId": "🇭🇰 Alpha-Reality-HK-Direct",
+        "sourceLandingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
+        "proxyName": "🇭🇰 Alpha-Reality-HK-Direct",
         "landingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
         "mode": "none",
         "targetName": null
       },
       {
+        "rowId": "🇯🇵 Beta-SS-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
+        "proxyName": "🇯🇵 Beta-SS-JP",
         "landingNodeName": "🇯🇵 Beta-SS-JP",
         "mode": "chain",
         "targetName": "🇯🇵 日本节点"
       },
       {
+        "rowId": "🇯🇵 Beta-Reality-JP-PortForward",
+        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
+        "proxyName": "🇯🇵 Beta-Reality-JP-PortForward",
         "landingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
         "mode": "port_forward",
         "targetName": "relay-b.example.com:8443"
       },
       {
+        "rowId": "🇯🇵 Beta-Reality-JP-Direct",
+        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
+        "proxyName": "🇯🇵 Beta-Reality-JP-Direct",
         "landingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
         "mode": "none",
         "targetName": null
       },
       {
+        "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"

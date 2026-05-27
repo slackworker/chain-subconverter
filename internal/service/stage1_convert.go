@@ -112,9 +112,9 @@ type Stage2Init struct {
 }
 
 type Stage2Row struct {
-	RowID                 string                     `json:"-"`
-	SourceLandingNodeName string                     `json:"-"`
-	ProxyName             string                     `json:"-"`
+	RowID                 string                     `json:"rowId,omitempty"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
+	ProxyName             string                     `json:"proxyName,omitempty"`
 	LandingNodeName       string                     `json:"landingNodeName"`
 	Mode                  string                     `json:"mode"`
 	TargetName            *string                    `json:"targetName"`
@@ -122,9 +122,9 @@ type Stage2Row struct {
 }
 
 type Stage2InitRow struct {
-	RowID                 string                     `json:"-"`
-	SourceLandingNodeName string                     `json:"-"`
-	ProxyName             string                     `json:"-"`
+	RowID                 string                     `json:"rowId,omitempty"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
+	ProxyName             string                     `json:"proxyName,omitempty"`
 	LandingNodeName       string                     `json:"landingNodeName"`
 	LandingNodeType       string                     `json:"landingNodeType"`
 	Mode                  string                     `json:"mode"`

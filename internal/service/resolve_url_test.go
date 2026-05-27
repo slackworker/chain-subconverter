@@ -53,6 +53,13 @@ func TestResolveURLFromSource_Replayable(t *testing.T) {
 	if response.LongURL != generateResponse.LongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, generateResponse.LongURL)
 	}
+	if len(response.Stage2Snapshot.Rows) != 1 {
+		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 1", len(response.Stage2Snapshot.Rows))
+	}
+	row := response.Stage2Snapshot.Rows[0]
+	if row.RowID != "🇺🇸 SS2022-Test-256-US" || row.SourceLandingNodeName != "🇺🇸 SS2022-Test-256-US" || row.ProxyName != "🇺🇸 SS2022-Test-256-US" {
+		t.Fatalf("derived row identity mismatch: got %+v", row)
+	}
 	if len(response.Messages) != 0 {
 		t.Fatalf("expected 0 messages, got %d: %v", len(response.Messages), response.Messages)
 	}

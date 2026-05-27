@@ -206,9 +206,80 @@ func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected response error, got %T", err)
 	}
-	if responseErr.BlockingError().Code != "DUPLICATE_PROXY_NAME" {
-		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "DUPLICATE_PROXY_NAME")
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "DUPLICATE_PROXY_NAME" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "DUPLICATE_PROXY_NAME")
 	}
+	wantContext := map[string]any{
+		"rowId":                 "HK Landing",
+		"sourceLandingNodeName": "HK Landing",
+		"proxyName":             "HK Landing",
+		"landingNodeName":       "HK Landing",
+		"field":                 "proxyName",
+	}
+	if !mapsEqual(blockingError.Context, wantContext) {
+		t.Fatalf("BlockingError.Context mismatch: got %#v want %#v", blockingError.Context, wantContext)
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsUnknownSourceLandingWithDerivedRowContext(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+				{
+					RowID:                 "hk-derived-1",
+					SourceLandingNodeName: "Missing Landing",
+					ProxyName:             "HK Landing Copy",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want unknown source landing rejection")
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "LANDING_NODE_NOT_FOUND" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "LANDING_NODE_NOT_FOUND")
+	}
+	wantContext := map[string]any{
+		"rowId":                 "hk-derived-1",
+		"sourceLandingNodeName": "Missing Landing",
+		"proxyName":             "HK Landing Copy",
+		"landingNodeName":       "Missing Landing",
+	}
+	if !mapsEqual(blockingError.Context, wantContext) {
+		t.Fatalf("BlockingError.Context mismatch: got %#v want %#v", blockingError.Context, wantContext)
+	}
+}
+
+func mapsEqual(got map[string]any, want map[string]any) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for key, wantValue := range want {
+		gotValue, ok := got[key]
+		if !ok || gotValue != wantValue {
+			return false
+		}
+	}
+	return true
 }
 
 func dualLandingFixture(firstLandingName string, secondLandingName string) ConversionFixtures {

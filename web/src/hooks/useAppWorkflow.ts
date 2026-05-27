@@ -16,7 +16,14 @@ import {
 	getVisibleMessages,
 	shouldPromoteStage2StaleNotice,
 } from "../lib/notices";
-import { getChainTargetChoiceGroups, getForwardRelayChoices, pickNextTarget } from "../lib/stage2";
+import {
+	findStage2RowByKey,
+	getChainTargetChoiceGroups,
+	getForwardRelayChoices,
+	getStage2RowKey,
+	matchesStage2RowKey,
+	pickNextTarget,
+} from "../lib/stage2";
 import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
 import type { ResponseOriginStage, WorkflowLogEntry, WorkflowLogLevel } from "../lib/state";
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
@@ -85,6 +92,9 @@ let workflowLogSequence = 0;
 
 function snapshotRowsFromInit(stage2Init: Stage2Init) {
 	return stage2Init.rows.map((row) => ({
+		rowId: row.rowId,
+		sourceLandingNodeName: row.sourceLandingNodeName,
+		proxyName: row.proxyName,
 		landingNodeName: row.landingNodeName,
 		mode: row.mode,
 		targetName: row.targetName,
@@ -399,11 +409,15 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function getStage2RowMeta(landingNodeName: string) {
-		return state.stage2Init?.rows.find((row) => row.landingNodeName === landingNodeName) ?? null;
+		return state.stage2Init?.rows.find((row) => matchesStage2RowKey(row, landingNodeName)) ?? null;
 	}
 
 	function getStage2RowErrors(landingNodeName: string) {
-		return isStage2Editable ? getRowErrors(state.blockingErrors, landingNodeName) : [];
+		if (!isStage2Editable) {
+			return [];
+		}
+		const row = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		return row ? getRowErrors(state.blockingErrors, row) : getRowErrors(state.blockingErrors, landingNodeName);
 	}
 
 	function getPrimaryBlockingErrors(stage: ResponseOriginStage) {
@@ -596,21 +610,27 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function updateStage2Row(landingNodeName: string, updater: (row: Stage2Row) => Stage2Row) {
-		setState((current) => ({
-			...current,
-			generatedUrls: null,
-			blockingErrors: clearStage2RowErrors(current.blockingErrors, landingNodeName),
-			stage2Snapshot: {
-				rows: current.stage2Snapshot.rows.map((row) => (row.landingNodeName === landingNodeName ? updater(row) : row)),
-			},
-		}));
+		setState((current) => {
+			const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+			if (matchedRow === null) {
+				return current;
+			}
+			return {
+				...current,
+				generatedUrls: null,
+				blockingErrors: clearStage2RowErrors(current.blockingErrors, matchedRow),
+				stage2Snapshot: {
+					rows: current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
+				},
+			};
+		});
 	}
 
 	function handleModeChange(landingNodeName: string, mode: Stage2Row["mode"]) {
 		updateStage2Row(landingNodeName, (row) => ({
 			...row,
 			mode,
-			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, landingNodeName, mode, row.targetName),
+			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
 		}));
 	}
 

@@ -15,18 +15,6 @@ func stage1InputWithTemplate(input Stage1Input) Stage1Input {
 	return input
 }
 
-func normalizeLongURLPayloadForContract(payload LongURLPayload) LongURLPayload {
-	normalized := payload
-	normalized.Stage2Snapshot = Stage2Snapshot{Rows: make([]Stage2Row, len(payload.Stage2Snapshot.Rows))}
-	copy(normalized.Stage2Snapshot.Rows, payload.Stage2Snapshot.Rows)
-	for index := range normalized.Stage2Snapshot.Rows {
-		normalized.Stage2Snapshot.Rows[index].RowID = ""
-		normalized.Stage2Snapshot.Rows[index].SourceLandingNodeName = ""
-		normalized.Stage2Snapshot.Rows[index].ProxyName = ""
-	}
-	return normalized
-}
-
 func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
@@ -63,7 +51,7 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodeLongURLPayload() error = %v", err)
 	}
-	if !reflect.DeepEqual(normalizeLongURLPayloadForContract(payload), normalizeLongURLPayloadForContract(expectedPayload)) {
+	if !reflect.DeepEqual(payload, expectedPayload) {
 		t.Fatalf("decoded payload mismatch: got %#v want %#v", payload, expectedPayload)
 	}
 

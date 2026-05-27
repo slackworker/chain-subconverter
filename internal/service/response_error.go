@@ -11,6 +11,13 @@ type ResponseError struct {
 	cause         error
 }
 
+type stage2RowErrorRef struct {
+	RowID                 string
+	SourceLandingNodeName string
+	ProxyName             string
+	LegacyLandingNodeName string
+}
+
 func (err *ResponseError) Error() string {
 	if err == nil {
 		return "<nil>"
@@ -80,20 +87,43 @@ func newStage1FieldInvalidRequestError(message string, field string, cause error
 	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage1_field", map[string]any{"field": field}, nil, cause)
 }
 
-func newStage2RowValidationError(code string, message string, landingNodeName string, field string, cause error) error {
-	context := map[string]any{"landingNodeName": landingNodeName}
-	if field != "" {
-		context["field"] = field
-	}
-	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage2_row", context, nil, cause)
+func newStage2RowValidationError(code string, message string, ref stage2RowErrorRef, field string, cause error) error {
+	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage2_row", newStage2RowErrorContext(ref, field), nil, cause)
 }
 
-func newStage2RowInvalidRequestError(message string, landingNodeName string, field string, cause error) error {
-	context := map[string]any{"landingNodeName": landingNodeName}
+func newStage2RowInvalidRequestError(message string, ref stage2RowErrorRef, field string, cause error) error {
+	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage2_row", newStage2RowErrorContext(ref, field), nil, cause)
+}
+
+func newStage2RowErrorContext(ref stage2RowErrorRef, field string) map[string]any {
+	context := map[string]any{}
+	if ref.RowID != "" {
+		context["rowId"] = ref.RowID
+	}
+	if ref.SourceLandingNodeName != "" {
+		context["sourceLandingNodeName"] = ref.SourceLandingNodeName
+	}
+	if ref.ProxyName != "" {
+		context["proxyName"] = ref.ProxyName
+	}
+	legacyLandingNodeName := ref.LegacyLandingNodeName
+	if legacyLandingNodeName == "" {
+		if ref.ProxyName != "" {
+			legacyLandingNodeName = ref.ProxyName
+		} else {
+			legacyLandingNodeName = ref.SourceLandingNodeName
+		}
+	}
+	if legacyLandingNodeName != "" {
+		context["landingNodeName"] = legacyLandingNodeName
+	}
 	if field != "" {
 		context["field"] = field
 	}
-	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage2_row", context, nil, cause)
+	if len(context) == 0 {
+		return nil
+	}
+	return context
 }
 
 func newStage3FieldValidationError(code string, message string, field string, cause error) error {

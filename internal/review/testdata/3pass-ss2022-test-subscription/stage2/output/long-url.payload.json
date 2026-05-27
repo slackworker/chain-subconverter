@@ -16,6 +16,9 @@
   "stage2Snapshot": {
     "rows": [
       {
+        "rowId": "🇺🇸 SS2022-Test-256-US",
+        "sourceLandingNodeName": "🇺🇸 SS2022-Test-256-US",
+        "proxyName": "🇺🇸 SS2022-Test-256-US",
         "landingNodeName": "🇺🇸 SS2022-Test-256-US",
         "mode": "chain",
         "targetName": "🇺🇸 美国节点"
