@@ -734,6 +734,34 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("marks Stage 3 as expired after Stage 2 edits invalidate a generated link", async () => {
+		const workflow = renderWorkflow();
+		await initializeStage2ReadyState(workflow);
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const longUrl = "https://public.example.com/sub?data=generated-long-url";
+
+		mockPostGenerate.mockResolvedValueOnce(buildGenerateResponse(longUrl));
+
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		expect(workflow.current.stage3Status).toEqual({
+			label: "Long URL Ready",
+			tone: "success",
+		});
+
+		act(() => {
+			workflow.current.handleModeChange(sourceRowKey, "chain");
+		});
+
+		expect(workflow.current.state.generatedUrls).toBeNull();
+		expect(workflow.current.state.stage3Expired).toBe(true);
+		expect(workflow.current.state.currentLinkInput).toBe(longUrl);
+		expect(workflow.current.stage3Status).toEqual({
+			label: "Expired",
+			tone: "warning",
+		});
+	});
+
 	it("keeps the generated long URL when optional short-link creation fails during generate", async () => {
 		const workflow = renderWorkflow();
 		await initializeStage2ReadyState(workflow);

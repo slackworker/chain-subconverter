@@ -318,7 +318,9 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				? { label: "Awaiting Init", tone: "neutral" }
 				: { label: "Ready", tone: "success" };
 
-	const stage3Status: WorkflowStatus = state.generatedUrls === null
+	const stage3Status: WorkflowStatus = state.stage3Expired
+		? { label: "Expired", tone: "warning" }
+		: state.generatedUrls === null
 		? { label: "Awaiting Generate", tone: "neutral" }
 		: state.generatedUrls.shortUrl
 			? { label: "Short URL Ready", tone: "success" }
@@ -347,6 +349,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		setState((current) => ({
 			...current,
 			currentLinkInput: value,
+			stage3Expired: false,
 			blockingErrors: clearStage3ActionErrors(clearStage3FieldErrors(current.blockingErrors, "currentLinkInput")),
 		}));
 	}
@@ -397,6 +400,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				...current,
 				stage1Input: nextStage1Input,
 				generatedUrls: null,
+				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
 				stage2Stale: becomesStale ? true : current.stage2Stale,
 				blockingErrors,
 			};
@@ -409,6 +413,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			stage2Init,
 			stage2Snapshot: { rows: snapshotRowsFromInit(stage2Init) },
 			generatedUrls: null,
+			stage3Expired: false,
 			stage2Stale: false,
 			restoreStatus: "idle",
 		}));
@@ -511,6 +516,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			...current,
 			responseOriginStage: "stage3",
 			messages: [],
+			stage3Expired: false,
 			workflowLog: appendWorkflowLogEntries(
 				current.workflowLog,
 				[buildWorkflowLogEntry("info", "RESTORE_STARTED", "开始反向解析并恢复页面状态。", "frontend", "stage3")],
@@ -533,6 +539,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
+					stage3Expired: false,
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
@@ -557,6 +564,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					stage2Init: convertResponse.stage2Init,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
+					stage3Expired: false,
 					stage2Stale: false,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
@@ -588,6 +596,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					stage2Init: null,
 					stage2Snapshot: restoreResponse.stage2Snapshot,
 					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
+					stage3Expired: false,
 					stage2Stale: true,
 					restoreStatus: restoreResponse.restoreStatus,
 					responseOriginStage: "stage3",
@@ -617,6 +626,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				...current,
 				responseOriginStage: "stage3",
 				messages,
+				stage3Expired: false,
 				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
 				blockingErrors,
 			}));
@@ -634,6 +644,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return {
 				...current,
 				generatedUrls: null,
+				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
 				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
 				stage2Snapshot: {
 					rows: current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
@@ -673,6 +684,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return {
 				...current,
 				generatedUrls: null,
+				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
 				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
 				stage2Snapshot: {
 					rows: nextRows,
@@ -703,6 +715,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return {
 				...current,
 				generatedUrls: null,
+				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
 				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
 				stage2Snapshot: {
 					rows: current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
@@ -757,6 +770,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					...current,
 					generatedUrls: buildGeneratedUrls(response.longUrl, null),
 					currentLinkInput: response.longUrl,
+					stage3Expired: false,
 					responseOriginStage: "stage2",
 					messages: response.messages,
 					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
@@ -783,6 +797,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					preferShortUrl: preferShortUrl || forceShortUrl,
 					generatedUrls: buildGeneratedUrls(shortLinkResponse.longUrl, shortLinkResponse.shortUrl),
 					currentLinkInput: shortLinkResponse.shortUrl,
+					stage3Expired: false,
 					responseOriginStage: "stage2",
 					messages: mergedMessages,
 					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
@@ -812,6 +827,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					preferShortUrl: forceShortUrl ? true : false,
 					generatedUrls: forceShortUrl ? null : buildGeneratedUrls(response.longUrl, null),
 					currentLinkInput: forceShortUrl ? current.currentLinkInput : response.longUrl,
+					stage3Expired: forceShortUrl ? current.stage3Expired : false,
 					responseOriginStage: "stage3",
 					messages: mergedMessages,
 					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
@@ -916,6 +932,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				...current,
 				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl),
 				currentLinkInput: response.shortUrl,
+				stage3Expired: false,
 				responseOriginStage: "stage3",
 				messages: response.messages,
 				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),

@@ -25,6 +25,7 @@ export interface AppState {
 	stage2Init: Stage2Init | null;
 	stage2Snapshot: Stage2Snapshot;
 	generatedUrls: GeneratedUrls | null;
+	stage3Expired: boolean;
 	stage2Stale: boolean;
 	restoreStatus: "idle" | "replayable" | "conflicted";
 	responseOriginStage: ResponseOriginStage | null;
@@ -78,6 +79,7 @@ export const initialAppState: AppState = {
 		rows: [],
 	},
 	generatedUrls: null,
+	stage3Expired: false,
 	stage2Stale: false,
 	restoreStatus: "idle",
 	responseOriginStage: null,

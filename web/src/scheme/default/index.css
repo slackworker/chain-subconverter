@@ -1937,6 +1937,15 @@ select.a-select {
 	font-weight: 400;
 }
 
+.a-short-link-status {
+	display: inline-flex;
+	align-items: center;
+}
+
+.a-short-link-status--hidden {
+	visibility: hidden;
+}
+
 .a-icon {
 	display: block;
 	width: 1rem;

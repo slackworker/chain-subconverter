@@ -117,7 +117,6 @@ const COPY = {
 		currentLink: "当前链接",
 		currentLinkPlaceholder: "生成或粘贴 longUrl / shortUrl / short ID",
 		shortLink: "短链接",
-		creatingShortLink: "（创建短链中…）",
 		openPreview: "打开预览",
 		copy: "复制链接",
 		downloadYaml: "下载配置",
@@ -152,6 +151,7 @@ const COPY = {
 		statusConverted: "已转换",
 		statusEditing: "编辑中",
 		statusConflict: "冲突",
+		statusExpired: "已过期",
 		statusStage2Stale: "已过期",
 		statusAwaitingInit: "等待转换",
 		statusReady: "就绪",
@@ -229,7 +229,6 @@ const COPY = {
 		currentLink: "Current link",
 		currentLinkPlaceholder: "Generate or paste a longUrl / shortUrl / short ID",
 		shortLink: "Short link",
-		creatingShortLink: "(creating short link...)",
 		openPreview: "Open preview",
 		copy: "Copy link",
 		downloadYaml: "Download config",
@@ -264,6 +263,7 @@ const COPY = {
 		statusConverted: "Converted",
 		statusEditing: "Editing",
 		statusConflict: "Conflict",
+		statusExpired: "Expired",
 		statusStage2Stale: "Stale",
 		statusAwaitingInit: "Awaiting convert",
 		statusReady: "Ready",
@@ -346,6 +346,7 @@ function getStatusLabel(label: string, locale: Locale) {
 		Converted: "statusConverted",
 		Editing: "statusEditing",
 		Conflict: "statusConflict",
+		Expired: "statusExpired",
 		"Stage 2 Stale": "statusStage2Stale",
 		"Awaiting Init": "statusAwaitingInit",
 		Ready: "statusReady",
@@ -1588,7 +1589,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 								/>
 								<span className="a-switch" aria-hidden />
 								{copy.shortLink}
-								{isCreatingShortUrl ? <span className="a-inline-muted">{copy.creatingShortLink}</span> : null}
 							</label>
 						</div>
 						{currentLinkFieldErrors.length > 0 ? (
