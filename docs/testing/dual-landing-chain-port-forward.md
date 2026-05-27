@@ -95,7 +95,7 @@ go run ./cmd/testfixturegen -scenario dual-landing-chain-port-forward -stage1-li
 
 ## 当前语义边界
 
-- `stage1/convert` 自动填充当前固定为：
+- `stage1/convert` 仅跑 Pass 1+2（不产 full-base）；自动填充当前固定为：
   - 2 条 SS 落地自动识别到对应地域组，默认 `mode = chain`
   - 4 条 Reality 落地同样会按地域 matcher 默认推到对应地域组，默认 `mode = chain`；同时保留协议/端口层面的 `chain` 警告
 - 1 条手动 SOCKS5 落地同样会默认自动填充到 `🇭🇰 香港节点`，默认 `mode = chain`

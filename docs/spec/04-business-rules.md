@@ -37,8 +37,8 @@
 
 - 三个 pass 的 `target` 都必须传 `clash`
 - `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true`
-- `transit-discovery pass`：`url` 只传中转节点信息，传 `list=true`
-- `full-base pass`：`url` 传“落地节点信息 + 中转节点信息”，不传 `list`
+- `transit-discovery pass`：`url` 只传中转节点信息，**不传** `list`
+- `full-base pass`（即第 3 个 pass）：`url` 传托管 landing 短链 + 中转节点信息（`|` 拼接），不传 `list`；落地正文由 Pass 3 前按 `stage2Snapshot` 合并生成，不再把原始落地 URI 列表直接塞入 `url`
 - 当同一字段存在多条订阅 URL、节点 URI 或 `data:text/plain,<base64文本>` 时，传给 `subconverter` 的单个 `url` 查询参数前必须先用 `|` 拼接，再整体 URL 编码
 - 输入区中的换行只承担编辑态分条语义；不得把换行字面量直接传给上游 `url` 参数
 - 输入区分条时，`LF`、`CRLF` 与单独 `CR` 都必须按换行等价处理
@@ -61,7 +61,7 @@
 | `emoji` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `udp` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `scv` | 展示 | 不勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
-| `list` | 隐藏 | 无 | 两个 discovery pass 传 `true`；`full-base pass` 不传 |
+| `list` | 隐藏 | 无 | 仅 `landing-discovery pass` 传 `true`；`transit-discovery pass` 与 `full-base pass` 不传 |
 | `config` | 展示 | 前端初始值来自部署默认模板 URL | 该参数在上游沿用 `config` 命名，但业务语义是“外部配置（模板）URL”；前端提交当前快照中的远程模板 URL；后端必须先拉取有效模板，再向 `subconverter` 传递后端托管的内部模板 URL |
 | `include` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
 | `exclude` | 展示 | 空 | 前端快照使用字符串数组；后端仅在传给 `subconverter` 前按输入顺序用 `|` 拼接并整体 URL 编码；`null`/空数组/留空时不传 |
@@ -129,10 +129,17 @@
 
 复用范围：
 
-- 阶段 1 的“转换并自动填充”必须复用该 3-pass 管线
+- 阶段 1 的“转换并自动填充”复用该管线定义，但只执行前两个 discovery pass（见 `1.1.3`）
 - `POST /api/generate` 的生成前校验必须复用该 3-pass 管线
 - `POST /api/resolve-url` 的恢复可重放性判定必须复用该 3-pass 管线
 - 订阅链接实际被打开或下载时的 YAML 渲染必须复用该 3-pass 管线
+
+### 1.1.3 pass 调用范围
+
+三个 pass 同属一条管线，但各入口执行的 pass 不同：
+
+- `POST /api/stage1/convert`：只执行 `landing-discovery pass` 与 `transit-discovery pass`；不执行 `full-base pass`，不产出 `baseCompleteConfig`
+- `POST /api/generate`、`POST /api/resolve-url` 校验、订阅打开/下载：执行完整三 pass；`full-base pass` 的落地侧为按 `stage2Snapshot` 合并后的托管 landing 短链
 
 ### 1.1.2 端口转发服务输入校验（权威口径）
 
@@ -176,8 +183,8 @@
 处理规则：
 
 1. 识别本次有效模板中声明的地域策略组
-2. 从这些区域策略组的成员列表中剔除所有落地节点
-3. 若某落地节点同时出现在多个区域策略组中，必须在每个命中的区域策略组内都剔除
+2. 从这些区域策略组的成员列表中剔除落地身份名；剔除集合 = 当前 `landing-discovery pass` 全部 `proxy.name`（各行 `sourceLandingNodeName`）∪ `stage2Snapshot` 全部 `proxyName`
+3. 若某名称同时出现在多个区域策略组中，必须在每个命中的区域策略组内都剔除
 4. 完成剔除后的结果，才是后续校验与订阅渲染统一使用的 `baseCompleteConfig`
 5. 在执行 2.3 的区域策略组成员统计前，先应用剔除语义；区域策略组成员统计只计入中转节点
 
@@ -190,21 +197,30 @@
 - 必须从 `landing-discovery pass` 的结果中收集所有落地节点
 - 收集口径固定为：读取 `list=true` 返回的 Clash YAML `proxies[]`，按每个 `proxy.name` 提取落地身份
 - `landingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
-- `landingNodeName` 必须与同一条转换管线的 `full-base pass` 代理集合做唯一对应校验；只有能唯一定位到 `1` 个同名代理时，才允许固化为最终 `landingNodeName`
+- `stage2Init` 阶段仅依赖 Pass 1 身份；Pass 3 前按 `sourceLandingNodeName` 从 Pass 1 取连接参数（见 `2.1.2`）
 - `landingNodeType` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.type`，并允许结合该节点内的附加字段做展示分类
 - 当前展示分类补充规则为：`type = vless` 且存在 `reality-opts` 时，展示类型记为 `Reality`；`type = ss` 且存在 `plugin=shadow-tls`、`plugin: shadow-tls`、`shadow-tls` 或等价 `plugin-opts` 标记时，展示类型记为 `ShadowTLS`
 - 按“每个落地节点一行”生成 `stage2Init.rows[]`
-- 阶段 2 第一列展示 `landingNodeName`，第二列展示 `landingNodeType`
+- 阶段 2 第一列展示 `proxyName`，第二列展示 `landingNodeType`
 
-### 2.1.1 落地节点命名与身份边界
+### 2.1.1 落地节点命名与身份边界（`stage2Init`）
 
-- 在当前规格中，`landingNodeName` 是阶段 2 快照、生成改写与恢复重放的唯一定位键
-- `landingNodeName` 来源于 `landing-discovery pass` 产出的落地身份集合，但必须经过与同一条转换管线 `full-base pass` 的唯一同名校验后才能固化
-- `landingNodeType` 来源于 `landing-discovery pass` 的结构化 `proxy.type` 与展示分类规则；当前只承担阶段 2 展示语义，不进入阶段 2 快照、生成改写或恢复定位键
-- 若阶段 2 的其他规则需要读取落地节点的 `server`、`port` 或同类端点字段，必须在完成上述唯一同名校验后，从匹配到的 `full-base pass` 代理对象读取；不得把 `landing-discovery pass` 中除身份与展示分类外的附加字段视为稳定契约
+- `stage2Init` 中 `landingNodeName` 来源于 `landing-discovery pass` 的 `proxy.name`
+- `landingNodeType` 只承担展示语义，不进入快照定位键
+- 连接参数在 Pass 3 前从 Pass 1 按 `sourceLandingNodeName` 读取；快照行模型见 `2.1.2`
 - 落地节点名称的产出、重名处理与相关实现细节由 `subconverter` 服务负责；本规格不规定具体命名或消歧算法
-- 前端只消费 `stage2Init` 中返回的 `landingNodeName`，不得自行重命名、去重或补算映射
+- 前端初始化时消费 `stage2Init.landingNodeName`；`stage2Snapshot.proxyName` 的编辑/复制规则见 `2.1.2` 与 [02](02-frontend-spec.md)
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
+
+### 2.1.2 `stage2Snapshot` 行身份
+
+- `stage2Init`：每 Pass 1 落地一行；`landingNodeName` 只读；同时返回 `rowId`、`sourceLandingNodeName`、`proxyName`（初始三者同 Pass 1 名）
+- `rowId`：行稳定 ID（全表唯一）；复制行须新生成，不与 `proxyName` 绑定
+- `proxyName`：最终 YAML `proxies[].name`（全表唯一，可改名）
+- `sourceLandingNodeName`：Pass 1 原始 `proxy.name`（连接参数键；复制行可共享）
+- 复制：共享 `sourceLandingNodeName`；新 `rowId`；`proxyName` 默认 `原名 2`、`原名 3`…
+- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；`landingNodeName` 仅作为 `proxyName` 兼容字段，不承担回退定位语义
+- 行集：每个落地身份至少一行；不得引用未知 `sourceLandingNodeName`
 
 ### 2.2 判断全局可用模式与行级限制
 
@@ -241,27 +257,22 @@
 
 ### 2.3 收集链式候选
 
-链式候选统一来自同一条 3-pass 管线的中转相关结果，写入 `stage2Init.chainTargets[]`。
+链式候选写入 `stage2Init.chainTargets[]`。在 `POST /api/stage1/convert` 路径下，候选收集只依赖 discovery 结果与模板识别结果，不依赖 Pass 3 产物。
 
 收集范围：
 
-- `full-base pass` 生成并满足 `1.3` 剔除语义后的、由本次有效模板识别出的地域策略组
+- 本次有效模板识别出的地域策略组名称（`kind = proxy-groups`）
 - `transit-discovery pass` 识别出的单个中转 `proxy`
 
 处理规则：
 
-1. 对区域策略组，读取 `baseCompleteConfig` 中本次有效模板识别出的全部地域策略组当前结果
-2. 区域策略组成员数按“真实中转节点成员”计算；占位的 `DIRECT` 与所有落地节点都不计入成员数
-3. 若某区域策略组只包含 `DIRECT`，或剔除 `DIRECT` 与所有落地节点后成员数为 `0`，该区域策略组仍必须进入 `chainTargets[]`，但必须标记 `isEmpty = true`
-4. 若有效模板识别出的某地域策略组在 `baseCompleteConfig` 当前结果中完全不存在，必须直接以 `SUBCONVERTER_UNAVAILABLE` 阻断当前请求；错误文案必须使用面向最终用户的业务表达，例如“转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查模板设置后重试。”；不得暴露 pass 名称、内部 URL 或原始技术错误串
-5. 若某区域策略组存在至少 1 个真实中转节点成员，则该区域策略组写入 `chainTargets[]` 时 `isEmpty` 留空
-6. 对单个 `proxy` 候选，读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点
-7. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
-8. 有效模板识别出的地域策略组写入 `chainTargets[]` 时，`kind = proxy-groups`
-9. 单个中转 `proxy` 写入 `chainTargets[]` 时，`kind = proxies`
-10. `kind` 仅用于前端分组展示
-11. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
-12. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+1. 对区域策略组：按模板识别结果收集组名并写入候选，`kind = proxy-groups`
+2. 对单个 `proxy` 候选：读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点，`kind = proxies`
+3. `kind` 仅用于前端分组展示
+4. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
+5. `stage1/convert` 阶段允许省略 `isEmpty`（未知即留空）；`EMPTY_CHAIN_TARGET` 的最终裁决在生成/订阅校验链路完成 Pass 3 后执行
+6. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
+7. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
 
 ### 2.4 收集端口转发候选
 
@@ -331,19 +342,18 @@
 
 ### 3.1 阶段 2 快照语义
 
-每个落地节点对应一行配置：
+每行 `proxyName` 对应最终配置中的一个 `proxies[]` 项：
 
 - `mode = none`：保持原样
-- `mode = chain`：第四列表示要写入的 `dialer-proxy`
-- `mode = port_forward`：第四列表示要应用的端口转发服务
-- `stage2Snapshot.rows` 的数组顺序不参与生成语义；生成校验、恢复判定与最终改写都只按 `landingNodeName` 匹配对应落地节点
+- `mode = chain`：第四列写入 `dialer-proxy`
+- `mode = port_forward`：第四列写入端口转发 `server:port`
+- `rows` 数组顺序不参与生成语义；校验与恢复以 `rowId` 为行定位主键，`sourceLandingNodeName` 仅用于连接参数绑定
 
 ### 3.2 生成前校验
 
-- 生成时必须先根据 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
-- 若任一必需 pass 失败，必须直接阻断生成
-- `stage2Snapshot.rows` 必须与当前落地节点集合一一对应：每个落地节点恰好出现一次，不允许缺行、重复行或额外行；不满足时必须以 `STAGE2_ROWSET_MISMATCH` 阻断生成
-- 任一行若无法在本次 `baseCompleteConfig` 中按 `landingNodeName` 定位到对应落地节点，必须阻断生成
+- 生成/订阅/恢复判定时必须先根据 `stage1Input` 重跑 Pass 1+2，再按 `3.5` 执行 Pass 3 与出组
+- 若任一必需 pass 失败，必须直接阻断
+- `stage2Snapshot` 须满足 `2.1.2` 行集规则；`proxyName` 重复为 `DUPLICATE_PROXY_NAME`
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
 - 若多个落地节点同时选择同一个 `forwardRelays[].name` 作为 `port_forward` 目标，必须以 `DUPLICATE_FORWARD_RELAY_TARGET` 阻断生成
@@ -357,10 +367,10 @@
 
 判定规则：
 
-- 后端必须基于恢复出的 `stage1Input` 重新执行同一条 3-pass 转换管线，得到当前的落地身份集合、链式候选集合与 `baseCompleteConfig`
+- 后端必须基于恢复出的 `stage1Input` 重跑 Pass 1+2，并按 `3.5` 与生成阶段一致的校验口径判定可重放性
 - 若任一必需 pass 失败，`resolve-url` 直接返回失败响应；`restoreStatus` 只用于解码与校验成功后的可重放性结果
 - 后端必须用恢复出的 `stage2Snapshot` 执行与生成阶段一致的逐行校验
-- 只要每一行的 `landingNodeName` 仍可定位、`mode` 仍合法、`targetName` 仍可在对应候选集合中解析，则该恢复快照应视为可重放
+- 只要每一行满足 `2.1.2` 行集规则且 `mode` / `targetName` 仍可在当前候选集合中解析，则视为可重放
 - 任一行只要出现引用失效，即应判定整个恢复快照不可重放，并返回 `restoreStatus = conflicted`
 
 补充规则：
@@ -369,36 +379,27 @@
 - 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
 - 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
-- 若某行的 `landingNodeName` 在当前转换结果中已不存在、被重命名或无法唯一对应，则视为引用失效
+- 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
 
-### 3.3 链式代理改写
+### 3.3 快照应用（Pass 3 前）
 
-订阅链接被访问时，后端必须在本次重新生成的 `baseCompleteConfig` 基础上执行如下改写：
+订阅渲染主路径在 `full-base pass` 之前完成 snapshot 语义：
 
-- 按 `landingNodeName` 定位落地节点
-- 当 `mode = chain` 时，为该落地节点添加 `dialer-proxy: <targetName>`
-- `targetName` 可以是 `proxy-groups` 候选，也可以是 `proxies` 候选；生成时按字符串原样写入
+- 按 `sourceLandingNodeName` 从 Pass 1 取连接参数，按 `proxyName` 展开托管 landing 的 `proxies[]`
+- `mode = chain`：写入 `dialer-proxy: <targetName>`
+- `mode = port_forward`：将 `targetName` 解析为 `server` 与 `port` 并替换
+- Pass 3 后**不再**对 full-base 正文做上述 YAML 补丁（仅保留 `1.3` 出组）
 
-### 3.4 端口转发改写
+### 3.4 协议与端口限制
 
-- 改写基础必须是订阅渲染阶段本次重新生成的 `baseCompleteConfig`
-- 按 `landingNodeName` 定位落地节点
-- 当 `mode = port_forward` 时，将 `targetName` 按规范化 `server:port` 重新解析为 `server` 与 `port`，再用其替换该落地节点的 `server` 与 `port`
-- 仅替换 `server` 与 `port`，不联动修改其他字段
+- `modeWarnings.chain` 的规则见 `2.2`；端口转发仍只改 `server` 与 `port`
 
-### 3.5 协议与端口限制
+### 3.5 最终配置交付时机
 
-- `modeWarnings.chain` 的触发条件、`reasonCode` 取值与多条件合并规则统一以 `2.2 模式可用性与行级限制` 为准
-- 端口转发对上述协议仍只替换 `server` 与 `port`
-
-### 3.6 最终配置交付时机
-
-- 订阅链接被打开或下载时，后端即时生成并返回最终 `completeConfig`
-- 订阅渲染时，后端必须先重新执行同一条 3-pass 转换管线，得到当前 `baseCompleteConfig`
-- 若任一必需 pass 失败，订阅渲染必须直接失败
-- 后端随后基于请求中的 `stage2Snapshot` 应用 3.3 与 3.4 改写
-- 改写完成后的结果作为本次返回给用户消费的最终 `completeConfig`
+- 订阅打开/下载时即时生成 `completeConfig`
+- 流程：重跑 Pass 1+2 → `3.3` 合并托管 landing → Pass 3 full-base → `1.3` 出组 → 返回
+- 任一必需 pass 失败则订阅渲染失败
 
 ## 4. 共享通知生命周期
 

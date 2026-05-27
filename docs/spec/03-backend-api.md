@@ -54,7 +54,9 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "HK 01",
+        "rowId": "HK 01",
+        "sourceLandingNodeName": "HK 01",
+        "proxyName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
@@ -66,9 +68,9 @@
 约束：
 
 - `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
-- `rows` 以 `landingNodeName` 作为唯一定位键；数组顺序不承载语义
-- `rows` 在通过后端业务校验时，必须与当前转换得到的落地节点集合一一对应：每个落地节点恰好出现一次，不允许缺行、重复行或额外行
-- `landingNodeName` 在同一份快照中必须唯一
+- `rowId` 为行稳定 ID（全表唯一，必填）；`proxyName` 为 YAML 节点名（全表唯一）；`sourceLandingNodeName` 为 Pass 1 原始落地名；数组顺序不承载语义；字段语义见 [04 §2.1.2](04-business-rules.md)
+- 每个当前落地身份至少一行；允许多行共享同一 `sourceLandingNodeName`（复制）
+- 兼容字段 `landingNodeName` 等同 `proxyName`
 - `mode` 只能是 `none`、`chain`、`port_forward`
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
@@ -89,12 +91,18 @@
     ],
     "rows": [
       {
+        "rowId": "HK 01",
+        "sourceLandingNodeName": "HK 01",
+        "proxyName": "HK 01",
         "landingNodeName": "HK 01",
         "landingNodeType": "SS",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
       {
+        "rowId": "Reality 01",
+        "sourceLandingNodeName": "Reality 01",
+        "proxyName": "Reality 01",
         "landingNodeName": "Reality 01",
         "landingNodeType": "Reality",
         "modeWarnings": {
@@ -158,7 +166,7 @@
     "code": "MISSING_TARGET",
     "message": "存在未完成配置的行",
     "scope": "stage2_row",
-    "context": { "landingNodeName": "HK 02", "field": "targetName" }
+    "context": { "rowId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
   }
 ]
 ```
@@ -180,7 +188,7 @@
 - `POST /api/resolve-url` 与 `POST /api/short-links` 的失败响应允许使用 `stage3_field` 或 `stage3_action`；仅当错误属于存储、依赖或未知内部异常时使用 `scope = global`
 - 前端仍可在展示层派生 Stage 3 来源标签，但该标签不替代 `stage3_*` 的局部定位职责
 - `scope = stage1_field` 时，`context.field` 必填
-- `scope = stage2_row` 时，`context.landingNodeName` 必填；若错误落在具体列上，`context.field` 必填
+- `scope = stage2_row` 时，`context.rowId` 必填；`context.proxyName` 建议同时返回；可兼容 `landingNodeName`（等同 `proxyName`）；列级错误须含 `context.field`
 - `scope = stage3_field` 时，`context.field` 必填；当前前端默认使用 `currentLinkInput` 作为 Stage 3 当前链接输入框的稳定字段键
 - `scope = stage3_action` 时，`context.action` 为可选字段；若返回，则其值必须只承担动作来源说明，不得替代 `originStage`
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
@@ -316,7 +324,9 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "HK 01",
+        "rowId": "HK 01",
+        "sourceLandingNodeName": "HK 01",
+        "proxyName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
@@ -351,7 +361,7 @@
       "code": "MISSING_TARGET",
       "message": "存在未完成配置的行",
       "scope": "stage2_row",
-      "context": { "landingNodeName": "HK 02", "field": "targetName" }
+      "context": { "rowId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
     }
   ]
 }
@@ -370,16 +380,12 @@
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
-- `LANDING_NODE_NOT_FOUND`：必须返回 `scope = stage2_row` 与 `context.landingNodeName`
-- `MISSING_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
-- `TARGET_NOT_FOUND`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
-- `DUPLICATE_FORWARD_RELAY_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
-- `EMPTY_CHAIN_TARGET`：必须返回 `scope = stage2_row`、`context.landingNodeName` 与 `context.field = targetName`
+- `DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_row`，`context.rowId` 必填；建议同时返回 `context.proxyName`；列级错误加 `context.field`
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -539,7 +545,7 @@
 
 ```json
 {
-  "v": 1,
+  "v": 2,
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -556,7 +562,9 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "HK 01",
+        "rowId": "HK 01",
+        "sourceLandingNodeName": "HK 01",
+        "proxyName": "HK 01",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
@@ -567,7 +575,7 @@
 
 规则：
 
-- `v` 是长链接编码版本字段，当前固定为 `1`
+- `v` 是长链接编码版本字段，当前固定为 `2`（`v = 1` 视为无效）
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
@@ -618,7 +626,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
 - 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
-- 当前 `v = 1` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- 当前 `v = 2` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
@@ -628,7 +636,7 @@ gzip 规则：
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
-- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 1`
+- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 2`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接公开路径固定为 `/sub?...`

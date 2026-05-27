@@ -186,7 +186,7 @@
 
 ## 阶段 2：配置区
 
-阶段 2 以“每个落地节点一项配置单元”的固定业务模型渲染，数据完全来自后端返回的 `stage2Init`，并固定以列表形式呈现。
+阶段 2 以配置行列表渲染：初始化来自 `stage2Init`（每落地一行），用户快照为 `stage2Snapshot`（可含复制行）；字段语义见 [04 §2.1.2](04-business-rules.md)。
 
 ### 2.1 数据模型
 
@@ -194,7 +194,10 @@
 |------|------|------|
 | `availableModes` | `mode[]` | 阶段 2 第三列的全局模式基线 |
 | `chainTargets[]` | object[] | 链式候选列表；每项包含 `name`、`kind`，空策略组额外返回 `isEmpty = true` |
-| `rows[].landingNodeName` | string | 本行对应的落地节点名称 |
+| `rows[].rowId` | string | 行稳定 ID（必填）；复制行须新生成 |
+| `rows[].proxyName` | string | 可编辑节点名（最终 YAML `proxies[].name`） |
+| `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享） |
+| `rows[].landingNodeName` | string | 兼容字段，等同 `proxyName` |
 | `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
 | `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
@@ -205,15 +208,15 @@
 
 | 槽位 | 内容 | 交互 |
 |------|------|------|
-| 落地节点展示 | `landingNodeName` | 只读 |
+| 节点名 | `proxyName` | 可编辑；复制行默认 `原名 2`… |
 | 节点类型展示 | `landingNodeType` | 只读 |
 | 配置方式选择 | `mode` | 按后端返回的模式结果渲染；禁用项展示对应原因 |
 | 目标选择 | `targetName` | 由 `mode` 决定数据源与控件状态 |
 
-### 2.3 第一列：落地节点
+### 2.3 第一列：节点名
 
-- 数据来源：`stage2Init.rows[]`
-- 展示语义：只展示，不允许替换或新增
+- 展示/编辑 `proxyName`；初始化时与 `stage2Init.landingNodeName` 一致
+- 提供复制行、删除行（至少保留每个 `sourceLandingNodeName` 一行）
 
 ### 2.4 第二列：节点类型
 

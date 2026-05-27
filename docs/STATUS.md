@@ -1,6 +1,6 @@
 # 项目状态
 
-> 最近更新：2026-05-25 · 滚动镜像 **`beta-latest`** 对应 **`v3.0.0-beta.2`**
+> 最近更新：2026-05-27 · 滚动镜像 **`beta-latest`** 对应 **`v3.0.0-beta.2`**
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
 
@@ -10,7 +10,7 @@
 - **Phase 0–4 已完成**；维护期以回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/a|b|c` 为实验入口
 - 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
-- 契约与实现边界： [spec/02–05](spec/)
+- 契约与实现边界： [spec/02–05](spec/)（含 snapshot-first 三 pass 与 stage2 复制/改名，见 [04 §1.1.3 / §2.1.2](spec/04-business-rules.md)）
 
 ## 分支与提交流程
 
@@ -51,6 +51,7 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-27 | snapshot-first + stage2 `rowId`/复制行：spec 对齐；`go test ./...`、`npm test`、`test:e2e:mock` **通过** |
 | 2026-05-25 | `v3.0.0-beta.2`；vps-01/02 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:afa71279…`） |
 | 2026-05-24 | `v3.0.0-beta.1` |
 | 2026-05-23 | 第三方回归：内网 / 公网 / 双 Docker |

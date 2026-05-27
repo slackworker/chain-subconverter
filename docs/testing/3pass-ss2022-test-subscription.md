@@ -18,7 +18,7 @@
 - `landing-discovery pass`
 - `transit-discovery pass`
 - `full-base pass`
-- `POST /api/stage1/convert`
+- `POST /api/stage1/convert`（discovery 两 pass；full-base 在 generate/订阅路径）
 - 默认 `stage2Snapshot`
 - `POST /api/generate`
 - 最终 `complete-config.chain.yaml`
@@ -79,9 +79,9 @@ go run ./cmd/testfixturegen -scenario 3pass-ss2022-test-subscription
   - `list=true`
 - `transit-discovery pass`
   - `url = transitRawText`
-  - `list=true`
-- `full-base pass`
-  - `url = landingRawText + "|" + transitRawText`
+  - 不传 `list`
+- `full-base pass`（generate/订阅路径）
+  - `url = <托管 landing 短链> + "|" + transitRawText`
   - 不传 `list`
 
 ## 边界
