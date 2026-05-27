@@ -1268,7 +1268,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							{copy.conflictReadonly}
 						</p>
 					) : null}
-
 					<div
 						className="a-table-wrap a-table-wrap--stage2-adaptive"
 						ref={stage2TableWrapRef}
@@ -1314,7 +1313,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										const supplementGroup = chainTargetGroups.find((group) => group.kind === "proxies") ?? null;
 										const forwardRelayChoices = getForwardRelayChoices(rowKey);
 										const canDeleteRow = !sourceRow && canDeleteStage2Row(rowKey);
-										const deleteRowTitle = canDeleteRow ? undefined : (sourceRow ? copy.sourceRowLocked : copy.keepOneDerivedRow);
+										const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneDerivedRow;
 										const editable = isStage2Editable;
 										const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
 										const displayForwardRelayChoices = !editable
@@ -1357,27 +1356,30 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 															aria-label={copy.proxyNameLabel}
 															onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
 														/>
-														<div className="a-stage2-row-icon-actions">
-															<button
-																type="button"
-																className="a-btn a-btn--secondary a-btn--icon"
-																disabled={!editable}
-																aria-label={copy.cloneRow}
-																title={copy.cloneRow}
-																onClick={() => handleCloneStage2Row(rowKey)}
-															>
-																<PlusIcon className="a-icon" aria-hidden />
-															</button>
-															<button
-																type="button"
-																className="a-btn a-btn--secondary a-btn--icon"
-																disabled={!editable || !canDeleteRow}
-																aria-label={deleteRowTitle ?? copy.deleteRow}
-																title={deleteRowTitle ?? copy.deleteRow}
-																onClick={() => handleDeleteStage2Row(rowKey)}
-															>
-																<MinusIcon className="a-icon" aria-hidden />
-															</button>
+														<div className="a-stage2-row-icon-actions a-stage2-row-icon-actions--toolbar">
+																{sourceRow ? (
+																	<button
+																		type="button"
+																		className="a-btn a-btn--secondary a-btn--icon"
+																		disabled={!editable}
+																		aria-label={copy.cloneRow}
+																		title={copy.cloneRow}
+																		onClick={() => handleCloneStage2Row(rowKey)}
+																	>
+																		<PlusIcon className="a-icon" aria-hidden />
+																	</button>
+																) : (
+																	<button
+																		type="button"
+																		className="a-btn a-btn--secondary a-btn--icon"
+																		disabled={!editable || !canDeleteRow}
+																		aria-label={deleteRowTitle ?? copy.deleteRow}
+																		title={deleteRowTitle ?? copy.deleteRow}
+																		onClick={() => handleDeleteStage2Row(rowKey)}
+																	>
+																		<MinusIcon className="a-icon" aria-hidden />
+																	</button>
+																)}
 														</div>
 													</div>
 												</td>
