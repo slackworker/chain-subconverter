@@ -30,8 +30,6 @@
 3. 测试/fixture：[testing/test-system-review.md](testing/test-system-review.md)
 4. 本地联调：[testing/local-dev-smoke.md](testing/local-dev-smoke.md)
 5. 固定 fixture：[3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md)、[dual-landing-chain-port-forward](testing/dual-landing-chain-port-forward.md)
-6. 已落地提案：[stage2-node-management-derived-nodes](proposals/stage2-node-management-derived-nodes.md)（规格见 spec/04）
-
 其余 `spec/`、`testing/` 文件按任务打开。
 
 ## 临时区
