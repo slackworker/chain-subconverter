@@ -1,3 +1,5 @@
+@import "twemoji-colr-font/twemoji.css";
+
 /* Scheme A：独立视觉基线（CSS变量 + 组件前缀 .a-*） */
 
 .a-shell {
@@ -36,6 +38,7 @@
 	--color-input-error-border: #e3a3ab;
 	--color-input-error-shadow: rgba(163, 15, 30, 0.16);
 	--color-input-error-focus-shadow: rgba(163, 15, 30, 0.14);
+	--font-ui-emoji: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Twemoji", sans-serif;
 	--color-toggle-bg: #f9f7f3;
 	--color-toggle-border: #d9d3c8;
 	--color-toggle-hover-bg: #f3f0ea;
@@ -1541,7 +1544,7 @@
 	padding: 0.35rem 1.65rem 0.35rem 0.4rem;
 	border-color: transparent;
 	background: transparent;
-	font-family: ui-monospace, monospace;
+	font-family: var(--font-ui-emoji);
 	box-shadow: none;
 }
 
@@ -1830,6 +1833,7 @@
 	gap: 0.45rem;
 	cursor: pointer;
 	width: 100%;
+	font-family: var(--font-ui-emoji);
 }
 
 .a-target-menu__trigger::after {
@@ -1985,6 +1989,7 @@
 	border-radius: 8px;
 	background: transparent;
 	font: inherit;
+	font-family: var(--font-ui-emoji);
 	font-size: 0.84rem;
 	color: var(--color-ink);
 	cursor: pointer;
@@ -2031,6 +2036,7 @@
 	border-radius: 8px;
 	border: 1px solid var(--color-line);
 	font: inherit;
+	font-family: var(--font-ui-emoji);
 	background: var(--color-elevated);
 }
 

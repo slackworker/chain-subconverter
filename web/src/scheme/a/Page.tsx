@@ -1353,8 +1353,8 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 														<div className="a-stage2-row-name-field">
 															<input
 																id={rowNameInputId}
-																className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
-																value={getStage2RowEditableName(row)}
+																	className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
+																	value={getStage2RowEditableName(row)}
 																disabled={!editable}
 																aria-label={copy.proxyNameLabel}
 																onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
