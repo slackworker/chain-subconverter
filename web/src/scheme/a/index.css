@@ -1482,6 +1482,7 @@
 	min-height: 2.375rem;
 	position: relative;
 	padding-left: 0.9rem;
+	--a-stage2-node-gap: 0.68rem;
 }
 
 .a-stage2-row-inline::before,
@@ -1496,7 +1497,15 @@
 	top: -0.65rem;
 	bottom: -0.65rem;
 	width: 2px;
-	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
+	background: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) 0,
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) calc(50% - var(--a-stage2-node-gap)),
+		transparent calc(50% - var(--a-stage2-node-gap)),
+		transparent calc(50% + var(--a-stage2-node-gap)),
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) calc(50% + var(--a-stage2-node-gap)),
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) 100%
+	);
 }
 
 .a-stage2-row-inline::after {
@@ -1525,11 +1534,13 @@
 }
 
 .a-stage2-row-inline.is-group-start::before {
-	top: 50%;
+	top: calc(50% + var(--a-stage2-node-gap));
+	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-group-end::before {
-	bottom: 50%;
+	bottom: calc(50% + var(--a-stage2-node-gap));
+	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
 }
 
 .a-stage2-row-name-field {
