@@ -82,3 +82,23 @@ export function MinusIcon(props: SVGProps<SVGSVGElement>) {
 		</svg>
 	);
 }
+
+export function PencilIcon(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg
+			xmlns="http://www.w3.org/2000/svg"
+			width="24"
+			height="24"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			{...props}
+		>
+			<path d="M12 20h9" />
+			<path d="m16.5 3.5 4 4L8 20H4v-4z" />
+		</svg>
+	);
+}

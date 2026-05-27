@@ -25,7 +25,7 @@ import {
 	isStage2SourceRow,
 } from "../../lib/stage2";
 import type { WorkflowLogEntry } from "../../lib/state";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PlusIcon } from "./Icons";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
 import { useStage2TableColumns } from "./useStage2TableColumns";
@@ -114,6 +114,7 @@ const COPY = {
 		stage2Empty: "完成阶段 1 转换后，将在此列出各行配置。",
 		rowRestrictions: "本行存在模式限制，详见下拉禁用项提示。",
 		proxyNameLabel: "节点名",
+		proxyNameEditableHint: "可编辑",
 		rowSourceLabel: "来源：{name}",
 		cloneRow: "复制",
 		deleteRow: "删除",
@@ -232,6 +233,7 @@ const COPY = {
 		stage2Empty: "Run Stage 1 conversion to populate each configuration row here.",
 		rowRestrictions: "This row has mode restrictions. Check the disabled options for details.",
 		proxyNameLabel: "Proxy name",
+		proxyNameEditableHint: "Editable",
 		rowSourceLabel: "Source: {name}",
 		cloneRow: "Clone",
 		deleteRow: "Delete",
@@ -1334,6 +1336,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
 										const rowErrorId = `a-s2-row-error-${rowIndex}`;
+										const rowNameInputId = `a-s2-row-name-${rowIndex}`;
 										const rowInlineClassName = [
 											"a-stage2-row-inline",
 											groupedBySource ? "is-grouped" : "is-solo",
@@ -1346,13 +1349,24 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											<tr key={rowKey} className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
 												<td>
 													<div className={rowInlineClassName} title={groupedBySource && !sourceRow ? sourceLandingName : undefined}>
-														<input
-															className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
-															value={displayName}
-															disabled={!editable}
-															aria-label={copy.proxyNameLabel}
-															onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
-														/>
+														<div className="a-stage2-row-name-field">
+															<input
+																id={rowNameInputId}
+																className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
+																value={displayName}
+																disabled={!editable}
+																aria-label={copy.proxyNameLabel}
+																onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
+															/>
+															<label
+																className="a-stage2-row-edit-hint"
+																htmlFor={rowNameInputId}
+																title={copy.proxyNameEditableHint}
+																aria-label={copy.proxyNameEditableHint}
+															>
+																<PencilIcon className="a-icon" aria-hidden />
+															</label>
+														</div>
 														<div className="a-stage2-row-icon-actions a-stage2-row-icon-actions--toolbar">
 																{sourceRow ? (
 																	<button

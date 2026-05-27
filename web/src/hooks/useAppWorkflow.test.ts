@@ -652,6 +652,75 @@ describe("useAppWorkflow", () => {
 		});
 	});
 
+	it("appends cloned rows to the end of the same source group", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-hk-derived-1",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 2",
+					landingNodeName: "landing-hk 2",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-jp",
+					sourceLandingNodeName: "landing-jp",
+					proxyName: "landing-jp",
+					landingNodeName: "landing-jp",
+					landingNodeType: "vmess",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		expect(workflow.current.stage2Rows.map((row) => row.proxyName)).toEqual([
+			"landing-hk",
+			"landing-hk 2",
+			"landing-hk 3",
+			"landing-jp",
+		]);
+		expect(workflow.current.stage2Rows[2]).toMatchObject({
+			sourceLandingNodeName: "landing-hk",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		});
+	});
+
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {
 		const workflow = renderWorkflow(24);
 		await initializeStage2ReadyState(workflow);

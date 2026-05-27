@@ -678,8 +678,12 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			};
 
 			const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, landingNodeName));
+			const groupLastIndex = current.stage2Snapshot.rows.reduce((lastIndex, row, index) => (
+				getStage2RowSourceLandingName(row) === sourceLandingNodeName ? index : lastIndex
+			), -1);
+			const insertIndex = groupLastIndex >= 0 ? groupLastIndex + 1 : matchedIndex + 1;
 			const nextRows = [...current.stage2Snapshot.rows];
-			nextRows.splice(matchedIndex + 1, 0, clonedRow);
+			nextRows.splice(insertIndex, 0, clonedRow);
 
 			return {
 				...current,
