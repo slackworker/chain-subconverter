@@ -1568,9 +1568,12 @@
 }
 
 .a-stage2-row-name-input:disabled {
-	color: var(--color-ink);
-	-webkit-text-fill-color: var(--color-ink);
+	color: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
+	-webkit-text-fill-color: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
+	background: color-mix(in srgb, var(--color-surface) 72%, var(--color-bg));
+	border-color: color-mix(in srgb, var(--color-line) 82%, transparent);
 	opacity: 1;
+	cursor: not-allowed;
 }
 
 .a-stage2-row-edit-hint {
