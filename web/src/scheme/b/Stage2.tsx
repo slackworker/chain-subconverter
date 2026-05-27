@@ -1,6 +1,7 @@
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import {
 	getStage2DisplayModeOptions,
+	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
@@ -169,7 +170,7 @@ function Stage2RowItem({
 					<div className="flex max-w-[260px] flex-col gap-2">
 						<input
 							className={`w-full bg-zinc-950 border rounded-lg px-3 py-2 text-zinc-200 font-mono focus:outline-none focus:border-indigo-500 transition-colors ${errors.length > 0 ? "border-red-500/70" : "border-zinc-800"}`}
-							value={displayName}
+							value={getStage2RowEditableName(row)}
 							disabled={disabled}
 							aria-label="节点名"
 							onChange={e => workflow.handleProxyNameChange(rowKey, e.target.value)}

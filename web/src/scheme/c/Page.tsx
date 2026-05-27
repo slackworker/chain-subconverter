@@ -12,6 +12,7 @@ import {
 	type ManualSocks5FormState,
 } from "../../lib/stage1";
 import {
+	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
@@ -607,7 +608,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											<input
 												type="text"
 												className="c-row-name-input c-mono"
-												value={displayName}
+												value={getStage2RowEditableName(row)}
 												disabled={!workflow.isStage2Editable}
 												aria-label="节点名"
 												onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}

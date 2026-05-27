@@ -18,6 +18,7 @@ import {
 } from "../../lib/stage1";
 import {
 	getStage2DisplayModeOptions,
+	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowStrictKey,
 	getStage2RowSourceLandingName,
@@ -1353,7 +1354,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 															<input
 																id={rowNameInputId}
 																className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
-																value={displayName}
+																value={getStage2RowEditableName(row)}
 																disabled={!editable}
 																aria-label={copy.proxyNameLabel}
 																onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}

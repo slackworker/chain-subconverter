@@ -32,6 +32,10 @@ export function getStage2RowDisplayName(row: Pick<Stage2Row, "proxyName" | "land
 	return row.landingNodeName.trim();
 }
 
+export function getStage2RowEditableName(row: Pick<Stage2Row, "proxyName" | "landingNodeName">) {
+	return row.proxyName ?? row.landingNodeName;
+}
+
 export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandingNodeName" | "landingNodeName">) {
 	const sourceLandingNodeName = row.sourceLandingNodeName?.trim();
 	if (sourceLandingNodeName) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	getForwardRelayChoices,
+	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowStrictKey,
 	getStage2RowSourceLandingName,
@@ -140,6 +141,20 @@ describe("stage2 target helpers", () => {
 
 		expect(getStage2RowDisplayName(row)).toBe("landing-a 2");
 		expect(getStage2RowSourceLandingName(row)).toBe("landing-a");
+	});
+
+	it("keeps trailing whitespace in the editable row name", () => {
+		const row: Stage2Row = {
+			rowId: "row-a",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a ",
+			landingNodeName: "landing-a ",
+			mode: "none",
+			targetName: null,
+		};
+
+		expect(getStage2RowEditableName(row)).toBe("landing-a ");
+		expect(getStage2RowDisplayName(row)).toBe("landing-a");
 	});
 
 	it("picks the next derived proxy name from the source landing base name", () => {
