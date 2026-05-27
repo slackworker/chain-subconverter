@@ -17,14 +17,38 @@ import (
 )
 
 type fakeConversionSource struct {
-	gotRequest subconverter.Request
-	result     subconverter.ThreePassResult
-	err        error
+	gotRequest    subconverter.Request
+	gotPlan       *subconverter.ConvertPlan
+	usePrepared   bool
+	prepared      PreparedConversion
+	result        subconverter.ThreePassResult
+	plannedResult subconverter.ThreePassResult
+	err           error
+	plannedErr    error
 }
 
 func (source *fakeConversionSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
 	source.gotRequest = request
 	return source.result, source.err
+}
+
+func (source *fakeConversionSource) ConvertWithPlan(_ context.Context, request subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	source.gotRequest = request
+	source.gotPlan = &plan
+	if source.plannedErr != nil {
+		return subconverter.ThreePassResult{}, source.plannedErr
+	}
+	if source.plannedResult != (subconverter.ThreePassResult{}) {
+		return source.plannedResult, nil
+	}
+	return source.result, source.err
+}
+
+func (source *fakeConversionSource) PrepareConversion(_ context.Context, stage1Input Stage1Input) (PreparedConversion, error) {
+	if source.usePrepared {
+		return source.prepared, nil
+	}
+	return PreparedConversion{Request: toSubconverterRequest(stage1Input)}, nil
 }
 
 func TestConversionFixturesFromResult_RejectsUnresolvableDiscoveryNames(t *testing.T) {
@@ -145,6 +169,50 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 
 	if !reflect.DeepEqual(source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input)) {
 		t.Fatalf("source request mismatch: got %#v want %#v", source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input))
+	}
+}
+
+func TestBuildStage1ConvertResponseFromSource_UsesStage1InitPassPlanWhenSupported(t *testing.T) {
+	source := &fakeConversionSource{
+		usePrepared: true,
+		prepared: PreparedConversion{
+			Request: subconverter.Request{
+				LandingRawText: "landing",
+				TransitRawText: "transit",
+			},
+			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+		},
+		plannedResult: subconverter.ThreePassResult{
+			LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: HK Landing, server: landing.example.com, port: 443, type: ss}\n"},
+			TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+				"proxies:",
+				"- {name: transit-hk, server: transit.example.com, port: 443, type: ss}",
+				"proxy-groups:",
+				"  - name: 🇭🇰 香港节点",
+				"    type: select",
+				"    proxies:",
+				"      - transit-hk",
+				"",
+			}, "\n")},
+		},
+	}
+
+	response, err := BuildStage1ConvertResponseFromSource(context.Background(), source, Stage1Input{}, InputLimits{})
+	if err != nil {
+		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
+	}
+
+	if source.gotPlan == nil {
+		t.Fatal("expected stage1 convert to use a convert plan")
+	}
+	if *source.gotPlan != subconverter.Stage1InitConvertPlan() {
+		t.Fatalf("got plan = %+v, want %+v", *source.gotPlan, subconverter.Stage1InitConvertPlan())
+	}
+	if len(response.Stage2Init.Rows) != 1 {
+		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 1", len(response.Stage2Init.Rows))
+	}
+	if response.Stage2Init.Rows[0].Mode != "chain" {
+		t.Fatalf("row mode = %q, want %q", response.Stage2Init.Rows[0].Mode, "chain")
 	}
 }
 
@@ -284,7 +352,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 		t.Fatalf("row targetName mismatch: got %v", row.TargetName)
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		select {
 		case got := <-seenConfig:
 			if got != strings.TrimSpace(templateConfig) {

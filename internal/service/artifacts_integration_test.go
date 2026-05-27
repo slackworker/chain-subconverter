@@ -15,6 +15,18 @@ func stage1InputWithTemplate(input Stage1Input) Stage1Input {
 	return input
 }
 
+func normalizeLongURLPayloadForContract(payload LongURLPayload) LongURLPayload {
+	normalized := payload
+	normalized.Stage2Snapshot = Stage2Snapshot{Rows: make([]Stage2Row, len(payload.Stage2Snapshot.Rows))}
+	copy(normalized.Stage2Snapshot.Rows, payload.Stage2Snapshot.Rows)
+	for index := range normalized.Stage2Snapshot.Rows {
+		normalized.Stage2Snapshot.Rows[index].RowID = ""
+		normalized.Stage2Snapshot.Rows[index].SourceLandingNodeName = ""
+		normalized.Stage2Snapshot.Rows[index].ProxyName = ""
+	}
+	return normalized
+}
+
 func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
@@ -51,7 +63,7 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodeLongURLPayload() error = %v", err)
 	}
-	if !reflect.DeepEqual(payload, expectedPayload) {
+	if !reflect.DeepEqual(normalizeLongURLPayloadForContract(payload), normalizeLongURLPayloadForContract(expectedPayload)) {
 		t.Fatalf("decoded payload mismatch: got %#v want %#v", payload, expectedPayload)
 	}
 
@@ -90,7 +102,6 @@ func TestDecodeLongURLPayload_RejectsDecodedStage1InputOverLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncodeLongURL() error = %v", err)
 	}
-
 	_, err = DecodeLongURLPayload(longURL, InputLimits{
 		MaxRequestURLLength: 80,
 		SubconverterBaseURL: "http://subconverter:25500/sub?",
@@ -226,7 +237,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 	targetName := "HK Relay"
 
 	payload := LongURLPayload{
-		V: 1,
+		V: longURLSchemaVersion,
 		Stage1Input: Stage1Input{
 			LandingRawText:    "landing",
 			TransitRawText:    "transit",
@@ -254,7 +265,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"landingNodeName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":1}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":2}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

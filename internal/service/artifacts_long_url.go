@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultLongURLMaxLength = 8192
-	longURLSchemaVersion    = 1
+	longURLSchemaVersion    = 2
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -69,9 +69,11 @@ type longURLStage2Snapshot struct {
 }
 
 type longURLStage2Row struct {
-	LandingNodeName string  `json:"landingNodeName"`
-	Mode            string  `json:"mode"`
-	TargetName      *string `json:"targetName"`
+	RowID                 string  `json:"rowId"`
+	SourceLandingNodeName string  `json:"sourceLandingNodeName"`
+	ProxyName             string  `json:"proxyName"`
+	Mode                  string  `json:"mode"`
+	TargetName            *string `json:"targetName"`
 }
 
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
@@ -282,9 +284,12 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
 	for index, row := range schema.Stage2Snapshot.Rows {
 		rows[index] = Stage2Row{
-			LandingNodeName: row.LandingNodeName,
-			Mode:            row.Mode,
-			TargetName:      row.TargetName,
+			RowID:                 row.RowID,
+			SourceLandingNodeName: row.SourceLandingNodeName,
+			ProxyName:             row.ProxyName,
+			LandingNodeName:       row.ProxyName,
+			Mode:                  row.Mode,
+			TargetName:            row.TargetName,
 		}
 	}
 
@@ -326,16 +331,24 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		return fmt.Errorf("advancedOptions.config must include host")
 	}
 
-	rowsByLanding := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
+	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
 	for _, row := range payload.Stage2Snapshot.Rows {
-		landingNodeName := strings.TrimSpace(row.LandingNodeName)
-		if landingNodeName == "" {
-			return fmt.Errorf("landingNodeName must not be empty")
+		rowID := strings.TrimSpace(row.rowIDOrFallback())
+		if rowID == "" {
+			return fmt.Errorf("rowId must not be empty")
 		}
-		if _, exists := rowsByLanding[landingNodeName]; exists {
-			return fmt.Errorf("duplicate stage2 row for landing node %q", row.LandingNodeName)
+		sourceLandingNodeName := strings.TrimSpace(row.sourceLandingNodeNameOrFallback())
+		if sourceLandingNodeName == "" {
+			return fmt.Errorf("sourceLandingNodeName must not be empty")
 		}
-		rowsByLanding[landingNodeName] = struct{}{}
+		proxyName := strings.TrimSpace(row.proxyNameOrFallback())
+		if proxyName == "" {
+			return fmt.Errorf("proxyName must not be empty")
+		}
+		if _, exists := rowsByProxyName[proxyName]; exists {
+			return fmt.Errorf("duplicate proxy name %q", proxyName)
+		}
+		rowsByProxyName[proxyName] = struct{}{}
 
 		targetName := ""
 		if row.TargetName != nil {
@@ -345,14 +358,14 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		switch row.Mode {
 		case "none":
 			if targetName != "" {
-				return fmt.Errorf("targetName must be empty for landing node %q when mode is none", row.LandingNodeName)
+				return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
 			}
 		case "chain", "port_forward":
 			if targetName == "" {
-				return fmt.Errorf("missing targetName for landing node %q", row.LandingNodeName)
+				return fmt.Errorf("missing targetName for proxy %q", proxyName)
 			}
 		default:
-			return fmt.Errorf("unsupported mode %q for landing node %q", row.Mode, row.LandingNodeName)
+			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
 		}
 	}
 
@@ -493,9 +506,11 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {
 		rows[index] = longURLStage2Row{
-			LandingNodeName: row.LandingNodeName,
-			Mode:            row.Mode,
-			TargetName:      row.TargetName,
+			RowID:                 row.rowIDOrFallback(),
+			SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
+			ProxyName:             row.proxyNameOrFallback(),
+			Mode:                  row.Mode,
+			TargetName:            row.TargetName,
 		}
 	}
 

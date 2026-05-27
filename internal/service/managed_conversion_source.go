@@ -82,6 +82,10 @@ func (source *ManagedConversionSource) Convert(ctx context.Context, request subc
 	return source.client.Convert(ctx, request)
 }
 
+func (source *ManagedConversionSource) ConvertWithPlan(ctx context.Context, request subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	return source.client.ConvertWithPlan(ctx, request, plan)
+}
+
 func (source *ManagedConversionSource) DefaultTemplateURL() string {
 	return source.defaultTemplateURL
 }

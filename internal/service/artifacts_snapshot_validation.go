@@ -29,18 +29,25 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		landingByName[landing.Name] = landing
 	}
 
-	rowsByLanding := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
+	rowsBySourceLanding := make(map[string][]Stage2Row, len(stage2Snapshot.Rows))
+	rowsByProxyName := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
 	for _, row := range stage2Snapshot.Rows {
-		if _, exists := rowsByLanding[row.LandingNodeName]; exists {
-			cause := fmt.Errorf("duplicate stage2 row for landing node %q", row.LandingNodeName)
-			return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
+		sourceLandingName := row.sourceLandingNodeNameOrFallback()
+		if sourceLandingName == "" {
+			cause := fmt.Errorf("sourceLandingNodeName must not be empty")
+			return nil, newStage2RowInvalidRequestError("sourceLandingNodeName must not be empty", row.rowIDOrFallback(), "sourceLandingNodeName", cause)
 		}
-		rowsByLanding[row.LandingNodeName] = row
-	}
-
-	if len(rowsByLanding) != len(resolvedLandingProxies) {
-		cause := fmt.Errorf("stage2 rowset size mismatch: got %d rows want %d", len(rowsByLanding), len(resolvedLandingProxies))
-		return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
+		proxyName := row.proxyNameOrFallback()
+		if proxyName == "" {
+			cause := fmt.Errorf("proxyName must not be empty")
+			return nil, newStage2RowInvalidRequestError("proxyName must not be empty", row.rowIDOrFallback(), "proxyName", cause)
+		}
+		if _, exists := rowsByProxyName[proxyName]; exists {
+			cause := fmt.Errorf("duplicate proxy name %q", proxyName)
+			return nil, newStage2RowValidationError("DUPLICATE_PROXY_NAME", "duplicate proxy name", proxyName, "proxyName", cause)
+		}
+		rowsByProxyName[proxyName] = row
+		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
 	}
 
 	chainTargetsByName := make(map[string]ChainTarget, len(stage2Init.ChainTargets))
@@ -55,57 +62,60 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	forwardRelayUsers := make(map[string]string, len(stage2Init.ForwardRelays))
 
 	for _, landing := range resolvedLandingProxies {
-		row, exists := rowsByLanding[landing.Name]
-		if !exists {
+		rows := rowsBySourceLanding[landing.Name]
+		if len(rows) == 0 {
 			cause := fmt.Errorf("missing stage2 row for landing node %q", landing.Name)
 			return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
 		}
 
-		switch row.Mode {
-		case "none":
-			if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
-				cause := fmt.Errorf("targetName must be empty for landing node %q when mode is none", landing.Name)
-				return nil, newStage2RowInvalidRequestError("targetName must be empty when mode is none", landing.Name, "targetName", cause)
+		for _, row := range rows {
+			rowProxyName := row.proxyNameOrFallback()
+			switch row.Mode {
+			case "none":
+				if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
+					cause := fmt.Errorf("targetName must be empty for proxy %q when mode is none", rowProxyName)
+					return nil, newStage2RowInvalidRequestError("targetName must be empty when mode is none", rowProxyName, "targetName", cause)
+				}
+				continue
+			case "chain":
+				targetName, err := requireTargetName(row)
+				if err != nil {
+					return nil, err
+				}
+				target, exists := chainTargetsByName[targetName]
+				if !exists {
+					cause := fmt.Errorf("unknown chain target %q for proxy %q", targetName, rowProxyName)
+					return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", rowProxyName, "targetName", cause)
+				}
+				if target.Kind == "proxy-groups" && target.IsEmpty {
+					cause := fmt.Errorf("chain target %q for proxy %q is empty", targetName, rowProxyName)
+					return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", rowProxyName, "targetName", cause)
+				}
+			case "port_forward":
+				targetName, err := requireTargetName(row)
+				if err != nil {
+					return nil, err
+				}
+				if _, exists := forwardRelayNames[targetName]; !exists {
+					cause := fmt.Errorf("unknown forward relay %q for proxy %q", targetName, rowProxyName)
+					return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", rowProxyName, "targetName", cause)
+				}
+				if usedBy, exists := forwardRelayUsers[targetName]; exists {
+					cause := fmt.Errorf("forward relay %q for proxy %q is already used by proxy %q", targetName, rowProxyName, usedBy)
+					return nil, newStage2RowValidationError("DUPLICATE_FORWARD_RELAY_TARGET", "forward relay target is already used", rowProxyName, "targetName", cause)
+				}
+				forwardRelayUsers[targetName] = rowProxyName
+			default:
+				cause := fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, rowProxyName)
+				return nil, newStage2RowInvalidRequestError("unsupported mode", rowProxyName, "mode", cause)
 			}
-			continue
-		case "chain":
-			targetName, err := requireTargetName(row)
-			if err != nil {
-				return nil, err
-			}
-			target, exists := chainTargetsByName[targetName]
-			if !exists {
-				cause := fmt.Errorf("unknown chain target %q for landing node %q", targetName, landing.Name)
-				return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", landing.Name, "targetName", cause)
-			}
-			if target.Kind == "proxy-groups" && target.IsEmpty {
-				cause := fmt.Errorf("chain target %q for landing node %q is empty", targetName, landing.Name)
-				return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", landing.Name, "targetName", cause)
-			}
-		case "port_forward":
-			targetName, err := requireTargetName(row)
-			if err != nil {
-				return nil, err
-			}
-			if _, exists := forwardRelayNames[targetName]; !exists {
-				cause := fmt.Errorf("unknown forward relay %q for landing node %q", targetName, landing.Name)
-				return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", landing.Name, "targetName", cause)
-			}
-			if usedBy, exists := forwardRelayUsers[targetName]; exists {
-				cause := fmt.Errorf("forward relay %q for landing node %q is already used by landing node %q", targetName, landing.Name, usedBy)
-				return nil, newStage2RowValidationError("DUPLICATE_FORWARD_RELAY_TARGET", "forward relay target is already used", landing.Name, "targetName", cause)
-			}
-			forwardRelayUsers[targetName] = landing.Name
-		default:
-			cause := fmt.Errorf("unsupported mode %q for landing node %q", row.Mode, landing.Name)
-			return nil, newStage2RowInvalidRequestError("unsupported mode", landing.Name, "mode", cause)
 		}
 	}
 
-	for rowName := range rowsByLanding {
-		if _, exists := landingByName[rowName]; !exists {
-			cause := fmt.Errorf("unknown landing node %q in stage2 snapshot", rowName)
-			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowName, "", cause)
+	for sourceLandingName := range rowsBySourceLanding {
+		if _, exists := landingByName[sourceLandingName]; !exists {
+			cause := fmt.Errorf("unknown source landing node %q in stage2 snapshot", sourceLandingName)
+			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", sourceLandingName, "", cause)
 		}
 	}
 
@@ -114,8 +124,8 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 
 func requireTargetName(row Stage2Row) (string, error) {
 	if row.TargetName == nil || strings.TrimSpace(*row.TargetName) == "" {
-		cause := fmt.Errorf("missing targetName for landing node %q", row.LandingNodeName)
-		return "", newStage2RowValidationError("MISSING_TARGET", "missing targetName", row.LandingNodeName, "targetName", cause)
+		cause := fmt.Errorf("missing targetName for proxy %q", row.proxyNameOrFallback())
+		return "", newStage2RowValidationError("MISSING_TARGET", "missing targetName", row.proxyNameOrFallback(), "targetName", cause)
 	}
 	return *row.TargetName, nil
 }

@@ -20,6 +20,25 @@ type Client struct {
 	maxInFlight chan struct{}
 }
 
+type ConvertPlan struct {
+	TransitDiscoveryList bool
+	IncludeFullBase      bool
+}
+
+func DefaultConvertPlan() ConvertPlan {
+	return ConvertPlan{
+		TransitDiscoveryList: true,
+		IncludeFullBase:      true,
+	}
+}
+
+func Stage1InitConvertPlan() ConvertPlan {
+	return ConvertPlan{
+		TransitDiscoveryList: false,
+		IncludeFullBase:      false,
+	}
+}
+
 type RequestURLs struct {
 	LandingDiscovery string
 	TransitDiscovery string
@@ -53,7 +72,11 @@ func NewClient(cfg config.Subconverter) (*Client, error) {
 }
 
 func (client *Client) Convert(ctx context.Context, request Request) (ThreePassResult, error) {
-	requestURLs, err := BuildRequestURLs(client.baseURL.String(), request)
+	return client.ConvertWithPlan(ctx, request, DefaultConvertPlan())
+}
+
+func (client *Client) ConvertWithPlan(ctx context.Context, request Request, plan ConvertPlan) (ThreePassResult, error) {
+	requestURLs, err := BuildRequestURLsWithPlan(client.baseURL.String(), request, plan)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
@@ -67,9 +90,16 @@ func (client *Client) Convert(ctx context.Context, request Request) (ThreePassRe
 		return ThreePassResult{}, err
 	}
 
-	fullBaseYAML, err := client.executePass(ctx, "full-base pass", requestURLs.FullBase)
-	if err != nil {
-		return ThreePassResult{}, err
+	fullBase := PassResult{}
+	if plan.IncludeFullBase {
+		fullBaseYAML, err := client.executePass(ctx, "full-base pass", requestURLs.FullBase)
+		if err != nil {
+			return ThreePassResult{}, err
+		}
+		fullBase = PassResult{
+			RequestURL: requestURLs.FullBase,
+			YAML:       fullBaseYAML,
+		}
 	}
 
 	return ThreePassResult{
@@ -81,14 +111,15 @@ func (client *Client) Convert(ctx context.Context, request Request) (ThreePassRe
 			RequestURL: requestURLs.TransitDiscovery,
 			YAML:       transitYAML,
 		},
-		FullBase: PassResult{
-			RequestURL: requestURLs.FullBase,
-			YAML:       fullBaseYAML,
-		},
+		FullBase: fullBase,
 	}, nil
 }
 
 func BuildRequestURLs(baseURL string, request Request) (RequestURLs, error) {
+	return BuildRequestURLsWithPlan(baseURL, request, DefaultConvertPlan())
+}
+
+func BuildRequestURLsWithPlan(baseURL string, request Request, plan ConvertPlan) (RequestURLs, error) {
 	normalizedBaseURL, err := config.NormalizeSubconverterBaseURL(baseURL)
 	if err != nil {
 		return RequestURLs{}, fmt.Errorf("normalize subconverter base URL: %w", err)
@@ -106,13 +137,16 @@ func BuildRequestURLs(baseURL string, request Request) (RequestURLs, error) {
 	if err != nil {
 		return RequestURLs{}, err
 	}
-	transitURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, request.TransitRawText, true, request.ExtraQuery)
+	transitURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, request.TransitRawText, plan.TransitDiscoveryList, request.ExtraQuery)
 	if err != nil {
 		return RequestURLs{}, err
 	}
-	fullBaseURL, err := buildPassURLFromBaseURL(parsedBaseURL, request, joinURLs(request.LandingRawText, request.TransitRawText), false, request.ExtraQuery)
-	if err != nil {
-		return RequestURLs{}, err
+	fullBaseURL := ""
+	if plan.IncludeFullBase {
+		fullBaseURL, err = buildPassURLFromBaseURL(parsedBaseURL, request, joinURLs(request.LandingRawText, request.TransitRawText), false, request.ExtraQuery)
+		if err != nil {
+			return RequestURLs{}, err
+		}
 	}
 
 	return RequestURLs{

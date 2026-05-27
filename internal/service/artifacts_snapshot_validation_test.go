@@ -14,7 +14,7 @@ func TestValidateGenerateSnapshot_RejectsRowsetMismatch(t *testing.T) {
 	if err == nil {
 		t.Fatal("validateGenerateSnapshot() error = nil, want rowset mismatch")
 	}
-	if !strings.Contains(err.Error(), "stage2 rowset size mismatch") {
+	if !strings.Contains(err.Error(), `missing stage2 row for landing node "HK Landing"`) {
 		t.Fatalf("validateGenerateSnapshot() error = %v", err)
 	}
 }
@@ -139,6 +139,75 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 	blockingError := responseErr.BlockingError()
 	if blockingError.Code != "DUPLICATE_FORWARD_RELAY_TARGET" {
 		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "DUPLICATE_FORWARD_RELAY_TARGET")
+	}
+}
+
+func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	resolved, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing 2",
+					Mode:                  "none",
+				},
+			},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+		t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "none",
+				},
+			},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want duplicate proxy name rejection")
+	}
+	if !strings.Contains(err.Error(), `duplicate proxy name "HK Landing"`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "DUPLICATE_PROXY_NAME" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "DUPLICATE_PROXY_NAME")
 	}
 }
 

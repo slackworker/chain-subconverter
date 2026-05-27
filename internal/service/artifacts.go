@@ -86,7 +86,7 @@ func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtur
 func BuildLongURLPayload(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot) LongURLPayload {
 	stage1Input = NormalizeStage1Input(stage1Input)
 	return LongURLPayload{
-		V:              1,
+		V:              longURLSchemaVersion,
 		Stage1Input:    stage1Input,
 		Stage2Snapshot: stage2Snapshot,
 	}

@@ -21,6 +21,7 @@ import (
 
 type fakeConversionSource struct {
 	gotRequest         subconverter.Request
+	gotPlan            *subconverter.ConvertPlan
 	result             subconverter.ThreePassResult
 	err                error
 	defaultTemplateURL string
@@ -33,6 +34,13 @@ const (
 
 func (source *fakeConversionSource) Convert(_ context.Context, request subconverter.Request) (subconverter.ThreePassResult, error) {
 	source.gotRequest = request
+	return source.result, source.err
+}
+
+func (source *fakeConversionSource) ConvertWithPlan(_ context.Context, request subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	source.gotRequest = request
+	planCopy := plan
+	source.gotPlan = &planCopy
 	return source.result, source.err
 }
 
@@ -1442,7 +1450,7 @@ func TestSubscriptionHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *test
 
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "INVALID_LONG_URL",
-		Message: `validate long URL payload schema: targetName must be empty for landing node "HK 01" when mode is none`,
+		Message: `validate long URL payload schema: targetName must be empty for proxy "HK 01" when mode is none`,
 		Scope:   "global",
 	})
 }
@@ -1709,12 +1717,23 @@ func assertResolveURLReplayableResponse(t *testing.T, response service.ResolveUR
 	if !reflect.DeepEqual(response.Stage1Input, requestPayload.Stage1Input) {
 		t.Fatalf("stage1Input mismatch: got %#v want %#v", response.Stage1Input, requestPayload.Stage1Input)
 	}
-	if !reflect.DeepEqual(response.Stage2Snapshot, requestPayload.Stage2Snapshot) {
+	if !reflect.DeepEqual(normalizeStage2SnapshotForContract(response.Stage2Snapshot), normalizeStage2SnapshotForContract(requestPayload.Stage2Snapshot)) {
 		t.Fatalf("stage2Snapshot mismatch: got %#v want %#v", response.Stage2Snapshot, requestPayload.Stage2Snapshot)
 	}
 	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
 		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
 	}
+}
+
+func normalizeStage2SnapshotForContract(snapshot service.Stage2Snapshot) service.Stage2Snapshot {
+	normalized := service.Stage2Snapshot{Rows: make([]service.Stage2Row, len(snapshot.Rows))}
+	copy(normalized.Rows, snapshot.Rows)
+	for index := range normalized.Rows {
+		normalized.Rows[index].RowID = ""
+		normalized.Rows[index].SourceLandingNodeName = ""
+		normalized.Rows[index].ProxyName = ""
+	}
+	return normalized
 }
 
 func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, wantStatus int, want service.BlockingError) {

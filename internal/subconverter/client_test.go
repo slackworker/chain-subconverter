@@ -144,6 +144,75 @@ func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	}
 }
 
+func TestConvertWithPlan_SupportsStage1InitPassShape(t *testing.T) {
+	responses := []string{
+		"proxies:\n- {name: landing, type: ss}\n",
+		strings.Join([]string{
+			"proxies:",
+			"- {name: transit, type: ss}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - transit",
+			"",
+		}, "\n"),
+	}
+
+	var (
+		mu      sync.Mutex
+		gotURIs []string
+		index   int
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		gotURIs = append(gotURIs, r.URL.RequestURI())
+		responseBody := responses[index]
+		index++
+		mu.Unlock()
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(responseBody))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	result, err := client.ConvertWithPlan(context.Background(), Request{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	}, Stage1InitConvertPlan())
+	if err != nil {
+		t.Fatalf("ConvertWithPlan() error = %v", err)
+	}
+
+	if len(gotURIs) != 2 {
+		t.Fatalf("request count mismatch: got %d want 2", len(gotURIs))
+	}
+
+	landingQuery, err := url.ParseQuery(strings.TrimPrefix(strings.SplitN(gotURIs[0], "?", 2)[1], "?"))
+	if err != nil {
+		t.Fatalf("url.ParseQuery() error = %v", err)
+	}
+	if landingQuery.Get("list") != "true" {
+		t.Fatalf("landing list mismatch: got %q want true", landingQuery.Get("list"))
+	}
+
+	transitQuery, err := url.ParseQuery(strings.TrimPrefix(strings.SplitN(gotURIs[1], "?", 2)[1], "?"))
+	if err != nil {
+		t.Fatalf("url.ParseQuery() error = %v", err)
+	}
+	if transitQuery.Get("list") != "" {
+		t.Fatalf("transit list should be absent, got %q", transitQuery.Get("list"))
+	}
+
+	if result.FullBase.RequestURL != "" || result.FullBase.YAML != "" {
+		t.Fatalf("full-base should be skipped, got %+v", result.FullBase)
+	}
+	if !strings.Contains(result.TransitDiscovery.YAML, "proxy-groups:") {
+		t.Fatalf("transit discovery should preserve proxy-groups, got:\n%s", result.TransitDiscovery.YAML)
+	}
+}
+
 func TestNewClient_NormalizesBaseURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

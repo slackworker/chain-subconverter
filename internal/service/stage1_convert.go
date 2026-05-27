@@ -112,19 +112,25 @@ type Stage2Init struct {
 }
 
 type Stage2Row struct {
-	LandingNodeName string                     `json:"landingNodeName"`
-	Mode            string                     `json:"mode"`
-	TargetName      *string                    `json:"targetName"`
-	RestrictedModes map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	RowID                 string                     `json:"-"`
+	SourceLandingNodeName string                     `json:"-"`
+	ProxyName             string                     `json:"-"`
+	LandingNodeName       string                     `json:"landingNodeName"`
+	Mode                  string                     `json:"mode"`
+	TargetName            *string                    `json:"targetName"`
+	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 }
 
 type Stage2InitRow struct {
-	LandingNodeName string                     `json:"landingNodeName"`
-	LandingNodeType string                     `json:"landingNodeType"`
-	Mode            string                     `json:"mode"`
-	TargetName      *string                    `json:"targetName"`
-	RestrictedModes map[string]ModeRestriction `json:"restrictedModes,omitempty"`
-	ModeWarnings    map[string]ModeRestriction `json:"modeWarnings,omitempty"`
+	RowID                 string                     `json:"-"`
+	SourceLandingNodeName string                     `json:"-"`
+	ProxyName             string                     `json:"-"`
+	LandingNodeName       string                     `json:"landingNodeName"`
+	LandingNodeType       string                     `json:"landingNodeType"`
+	Mode                  string                     `json:"mode"`
+	TargetName            *string                    `json:"targetName"`
+	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	ModeWarnings          map[string]ModeRestriction `json:"modeWarnings,omitempty"`
 }
 
 type ModeRestriction struct {
@@ -195,18 +201,36 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture: %w", err)
 	}
 
-	fullBaseGroups, err := parseProxyGroups(fixtures.FullBaseYAML)
-	if err != nil {
-		return Stage2Init{}, fmt.Errorf("parse full-base fixture: %w", err)
-	}
-	fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
-	if err != nil {
-		return Stage2Init{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
-	}
+	useFullBase := strings.TrimSpace(fixtures.FullBaseYAML) != ""
 
-	resolvedLandingProxies, err := resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
-	if err != nil {
-		return Stage2Init{}, err
+	var (
+		fullBaseGroups         map[string]proxyGroup
+		transitDiscoveryGroups map[string]proxyGroup
+		resolvedLandingProxies []resolvedLandingProxy
+	)
+	if useFullBase {
+		fullBaseGroups, err = parseProxyGroups(fixtures.FullBaseYAML)
+		if err != nil {
+			return Stage2Init{}, fmt.Errorf("parse full-base fixture: %w", err)
+		}
+		fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
+		if err != nil {
+			return Stage2Init{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
+		}
+
+		resolvedLandingProxies, err = resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
+		if err != nil {
+			return Stage2Init{}, err
+		}
+	} else {
+		transitDiscoveryGroups, err = parseProxyGroups(fixtures.TransitDiscoveryYAML)
+		if err != nil {
+			return Stage2Init{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
+		}
+		resolvedLandingProxies, err = resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies)
+		if err != nil {
+			return Stage2Init{}, err
+		}
 	}
 
 	landingNames := make(map[string]struct{}, len(resolvedLandingProxies))
@@ -219,9 +243,17 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		return Stage2Init{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
 
-	chainTargets, err := buildChainTargets(regionMatchers, landingNames, transitProxies, fullBaseGroups)
-	if err != nil {
-		return Stage2Init{}, err
+	var chainTargets []ChainTarget
+	if useFullBase {
+		chainTargets, err = buildChainTargets(regionMatchers, landingNames, transitProxies, fullBaseGroups)
+		if err != nil {
+			return Stage2Init{}, err
+		}
+	} else {
+		chainTargets, err = buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups)
+		if err != nil {
+			return Stage2Init{}, err
+		}
 	}
 
 	forwardRelays, err := parseForwardRelays(stage1Input)
@@ -250,10 +282,13 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	rows := make([]Stage2InitRow, 0, len(resolvedLandingProxies))
 	for _, landing := range resolvedLandingProxies {
 		row := Stage2InitRow{
-			LandingNodeName: landing.Name,
-			LandingNodeType: landing.TypeLabel,
-			Mode:            "none",
-			TargetName:      nil,
+			RowID:                 landing.Name,
+			SourceLandingNodeName: landing.Name,
+			ProxyName:             landing.Name,
+			LandingNodeName:       landing.Name,
+			LandingNodeType:       landing.TypeLabel,
+			Mode:                  "none",
+			TargetName:            nil,
 		}
 		restrictedModes := buildRestrictedModes(landing.ProtocolType, availableModes)
 		if len(restrictedModes) > 0 {
@@ -292,21 +327,81 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	}, nil
 }
 
-func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {
-	seen := make(map[string]struct{})
-	chainTargets := make([]ChainTarget, 0, len(regionMatchers)+len(transitProxies))
+func (row Stage2Row) rowIDOrFallback() string {
+	if id := strings.TrimSpace(row.RowID); id != "" {
+		return id
+	}
+	if proxyName := row.proxyNameOrFallback(); proxyName != "" {
+		return proxyName
+	}
+	return strings.TrimSpace(row.LandingNodeName)
+}
 
-	for _, matcher := range regionMatchers {
-		groupName := matcher.TargetName
-		group, ok := fullBaseGroups[groupName]
-		if !ok {
-			return nil, subconverter.NewUnavailableError(
+func (row Stage2Row) sourceLandingNodeNameOrFallback() string {
+	if sourceName := strings.TrimSpace(row.SourceLandingNodeName); sourceName != "" {
+		return sourceName
+	}
+	return strings.TrimSpace(row.LandingNodeName)
+}
+
+func (row Stage2Row) proxyNameOrFallback() string {
+	if proxyName := strings.TrimSpace(row.ProxyName); proxyName != "" {
+		return proxyName
+	}
+	return strings.TrimSpace(row.LandingNodeName)
+}
+
+func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {
+	return buildChainTargetsFromGroups(
+		regionMatchers,
+		landingNames,
+		transitProxies,
+		fullBaseGroups,
+		func(groupName string) error {
+			return subconverter.NewUnavailableError(
 				"validate full-base region proxy-groups",
 				fmt.Errorf(
 					`missing recognized region proxy-group %q in full-base result; subconverter did not successfully fetch or apply the managed template`,
 					groupName,
 				),
 			)
+		},
+	)
+}
+
+func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, transitGroups map[string]proxyGroup) ([]ChainTarget, error) {
+	return buildChainTargetsFromGroups(
+		regionMatchers,
+		landingNames,
+		transitProxies,
+		transitGroups,
+		func(groupName string) error {
+			return subconverter.NewUnavailableError(
+				"validate transit-discovery region proxy-groups",
+				fmt.Errorf(
+					`missing recognized region proxy-group %q in transit-discovery result; subconverter did not return grouped transit discovery output`,
+					groupName,
+				),
+			)
+		},
+	)
+}
+
+func buildChainTargetsFromGroups(
+	regionMatchers []regionMatcher,
+	landingNames map[string]struct{},
+	transitProxies []inlineProxy,
+	groups map[string]proxyGroup,
+	missingGroupError func(string) error,
+) ([]ChainTarget, error) {
+	seen := make(map[string]struct{})
+	chainTargets := make([]ChainTarget, 0, len(regionMatchers)+len(transitProxies))
+
+	for _, matcher := range regionMatchers {
+		groupName := matcher.TargetName
+		group, ok := groups[groupName]
+		if !ok {
+			return nil, missingGroupError(groupName)
 		}
 
 		memberCount := 0
@@ -483,6 +578,25 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 		})
 	}
 
+	return resolved, nil
+}
+
+func resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies []inlineProxy) ([]resolvedLandingProxy, error) {
+	seenNames := make(map[string]struct{}, len(landingProxies))
+	resolved := make([]resolvedLandingProxy, 0, len(landingProxies))
+	for _, proxy := range landingProxies {
+		if _, exists := seenNames[proxy.Name]; exists {
+			cause := fmt.Errorf("landing discovery proxy %q is duplicated within landing-discovery result", proxy.Name)
+			return nil, subconverter.NewUnavailableError("validate landing-discovery names", cause)
+		}
+		seenNames[proxy.Name] = struct{}{}
+		resolved = append(resolved, resolvedLandingProxy{
+			Name:         proxy.Name,
+			TypeLabel:    formatLandingNodeTypeLabel(proxy.Type),
+			ProtocolType: proxy.Type,
+			Port:         extractInlineProxyPort(proxy),
+		})
+	}
 	return resolved, nil
 }
 

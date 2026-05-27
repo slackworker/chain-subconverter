@@ -39,7 +39,7 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 		t.Fatalf("ForwardRelays should be empty, got %v", stage2Init.ForwardRelays)
 	}
 
-	if !reflect.DeepEqual(stage2Init.Rows, expectedResponse.Stage2Init.Rows) {
+	if !reflect.DeepEqual(normalizeStage2InitRowsForContract(stage2Init.Rows), normalizeStage2InitRowsForContract(expectedResponse.Stage2Init.Rows)) {
 		t.Fatalf("Rows mismatch: got %#v want %#v", stage2Init.Rows, expectedResponse.Stage2Init.Rows)
 	}
 
@@ -90,6 +90,45 @@ func TestBuildStage2Init_UsesStructuredLandingTypeField(t *testing.T) {
 	}
 	if row.TargetName == nil || *row.TargetName != "🇭🇰 香港节点" {
 		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇭🇰 香港节点")
+	}
+}
+
+func TestBuildStage2Init_UsesTransitDiscoveryGroupsWhenFullBaseOmitted(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		ConversionFixtures{
+			LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, server: landing.example.com, port: 443, type: ss}\n",
+			TransitDiscoveryYAML: strings.Join([]string{
+				"proxies:",
+				"- {name: transit-hk, server: transit.example.com, port: 443, type: ss}",
+				"proxy-groups:",
+				"  - name: 🇭🇰 香港节点",
+				"    type: select",
+				"    proxies:",
+				"      - transit-hk",
+				"",
+			}, "\n"),
+			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+		},
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	if got, want := stage2Init.AvailableModes, []string{"none", "chain"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
+	}
+	if len(stage2Init.Rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
+	}
+	if stage2Init.Rows[0].Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", stage2Init.Rows[0].Mode, "chain")
+	}
+	if stage2Init.Rows[0].TargetName == nil || *stage2Init.Rows[0].TargetName != "🇭🇰 香港节点" {
+		t.Fatalf("row targetName mismatch: got %v want %q", stage2Init.Rows[0].TargetName, "🇭🇰 香港节点")
+	}
+	if !hasChainTarget(stage2Init.ChainTargets, "🇭🇰 香港节点", "proxy-groups") {
+		t.Fatalf("expected chain target %q, got %v", "🇭🇰 香港节点", stage2Init.ChainTargets)
 	}
 }
 
@@ -704,4 +743,15 @@ func inlineLandingFixtureLineWithPort(landingName string, landingType string, la
 		return fmt.Sprintf("- {name: %s, type: %s, server: landing.example.com, port: %d}", landingName, landingType, landingPort)
 	}
 	return fmt.Sprintf("- {name: %s, type: %s}", landingName, landingType)
+}
+
+func normalizeStage2InitRowsForContract(rows []Stage2InitRow) []Stage2InitRow {
+	normalized := make([]Stage2InitRow, len(rows))
+	copy(normalized, rows)
+	for index := range normalized {
+		normalized[index].RowID = ""
+		normalized[index].SourceLandingNodeName = ""
+		normalized[index].ProxyName = ""
+	}
+	return normalized
 }

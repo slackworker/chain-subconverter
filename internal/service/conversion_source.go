@@ -12,6 +12,10 @@ type ConversionSource interface {
 	Convert(context.Context, subconverter.Request) (subconverter.ThreePassResult, error)
 }
 
+type PlannedConversionSource interface {
+	ConvertWithPlan(context.Context, subconverter.Request, subconverter.ConvertPlan) (subconverter.ThreePassResult, error)
+}
+
 type PreparedConversion struct {
 	Request                    subconverter.Request
 	TemplateConfig             string
@@ -28,7 +32,7 @@ type TemplatePreparingSource interface {
 
 func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (Stage1ConvertResponse, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, stage1Input, limits)
+	fixtures, err := LoadStage1InitFixtures(ctx, source, stage1Input, limits)
 	if err != nil {
 		return Stage1ConvertResponse{}, err
 	}
@@ -61,9 +65,18 @@ func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1
 	return LoadConversionFixturesWithExtraQuery(ctx, source, stage1Input, limits, nil)
 }
 
+func LoadStage1InitFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {
+	_, fixtures, err := ExecuteStage1InitConversion(ctx, source, stage1Input, limits)
+	return fixtures, err
+}
+
 func LoadConversionFixturesWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits, extraQuery url.Values) (ConversionFixtures, error) {
 	_, fixtures, err := ExecuteConversionWithExtraQuery(ctx, source, stage1Input, limits, extraQuery)
 	return fixtures, err
+}
+
+func ExecuteStage1InitConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (subconverter.ThreePassResult, ConversionFixtures, error) {
+	return executeConversionWithPlan(ctx, source, stage1Input, limits, nil, subconverter.Stage1InitConvertPlan(), stage1InitFixturesFromResult)
 }
 
 func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (subconverter.ThreePassResult, ConversionFixtures, error) {
@@ -71,6 +84,18 @@ func ExecuteConversion(ctx context.Context, source ConversionSource, stage1Input
 }
 
 func ExecuteConversionWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits, extraQuery url.Values) (subconverter.ThreePassResult, ConversionFixtures, error) {
+	return executeConversionWithPlan(ctx, source, stage1Input, limits, extraQuery, subconverter.DefaultConvertPlan(), ConversionFixturesFromResult)
+}
+
+func executeConversionWithPlan(
+	ctx context.Context,
+	source ConversionSource,
+	stage1Input Stage1Input,
+	limits InputLimits,
+	extraQuery url.Values,
+	plan subconverter.ConvertPlan,
+	fixturesFromResult func(subconverter.ThreePassResult) (ConversionFixtures, error),
+) (subconverter.ThreePassResult, ConversionFixtures, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
 
 	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
@@ -86,11 +111,11 @@ func ExecuteConversionWithExtraQuery(ctx context.Context, source ConversionSourc
 	}
 	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
 
-	result, err := source.Convert(ctx, prepared.Request)
+	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, plan)
 	if err != nil {
 		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
 	}
-	fixtures, err := ConversionFixturesFromResult(result)
+	fixtures, err := fixturesFromResult(result)
 	if err != nil {
 		return subconverter.ThreePassResult{}, ConversionFixtures{}, err
 	}
@@ -100,6 +125,16 @@ func ExecuteConversionWithExtraQuery(ctx context.Context, source ConversionSourc
 	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
 	fixtures.Messages = append([]Message(nil), prepared.Messages...)
 	return result, fixtures, nil
+}
+
+func executeSourceConvertWithPlan(ctx context.Context, source ConversionSource, request subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	if plannedSource, ok := source.(PlannedConversionSource); ok {
+		return plannedSource.ConvertWithPlan(ctx, request, plan)
+	}
+	if plan != subconverter.DefaultConvertPlan() {
+		return subconverter.ThreePassResult{}, fmt.Errorf("conversion source does not support convert plan %+v", plan)
+	}
+	return source.Convert(ctx, request)
 }
 
 func ConversionFixturesFromResult(result subconverter.ThreePassResult) (ConversionFixtures, error) {
@@ -152,6 +187,31 @@ func ConversionFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 	}
 	if err := ensureDiscoveryNamesResolvable(transitProxies, fullBaseProxies, "transit"); err != nil {
 		return ConversionFixtures{}, err
+	}
+
+	return fixtures, nil
+}
+
+func stage1InitFixturesFromResult(result subconverter.ThreePassResult) (ConversionFixtures, error) {
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: result.LandingDiscovery.YAML,
+		TransitDiscoveryYAML: result.TransitDiscovery.YAML,
+		FullBaseYAML:         result.FullBase.YAML,
+	}
+
+	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
+	if err != nil {
+		return ConversionFixtures{}, subconverter.NewUnavailableError("parse landing-discovery result", err)
+	}
+	if len(landingProxies) == 0 {
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse landing-discovery result",
+			fmt.Errorf("landing-discovery proxies list is empty"),
+		)
+	}
+
+	if _, err := parseInlineProxyList(fixtures.TransitDiscoveryYAML); err != nil {
+		return ConversionFixtures{}, subconverter.NewUnavailableError("parse transit-discovery result", err)
 	}
 
 	return fixtures, nil
