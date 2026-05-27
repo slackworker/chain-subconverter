@@ -169,7 +169,7 @@ export function PortForwardModal({
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
 			<div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-[400px] shadow-2xl flex flex-col gap-4">
-				<h2 className="text-xl font-semibold text-zinc-100">添加端口转发服务（实验性）</h2>
+				<h2 className="text-xl font-semibold text-zinc-100">添加端口转发服务</h2>
 				
 				<div className="flex flex-col gap-1">
 					<div className="flex gap-2">

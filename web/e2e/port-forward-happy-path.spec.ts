@@ -127,7 +127,7 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	await expect(addRelayButton).toBeVisible();
 	await addRelayButton.click();
 
-	const dialog = page.getByRole("dialog", { name: "添加端口转发服务（实验性）" });
+	const dialog = page.getByRole("dialog", { name: "添加端口转发服务" });
 	const forwardInput = dialog.getByPlaceholder("输入 server:port ，按 Enter 添加多个");
 	await forwardInput.fill(relayA);
 	await forwardInput.press("Enter");
