@@ -8,6 +8,24 @@ import (
 )
 
 func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
+			return err
+		}
+		if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, _ []string, deletedLines map[int]struct{}, _ map[int]string) error {
+		return stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines)
+	})
+}
+
+func rewriteCompleteConfigYAML(fullBaseYAML string, rewrite func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error) (string, error) {
 	var document yaml.Node
 	if err := yaml.Unmarshal([]byte(fullBaseYAML), &document); err != nil {
 		return "", fmt.Errorf("parse full-base YAML: %w", err)
@@ -22,10 +40,7 @@ func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingName
 	deletedLines := make(map[int]struct{})
 	replacedLines := make(map[int]string)
 
-	if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
-		return "", err
-	}
-	if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
+	if err := rewrite(root, lines, deletedLines, replacedLines); err != nil {
 		return "", err
 	}
 

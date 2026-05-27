@@ -95,3 +95,44 @@ func TestRenderCompleteConfig_NoneModeRemovesDialerProxy(t *testing.T) {
 		t.Fatalf("rendered config should preserve existing server field:\n%s", rendered)
 	}
 }
+
+func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	relayTarget := "relay.example.com:7443"
+
+	rendered, err := buildManagedLandingConfigYAML(
+		strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",
+			"",
+		}, "\n"),
+		[]Stage2Row{
+			{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				LandingNodeName:       "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &chainTarget,
+			},
+			{
+				RowID:                 "hk-2",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing Copy",
+				LandingNodeName:       "HK Landing Copy",
+				Mode:                  "port_forward",
+				TargetName:            &relayTarget,
+			},
+		},
+	)
+	if err != nil {
+		t.Fatalf("buildManagedLandingConfigYAML() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}") {
+		t.Fatalf("managed landing is missing chain row:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "  - {name: HK Landing Copy, type: ss, server: relay.example.com, port: 7443}") {
+		t.Fatalf("managed landing is missing port-forward clone:\n%s", rendered)
+	}
+}

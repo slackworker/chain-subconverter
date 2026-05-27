@@ -51,6 +51,21 @@ func (source *fakeConversionSource) PrepareConversion(_ context.Context, stage1I
 	return PreparedConversion{Request: toSubconverterRequest(stage1Input)}, nil
 }
 
+type fakeSnapshotRenderingSource struct {
+	fakeConversionSource
+	gotManagedLandingYAML string
+	renderedFullBaseYAML  string
+	renderErr             error
+}
+
+func (source *fakeSnapshotRenderingSource) RenderManagedPass3(_ context.Context, _ PreparedConversion, managedLandingYAML string) (string, error) {
+	source.gotManagedLandingYAML = managedLandingYAML
+	if source.renderErr != nil {
+		return "", source.renderErr
+	}
+	return source.renderedFullBaseYAML, nil
+}
+
 func TestConversionFixturesFromResult_RejectsUnresolvableDiscoveryNames(t *testing.T) {
 	_, err := ConversionFixturesFromResult(subconverter.ThreePassResult{
 		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: landing-a, type: ss}\n"},
@@ -255,6 +270,105 @@ func TestRenderCompleteConfigFromSource_HappyPath(t *testing.T) {
 	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
 	if strings.TrimSpace(renderedConfig) != strings.TrimSpace(expectedConfig) {
 		t.Fatalf("complete config mismatch:\n--- got ---\n%s\n--- want ---\n%s", renderedConfig, expectedConfig)
+	}
+}
+
+func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	forwardRelay := "relay.example.com:7443"
+
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request: subconverter.Request{
+					LandingRawText: "https://landing.example/sub",
+					TransitRawText: "https://transit.example/sub",
+				},
+				TemplateConfig:       "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+				ManagedTemplateURL:   "http://managed-template.invalid/internal/templates/hk.ini",
+				EffectiveTemplateURL: "https://template.example/default.ini",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: HK Landing Copy, type: ss, server: relay.example.com, port: 7443}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing",
+			"      - HK Landing Copy",
+			"      - transit-a",
+			"",
+		}, "\n"),
+	}
+
+	renderedConfig, err := RenderCompleteConfigFromSource(
+		context.Background(),
+		source,
+		Stage1Input{
+			ForwardRelayItems: []string{forwardRelay},
+		},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing Copy",
+					LandingNodeName:       "HK Landing Copy",
+					Mode:                  "port_forward",
+					TargetName:            &forwardRelay,
+				},
+			},
+		},
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
+	}
+
+	if source.gotPlan == nil || *source.gotPlan != subconverter.Stage1InitConvertPlan() {
+		t.Fatalf("got stage1 plan = %+v, want %+v", source.gotPlan, subconverter.Stage1InitConvertPlan())
+	}
+	if !strings.Contains(source.gotManagedLandingYAML, "  - {name: HK Landing, server: landing.example.com, port: 443, type: ss, dialer-proxy: 🇭🇰 香港节点}") {
+		t.Fatalf("managed landing is missing chain row:\n%s", source.gotManagedLandingYAML)
+	}
+	if !strings.Contains(source.gotManagedLandingYAML, "  - {name: HK Landing Copy, server: relay.example.com, port: 7443, type: ss}") {
+		t.Fatalf("managed landing is missing renamed clone:\n%s", source.gotManagedLandingYAML)
+	}
+	if !strings.Contains(renderedConfig, "  - {name: HK Landing Copy, type: ss, server: relay.example.com, port: 7443}") {
+		t.Fatalf("rendered config is missing derived proxy:\n%s", renderedConfig)
+	}
+	if strings.Contains(renderedConfig, "      - HK Landing\n") || strings.Contains(renderedConfig, "      - HK Landing Copy\n") {
+		t.Fatalf("rendered config should strip landing identities from region groups:\n%s", renderedConfig)
 	}
 }
 

@@ -54,11 +54,73 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 
 func RenderCompleteConfigFromSourceWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits, extraQuery url.Values) (string, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
+	if snapshotSource, ok := source.(SnapshotPass3RenderingSource); ok {
+		return renderCompleteConfigViaManagedPass3(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits, extraQuery)
+	}
 	fixtures, err := LoadConversionFixturesWithExtraQuery(ctx, source, stage1Input, limits, extraQuery)
 	if err != nil {
 		return "", err
 	}
 	return RenderCompleteConfig(stage1Input, stage2Snapshot, fixtures)
+}
+
+func renderCompleteConfigViaManagedPass3(
+	ctx context.Context,
+	source ConversionSource,
+	snapshotSource SnapshotPass3RenderingSource,
+	stage1Input Stage1Input,
+	stage2Snapshot Stage2Snapshot,
+	limits InputLimits,
+	extraQuery url.Values,
+) (string, error) {
+	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
+		return "", err
+	}
+
+	prepared, err := prepareConversion(ctx, source, stage1Input)
+	if err != nil {
+		return "", err
+	}
+	if prepared.Cleanup != nil {
+		defer prepared.Cleanup()
+	}
+	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
+
+	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, subconverter.Stage1InitConvertPlan())
+	if err != nil {
+		return "", err
+	}
+
+	fixtures, err := stage1InitFixturesFromResult(result)
+	if err != nil {
+		return "", err
+	}
+	fixtures.TemplateConfig = prepared.TemplateConfig
+	fixtures.EffectiveTemplateURL = prepared.EffectiveTemplateURL
+	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
+	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
+
+	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
+	if err != nil {
+		return "", err
+	}
+
+	managedLandingYAML, err := buildManagedLandingConfigYAML(fixtures.LandingDiscoveryYAML, stage2Snapshot.Rows)
+	if err != nil {
+		return "", newInternalResponseError("failed to build managed landing config", err)
+	}
+
+	fullBaseYAML, err := snapshotSource.RenderManagedPass3(ctx, prepared, managedLandingYAML)
+	if err != nil {
+		return "", err
+	}
+
+	regionGroupNames, err := recognizedRegionGroupSet(fixtures)
+	if err != nil {
+		return "", err
+	}
+
+	return stripLandingNodesFromCompleteConfigYAML(fullBaseYAML, stage2StripLandingNames(landingProxies, stage2Snapshot.Rows), regionGroupNames)
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {

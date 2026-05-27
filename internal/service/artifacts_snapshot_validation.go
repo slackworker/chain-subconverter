@@ -15,13 +15,21 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	if err != nil {
 		return nil, fmt.Errorf("parse landing discovery fixture: %w", err)
 	}
-	fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
-	if err != nil {
-		return nil, fmt.Errorf("parse full-base fixture proxies: %w", err)
-	}
-	resolvedLandingProxies, err := resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
-	if err != nil {
-		return nil, err
+	var resolvedLandingProxies []resolvedLandingProxy
+	if strings.TrimSpace(fixtures.FullBaseYAML) != "" {
+		fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
+		if err != nil {
+			return nil, fmt.Errorf("parse full-base fixture proxies: %w", err)
+		}
+		resolvedLandingProxies, err = resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		resolvedLandingProxies, err = resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	landingByName := make(map[string]resolvedLandingProxy, len(resolvedLandingProxies))

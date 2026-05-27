@@ -11,7 +11,12 @@ import {
 	setPortForwardEnabled,
 	type ManualSocks5FormState,
 } from "../../lib/stage1";
-import { getStage2TargetDisplayLabel } from "../../lib/stage2";
+import {
+	getStage2RowDisplayName,
+	getStage2RowKey,
+	getStage2RowSourceLandingName,
+	getStage2TargetDisplayLabel,
+} from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
 import "./index.css";
 
@@ -219,6 +224,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	}
 
 	function renderTargetSelect(row: Stage2Row, meta: ReturnType<typeof workflow.getStage2RowMeta>) {
+		const rowKey = getStage2RowKey(row);
 		if (row.mode === "none") {
 			return (
 				<select disabled value="">
@@ -243,7 +249,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 				<select
 					value={row.targetName ?? ""}
 					disabled={!workflow.isStage2Editable}
-					onChange={(e) => workflow.handleTargetChange(row.landingNodeName, e.target.value)}
+					onChange={(e) => workflow.handleTargetChange(rowKey, e.target.value)}
 				>
 					<option value="">请选择目标</option>
 					{groups.map((g) => (
@@ -263,12 +269,12 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 				</select>
 			);
 		}
-		const relays = workflow.getForwardRelayChoices(row.landingNodeName);
+		const relays = workflow.getForwardRelayChoices(rowKey);
 		return (
 			<select
 				value={row.targetName ?? ""}
 				disabled={!workflow.isStage2Editable}
-				onChange={(e) => workflow.handleTargetChange(row.landingNodeName, e.target.value)}
+				onChange={(e) => workflow.handleTargetChange(rowKey, e.target.value)}
 			>
 				<option value="">请选择端口转发服务</option>
 				{relays.length === 0 ? (
@@ -588,13 +594,33 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 				) : (
 					<div className="c-row-list">
 						{workflow.stage2Rows.map((row) => {
-							const meta = workflow.getStage2RowMeta(row.landingNodeName);
-							const rowErrors = workflow.getStage2RowErrors(row.landingNodeName);
+							const rowKey = getStage2RowKey(row);
+							const displayName = getStage2RowDisplayName(row);
+							const sourceLandingName = getStage2RowSourceLandingName(row);
+							const canDeleteRow = workflow.canDeleteStage2Row(rowKey);
+							const meta = workflow.getStage2RowMeta(rowKey);
+							const rowErrors = workflow.getStage2RowErrors(rowKey);
 							return (
-								<div key={row.landingNodeName} className={`c-row-item${rowErrors.length > 0 ? " c-row-item--error" : ""}`}>
+								<div key={rowKey} className={`c-row-item${rowErrors.length > 0 ? " c-row-item--error" : ""}`}>
 									<div className="c-row-head">
-										<span className="c-node-name">{row.landingNodeName}</span>
-										<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>
+										<div className="c-row-title">
+											<input
+												type="text"
+												className="c-row-name-input c-mono"
+												value={displayName}
+												disabled={!workflow.isStage2Editable}
+												aria-label="节点名"
+												onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}
+											/>
+											<p className="c-row-source">来源：{sourceLandingName}</p>
+										</div>
+										<div className="c-row-head-side">
+											<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>
+											<div className="c-row-actions">
+												<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable} onClick={() => workflow.handleCloneStage2Row(rowKey)}>复制</button>
+												<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable || !canDeleteRow} title={canDeleteRow ? undefined : "至少保留一行"} onClick={() => workflow.handleDeleteStage2Row(rowKey)}>删除</button>
+											</div>
+										</div>
 									</div>
 									<div className="c-row-controls">
 										<div className="c-mode-tabs" role="group">
@@ -605,7 +631,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 														key={mode}
 														type="button"
 														className={`c-mode-tab${row.mode === mode ? " c-mode-tab--active" : ""}`}
-														onClick={() => workflow.handleModeChange(row.landingNodeName, mode)}
+														onClick={() => workflow.handleModeChange(rowKey, mode)}
 														disabled={s.disabled}
 														title={s.reasonText ?? s.warningText ?? undefined}
 													>

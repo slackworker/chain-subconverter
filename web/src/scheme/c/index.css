@@ -610,8 +610,41 @@
 
 .c-row-head {
 	display: flex;
-	align-items: baseline;
+	align-items: flex-start;
+	justify-content: space-between;
 	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.c-row-title {
+	display: flex;
+	flex: 1 1 240px;
+	min-width: 0;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.c-row-name-input {
+	font-family: var(--c-mono);
+}
+
+.c-row-source {
+	margin: 0;
+	font-size: 12px;
+	color: var(--c-text-muted);
+}
+
+.c-row-head-side {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.c-row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
 }
 
 .c-node-name {

@@ -105,7 +105,8 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 	await page.getByLabel("中转信息").fill(transitInput);
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 
-	await expect(page.locator(".a-table").getByText("landing-happy", { exact: true })).toBeVisible();
+	// 节点名现在主要渲染为 textbox 的 value（而不是纯文本节点）
+	await expect(page.getByRole("textbox", { name: "节点名" }).first()).toHaveValue("landing-happy");
 
 	await page.getByRole("button", { name: "生成链接" }).click();
 

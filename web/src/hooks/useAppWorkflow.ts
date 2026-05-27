@@ -5,7 +5,6 @@ import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
 	clearStage1FieldErrors,
-	clearStage2RowErrors,
 	clearStage3ActionErrors,
 	clearStage3FieldErrors,
 	getFieldErrors,
@@ -21,7 +20,9 @@ import {
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
 	getStage2RowKey,
+	getStage2RowSourceLandingName,
 	matchesStage2RowKey,
+	pickNextDerivedProxyName,
 	pickNextTarget,
 } from "../lib/stage2";
 import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
@@ -79,6 +80,10 @@ export interface AppWorkflowViewModel {
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
+	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
+	handleCloneStage2Row: (landingNodeName: string) => void;
+	handleDeleteStage2Row: (landingNodeName: string) => void;
+	canDeleteStage2Row: (landingNodeName: string) => boolean;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
 	handleGenerate: () => Promise<void>;
@@ -89,6 +94,7 @@ export interface AppWorkflowViewModel {
 const MAX_WORKFLOW_LOG_ENTRIES = 200;
 
 let workflowLogSequence = 0;
+let stage2DerivedRowSequence = 0;
 
 function snapshotRowsFromInit(stage2Init: Stage2Init) {
 	return stage2Init.rows.map((row) => ({
@@ -133,6 +139,14 @@ function mergeMessages(...messageGroups: Message[][]): Message[] {
 function nextWorkflowLogID() {
 	workflowLogSequence += 1;
 	return `workflow-log-${Date.now()}-${workflowLogSequence}`;
+}
+
+function nextStage2DerivedRowID(sourceLandingNodeName: string) {
+	stage2DerivedRowSequence += 1;
+	const normalizedSource = sourceLandingNodeName.trim().replace(/\s+/g, "-").replace(/[^\w\u0080-\uFFFF-]/g, "").slice(0, 32);
+	const sourcePrefix = normalizedSource === "" ? "stage2-row" : normalizedSource;
+	const randomPart = globalThis.crypto?.randomUUID?.().slice(0, 8) ?? `${Date.now()}-${stage2DerivedRowSequence}`;
+	return `${sourcePrefix}-${randomPart}`;
 }
 
 function buildWorkflowLogEntry(
@@ -409,7 +423,9 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function getStage2RowMeta(landingNodeName: string) {
-		return state.stage2Init?.rows.find((row) => matchesStage2RowKey(row, landingNodeName)) ?? null;
+		const snapshotRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : landingNodeName;
+		return state.stage2Init?.rows.find((row) => matchesStage2RowKey(row, sourceLandingNodeName)) ?? null;
 	}
 
 	function getStage2RowErrors(landingNodeName: string) {
@@ -618,9 +634,78 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return {
 				...current,
 				generatedUrls: null,
-				blockingErrors: clearStage2RowErrors(current.blockingErrors, matchedRow),
+				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
 				stage2Snapshot: {
 					rows: current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
+				},
+			};
+		});
+	}
+
+	function handleProxyNameChange(landingNodeName: string, proxyName: string) {
+		updateStage2Row(landingNodeName, (row) => ({
+			...row,
+			proxyName,
+			landingNodeName: proxyName,
+		}));
+	}
+
+	function handleCloneStage2Row(landingNodeName: string) {
+		setState((current) => {
+			const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+			if (matchedRow === null) {
+				return current;
+			}
+
+			const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+			const clonedProxyName = pickNextDerivedProxyName(current.stage2Snapshot.rows, sourceLandingNodeName);
+			const clonedRow: Stage2Row = {
+				...matchedRow,
+				rowId: nextStage2DerivedRowID(sourceLandingNodeName),
+				proxyName: clonedProxyName,
+				landingNodeName: clonedProxyName,
+			};
+
+			const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, landingNodeName));
+			const nextRows = [...current.stage2Snapshot.rows];
+			nextRows.splice(matchedIndex + 1, 0, clonedRow);
+
+			return {
+				...current,
+				generatedUrls: null,
+				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
+				stage2Snapshot: {
+					rows: nextRows,
+				},
+			};
+		});
+	}
+
+	function canDeleteStage2Row(landingNodeName: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return false;
+		}
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		return state.stage2Snapshot.rows.filter((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName).length > 1;
+	}
+
+	function handleDeleteStage2Row(landingNodeName: string) {
+		setState((current) => {
+			const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+			if (matchedRow === null) {
+				return current;
+			}
+			const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+			if (current.stage2Snapshot.rows.filter((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName).length <= 1) {
+				return current;
+			}
+			return {
+				...current,
+				generatedUrls: null,
+				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
+				stage2Snapshot: {
+					rows: current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
 				},
 			};
 		});
@@ -899,6 +984,10 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),
 		handleStage1Convert,
 		handleRestore,
+		handleProxyNameChange,
+		handleCloneStage2Row,
+		handleDeleteStage2Row,
+		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
 		handleGenerate,

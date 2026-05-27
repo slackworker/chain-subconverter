@@ -1,5 +1,11 @@
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
-import { getStage2DisplayModeOptions, getStage2TargetDisplayLabel } from "../../lib/stage2";
+import {
+	getStage2DisplayModeOptions,
+	getStage2RowDisplayName,
+	getStage2RowKey,
+	getStage2RowSourceLandingName,
+	getStage2TargetDisplayLabel,
+} from "../../lib/stage2";
 import { NoticeRenderer } from "./Notice";
 import { AlertTriangleIcon } from "./Icons";
 
@@ -44,7 +50,7 @@ export function Stage2({ workflow }: { workflow: AppWorkflowViewModel }) {
 							<tbody className="divide-y divide-zinc-800/50">
 								{stage2Rows.map(row => (
 									<Stage2RowItem 
-										key={row.landingNodeName} 
+										key={getStage2RowKey(row)} 
 										row={row} 
 										workflow={workflow} 
 										disabled={!isStage2Editable} 
@@ -80,8 +86,12 @@ function Stage2RowItem({
 	workflow: AppWorkflowViewModel;
 	disabled: boolean;
 }) {
-	const meta = workflow.getStage2RowMeta(row.landingNodeName);
-	const errors = workflow.getStage2RowErrors(row.landingNodeName);
+	const rowKey = getStage2RowKey(row);
+	const displayName = getStage2RowDisplayName(row);
+	const sourceLandingName = getStage2RowSourceLandingName(row);
+	const canDeleteRow = workflow.canDeleteStage2Row(rowKey);
+	const meta = workflow.getStage2RowMeta(rowKey);
+	const errors = workflow.getStage2RowErrors(rowKey);
 	const isSnapshotOnly = workflow.state.stage2Init === null;
 	const modeOptions = getStage2DisplayModeOptions(workflow.state.stage2Init, row.mode);
 	const targetDisplayLabel = getStage2TargetDisplayLabel(workflow.state.stage2Init, workflow.stage2Rows, row);
@@ -113,7 +123,7 @@ function Stage2RowItem({
 					className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 appearance-none"
 					value={row.targetName || ""}
 					disabled={disabled}
-					onChange={e => workflow.handleTargetChange(row.landingNodeName, e.target.value)}
+					onChange={e => workflow.handleTargetChange(rowKey, e.target.value)}
 				>
 					<option value="" disabled>请选择中转目标</option>
 					{groups.map(g => (
@@ -130,13 +140,13 @@ function Stage2RowItem({
 		}
 
 		if (row.mode === "port_forward") {
-			const choices = workflow.getForwardRelayChoices(row.landingNodeName);
+			const choices = workflow.getForwardRelayChoices(rowKey);
 			return (
 				<select 
 					className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 appearance-none"
 					value={row.targetName || ""}
 					disabled={disabled}
-					onChange={e => workflow.handleTargetChange(row.landingNodeName, e.target.value)}
+					onChange={e => workflow.handleTargetChange(rowKey, e.target.value)}
 				>
 					<option value="" disabled>请选择端口转发服务</option>
 					{choices.map(c => (
@@ -155,8 +165,36 @@ function Stage2RowItem({
 	return (
 		<>
 			<tr className="group">
-				<td className="py-3 px-4 font-mono text-zinc-300 max-w-[200px] truncate" title={row.landingNodeName}>
-					{row.landingNodeName}
+				<td className="py-3 px-4 align-top">
+					<div className="flex max-w-[260px] flex-col gap-2">
+						<input
+							className={`w-full bg-zinc-950 border rounded-lg px-3 py-2 text-zinc-200 font-mono focus:outline-none focus:border-indigo-500 transition-colors ${errors.length > 0 ? "border-red-500/70" : "border-zinc-800"}`}
+							value={displayName}
+							disabled={disabled}
+							aria-label="节点名"
+							onChange={e => workflow.handleProxyNameChange(rowKey, e.target.value)}
+						/>
+						<div className="flex flex-wrap gap-2">
+							<button
+								type="button"
+								className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+								disabled={disabled}
+								onClick={() => workflow.handleCloneStage2Row(rowKey)}
+							>
+								复制
+							</button>
+							<button
+								type="button"
+								className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 disabled:opacity-40"
+								disabled={disabled || !canDeleteRow}
+								title={canDeleteRow ? undefined : "至少保留一行"}
+								onClick={() => workflow.handleDeleteStage2Row(rowKey)}
+							>
+								删除
+							</button>
+						</div>
+						<div className="text-xs text-zinc-500 truncate" title={sourceLandingName}>来源: {sourceLandingName}</div>
+					</div>
 				</td>
 				<td className="py-3 px-4 text-zinc-400">
 					{meta?.landingNodeType || "-"}
@@ -166,7 +204,7 @@ function Stage2RowItem({
 						className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 appearance-none min-w-[120px]"
 						value={row.mode}
 						disabled={disabled}
-						onChange={e => workflow.handleModeChange(row.landingNodeName, e.target.value as any)}
+						onChange={e => workflow.handleModeChange(rowKey, e.target.value as any)}
 					>
 						{modeOptions.map(m => {
 							const isRestricted = !!meta?.restrictedModes?.[m];

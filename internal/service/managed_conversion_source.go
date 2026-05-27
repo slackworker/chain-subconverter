@@ -86,6 +86,32 @@ func (source *ManagedConversionSource) ConvertWithPlan(ctx context.Context, requ
 	return source.client.ConvertWithPlan(ctx, request, plan)
 }
 
+func (source *ManagedConversionSource) RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string) (string, error) {
+	id, err := source.templateStore.Save(managedLandingYAML)
+	if err != nil {
+		return "", newInternalResponseError("failed to persist managed landing", err)
+	}
+	defer source.templateStore.Delete(id)
+
+	managedLandingURL, err := source.buildManagedTemplateURL(id)
+	if err != nil {
+		return "", newInternalResponseError("failed to build managed landing URL", err)
+	}
+
+	request := prepared.Request
+	request.LandingRawText = managedLandingURL
+
+	result, err := source.client.ConvertWithPlan(ctx, request, subconverter.ConvertPlan{
+		TransitDiscoveryList: false,
+		IncludeFullBase:      true,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return result.FullBase.YAML, nil
+}
+
 func (source *ManagedConversionSource) DefaultTemplateURL() string {
 	return source.defaultTemplateURL
 }

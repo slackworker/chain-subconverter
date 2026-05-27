@@ -15,6 +15,61 @@ export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"
 
 export type Stage2SnapshotRows = Stage2Row[];
 
+const STAGE2_ROW_KEY_PREFIXES = {
+	rowId: "rowId:",
+	proxyName: "proxyName:",
+	landingNodeName: "landingNodeName:",
+	sourceLandingNodeName: "sourceLandingNodeName:",
+} as const;
+
+type Stage2RowKeyField = keyof typeof STAGE2_ROW_KEY_PREFIXES;
+
+export function getStage2RowDisplayName(row: Pick<Stage2Row, "proxyName" | "landingNodeName">) {
+	const proxyName = row.proxyName?.trim();
+	if (proxyName) {
+		return proxyName;
+	}
+	return row.landingNodeName.trim();
+}
+
+export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandingNodeName" | "landingNodeName">) {
+	const sourceLandingNodeName = row.sourceLandingNodeName?.trim();
+	if (sourceLandingNodeName) {
+		return sourceLandingNodeName;
+	}
+	return row.landingNodeName.trim();
+}
+
+function getTrimmedStage2RowFieldValue(
+	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
+	field: Stage2RowKeyField,
+) {
+	switch (field) {
+		case "rowId":
+			return row.rowId?.trim() ?? "";
+		case "proxyName":
+			return row.proxyName?.trim() ?? "";
+		case "landingNodeName":
+			return row.landingNodeName.trim();
+		case "sourceLandingNodeName":
+			return row.sourceLandingNodeName?.trim() ?? "";
+	}
+}
+
+function parsePrefixedStage2RowKey(rowKey: string): { field: Stage2RowKeyField; value: string } | null {
+	for (const [field, prefix] of Object.entries(STAGE2_ROW_KEY_PREFIXES) as Array<[Stage2RowKeyField, string]>) {
+		if (!rowKey.startsWith(prefix)) {
+			continue;
+		}
+		const value = rowKey.slice(prefix.length).trim();
+		if (value === "") {
+			return null;
+		}
+		return { field, value };
+	}
+	return null;
+}
+
 function getStage2RowIdentifiers(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
 	const identifiers = [row.rowId, row.proxyName, row.landingNodeName, row.sourceLandingNodeName];
 	const seen = new Set<string>();
@@ -34,6 +89,36 @@ export function getStage2RowKey(row: Pick<Stage2Row, "rowId" | "sourceLandingNod
 	return getStage2RowIdentifiers(row)[0] ?? "";
 }
 
+export function getStage2RowStrictKey(
+	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
+) {
+	for (const field of ["rowId", "proxyName", "landingNodeName", "sourceLandingNodeName"] as Stage2RowKeyField[]) {
+		const value = getTrimmedStage2RowFieldValue(row, field);
+		if (value !== "") {
+			return `${STAGE2_ROW_KEY_PREFIXES[field]}${value}`;
+		}
+	}
+	return "";
+}
+
+export function isStage2SourceRow(
+	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
+) {
+	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+	if (sourceLandingNodeName === "") {
+		return false;
+	}
+	const rowId = row.rowId?.trim();
+	if (rowId) {
+		return rowId === sourceLandingNodeName;
+	}
+	const proxyName = row.proxyName?.trim();
+	if (proxyName) {
+		return proxyName === sourceLandingNodeName;
+	}
+	return row.landingNodeName.trim() === sourceLandingNodeName;
+}
+
 export function matchesStage2RowKey(
 	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
 	rowKey: string,
@@ -42,11 +127,37 @@ export function matchesStage2RowKey(
 	if (trimmedRowKey === "") {
 		return false;
 	}
+	const prefixedRowKey = parsePrefixedStage2RowKey(trimmedRowKey);
+	if (prefixedRowKey !== null) {
+		return getTrimmedStage2RowFieldValue(row, prefixedRowKey.field) === prefixedRowKey.value;
+	}
 	return getStage2RowIdentifiers(row).includes(trimmedRowKey);
 }
 
 export function findStage2RowByKey(rows: Stage2SnapshotRows, rowKey: string) {
 	return rows.find((row) => matchesStage2RowKey(row, rowKey)) ?? null;
+}
+
+export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
+	const baseName = sourceLandingNodeName.trim();
+	if (baseName === "") {
+		return "";
+	}
+
+	const usedNames = new Set(
+		rows
+			.map((row) => getStage2RowDisplayName(row).trim())
+			.filter((value) => value !== ""),
+	);
+	if (!usedNames.has(baseName)) {
+		return baseName;
+	}
+
+	let suffix = 2;
+	while (usedNames.has(`${baseName} ${suffix}`)) {
+		suffix += 1;
+	}
+	return `${baseName} ${suffix}`;
 }
 
 function getSelectedForwardRelays(rows: Stage2SnapshotRows) {

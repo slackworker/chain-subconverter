@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
 	getForwardRelayChoices,
+	getStage2RowDisplayName,
+	getStage2RowStrictKey,
+	getStage2RowSourceLandingName,
 	getStage2DisplayModeOptions,
 	getStage2TargetDisplayLabel,
+	isStage2SourceRow,
+	matchesStage2RowKey,
+	pickNextDerivedProxyName,
 	pickNextTarget,
 } from "./stage2";
 
@@ -120,5 +126,88 @@ describe("stage2 target helpers", () => {
 		};
 
 		expect(getStage2TargetDisplayLabel(null, [restoredRow], restoredRow)).toBe("HK Relay Group");
+	});
+
+	it("prefers proxyName and sourceLandingNodeName when present", () => {
+		const row: Stage2Row = {
+			rowId: "row-a",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a 2",
+			landingNodeName: "legacy-a",
+			mode: "none",
+			targetName: null,
+		};
+
+		expect(getStage2RowDisplayName(row)).toBe("landing-a 2");
+		expect(getStage2RowSourceLandingName(row)).toBe("landing-a");
+	});
+
+	it("picks the next derived proxy name from the source landing base name", () => {
+		const rows: Stage2Row[] = [
+			{
+				rowId: "row-a",
+				sourceLandingNodeName: "landing-a",
+				proxyName: "landing-a",
+				landingNodeName: "landing-a",
+				mode: "none",
+				targetName: null,
+			},
+			{
+				rowId: "row-b",
+				sourceLandingNodeName: "landing-a",
+				proxyName: "landing-a 2",
+				landingNodeName: "landing-a 2",
+				mode: "none",
+				targetName: null,
+			},
+		];
+
+		expect(pickNextDerivedProxyName(rows, "landing-a")).toBe("landing-a 3");
+	});
+
+	it("uses strict row keys to distinguish source and derived rows that share the same source landing name", () => {
+		const sourceRow: Stage2Row = {
+			rowId: "landing-a",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a",
+			landingNodeName: "landing-a",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		};
+		const derivedRow: Stage2Row = {
+			rowId: "landing-a-copy",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a 2",
+			landingNodeName: "landing-a 2",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		};
+
+		expect(getStage2RowStrictKey(sourceRow)).toBe("rowId:landing-a");
+		expect(matchesStage2RowKey(sourceRow, "rowId:landing-a")).toBe(true);
+		expect(matchesStage2RowKey(derivedRow, "rowId:landing-a")).toBe(false);
+		expect(matchesStage2RowKey(derivedRow, "landing-a")).toBe(true);
+	});
+
+	it("detects original source rows separately from derived rows", () => {
+		const sourceRow: Stage2Row = {
+			rowId: "landing-a",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a",
+			landingNodeName: "landing-a",
+			mode: "none",
+			targetName: null,
+		};
+		const derivedRow: Stage2Row = {
+			rowId: "landing-a-copy",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a 2",
+			landingNodeName: "landing-a 2",
+			mode: "none",
+			targetName: null,
+		};
+
+		expect(isStage2SourceRow(sourceRow)).toBe(true);
+		expect(isStage2SourceRow(derivedRow)).toBe(false);
 	});
 });

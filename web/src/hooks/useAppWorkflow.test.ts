@@ -23,6 +23,7 @@ vi.mock("../lib/api", async () => {
 });
 
 import { postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
+import { getStage2RowStrictKey } from "../lib/stage2";
 import { initialStage1Input, toStage1InputPayload } from "../lib/state";
 import { type AppWorkflowViewModel, useAppWorkflow } from "./useAppWorkflow";
 
@@ -574,6 +575,81 @@ describe("useAppWorkflow", () => {
 			"TARGET_SELECTION_REQUIRED",
 			"GENERATE_FAILED",
 		]);
+	});
+
+	it("supports strict row keys so source-row edits do not fan out to derived rows", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			proxyName: "landing-hk",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		});
+		expect(workflow.current.stage2Rows[1]).toMatchObject({
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk 2",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		});
+
+		act(() => {
+			workflow.current.handleModeChange(sourceRowKey, "none");
+		});
+
+		expect(workflow.current.stage2Rows[0].mode).toBe("none");
+		expect(workflow.current.stage2Rows[0].targetName).toBeNull();
+		expect(workflow.current.stage2Rows[1].mode).toBe("chain");
+		expect(workflow.current.stage2Rows[1].targetName).toBe("HK Relay Group");
+
+		act(() => {
+			workflow.current.handleProxyNameChange(sourceRowKey, "landing-hk renamed");
+		});
+
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			proxyName: "landing-hk renamed",
+			landingNodeName: "landing-hk renamed",
+		});
+		expect(workflow.current.stage2Rows[1]).toMatchObject({
+			proxyName: "landing-hk 2",
+			landingNodeName: "landing-hk 2",
+		});
 	});
 
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {
