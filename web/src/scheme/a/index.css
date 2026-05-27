@@ -1681,6 +1681,7 @@
 .a-table--stage2-adaptive {
 	width: max(100%, var(--s2-table-min-width, 0px));
 	min-width: var(--s2-table-min-width, 0px);
+	border-spacing: 0;
 }
 
 /* 列宽不足时优先横向滚动，避免目标/落地文本在列内换行或叠压 */

@@ -8,6 +8,18 @@ export const STAGE2_LANDING_MAX_WIDTH_FRACTION = 0.38;
 /** 与 `.a-table th, .a-table td` 水平 padding `0.75rem` × 2 对齐（16px 根字号） */
 export const STAGE2_CELL_PADDING_X_PX = 24;
 
+/**
+ * Stage2 第一列为可编辑名称输入框，额外占用：
+ * - `.a-stage2-row-inline` 左侧节点轨道 padding `0.9rem`
+ * - 行内容 gap `0.55rem`
+ * - `.a-stage2-row-name-input` 左右 padding `0.4rem + 1.65rem`
+ * - 右侧单个行内工具按钮宽度 `1.56rem`
+ */
+export const STAGE2_LANDING_EDITABLE_EXTRA_PX = Math.ceil((0.9 + 0.55 + 0.4 + 1.65 + 1.56) * 16);
+
+/** 原生 input 渲染与 canvas 文本测量存在 1px 级别误差，给第一列留出极小余量避免断点裁切。 */
+export const STAGE2_LANDING_RENDERING_SAFETY_PX = 2;
+
 /** `.a-mode-warning-slot` 1.25rem + `.a-mode-cell` gap 0.4rem */
 export const STAGE2_MODE_EXTRA_PX = 20 + 6;
 
@@ -67,7 +79,10 @@ export function measureStage2ColumnMins(input: Stage2ColumnMeasureInput): Stage2
 	const targetTexts = [headers[3], ...rows.map((row) => row.targetLabel)];
 
 	return [
-		maxMeasuredWidth(landingTexts, measureLandingText) + pad,
+		maxMeasuredWidth(landingTexts, measureLandingText)
+			+ pad
+			+ STAGE2_LANDING_EDITABLE_EXTRA_PX
+			+ STAGE2_LANDING_RENDERING_SAFETY_PX,
 		maxMeasuredWidth(typeTexts, measureText) + pad,
 		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_SELECT_EXTRA_PX,
 		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_EXTRA_PX,
@@ -80,27 +95,53 @@ export function distributeStage2ColumnWidths(
 	weights: readonly [number, number, number, number] = STAGE2_COLUMN_WEIGHTS,
 	landingMaxWidth?: number,
 ): Stage2ColumnWidthsPx {
-	const cappedMins: [number, number, number, number] = [...mins];
-	if (landingMaxWidth !== undefined && landingMaxWidth > 0) {
-		cappedMins[0] = Math.min(cappedMins[0], landingMaxWidth);
-	}
-
-	const totalMin = cappedMins[0] + cappedMins[1] + cappedMins[2] + cappedMins[3];
+	const baseMins: [number, number, number, number] = [...mins];
+	const totalMin = baseMins[0] + baseMins[1] + baseMins[2] + baseMins[3];
 	if (containerWidth <= 0 || containerWidth <= totalMin) {
-		return cappedMins;
+		return baseMins;
 	}
 
 	const slack = containerWidth - totalMin;
 	const totalWeight = weights[0] + weights[1] + weights[2] + weights[3];
 	if (totalWeight <= 0) {
-		return cappedMins;
+		return baseMins;
+	}
+
+	const maxLandingWidth = landingMaxWidth !== undefined && landingMaxWidth > baseMins[0]
+		? landingMaxWidth
+		: undefined;
+	if (maxLandingWidth !== undefined) {
+		const unconstrainedLandingWidth = baseMins[0] + slack * (weights[0] / totalWeight);
+		if (unconstrainedLandingWidth > maxLandingWidth) {
+			const widths: [number, number, number, number] = [
+				Math.round(maxLandingWidth),
+				baseMins[1],
+				baseMins[2],
+				baseMins[3],
+			];
+			const remainingSlack = containerWidth - sumStage2ColumnWidths(widths);
+			const remainingWeight = weights[1] + weights[2] + weights[3];
+			if (remainingWeight <= 0) {
+				widths[3] += remainingSlack;
+				return widths;
+			}
+
+			widths[1] = Math.round(baseMins[1] + remainingSlack * (weights[1] / remainingWeight));
+			widths[2] = Math.round(baseMins[2] + remainingSlack * (weights[2] / remainingWeight));
+			widths[3] = Math.round(baseMins[3] + remainingSlack * (weights[3] / remainingWeight));
+			const drift = containerWidth - sumStage2ColumnWidths(widths);
+			if (drift !== 0) {
+				widths[3] += drift;
+			}
+			return widths;
+		}
 	}
 
 	const widths: [number, number, number, number] = [
-		Math.round(cappedMins[0] + slack * (weights[0] / totalWeight)),
-		Math.round(cappedMins[1] + slack * (weights[1] / totalWeight)),
-		Math.round(cappedMins[2] + slack * (weights[2] / totalWeight)),
-		Math.round(cappedMins[3] + slack * (weights[3] / totalWeight)),
+		Math.round(baseMins[0] + slack * (weights[0] / totalWeight)),
+		Math.round(baseMins[1] + slack * (weights[1] / totalWeight)),
+		Math.round(baseMins[2] + slack * (weights[2] / totalWeight)),
+		Math.round(baseMins[3] + slack * (weights[3] / totalWeight)),
 	];
 	const drift = containerWidth - sumStage2ColumnWidths(widths);
 	if (drift !== 0) {
@@ -203,9 +244,6 @@ export function resolveStage2ColumnCssVars(
 	measureInput: Stage2ColumnMeasureInput,
 ): Stage2ColumnCssVars {
 	const widths = resolveStage2ColumnWidthsPx(containerWidth, measureInput);
-	if (!stage2NeedsHorizontalScroll(containerWidth, measureInput)) {
-		return columnWidthsToFitCssVars(widths);
-	}
 	return columnWidthsToPxCssVars(widths);
 }
 

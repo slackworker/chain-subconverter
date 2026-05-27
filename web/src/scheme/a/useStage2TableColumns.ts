@@ -40,8 +40,9 @@ export function useStage2TableColumns(
 
 		const recompute = () => {
 			const fontSource = wrap.querySelector(".a-table th") ?? wrap;
+			const landingFontSource = wrap.querySelector(".a-stage2-row-name-input") ?? fontSource;
 			const measureText = createCanvasTextMeasurer(fontSource);
-			const measureLandingText = createCanvasTextMeasurer(fontSource, { fontWeight: "600" });
+			const measureLandingText = createCanvasTextMeasurer(landingFontSource);
 			const containerWidth = wrap.clientWidth;
 			if (containerWidth <= 0) {
 				setColumnStyle(FALLBACK_STYLE);

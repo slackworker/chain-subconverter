@@ -4,6 +4,8 @@ import {
 	columnWidthsToPercentCssVars,
 	columnWidthsToPxCssVars,
 	distributeStage2ColumnWidths,
+	STAGE2_LANDING_EDITABLE_EXTRA_PX,
+	STAGE2_LANDING_RENDERING_SAFETY_PX,
 	measureStage2ColumnMins,
 	resolveStage2ColumnWidthsPx,
 	STAGE2_CELL_PADDING_X_PX,
@@ -46,7 +48,9 @@ describe("measureStage2ColumnMins", () => {
 			modeExtraPx: STAGE2_MODE_EXTRA_PX,
 		});
 
-		expect(mins[0]).toBe(220 + STAGE2_CELL_PADDING_X_PX);
+		expect(mins[0]).toBe(
+			220 + STAGE2_CELL_PADDING_X_PX + STAGE2_LANDING_EDITABLE_EXTRA_PX + STAGE2_LANDING_RENDERING_SAFETY_PX,
+		);
 		expect(mins[1]).toBe(40 + STAGE2_CELL_PADDING_X_PX);
 		expect(mins[2]).toBe(160 + STAGE2_CELL_PADDING_X_PX + STAGE2_MODE_EXTRA_PX + STAGE2_SELECT_EXTRA_PX);
 		expect(mins[3]).toBe(180 + STAGE2_CELL_PADDING_X_PX + STAGE2_TARGET_EXTRA_PX);
@@ -59,13 +63,20 @@ describe("distributeStage2ColumnWidths", () => {
 		expect(distributeStage2ColumnWidths(500, mins)).toEqual(mins);
 	});
 
-	it("allocates slack evenly when weights are 1:1:1:1", () => {
+	it("does not squeeze the landing column below its real minimum just to satisfy the soft cap", () => {
+		const mins: [number, number, number, number] = [420, 80, 120, 200];
+		const widths = distributeStage2ColumnWidths(900, mins, [1, 1, 1, 1], 342);
+		expect(widths[0]).toBeGreaterThanOrEqual(420);
+		expect(widths.reduce((sum, value) => sum + value, 0)).toBe(900);
+	});
+
+	it("allocates slack evenly when weights are 1:1:1:1 if the landing column is already wider than the soft cap", () => {
 		const mins: [number, number, number, number] = [400, 80, 120, 200];
 		const widths = distributeStage2ColumnWidths(1000, mins, [1, 1, 1, 1], 380);
-		expect(widths[0]).toBe(435);
-		expect(widths[1]).toBe(135);
-		expect(widths[2]).toBe(175);
-		expect(widths[3]).toBe(255);
+		expect(widths[0]).toBe(450);
+		expect(widths[1]).toBe(130);
+		expect(widths[2]).toBe(170);
+		expect(widths[3]).toBe(250);
 		expect(widths.reduce((sum, value) => sum + value, 0)).toBe(1000);
 	});
 });
@@ -152,8 +163,8 @@ describe("resolveStage2ColumnCssVars", () => {
 	it("emits fit layout vars when the container is wide enough", () => {
 		expect(stage2NeedsHorizontalScroll(2000, measureInput)).toBe(false);
 		const vars = resolveStage2ColumnCssVars(2000, measureInput);
-		expect(vars["--s2-table-min-width"]).toBe("0px");
-		expect(vars["--s2-col-1"]).toMatch(/%$/);
+		expect(vars["--s2-table-min-width"]).not.toBe("0px");
+		expect(vars["--s2-col-1"]).toMatch(/px$/);
 	});
 
 	it("emits scroll layout vars when content minimums exceed the container", () => {
