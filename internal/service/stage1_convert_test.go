@@ -132,6 +132,48 @@ func TestBuildStage2Init_UsesTransitDiscoveryGroupsWhenFullBaseOmitted(t *testin
 	}
 }
 
+func TestBuildStage2Init_KeepsTransitGroupMembersThatShareLandingNameWhenFullBaseOmitted(t *testing.T) {
+	stage2Init, err := BuildStage2Init(
+		Stage1Input{},
+		ConversionFixtures{
+			LandingDiscoveryYAML: "proxies:\n- {name: 🇭🇰 Alpha-SS-HK, server: landing.example.com, port: 443, type: ss}\n",
+			TransitDiscoveryYAML: strings.Join([]string{
+				"proxies:",
+				"- {name: 🇭🇰 Alpha-SS-HK, server: transit.example.com, port: 443, type: ss}",
+				"proxy-groups:",
+				"  - name: 🇭🇰 香港节点",
+				"    type: select",
+				"    proxies:",
+				"      - 🇭🇰 Alpha-SS-HK",
+				"",
+			}, "\n"),
+			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`(HK|香港)\n",
+		},
+	)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	if got, want := stage2Init.AvailableModes, []string{"none", "chain"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AvailableModes mismatch: got %v want %v", got, want)
+	}
+	if len(stage2Init.Rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
+	}
+	row := stage2Init.Rows[0]
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
+	}
+	if row.TargetName == nil || *row.TargetName != "🇭🇰 香港节点" {
+		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇭🇰 香港节点")
+	}
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇭🇰 香港节点", "proxy-groups"); !ok {
+		t.Fatalf("expected chain target %q, got %v", "🇭🇰 香港节点", stage2Init.ChainTargets)
+	} else if target.IsEmpty {
+		t.Fatalf("expected non-empty chain target %q, got %v", "🇭🇰 香港节点", stage2Init.ChainTargets)
+	}
+}
+
 func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t *testing.T) {
 	stage2Init, err := BuildStage2Init(
 		Stage1Input{

@@ -396,6 +396,10 @@ func buildChainTargetsFromGroups(
 ) ([]ChainTarget, error) {
 	seen := make(map[string]struct{})
 	chainTargets := make([]ChainTarget, 0, len(regionMatchers)+len(transitProxies))
+	transitNames := make(map[string]struct{}, len(transitProxies))
+	for _, proxy := range transitProxies {
+		transitNames[proxy.Name] = struct{}{}
+	}
 
 	for _, matcher := range regionMatchers {
 		groupName := matcher.TargetName
@@ -407,6 +411,10 @@ func buildChainTargetsFromGroups(
 		memberCount := 0
 		for _, member := range group.Proxies {
 			if member == "DIRECT" {
+				continue
+			}
+			if _, isTransit := transitNames[member]; isTransit {
+				memberCount++
 				continue
 			}
 			if _, isLanding := landingNames[member]; isLanding {
