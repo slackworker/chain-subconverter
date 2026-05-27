@@ -119,7 +119,6 @@ const COPY = {
 		deleteRow: "删除",
 		keepOneDerivedRow: "至少保留一行",
 		sourceRowLocked: "源节点不可删除",
-		sourceRowBadge: "源",
 		commonGroups: "区域策略组",
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
@@ -238,7 +237,6 @@ const COPY = {
 		deleteRow: "Delete",
 		keepOneDerivedRow: "Keep at least one row.",
 		sourceRowLocked: "Source rows cannot be deleted.",
-		sourceRowBadge: "SRC",
 		commonGroups: "Regional policy groups",
 		fixedNodes: "Fixed nodes",
 		noCommonChoices: "No common choices available",
@@ -1352,15 +1350,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 														<span className="a-stage2-row-rail" aria-hidden="true">
 															<span className="a-stage2-row-rail-dot" />
 														</span>
-														{groupedBySource ? (
-															<span
-																className={`a-stage2-row-chip ${sourceRow ? "" : "a-stage2-row-chip--ghost"}`}
-																title={sourceRow ? sourceLandingName : undefined}
-																aria-hidden={sourceRow ? undefined : true}
-															>
-																{copy.sourceRowBadge}
-															</span>
-														) : null}
 														<input
 															className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
 															value={displayName}
