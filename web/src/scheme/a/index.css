@@ -1691,6 +1691,22 @@
 	padding: 1.5rem 1rem;
 }
 
+/* Stage2「节点类型」列：表头与单元格统一居中 */
+.a-table--stage2-adaptive th:nth-child(2),
+.a-table--stage2-adaptive td:nth-child(2) {
+	text-align: center;
+}
+
+.a-table--stage2-adaptive td:nth-child(2) .a-cell-type {
+	justify-content: center;
+}
+
+.a-table--stage2-adaptive thead th:nth-child(1),
+.a-table--stage2-adaptive thead th:nth-child(3),
+.a-table--stage2-adaptive thead th:nth-child(4) {
+	text-align: center;
+}
+
 .a-cell-name {
 	display: flex;
 	align-items: center;
