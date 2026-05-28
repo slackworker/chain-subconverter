@@ -8,7 +8,7 @@
 
 - **3.0 Beta 线已发布**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1)、[`v3.0.0-beta.2`](../RELEASES.md#v300-beta2)
 - **Phase 0–4 已完成**；维护期以回归与测试/文档债为主
-- 默认 **`/`**（`default`）；`/ui/a|b|c` 为实验入口
+- 默认 **`/`**（`default`）；`/ui/a` 为对照方案，`/ui/b`、`/ui/c` 为探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
 - 契约与实现边界： [spec/02–05](spec/)（含 snapshot-first 三 pass 与 stage2 复制/改名，见 [04 §1.1.3 / §2.1.2](spec/04-business-rules.md)）
 
@@ -36,7 +36,7 @@
 | 项 | 说明 |
 |----|------|
 | E2E 加深 | blocking 仍为两条 mocked happy path；`include-exclude-filter` 未进 blocking |
-| UI 方案层 | B/C workflow log 视觉与 default `/` 未完全统一 |
+| UI 探索方案 B/C | 定位为 `exploratory`（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）；不要求与 default 壳层一致，以业务能力验收为准 |
 | 安全 | 基础 SSRF/限速已落地；更严格出站与 egress 待评估 |
 | 可复现性 | 验收依赖外部模板/订阅；`subconverter` 浮动 tag 须在回归记录中注明 |
 | 反馈 | Issue + [third-party-deployments.md](testing/third-party-deployments.md) 归档 |

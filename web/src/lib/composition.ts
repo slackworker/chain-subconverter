@@ -47,10 +47,14 @@ export interface AppPageProps {
 	runtimeConfig: RuntimeConfigResponse | null;
 }
 
+/** `baseline`：对照/发布级，实现时以 spec 02 方案层约定为参考；`exploratory`：可脱离 spec 02 交互与风格细节，须满足业务能力验收。 */
+export type UISchemeInteractionTier = "baseline" | "exploratory";
+
 export interface UISchemeDefinition {
 	id: string;
 	label: string;
 	description: string;
+	interactionTier: UISchemeInteractionTier;
 	primaryBlockingFeedbackPlacement: PrimaryBlockingFeedbackPlacement;
 }
 

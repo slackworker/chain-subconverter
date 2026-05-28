@@ -26,10 +26,13 @@ npm run test:e2e     # Playwright；需仓库根 ./scripts/dev-up.sh default
 
 ## 方案路由
 
-| 入口 | scheme |
-|------|--------|
-| `/` | `default`（发布默认） |
-| `/ui/a` `/ui/b` `/ui/c` | 实验方案 |
+| 入口 | scheme | 分级 |
+|------|--------|------|
+| `/` | `default`（发布默认） | `baseline` |
+| `/ui/a` | 对照方案 | `baseline` |
+| `/ui/b` `/ui/c` | 探索性交互方案 | `exploratory` |
+
+探索性方案可脱离 [spec 02](../docs/spec/02-frontend-spec.md) 的交互/风格细节自行设计，但须实现完整业务能力；见 spec 02「方案分级：对照基线与探索性」。
 
 ## 提升某个方案为 Default
 

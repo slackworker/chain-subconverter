@@ -45,6 +45,25 @@
 - 每个 scheme 目录必须保持自包含：至少由本地 `Page.tsx` 导出统一入口 `SchemePage`，并由本地 `index.ts` 声明 scheme 元数据；不得让 `default` 运行时直接 import `a|b|c` 的页面实现
 - 当需要把某个实验方案提升为默认入口时，权威动作是把该 scheme 目录整体复制到 `web/src/scheme/default`，然后仅重写 `default/index.ts` 的默认元数据；不得把 `default` 改成某个实验方案的运行时别名
 
+### 方案分级：对照基线与探索性
+
+| 方案 | 路由 | `interactionTier` | 定位 |
+|------|------|-------------------|------|
+| `default` | `/` | `baseline` | 发布默认入口；冻结目录，不作为 dev 上的持续实验场 |
+| UI A | `/ui/a` | `baseline` | `dev` 分支对照方案；实现时以本章方案层约定与共享通知承载模型为参考 |
+| UI B | `/ui/b` | `exploratory` | 探索性交互方案 |
+| UI C | `/ui/c` | `exploratory` | 探索性交互方案 |
+
+**探索性方案（UI B / UI C）**
+
+- 优先验证不同的信息架构、操作路径、布局节奏与视觉风格；**不作为**本章对方案层交互/呈现细节的权威样板，也不要求与 `default` / UI A 在壳层或视觉上对齐。
+- **允许**：在不影响业务正确性的前提下，脱离本章对交互方式、分步/平铺节奏、通知区具体形态、按钮分组与文案层级等的描述，自行定义交互与风格。
+- **不得**：削弱或改写上文「共享层必须定义的内容」、[04-business-rules](04-business-rules.md) 业务规则、[03-backend-api](03-backend-api.md) 接口契约，以及共享业务层状态语义（含 `blockingErrors[]` / `messages[]`、`restoreStatus`、阶段 2 只读冲突态等）。
+- **验收口径（业务能力）**：须能完整走通主线——阶段 1「转换并自动填充」→ 阶段 2 配置（含 stale、复制行、`conflicted` 只读冲突等）→ 阶段 3 生成与消费（长/短链、打开预览、复制、下载、反向解析）→ 必要时经 `resolve-url` 恢复；错误须按 `scope` 可定位且可阻断错误操作。不要求与 spec 02 的交互细节或文案一一对应。
+- **提升为 default**：探索性方案经回归与产品确认后，仍可通过 promote 脚本整体复制为 `default`；提升时须重新评估是否收敛到发布级交互约定。
+
+各 scheme 的 `interactionTier` 在 `web/src/scheme/<id>/index.ts` 元数据中声明；共享层与 CI 不据此改变行为，仅作文档与维护者约定。
+
 ### `scope` 与阶段标签
 
 - `blockingErrors[].scope` 是共享层稳定的错误定位语义，不是 Stage 枚举
