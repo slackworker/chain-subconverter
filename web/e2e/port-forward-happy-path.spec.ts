@@ -197,3 +197,48 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	expect(generateRequests[0]?.stage2Snapshot.rows).toEqual(expectedRows);
 	expect(resolveRequests).toEqual([shortURL]);
 });
+
+test("default UI port-forward modal preserves draft tags after backdrop close", async ({ page }) => {
+	const [relayA] = canonicalStage1Inputs.forwardRelayItems;
+	if (!relayA) {
+		throw new Error("dual-landing canonical scenario must provide at least one forward relay item");
+	}
+
+	await page.addInitScript(() => {
+		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
+		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
+	});
+
+	await page.route("**/api/runtime-config", async (route) => {
+		await route.fulfill({
+			json: {
+				defaultTemplateURL: "https://example.com/default-template.ini",
+				maxPublicLongURLLength: 8192,
+			},
+		});
+	});
+
+	await page.goto("/");
+
+	await page.getByRole("button", { name: "高级选项" }).click();
+	await page.getByRole("checkbox", { name: "启用端口转发" }).setChecked(true, { force: true });
+
+	const addRelayButton = page.getByRole("button", { name: "+ 添加 端口转发" });
+	await addRelayButton.click();
+
+	const dialog = page.getByRole("dialog", { name: "添加端口转发服务" });
+	const forwardInput = dialog.getByPlaceholder("输入 server:port ，按 Enter 添加多个");
+	await forwardInput.fill(relayA);
+	await forwardInput.press("Enter");
+
+	await page.locator(".a-modal-backdrop").click({ position: { x: 4, y: 4 } });
+	await expect(dialog).toBeHidden();
+
+	await addRelayButton.click();
+	const reopenedDialog = page.getByRole("dialog", { name: "添加端口转发服务" });
+	await expect(reopenedDialog.getByText(relayA, { exact: true })).toBeVisible();
+
+	await reopenedDialog.getByRole("button", { name: "确认" }).click();
+	const relayTagList = page.locator('ul[aria-label="端口转发标签"]');
+	await expect(relayTagList.getByText(relayA, { exact: true })).toBeVisible();
+});

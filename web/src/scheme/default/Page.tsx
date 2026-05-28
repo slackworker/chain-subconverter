@@ -646,7 +646,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [socksURI, setSocksURI] = useState("");
 	const [socksError, setSocksError] = useState<string | null>(null);
 	const [portForwardOpen, setPortForwardOpen] = useState(false);
-	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>([]);
+	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>(null);
 	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
@@ -790,7 +790,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 	function openPortForwardModal() {
 		setPortForwardError(null);
-		setPortForwardDraftTags([]);
+		setPortForwardDraftTags((current) => current ?? []);
 		setPortForwardOpen(true);
 	}
 
@@ -806,8 +806,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 	function closePortForwardModal() {
 		setPortForwardError(null);
-		setPortForwardDraftTags([]);
 		setPortForwardOpen(false);
+	}
+
+	function resetPortForwardDraft() {
+		setPortForwardDraftTags(null);
 	}
 
 	function submitPortForwardTags() {
@@ -816,6 +819,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 			const nextStage1Input = appendForwardRelayItems(state.stage1Input, nextTags);
 			updateStage1Input(() => nextStage1Input);
 			setPortForwardError(null);
+			resetPortForwardDraft();
 			closePortForwardModal();
 		} catch (error) {
 			setPortForwardError(error instanceof Error ? error.message : copy.portForwardValidationFailed);
@@ -1217,6 +1221,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												const enabled = event.target.checked;
 												updateStage1Input((current) => setPortForwardEnabled(current, enabled));
 												if (!enabled) {
+													resetPortForwardDraft();
 													closePortForwardModal();
 												}
 											}}
