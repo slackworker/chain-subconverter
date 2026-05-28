@@ -807,6 +807,20 @@
 	margin-bottom: 1.15rem;
 }
 
+@media (max-width: 600px) {
+	.a-stage__head {
+		position: relative;
+		display: block;
+		padding-right: 5.6rem;
+	}
+
+	.a-stage__head > .a-pill {
+		position: absolute;
+		top: 0;
+		right: 0;
+	}
+}
+
 .a-stage__headline {
 	margin: 0 0 0.35rem;
 	line-height: 1.25;
