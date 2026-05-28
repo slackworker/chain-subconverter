@@ -7,7 +7,9 @@ import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse, Stag
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 
 function getStage2Row(page: Page, landingNodeName: string) {
-	return page.locator(".a-table tbody tr").filter({ hasText: landingNodeName });
+	return page.locator(".a-table tbody tr", {
+		has: page.locator(`.a-stage2-row-name-input[value="${landingNodeName}"]`),
+	});
 }
 
 test("default UI port-forward mocked happy path keeps relay choices exclusive and replayable", async ({ page }) => {

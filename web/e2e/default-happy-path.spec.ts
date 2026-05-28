@@ -1,6 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
+
+function getStage2Row(page: Page, landingNodeName: string) {
+	return page.locator(".a-table tbody tr", {
+		has: page.locator(`.a-stage2-row-name-input[value="${landingNodeName}"]`),
+	});
+}
 
 test("default UI minimal happy path via fixed-port runtime", async ({ page }) => {
 	const landingInput = "ss://landing-happy-path";
@@ -215,7 +221,7 @@ test("default UI conflicted Short ID restore keeps Stage 2 snapshot visible but 
 	await expect(page.getByLabel("中转信息")).toHaveValue(transitInput);
 	await expect(currentLink).toHaveValue(shortURL);
 
-	const row = page.locator(".a-table tbody tr").filter({ hasText: "HK 01" });
+	const row = getStage2Row(page, "HK 01");
 	await expect(row.locator("select").first()).toHaveValue("chain");
 	await expect(row.locator(".a-target-menu__trigger")).toContainText("HK Relay Group");
 	await expect(page.getByRole("button", { name: "生成链接" })).toBeDisabled();
