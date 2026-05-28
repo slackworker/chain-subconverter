@@ -16,9 +16,17 @@ import {
 	removeForwardRelayItem,
 	setPortForwardEnabled,
 } from "../../lib/stage1";
-import { getStage2DisplayModeOptions, getStage2TargetDisplayLabel } from "../../lib/stage2";
+import {
+	getStage2DisplayModeOptions,
+	getStage2RowEditableName,
+	getStage2RowDisplayName,
+	getStage2RowStrictKey,
+	getStage2RowSourceLandingName,
+	getStage2TargetDisplayLabel,
+	isStage2SourceRow,
+} from "../../lib/stage2";
 import type { WorkflowLogEntry } from "../../lib/state";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField } from "./TagField";
 import { useStage2TableColumns } from "./useStage2TableColumns";
@@ -106,6 +114,13 @@ const COPY = {
 		colTarget: "目标",
 		stage2Empty: "完成阶段 1 转换后，将在此列出各行配置。",
 		rowRestrictions: "本行存在模式限制，详见下拉禁用项提示。",
+		proxyNameLabel: "节点名",
+		proxyNameEditableHint: "可编辑",
+		rowSourceLabel: "来源：{name}",
+		cloneRow: "复制",
+		deleteRow: "删除",
+		keepOneDerivedRow: "至少保留一行",
+		sourceRowLocked: "源节点不可删除",
 		commonGroups: "区域策略组",
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
@@ -218,6 +233,13 @@ const COPY = {
 		colTarget: "Target",
 		stage2Empty: "Run Stage 1 conversion to populate each configuration row here.",
 		rowRestrictions: "This row has mode restrictions. Check the disabled options for details.",
+		proxyNameLabel: "Proxy name",
+		proxyNameEditableHint: "Editable",
+		rowSourceLabel: "Source: {name}",
+		cloneRow: "Clone",
+		deleteRow: "Delete",
+		keepOneDerivedRow: "Keep at least one row.",
+		sourceRowLocked: "Source rows cannot be deleted.",
 		commonGroups: "Regional policy groups",
 		fixedNodes: "Fixed nodes",
 		noCommonChoices: "No common choices available",
@@ -605,6 +627,10 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		getForwardRelayChoices,
 		handleStage1Convert,
 		handleRestore,
+		handleProxyNameChange,
+		handleCloneStage2Row,
+		handleDeleteStage2Row,
+		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
 		handleGenerate,
@@ -640,7 +666,8 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		return {
 			headers: [copy.colLanding, copy.colType, copy.colMode, copy.colTarget] as const,
 			rows: stage2Rows.map((row) => {
-				const meta = getStage2RowMeta(row.landingNodeName);
+				const rowKey = getStage2RowStrictKey(row);
+				const meta = getStage2RowMeta(rowKey);
 				const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
 				const modeOptionLabels = displayModeOptions.map((mode) => {
 					const restriction = meta?.restrictedModes?.[mode];
@@ -652,7 +679,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					(row.mode === "none" ? "--" : copy.selectTarget);
 
 				return {
-					landingNodeName: row.landingNodeName,
+					landingNodeName: getStage2RowDisplayName(row),
 					landingNodeType: meta?.landingNodeType ?? "--",
 					modeOptionLabels,
 					targetLabel,
@@ -1244,7 +1271,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							{copy.conflictReadonly}
 						</p>
 					) : null}
-
 					<div
 						className="a-table-wrap a-table-wrap--stage2-adaptive"
 						ref={stage2TableWrapRef}
@@ -1274,12 +1300,23 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 									</tr>
 								) : (
 									stage2Rows.map((row, rowIndex) => {
-										const meta = getStage2RowMeta(row.landingNodeName);
-										const rowErrors = getStage2RowErrors(row.landingNodeName);
+										const rowKey = getStage2RowStrictKey(row);
+										const displayName = getStage2RowDisplayName(row);
+										const sourceLandingName = getStage2RowSourceLandingName(row);
+										const previousSourceLandingName = rowIndex > 0 ? getStage2RowSourceLandingName(stage2Rows[rowIndex - 1]) : null;
+										const nextSourceLandingName = rowIndex + 1 < stage2Rows.length ? getStage2RowSourceLandingName(stage2Rows[rowIndex + 1]) : null;
+										const groupedBySource = previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
+										const groupStart = previousSourceLandingName !== sourceLandingName;
+										const groupEnd = nextSourceLandingName !== sourceLandingName;
+										const sourceRow = isStage2SourceRow(row);
+										const meta = getStage2RowMeta(rowKey);
+										const rowErrors = getStage2RowErrors(rowKey);
 										const chainTargetGroups = getChainTargetChoiceGroups();
 										const primaryGroup = chainTargetGroups.find((group) => group.kind === "proxy-groups") ?? null;
 										const supplementGroup = chainTargetGroups.find((group) => group.kind === "proxies") ?? null;
-										const forwardRelayChoices = getForwardRelayChoices(row.landingNodeName);
+										const forwardRelayChoices = getForwardRelayChoices(rowKey);
+										const canDeleteRow = !sourceRow && canDeleteStage2Row(rowKey);
+										const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneDerivedRow;
 										const editable = isStage2Editable;
 										const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
 										const displayForwardRelayChoices = !editable
@@ -1292,22 +1329,71 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										const selectedInSupplement = Boolean(
 											supplementGroup?.choices.some((choice) => choice.value === row.targetName),
 										);
-										const primaryOpen = primaryOpenByRow[row.landingNodeName] !== false;
-										const supplementOpen = supplementOpenByRow[row.landingNodeName] ?? selectedInSupplement;
+										const primaryOpen = primaryOpenByRow[rowKey] !== false;
+										const supplementOpen = supplementOpenByRow[rowKey] ?? selectedInSupplement;
 										const selectedTargetLabel =
 											getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
 											(row.mode === "none" ? "--" : copy.selectTarget);
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
 										const rowErrorId = `a-s2-row-error-${rowIndex}`;
+										const rowNameInputId = `a-s2-row-name-${rowIndex}`;
+										const rowInlineClassName = [
+											"a-stage2-row-inline",
+											groupedBySource ? "is-grouped" : "is-solo",
+											sourceRow ? "is-source" : "is-derived",
+											groupStart ? "is-group-start" : "",
+											groupEnd ? "is-group-end" : "",
+										].filter(Boolean).join(" ");
 
 										return (
-											<tr key={row.landingNodeName} className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
+											<tr key={rowKey} className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
 												<td>
-													<div className="a-cell-name">{row.landingNodeName}</div>
-													{meta?.restrictedModes && Object.keys(meta.restrictedModes).length > 0 ? (
-														<p className="a-cell-meta">{copy.rowRestrictions}</p>
-													) : null}
+													<div className={rowInlineClassName} title={groupedBySource && !sourceRow ? sourceLandingName : undefined}>
+														<div className="a-stage2-row-name-field">
+															<input
+																id={rowNameInputId}
+																	className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
+																	value={getStage2RowEditableName(row)}
+																disabled={!editable}
+																aria-label={copy.proxyNameLabel}
+																onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
+															/>
+															<label
+																className="a-stage2-row-edit-hint"
+																htmlFor={rowNameInputId}
+																title={copy.proxyNameEditableHint}
+																aria-label={copy.proxyNameEditableHint}
+															>
+																<PencilIcon className="a-icon" aria-hidden />
+															</label>
+														</div>
+														<div className="a-stage2-row-icon-actions a-stage2-row-icon-actions--toolbar">
+																{sourceRow ? (
+																	<button
+																		type="button"
+																		className="a-btn a-btn--secondary a-btn--icon"
+																		disabled={!editable}
+																		aria-label={copy.cloneRow}
+																		title={copy.cloneRow}
+																		onClick={() => handleCloneStage2Row(rowKey)}
+																	>
+																		<PlusIcon className="a-icon" aria-hidden />
+																	</button>
+																) : (
+																	<button
+																		type="button"
+																		className="a-btn a-btn--secondary a-btn--icon"
+																		disabled={!editable || !canDeleteRow}
+																		aria-label={deleteRowTitle ?? copy.deleteRow}
+																		title={deleteRowTitle ?? copy.deleteRow}
+																		onClick={() => handleDeleteStage2Row(rowKey)}
+																	>
+																		<MinusIcon className="a-icon" aria-hidden />
+																	</button>
+																)}
+														</div>
+													</div>
 												</td>
 												<td>
 													<div className="a-cell-type">{meta?.landingNodeType ?? "--"}</div>
@@ -1327,7 +1413,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																.join(" ") || undefined}
 															onChange={(event) =>
 																handleModeChange(
-																	row.landingNodeName,
+																	rowKey,
 																	event.target.value as typeof row.mode,
 																)
 															}
@@ -1395,21 +1481,21 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																	type="button"
 																	className={`a-select a-target-menu__trigger ${editable ? "" : "a-target-menu__summary--disabled"}`}
 																	disabled={!editable}
-																	aria-expanded={openTargetMenuRow === row.landingNodeName}
+																	aria-expanded={openTargetMenuRow === rowKey}
 																	onClick={(event) => {
 																		const trigger = event.currentTarget;
-																		if (openTargetMenuRow === row.landingNodeName) {
+																		if (openTargetMenuRow === rowKey) {
 																			chainTargetMenuTriggerRef.current = null;
 																			setOpenTargetMenuRow(null);
 																			return;
 																		}
 																		chainTargetMenuTriggerRef.current = trigger;
-																		setOpenTargetMenuRow(row.landingNodeName);
+																		setOpenTargetMenuRow(rowKey);
 																	}}
 																>
 																	{selectedTargetLabel}
 																</button>
-																{openTargetMenuRow === row.landingNodeName && chainTargetMenuPortalEl
+																{openTargetMenuRow === rowKey && chainTargetMenuPortalEl
 																	? createPortal(
 																			<div className="a-target-menu a-target-menu--portal">
 																				<div
@@ -1422,7 +1508,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																							className="a-target-menu__group-toggle"
 																							disabled={!editable}
 																							aria-expanded={primaryOpen}
-																							onClick={() => setPrimaryOpen(row.landingNodeName, !primaryOpen)}
+																							onClick={() => setPrimaryOpen(rowKey, !primaryOpen)}
 																						>
 																							<span className="a-target-menu__group-label">{copy.commonGroups}</span>
 																							<span className={`a-target-menu__group-icon ${primaryOpen ? "is-open" : ""}`} aria-hidden="true">
@@ -1439,7 +1525,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																												className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
 																												disabled={!editable || choice.disabled}
 																												onClick={() => {
-																													handleTargetChange(row.landingNodeName, choice.value);
+																												handleTargetChange(rowKey, choice.value);
 																													setOpenTargetMenuRow(null);
 																												}}
 																											>
@@ -1460,7 +1546,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																								className="a-target-menu__group-toggle"
 																								disabled={!editable}
 																								aria-expanded={supplementOpen}
-																								onClick={() => setSupplementOpen(row.landingNodeName, !supplementOpen)}
+																								onClick={() => setSupplementOpen(rowKey, !supplementOpen)}
 																							>
 																								<span className="a-target-menu__group-label">{copy.fixedNodes}</span>
 																								<span className={`a-target-menu__group-icon ${supplementOpen ? "is-open" : ""}`} aria-hidden="true">
@@ -1476,7 +1562,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																												className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
 																												disabled={!editable || choice.disabled}
 																												onClick={() => {
-																													handleTargetChange(row.landingNodeName, choice.value);
+																												handleTargetChange(rowKey, choice.value);
 																													setOpenTargetMenuRow(null);
 																												}}
 																											>
@@ -1505,7 +1591,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																aria-describedby={rowErrors.length > 0 ? rowErrorId : undefined}
 																onChange={(event) =>
 																	handleTargetChange(
-																		row.landingNodeName,
+																		rowKey,
 																		event.target.value === "" ? "" : event.target.value,
 																	)
 																}

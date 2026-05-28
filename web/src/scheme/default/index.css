@@ -1,3 +1,5 @@
+@import "twemoji-colr-font/twemoji.css";
+
 /* Scheme A：独立视觉基线（CSS变量 + 组件前缀 .a-*） */
 
 .a-shell {
@@ -36,6 +38,7 @@
 	--color-input-error-border: #e3a3ab;
 	--color-input-error-shadow: rgba(163, 15, 30, 0.16);
 	--color-input-error-focus-shadow: rgba(163, 15, 30, 0.14);
+	--font-ui-emoji: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Twemoji", sans-serif;
 	--color-toggle-bg: #f9f7f3;
 	--color-toggle-border: #d9d3c8;
 	--color-toggle-hover-bg: #f3f0ea;
@@ -1471,6 +1474,141 @@
 	align-items: stretch;
 }
 
+.a-stage2-row-inline {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	min-width: 0;
+	min-height: 2.375rem;
+	position: relative;
+	padding-left: 0.9rem;
+	--a-stage2-node-gap: 0.68rem;
+}
+
+.a-stage2-row-inline::before,
+.a-stage2-row-inline::after {
+	content: "";
+	position: absolute;
+	left: 0.35rem;
+	transform: translateX(-50%);
+}
+
+.a-stage2-row-inline::before {
+	top: -0.65rem;
+	bottom: -0.65rem;
+	width: 2px;
+	background: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) 0,
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) calc(50% - var(--a-stage2-node-gap)),
+		transparent calc(50% - var(--a-stage2-node-gap)),
+		transparent calc(50% + var(--a-stage2-node-gap)),
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) calc(50% + var(--a-stage2-node-gap)),
+		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) 100%
+	);
+}
+
+.a-stage2-row-inline::after {
+	top: 50%;
+	width: 0.65rem;
+	height: 0.65rem;
+	border-radius: 999px;
+	transform: translate(-50%, -50%);
+	border: 2px solid color-mix(in srgb, var(--color-accent) 48%, var(--color-line));
+	background: var(--color-elevated);
+	box-shadow: 0 0 0 2px var(--color-elevated);
+}
+
+.a-stage2-row-inline.is-source::after {
+	background: var(--color-accent);
+	border-color: var(--color-accent);
+}
+
+.a-stage2-row-inline.is-solo::before {
+	display: none;
+}
+
+.a-stage2-row-inline.is-solo.is-derived::after {
+	background: var(--color-muted-fill);
+	border-color: color-mix(in srgb, var(--color-muted) 32%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-group-start::before {
+	top: calc(50% + var(--a-stage2-node-gap));
+	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-group-end::before {
+	bottom: calc(50% + var(--a-stage2-node-gap));
+	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
+}
+
+.a-stage2-row-name-field {
+	position: relative;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.a-stage2-row-name-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0.35rem 1.65rem 0.35rem 0.4rem;
+	border-color: transparent;
+	background: transparent;
+	font-family: var(--font-ui-emoji);
+	box-shadow: none;
+}
+
+.a-stage2-row-name-input:not(.a-input--error):not(:disabled):hover {
+	background: var(--color-surface);
+}
+
+.a-stage2-row-name-input:not(.a-input--error):focus {
+	background: var(--color-elevated);
+}
+
+.a-stage2-row-name-input:disabled {
+	color: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
+	-webkit-text-fill-color: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
+	background: color-mix(in srgb, var(--color-surface) 72%, var(--color-bg));
+	border-color: color-mix(in srgb, var(--color-line) 82%, transparent);
+	opacity: 1;
+	cursor: not-allowed;
+}
+
+.a-stage2-row-edit-hint {
+	position: absolute;
+	right: 0.38rem;
+	top: 50%;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.1rem;
+	height: 1.1rem;
+	color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+	opacity: 0.92;
+	cursor: text;
+}
+
+.a-stage2-row-inline:focus-within .a-stage2-row-edit-hint {
+	color: var(--color-accent);
+}
+
+.a-stage2-row-name-input:disabled + .a-stage2-row-edit-hint {
+	opacity: 0.56;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.a-stage2-row-icon-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.28rem;
+	flex: 0 0 auto;
+}
+
+
 .a-conflict-banner {
 	margin: 0 0 1rem;
 	padding: 0.75rem 1rem;
@@ -1517,7 +1655,7 @@
 	width: 30%;
 }
 
-/* Stage2 内容驱动最小宽度 + 剩余宽度按权重分配（--s2-col-* 由 useStage2TableColumns 写入） */
+/* UI-A 实验：Stage2 内容驱动最小宽度 + 剩余宽度按权重分配（--s2-col-* 由 useStage2TableColumns 写入） */
 .a-table-wrap--stage2-adaptive {
 	--s2-col-1: 28%;
 	--s2-col-2: 10%;
@@ -1568,7 +1706,7 @@
 
 .a-table th,
 .a-table td {
-	padding: 0.65rem 0.75rem;
+	padding: 0.5rem 0.75rem;
 	text-align: left;
 	vertical-align: middle;
 	border-bottom: 1px solid var(--color-line);
@@ -1597,6 +1735,22 @@
 	color: var(--color-muted);
 	text-align: center;
 	padding: 1.5rem 1rem;
+}
+
+/* Stage2「节点类型」列：表头与单元格统一居中 */
+.a-table--stage2-adaptive th:nth-child(2),
+.a-table--stage2-adaptive td:nth-child(2) {
+	text-align: center;
+}
+
+.a-table--stage2-adaptive td:nth-child(2) .a-cell-type {
+	justify-content: center;
+}
+
+.a-table--stage2-adaptive thead th:nth-child(1),
+.a-table--stage2-adaptive thead th:nth-child(3),
+.a-table--stage2-adaptive thead th:nth-child(4) {
+	text-align: center;
 }
 
 .a-cell-name {
@@ -1699,6 +1853,7 @@
 	gap: 0.45rem;
 	cursor: pointer;
 	width: 100%;
+	font-family: var(--font-ui-emoji);
 }
 
 .a-target-menu__trigger::after {
@@ -1854,6 +2009,7 @@
 	border-radius: 8px;
 	background: transparent;
 	font: inherit;
+	font-family: var(--font-ui-emoji);
 	font-size: 0.84rem;
 	color: var(--color-ink);
 	cursor: pointer;
@@ -1900,6 +2056,7 @@
 	border-radius: 8px;
 	border: 1px solid var(--color-line);
 	font: inherit;
+	font-family: var(--font-ui-emoji);
 	background: var(--color-elevated);
 }
 
@@ -2007,6 +2164,79 @@ select.a-select {
 	font-size: 0.82rem;
 	border-radius: 8px;
 	line-height: 1.25;
+}
+
+.a-btn--icon {
+	width: 1.9rem;
+	height: 1.9rem;
+	min-width: 1.9rem;
+	padding: 0;
+	border-radius: 999px;
+	gap: 0;
+}
+
+.a-btn--icon svg {
+	display: block;
+	width: 0.95rem;
+	height: 0.95rem;
+}
+
+/* Stage2 行内复制/删除按钮（已固定为方案 C） */
+.a-stage2-row-icon-actions--toolbar {
+	gap: 0.24rem;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon {
+	width: 1.56rem;
+	height: 1.46rem;
+	min-width: 1.56rem;
+	border-radius: 8px;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon:first-child {
+	color: color-mix(in srgb, var(--color-ink) 84%, var(--color-muted));
+	background: color-mix(in srgb, var(--color-gutter) 88%, var(--color-surface));
+	border: none;
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon:last-child {
+	color: color-mix(in srgb, var(--color-ink) 84%, var(--color-muted));
+	background: color-mix(in srgb, var(--color-gutter) 88%, var(--color-surface));
+	border: none;
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon .a-icon {
+	width: 0.9rem;
+	height: 0.9rem;
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon:hover:not(:disabled) {
+	transform: none;
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon:first-child:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--color-surface) 94%, var(--color-gutter));
+	color: var(--color-ink);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon:last-child:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--color-surface) 94%, var(--color-gutter));
+	color: var(--color-ink);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-soft) 60%, transparent);
+}
+
+.a-stage2-row-icon-actions--toolbar .a-btn--icon:active:not(:disabled) {
+	background: color-mix(in srgb, var(--color-muted-fill) 86%, var(--color-surface));
+	box-shadow: none;
 }
 
 .a-toast {
