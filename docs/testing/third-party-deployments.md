@@ -25,6 +25,35 @@
 
 ---
 
+## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建第 3 轮）
+
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:1262e8a0a82a4cdd0a0ed5e5530ffdcc794bf4cfd02cb168cc674014f2149f5a`，与 vps-02 一致；`beta` @ `32d5cfb`；发版口径 **`v3.0.0-beta.3`**）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
+- **设备**：内网 LAN Compose，`HOST_PORT=11200`
+- **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
+- **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）
+- **结果**：**通过**
+- **细节**：SSH、入口 URL、smoke 命令见本地文件
+
+---
+
+## 公网 HTTPS 一体化 — vps-02（2026-05-29，`beta-latest` 滚动构建第 3 轮）
+
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest` 滚动，`beta` @ `32d5cfb`；发版口径 **`v3.0.0-beta.3`**）；`subconverter:integration-chain-subconverter` 同 digest（`sha256:c7073588...`，`/version` = `v0.9.2-c7b26b5-...`）
+- **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
+- **USER_FACING_BASE_URL**：未设置
+- **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致生成链接为 `http://`）
+- **回归**：公网 HTTPS、`deployed-smoke`（origin 须与 `E2E_BASE_URL` 一致）、generate / short-links / 订阅读取
+- **结果**：**通过**
+- **细节**：SSH、域名、smoke 命令见本地文件
+
+---
+
+## 历史 — 内网/公网一体化（2026-05-29，`beta-latest` 滚动构建第 2 轮）
+
+vps-01 / vps-02 以 digest `sha256:36a8eb9fa16a618a08b9bd974479bb103e264993906227e29287ff273bf1265b`（`beta` @ `86922c3`；发版口径 **`v3.0.0-beta.3`**）完成内网与公网一体化回归，`deployed-smoke` 均为 **通过**。
+
+---
+
 ## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建第 2 轮）
 
 - **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:36a8eb9fa16a618a08b9bd974479bb103e264993906227e29287ff273bf1265b`，与 vps-02 一致；`beta` @ `86922c3`；发版口径 **`v3.0.0-beta.3`**，滚动构建尚未单独打 tag）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
