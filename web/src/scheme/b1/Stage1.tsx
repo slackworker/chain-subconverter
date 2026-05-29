@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import type { RuntimeConfigResponse } from "../../types/api";
 import { Socks5Modal, PortForwardModal } from "./Modals";
-import { TagInput } from "./TagInput";
+import { TagInput } from "../b2/TagInput";
 import { ChevronDownIcon } from "./Icons";
 import { NoticeRenderer } from "./Notice";
 import { LOCALES, type Locale } from "./locales";
@@ -194,7 +194,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 				{isAdvancedOpen && (
 					<div className={`flex flex-col gap-5 pt-3 border-t ${isDark ? "border-zinc-800/50" : "border-slate-200/50"}`}>
 						<div className="flex flex-col gap-2">
-							<label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{copy.templateUrl}</label>
+							<label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-slate-500"}`}>{copy.templateUrl}</label>
 							<div className="flex gap-2">
 								<input 
 									className={`flex-1 border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-zinc-200 focus:border-indigo-500/50" : "bg-white border-slate-200 text-slate-800 focus:border-indigo-500/50"}`}
@@ -221,8 +221,9 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 
 						<div className="flex flex-col md:flex-row gap-4">
 							<div className="flex-1 flex flex-col gap-2">
-								<label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{copy.includeTags}</label>
-								<TagInput 
+								<label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-slate-500"}`}>{copy.includeTags}</label>
+								<TagInput
+									colorMode={colorMode}
 									tags={stage1Input.advancedOptions.include || []}
 									onChange={tags => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, include: tags.length ? tags : null } }))}
 									placeholder={copy.tagPlaceholder}
@@ -230,8 +231,9 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 								<FieldErrors errors={workflow.getStage1FieldErrors("include")} />
 							</div>
 							<div className="flex-1 flex flex-col gap-2">
-								<label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{copy.excludeTags}</label>
-								<TagInput 
+								<label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? "text-zinc-500" : "text-slate-500"}`}>{copy.excludeTags}</label>
+								<TagInput
+									colorMode={colorMode}
 									tags={stage1Input.advancedOptions.exclude || []}
 									onChange={tags => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, exclude: tags.length ? tags : null } }))}
 									placeholder={copy.tagPlaceholder}
@@ -243,7 +245,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 						<div className="flex flex-wrap gap-6 pt-2 select-none">
 							<label className="flex items-center gap-2 cursor-pointer group">
 								<div className="relative flex items-center justify-center">
-									<input type="checkbox" className="peer appearance-none w-5 h-5 border border-zinc-700 rounded bg-zinc-950 checked:bg-indigo-600 checked:border-indigo-500 transition-colors cursor-pointer disabled:opacity-50"
+									<input type="checkbox" className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${isDark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"}`}
 										checked={stage1Input.advancedOptions.emoji ?? false}
 										disabled={isConflictReadonly}
 										onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, emoji: e.target.checked || null } }))}
@@ -255,7 +257,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 
 							<label className="flex items-center gap-2 cursor-pointer group">
 								<div className="relative flex items-center justify-center">
-									<input type="checkbox" className="peer appearance-none w-5 h-5 border border-zinc-700 rounded bg-zinc-950 checked:bg-indigo-600 checked:border-indigo-500 transition-colors cursor-pointer disabled:opacity-50"
+									<input type="checkbox" className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${isDark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"}`}
 										checked={stage1Input.advancedOptions.udp ?? false}
 										disabled={isConflictReadonly}
 										onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, udp: e.target.checked || null } }))}
@@ -267,7 +269,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 
 							<label className="flex items-center gap-2 cursor-pointer group">
 								<div className="relative flex items-center justify-center">
-									<input type="checkbox" className="peer appearance-none w-5 h-5 border border-zinc-700 rounded bg-zinc-950 checked:bg-indigo-600 checked:border-indigo-500 transition-colors cursor-pointer disabled:opacity-50"
+									<input type="checkbox" className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${isDark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"}`}
 										checked={stage1Input.advancedOptions.skipCertVerify ?? false}
 										disabled={isConflictReadonly}
 										onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, skipCertVerify: e.target.checked || null } }))}
@@ -280,7 +282,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 							<div className={`w-px mx-2 ${isDark ? "bg-zinc-800" : "bg-slate-200"}`} />
 
 							<label className="flex items-center gap-2 cursor-pointer group">
-								<div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${stage1Input.advancedOptions.enablePortForward ? 'bg-indigo-600' : 'bg-zinc-700'}`}>
+								<div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${stage1Input.advancedOptions.enablePortForward ? "bg-indigo-600" : isDark ? "bg-zinc-700" : "bg-slate-300"}`}>
 									<span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${stage1Input.advancedOptions.enablePortForward ? 'translate-x-5' : 'translate-x-1'}`} />
 									<input 
 										type="checkbox" 
