@@ -13,11 +13,11 @@ func TestDisplayVersionPrefersReleaseTag(t *testing.T) {
 	})
 
 	Version = "legacy-dev"
-	ReleaseTag = "v3.0.0-beta.2"
-	ImageTag = "beta-latest"
+	ReleaseTag = "v-test-release"
+	ImageTag = "image-latest"
 
-	if got := DisplayVersion(); got != "v3.0.0-beta.2" {
-		t.Fatalf("DisplayVersion() = %q, want v3.0.0-beta.2", got)
+	if got := DisplayVersion(); got != "v-test-release" {
+		t.Fatalf("DisplayVersion() = %q, want v-test-release", got)
 	}
 }
 
@@ -33,9 +33,9 @@ func TestDisplayVersionFallsBackToImageTag(t *testing.T) {
 
 	Version = "legacy-dev"
 	ReleaseTag = ""
-	ImageTag = "beta-latest"
+	ImageTag = "image-latest"
 
-	if got := DisplayVersion(); got != "beta-latest" {
-		t.Fatalf("DisplayVersion() = %q, want beta-latest", got)
+	if got := DisplayVersion(); got != "image-latest" {
+		t.Fatalf("DisplayVersion() = %q, want image-latest", got)
 	}
 }

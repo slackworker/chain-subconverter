@@ -28,9 +28,9 @@ func TestRuntimeStatusHandler(t *testing.T) {
 
 	runtimeStatusService := runtimestatus.NewService(
 		runtimestatus.AppStatus{
-			Version:    "v3.0.0-beta.2",
-			ReleaseTag: "v3.0.0-beta.2",
-			ImageTag:   "beta-latest",
+			Version:    "v-test-release",
+			ReleaseTag: "v-test-release",
+			ImageTag:   "image-latest",
 			Revision:   "86922c3deadbeef86922c3deadbeef86922c3d",
 		},
 		store,
@@ -51,14 +51,14 @@ func TestRuntimeStatusHandler(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if payload.App.Version != "v3.0.0-beta.2" {
-		t.Fatalf("app version = %q, want v3.0.0-beta.2", payload.App.Version)
+	if payload.App.Version != "v-test-release" {
+		t.Fatalf("app version = %q, want v-test-release", payload.App.Version)
 	}
-	if payload.App.ReleaseTag != "v3.0.0-beta.2" {
-		t.Fatalf("app release tag = %q, want v3.0.0-beta.2", payload.App.ReleaseTag)
+	if payload.App.ReleaseTag != "v-test-release" {
+		t.Fatalf("app release tag = %q, want v-test-release", payload.App.ReleaseTag)
 	}
-	if payload.App.ImageTag != "beta-latest" {
-		t.Fatalf("app image tag = %q, want beta-latest", payload.App.ImageTag)
+	if payload.App.ImageTag != "image-latest" {
+		t.Fatalf("app image tag = %q, want image-latest", payload.App.ImageTag)
 	}
 	if payload.App.Revision != "86922c3deadbeef86922c3deadbeef86922c3d" {
 		t.Fatalf("app revision = %q", payload.App.Revision)

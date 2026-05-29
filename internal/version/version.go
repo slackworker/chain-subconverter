@@ -4,7 +4,7 @@ package version
 // Version is a legacy fallback display string kept for local builds and older callers.
 var Version = "dev"
 
-// ReleaseTag carries the source control release tag, for example v3.0.0-beta.2.
+// ReleaseTag carries the source control release tag, for example a release tag like vX.Y.Z-beta.N.
 var ReleaseTag = ""
 
 // ImageTag carries the deployed image tag, for example beta-latest.
