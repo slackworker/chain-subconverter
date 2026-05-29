@@ -312,19 +312,21 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 				</button>
 			</div>
 
-			<Socks5Modal 
-				isOpen={isSocks5Open} 
-				onClose={() => setIsSocks5Open(false)} 
-				onSubmit={handleSocks5Submit} 
+			<Socks5Modal
+				isOpen={isSocks5Open}
+				onClose={() => setIsSocks5Open(false)}
+				onSubmit={handleSocks5Submit}
 				locale={locale}
+				colorMode={colorMode}
 			/>
-			<PortForwardModal 
-				isOpen={isPortForwardOpen} 
-				onClose={handleClosePortForward} 
+			<PortForwardModal
+				isOpen={isPortForwardOpen}
+				onClose={handleClosePortForward}
 				items={portForwardDraftTags ?? stage1Input.forwardRelayItems}
 				onItemsChange={setPortForwardDraftTags}
-				onSubmit={handlePortForwardSubmit} 
+				onSubmit={handlePortForwardSubmit}
 				locale={locale}
+				colorMode={colorMode}
 			/>
 		</div>
 	);

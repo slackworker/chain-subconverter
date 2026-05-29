@@ -5,17 +5,33 @@ import {
 	normalizeForwardRelayItem,
 } from "../../lib/stage1";
 import { LOCALES, type Locale } from "./locales";
+import type { ColorMode } from "../b2/theme";
+import {
+	modalAddButton,
+	modalCancelButton,
+	modalConfirmButton,
+	modalEmptyHint,
+	modalErrorBox,
+	modalFieldLabel,
+	modalPanel,
+	modalTagArea,
+	modalTagChip,
+	modalTitle,
+	textInput,
+} from "../b2/theme";
 
 export function Socks5Modal({
 	isOpen,
 	onClose,
 	onSubmit,
 	locale,
+	colorMode,
 }: {
 	isOpen: boolean;
 	onClose: () => void;
 	onSubmit: (uri: string) => void;
 	locale: Locale;
+	colorMode: ColorMode;
 }) {
 	const [name, setName] = useState("");
 	const [server, setServer] = useState("");
@@ -78,70 +94,58 @@ export function Socks5Modal({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={handleBackdropClick}>
-			<div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-[400px] shadow-2xl flex flex-col gap-4 text-zinc-300">
-				<h2 className="text-xl font-semibold text-zinc-100">{copy.addOrConvertSocks5}</h2>
-				
-				{error && <div className="text-red-400 text-sm bg-red-400/10 p-2.5 rounded border border-red-500/20">{error}</div>}
+			<div className={modalPanel(colorMode)} onClick={(e) => e.stopPropagation()}>
+				<h2 className={modalTitle(colorMode)}>{copy.addOrConvertSocks5}</h2>
+
+				{error && <div className={modalErrorBox()}>{error}</div>}
 
 				<div className="flex flex-col gap-1">
-					<label className="text-sm text-zinc-400">{copy.name}</label>
-					<input 
-						className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-indigo-500/50" 
-						value={name} 
-						onChange={e => setName(e.target.value)} 
-					/>
+					<label className={modalFieldLabel(colorMode)}>{copy.name}</label>
+					<input className={textInput(colorMode)} value={name} onChange={(e) => setName(e.target.value)} />
 				</div>
 				<div className="flex gap-4">
 					<div className="flex flex-col gap-1 flex-1">
-						<label className="text-sm text-zinc-400">{copy.server}</label>
-						<input 
-							className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-indigo-500/50" 
-							value={server} 
-							onChange={e => setServer(e.target.value)} 
-						/>
+						<label className={modalFieldLabel(colorMode)}>{copy.server}</label>
+						<input className={textInput(colorMode)} value={server} onChange={(e) => setServer(e.target.value)} />
 					</div>
 					<div className="flex flex-col gap-1 w-24">
-						<label className="text-sm text-zinc-400">{copy.port}</label>
-						<input 
-							className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-indigo-500/50" 
-							value={port} 
-							onChange={e => setPort(e.target.value)} 
-						/>
+						<label className={modalFieldLabel(colorMode)}>{copy.port}</label>
+						<input className={textInput(colorMode)} value={port} onChange={(e) => setPort(e.target.value)} />
 					</div>
 				</div>
 				<div className="flex gap-4">
 					<div className="flex flex-col gap-1 flex-1">
-						<label className="text-sm text-zinc-400">{copy.usernameOptional}</label>
-						<input 
-							className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-indigo-500/50" 
-							value={username} 
-							onChange={e => setUsername(e.target.value)} 
-						/>
+						<label className={modalFieldLabel(colorMode)}>{copy.usernameOptional}</label>
+						<input className={textInput(colorMode)} value={username} onChange={(e) => setUsername(e.target.value)} />
 					</div>
 					<div className="flex flex-col gap-1 flex-1">
-						<label className="text-sm text-zinc-400">{copy.passwordOptional}</label>
-						<input 
-							type="password" 
-							className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-indigo-500/50" 
-							value={password} 
-							onChange={e => setPassword(e.target.value)} 
+						<label className={modalFieldLabel(colorMode)}>{copy.passwordOptional}</label>
+						<input
+							type="password"
+							className={textInput(colorMode)}
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
 						/>
 					</div>
 				</div>
 				<div className="flex flex-col gap-1 mt-2">
-					<label className="text-sm text-zinc-400">{copy.socks5Uri}</label>
-					<input 
-						className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 focus:outline-none focus:border-indigo-500/50 placeholder-zinc-700" 
-						value={uri} 
-						onChange={e => handleUriChange(e.target.value)} 
+					<label className={modalFieldLabel(colorMode)}>{copy.socks5Uri}</label>
+					<input
+						className={textInput(colorMode)}
+						value={uri}
+						onChange={(e) => handleUriChange(e.target.value)}
 						onBlur={handleUriBlur}
-						placeholder="socks5://..." 
+						placeholder="socks5://..."
 					/>
 				</div>
 
 				<div className="flex justify-end gap-3 mt-4">
-					<button className="px-4 py-2 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors" onClick={onClose}>{copy.cancel}</button>
-					<button className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors" onClick={handleSubmit}>{copy.confirm}</button>
+					<button type="button" className={modalCancelButton(colorMode)} onClick={onClose}>
+						{copy.cancel}
+					</button>
+					<button type="button" className={modalConfirmButton()} onClick={handleSubmit}>
+						{copy.confirm}
+					</button>
 				</div>
 			</div>
 		</div>
@@ -155,6 +159,7 @@ export function PortForwardModal({
 	onItemsChange,
 	onSubmit,
 	locale,
+	colorMode,
 }: {
 	isOpen: boolean;
 	onClose: () => void;
@@ -162,6 +167,7 @@ export function PortForwardModal({
 	onItemsChange: (items: string[]) => void;
 	onSubmit: () => void;
 	locale: Locale;
+	colorMode: ColorMode;
 }) {
 	const [input, setInput] = useState("");
 	const [error, setError] = useState("");
@@ -187,7 +193,7 @@ export function PortForwardModal({
 	};
 
 	const handleRemove = (item: string) => {
-		onItemsChange(items.filter(i => i !== item));
+		onItemsChange(items.filter((i) => i !== item));
 	};
 
 	const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -197,38 +203,46 @@ export function PortForwardModal({
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm a-modal-backdrop" onClick={handleBackdropClick}>
-			<div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl w-[400px] shadow-2xl flex flex-col gap-4 text-zinc-300" role="dialog" aria-label={copy.addPortForwardTitle}>
-				<h2 className="text-xl font-semibold text-zinc-100">{copy.addPortForwardTitle}</h2>
-				
-				{error && <div className="text-red-400 text-sm bg-red-400/10 p-2.5 rounded border border-red-500/20">{error}</div>}
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={handleBackdropClick}>
+			<div className={modalPanel(colorMode)} role="dialog" aria-label={copy.addPortForwardTitle} onClick={(e) => e.stopPropagation()}>
+				<h2 className={modalTitle(colorMode)}>{copy.addPortForwardTitle}</h2>
+
+				{error && <div className={modalErrorBox()}>{error}</div>}
 
 				<div className="flex flex-col gap-1">
 					<div className="flex gap-2">
-						<input 
-							className="bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 flex-1 focus:outline-none focus:border-indigo-500/50" 
-							value={input} 
-							onChange={e => setInput(e.target.value)}
-							onKeyDown={e => e.key === 'Enter' && handleAdd()}
-							placeholder="输入 server:port ，按 Enter 添加多个" 
+						<input
+							className={`${textInput(colorMode)} flex-1`}
+							value={input}
+							onChange={(e) => setInput(e.target.value)}
+							onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+							placeholder="输入 server:port ，按 Enter 添加多个"
 						/>
-						<button className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-colors" onClick={handleAdd}>{copy.addButton}</button>
+						<button type="button" className={modalAddButton(colorMode)} onClick={handleAdd}>
+							{copy.addButton}
+						</button>
 					</div>
 				</div>
 
-				<div className="flex flex-wrap gap-2 min-h-[60px] p-3 border border-zinc-800/50 rounded-lg bg-zinc-950/50">
-					{items.map(item => (
-						<div key={item} className="flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/20">
+				<div className={modalTagArea(colorMode)}>
+					{items.map((item) => (
+						<div key={item} className={modalTagChip()}>
 							<span className="text-sm font-mono">{item}</span>
-							<button className="hover:text-white transition-colors" onClick={() => handleRemove(item)}>&times;</button>
+							<button type="button" className="hover:text-red-400 transition-colors" onClick={() => handleRemove(item)}>
+								&times;
+							</button>
 						</div>
 					))}
-					{items.length === 0 && <span className="text-zinc-600 text-sm italic">{copy.emptyPortForward}</span>}
+					{items.length === 0 && <span className={modalEmptyHint(colorMode)}>{copy.emptyPortForward}</span>}
 				</div>
 
 				<div className="flex justify-end gap-3 mt-4">
-					<button className="px-4 py-2 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors" onClick={onClose}>{copy.cancel}</button>
-					<button className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors" onClick={onSubmit}>{copy.confirmButton}</button>
+					<button type="button" className={modalCancelButton(colorMode)} onClick={onClose}>
+						{copy.cancel}
+					</button>
+					<button type="button" className={modalConfirmButton()} onClick={onSubmit}>
+						{copy.confirmButton}
+					</button>
 				</div>
 			</div>
 		</div>

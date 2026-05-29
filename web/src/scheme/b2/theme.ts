@@ -142,3 +142,48 @@ export function tagListShell(colorMode: ColorMode): string {
 export function accentLink(): string {
 	return "text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors";
 }
+
+export function modalPanel(colorMode: ColorMode): string {
+	const dark = isDark(colorMode);
+	return `p-6 rounded-2xl w-[min(400px,calc(100vw-2rem))] shadow-2xl flex flex-col gap-4 ${
+		dark ? "bg-zinc-900 border border-zinc-800 text-zinc-300" : "bg-white border border-slate-200 text-slate-700"
+	}`;
+}
+
+export function modalTitle(colorMode: ColorMode): string {
+	return `text-xl font-semibold ${isDark(colorMode) ? "text-zinc-100" : "text-slate-800"}`;
+}
+
+export function modalFieldLabel(colorMode: ColorMode): string {
+	return `text-sm ${isDark(colorMode) ? "text-zinc-400" : "text-slate-500"}`;
+}
+
+export function modalCancelButton(colorMode: ColorMode): string {
+	const dark = isDark(colorMode);
+	return `px-4 py-2 rounded-lg transition-colors ${dark ? "text-zinc-300 hover:bg-zinc-800" : "text-slate-600 hover:bg-slate-100"}`;
+}
+
+export function modalAddButton(colorMode: ColorMode): string {
+	const dark = isDark(colorMode);
+	return `px-3 py-2 rounded-lg transition-colors ${dark ? "bg-zinc-800 hover:bg-zinc-700 text-zinc-200" : "bg-slate-200 hover:bg-slate-300 text-slate-700"}`;
+}
+
+export function modalTagArea(colorMode: ColorMode): string {
+	return `${tagListShell(colorMode)} min-h-[60px]`;
+}
+
+export function modalTagChip(): string {
+	return "flex items-center gap-2 bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/20";
+}
+
+export function modalEmptyHint(colorMode: ColorMode): string {
+	return `text-sm italic ${isDark(colorMode) ? "text-zinc-600" : "text-slate-400"}`;
+}
+
+export function modalErrorBox(): string {
+	return "text-red-500 text-sm bg-red-500/10 p-2.5 rounded border border-red-500/20";
+}
+
+export function modalConfirmButton(): string {
+	return "px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors";
+}

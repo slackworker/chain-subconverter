@@ -348,11 +348,17 @@ export function Stage1({
 				</button>
 			</div>
 
-			<Socks5Modal isOpen={isSocks5Open} onClose={() => setIsSocks5Open(false)} onSubmit={handleSocks5Submit} />
+			<Socks5Modal
+				isOpen={isSocks5Open}
+				onClose={() => setIsSocks5Open(false)}
+				onSubmit={handleSocks5Submit}
+				colorMode={colorMode}
+			/>
 			<PortForwardModal
 				isOpen={isPortForwardOpen}
 				onClose={() => setIsPortForwardOpen(false)}
 				onSubmit={submitPortForwardTags}
+				colorMode={colorMode}
 			/>
 		</div>
 	);
