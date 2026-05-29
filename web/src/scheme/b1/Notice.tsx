@@ -1,8 +1,15 @@
 import type { NoticeRendererProps } from "../../lib/composition";
 import { AlertCircleIcon, InfoIcon, AlertTriangleIcon } from "./Icons";
+import { type Locale } from "./locales";
 
-export function NoticeRenderer({ messages, blockingErrors, responseOriginStage }: NoticeRendererProps) {
+interface NoticeRendererPropsExtended extends NoticeRendererProps {
+	locale: Locale;
+}
+
+export function NoticeRenderer({ messages, blockingErrors, locale }: NoticeRendererPropsExtended) {
 	if (messages.length === 0 && blockingErrors.length === 0) return null;
+
+	const isZh = locale === "zh";
 
 	return (
 		<div className="flex flex-col gap-3 my-4">
@@ -10,7 +17,9 @@ export function NoticeRenderer({ messages, blockingErrors, responseOriginStage }
 				<div key={i} className="flex gap-3 bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl items-start">
 					<AlertCircleIcon className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
 					<div className="flex flex-col">
-						<span className="font-medium text-red-100">错误 {err.code}</span>
+						<span className="font-medium text-red-100">
+							{isZh ? `错误 ${err.code}` : `Error ${err.code}`}
+						</span>
 						<span className="text-sm opacity-90">{err.message}</span>
 					</div>
 				</div>
@@ -22,11 +31,15 @@ export function NoticeRenderer({ messages, blockingErrors, responseOriginStage }
 				const iconClass = isWarn ? "text-amber-400" : "text-blue-400";
 				const titleClass = isWarn ? "text-amber-100" : "text-blue-100";
 				
+				const labelText = isZh 
+					? `${isWarn ? "警告" : "提示"} ${msg.code}` 
+					: `${isWarn ? "Warning" : "Notice"} ${msg.code}`;
+
 				return (
 					<div key={i} className={`flex gap-3 border p-4 rounded-xl items-start ${bgClass}`}>
 						<Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${iconClass}`} />
 						<div className="flex flex-col">
-							<span className={`font-medium ${titleClass}`}>提示 {msg.code}</span>
+							<span className={`font-medium ${titleClass}`}>{labelText}</span>
 							<span className="text-sm opacity-90">{msg.message}</span>
 						</div>
 					</div>

@@ -134,8 +134,10 @@
       "description": "Select which experimental UI scheme to copy into default",
       "options": [
         "a",
-        "b",
-        "c"
+        "b1",
+        "b2",
+        "c1",
+        "c2"
       ],
       "default": "a"
     }

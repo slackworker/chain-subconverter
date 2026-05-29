@@ -146,7 +146,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scheme: [default, a, b, c]
+        scheme: [default, a, b1, b2, c1, c2]
 
     steps:
       - name: Checkout repository

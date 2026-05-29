@@ -44,7 +44,7 @@
 | Fixture Freshness | `go run ./cmd/testfixturegen -repo-root .`，再 `git diff --exit-code -- internal/review/testdata` |
 | Worker Fixture Freshness | `deploy/test-fixtures-worker` 内 `npm run check`（校验 canonical → Worker 公网快照未漂移） |
 | Web Unit Test | `cd web && npm run test`（Vitest） |
-| Web Build Matrix | 四 scheme：`build:default` / `build:a` / `build:b` / `build:c` |
+| Web Build Matrix | 六 scheme：`build:default` / `build:a` / `build:b1` / `build:b2` / `build:c1` / `build:c2` |
 | Web Mock E2E | `cd web && npm run test:e2e:mock`（job `web-mock-e2e`，**blocking**） |
 | Compose Config | `docker compose -f deploy/docker-compose.yml config` |
 

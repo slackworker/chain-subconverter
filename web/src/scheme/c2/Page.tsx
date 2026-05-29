@@ -1,0 +1,951 @@
+import { useId, useMemo, useState } from "react";
+
+import type { AppPageProps } from "../../lib/composition";
+import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
+import { getGlobalPrimaryBlockingErrors } from "../../lib/notices";
+import {
+	appendForwardRelayItems,
+	appendManualSocks5ToStage1Input,
+	initialManualSocks5FormState,
+	parseSocks5URIToManualSocks5FormState,
+	removeForwardRelayItem,
+	setPortForwardEnabled,
+	type ManualSocks5FormState,
+} from "../../lib/stage1";
+import {
+	getStage2DisplayModeOptions,
+	getStage2RowEditableName,
+	getStage2RowSourceLandingName,
+	getStage2RowStrictKey,
+	getStage2TargetDisplayLabel,
+	isStage2SourceRow,
+} from "../../lib/stage2";
+import type { BlockingError, Stage2Row } from "../../types/api";
+import { LineNumberTextarea } from "./LineNumberTextarea";
+import { LogPanel } from "./LogPanel";
+import "./index.css";
+
+const MODE_LABELS: Record<Stage2Row["mode"], string> = {
+	none: "保持原样",
+	chain: "链式中转",
+	port_forward: "端口转发",
+};
+
+function toNextTagList(current: string[] | null, draft: string) {
+	const trimmed = draft.trim();
+	if (!trimmed) return current;
+	const next = current ?? [];
+	return next.includes(trimmed) ? next : [...next, trimmed];
+}
+
+function removeTagAtIndex(current: string[] | null, index: number) {
+	if (!current) return null;
+	const next = current.filter((_, i) => i !== index);
+	return next.length === 0 ? null : next;
+}
+
+function StatusPill({ label, tone }: { label: string; tone: "neutral" | "warning" | "success" }) {
+	return <span className={`c-pill c-pill--${tone}`}>{label}</span>;
+}
+
+function ErrorBlock({ errors }: { errors: BlockingError[] }) {
+	if (errors.length === 0) return null;
+	return (
+		<ul className="c-error-block">
+			{errors.map((e, i) => (
+				<li key={`${e.code}-${i}`}>{e.message}</li>
+			))}
+		</ul>
+	);
+}
+
+function StageFeedbackStrip({
+	errors,
+	stageLabel,
+	tone = "danger",
+}: {
+	errors: BlockingError[];
+	stageLabel?: string;
+	tone?: "danger" | "warning";
+}) {
+	if (errors.length === 0) return null;
+	return (
+		<div className={`c-stage-strip c-stage-strip--${tone}`} role="status" aria-live="polite">
+			<span className="c-stage-strip__label">{stageLabel ?? "当前阶段"}</span>
+			<span className="c-stage-strip__msg">
+				{errors.map((error) => (
+					<span key={`${error.code}:${error.message}`} className="c-stage-strip__line">
+						{error.message}
+					</span>
+				))}
+			</span>
+		</div>
+	);
+}
+
+function TagChips({
+	items,
+	onRemove,
+	empty,
+}: {
+	items: string[];
+	onRemove: (i: number) => void;
+	empty: string;
+}) {
+	if (items.length === 0) return <span className="c-empty-label">{empty}</span>;
+	return (
+		<div className="c-chips">
+			{items.map((item, i) => (
+				<span key={`${item}-${i}`} className="c-chip">
+					{item}
+					<button type="button" onClick={() => onRemove(i)} aria-label={`移除 ${item}`}>
+						×
+					</button>
+				</span>
+			))}
+		</div>
+	);
+}
+
+function SectionShell({
+	n,
+	title,
+	desc,
+	status,
+	action,
+	children,
+}: {
+	n: string;
+	title: string;
+	desc: string;
+	status: React.ReactNode;
+	action?: React.ReactNode;
+	children: React.ReactNode;
+}) {
+	return (
+		<section className="c-section">
+			<div className="c-section-head">
+				<div className="c-section-meta">
+					<span className="c-stage-badge">Stage {n}</span>
+					<h2 className="c-section-title">{title}</h2>
+					{status}
+				</div>
+				<p className="c-section-desc">{desc}</p>
+			</div>
+			{children}
+			{action ? <div className="c-section-footer">{action}</div> : null}
+		</section>
+	);
+}
+
+function Modal({
+	title,
+	onClose,
+	children,
+}: {
+	title: string;
+	onClose: () => void;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="c-backdrop" role="presentation" onClick={onClose}>
+			<div className="c-modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+				<div className="c-modal-head">
+					<h3>{title}</h3>
+					<button type="button" className="c-icon-btn" onClick={onClose} aria-label="关闭">
+						×
+					</button>
+				</div>
+				{children}
+			</div>
+		</div>
+	);
+}
+
+export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPlacement, runtimeConfig }: AppPageProps) {
+	const stage1Id = useId();
+	const [showAdvanced, setShowAdvanced] = useState(false);
+	const [showSocksModal, setShowSocksModal] = useState(false);
+	const [showRelayModal, setShowRelayModal] = useState(false);
+	const [socksForm, setSocksForm] = useState<ManualSocks5FormState>(initialManualSocks5FormState);
+	const [socksURI, setSocksURI] = useState("");
+	const [socksErr, setSocksErr] = useState<string | null>(null);
+	const [relayDraftTags, setRelayDraftTags] = useState<string[] | null>(null);
+	const [relayDraft, setRelayDraft] = useState("");
+	const [relayErr, setRelayErr] = useState<string | null>(null);
+	const [inclDraft, setInclDraft] = useState("");
+	const [exclDraft, setExclDraft] = useState("");
+
+	const { stage1Input } = workflow.state;
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
+	const currentTemplateURL = stage1Input.advancedOptions.config ?? "";
+	const stage1Empty = stage1Input.landingRawText.trim() === "" && stage1Input.transitRawText.trim() === "";
+
+	const globalErrors = useMemo(
+		() => getGlobalPrimaryBlockingErrors(workflow.state.blockingErrors, workflow.responseOriginStage, primaryBlockingFeedbackPlacement),
+		[primaryBlockingFeedbackPlacement, workflow.responseOriginStage, workflow.state.blockingErrors],
+	);
+
+	const stage1PrimaryBlockingErrors = workflow.getPrimaryBlockingErrorsForStage("stage1");
+	const stage2PrimaryBlockingErrors =
+		workflow.shouldShowStage2StaleNotice || workflow.isConflictReadonly
+			? []
+			: workflow.getPrimaryBlockingErrorsForStage("stage2");
+	const stage3PrimaryBlockingErrors = workflow.getPrimaryBlockingErrorsForStage("stage3");
+
+	function setAdvTags(field: "include" | "exclude", next: string[] | null) {
+		workflow.updateStage1Input((cur) => ({
+			...cur,
+			advancedOptions: { ...cur.advancedOptions, [field]: next },
+		}));
+	}
+
+	function addTag(field: "include" | "exclude", draft: string, reset: () => void) {
+		const next = toNextTagList(workflow.state.stage1Input.advancedOptions[field], draft);
+		if (next === workflow.state.stage1Input.advancedOptions[field]) {
+			reset();
+			return;
+		}
+		setAdvTags(field, next);
+		reset();
+	}
+
+	function handleSocksURIBlur() {
+		if (!socksURI.trim()) {
+			setSocksErr(null);
+			return;
+		}
+		try {
+			setSocksForm(parseSocks5URIToManualSocks5FormState(socksURI));
+			setSocksErr(null);
+		} catch (e) {
+			setSocksErr(e instanceof Error ? e.message : "SOCKS5 URI 解析失败");
+		}
+	}
+
+	function handleSocksSubmit() {
+		try {
+			workflow.updateStage1Input((cur) => appendManualSocks5ToStage1Input(cur, socksForm));
+			setSocksForm(initialManualSocks5FormState);
+			setSocksURI("");
+			setSocksErr(null);
+			setShowSocksModal(false);
+		} catch (e) {
+			setSocksErr(e instanceof Error ? e.message : "SOCKS5 节点添加失败");
+		}
+	}
+
+	function openRelayModal() {
+		setRelayErr(null);
+		setRelayDraftTags((current) => current ?? [...workflow.state.stage1Input.forwardRelayItems]);
+		setShowRelayModal(true);
+	}
+
+	function addRelayDraftTag() {
+		const trimmed = relayDraft.trim();
+		if (!trimmed) return;
+		setRelayDraftTags((current) => {
+			const next = current ?? [];
+			return next.includes(trimmed) ? next : [...next, trimmed];
+		});
+		setRelayDraft("");
+	}
+
+	function handleRelaySubmit() {
+		try {
+			const nextStage1Input = appendForwardRelayItems(workflow.state.stage1Input, relayDraftTags ?? []);
+			workflow.updateStage1Input(() => nextStage1Input);
+			setRelayDraftTags(null);
+			setRelayDraft("");
+			setRelayErr(null);
+			setShowRelayModal(false);
+		} catch (e) {
+			setRelayErr(e instanceof Error ? e.message : "端口转发服务添加失败");
+		}
+	}
+
+	function getModeState(meta: ReturnType<typeof workflow.getStage2RowMeta>, mode: Stage2Row["mode"]) {
+		const restricted = meta?.restrictedModes?.[mode];
+		return {
+			disabled: restricted !== undefined || !workflow.isStage2Editable,
+			reasonText: restricted?.reasonText,
+			warningText: meta?.modeWarnings?.[mode]?.reasonText,
+		};
+	}
+
+	function renderTargetSelect(row: Stage2Row, rowKey: string, meta: ReturnType<typeof workflow.getStage2RowMeta>) {
+		if (row.mode === "none") {
+			return (
+				<select disabled value="">
+					<option value="">—</option>
+				</select>
+			);
+		}
+		if (workflow.state.stage2Init === null) {
+			const targetDisplayLabel = getStage2TargetDisplayLabel(workflow.state.stage2Init, workflow.stage2Rows, row);
+			return (
+				<select disabled value={row.targetName ?? ""}>
+					<option value="">{row.mode === "chain" ? "请选择目标" : "请选择端口转发服务"}</option>
+					{row.targetName ? (
+						<option value={row.targetName}>{targetDisplayLabel ?? row.targetName}</option>
+					) : null}
+				</select>
+			);
+		}
+		if (row.mode === "chain") {
+			const groups = workflow.getChainTargetChoiceGroups();
+			return (
+				<select
+					value={row.targetName ?? ""}
+					disabled={!workflow.isStage2Editable}
+					onChange={(e) => workflow.handleTargetChange(rowKey, e.target.value)}
+				>
+					<option value="">请选择目标</option>
+					{groups.map((g) => (
+						<optgroup key={g.kind} label={g.title}>
+							{g.choices.length === 0 ? (
+								<option disabled value="">
+									{g.emptyText}
+								</option>
+							) : null}
+							{g.choices.map((c) => (
+								<option key={c.value} value={c.value} disabled={c.disabled}>
+									{c.label}
+								</option>
+							))}
+						</optgroup>
+					))}
+				</select>
+			);
+		}
+		let relays = workflow.getForwardRelayChoices(rowKey);
+		if (
+			!workflow.isStage2Editable
+			&& row.mode === "port_forward"
+			&& row.targetName !== null
+			&& !relays.some((choice) => choice.value === row.targetName)
+		) {
+			relays = [{ value: row.targetName, label: row.targetName, disabled: false }, ...relays];
+		}
+		return (
+			<select
+				value={row.targetName ?? ""}
+				disabled={!workflow.isStage2Editable}
+				onChange={(e) => workflow.handleTargetChange(rowKey, e.target.value)}
+			>
+				<option value="">请选择端口转发服务</option>
+				{relays.length === 0 ? (
+					<option disabled value="">
+						暂无可用服务
+					</option>
+				) : null}
+				{relays.map((r) => (
+					<option key={r.value} value={r.value} disabled={r.disabled}>
+						{r.label}
+					</option>
+				))}
+			</select>
+		);
+	}
+
+	return (
+		<div className="c-shell">
+			<div className="c-layout">
+				<header className="c-appbar">
+					<div className="c-appbar-brand">
+						<img
+							className="c-brand-logo"
+							src={`${import.meta.env.BASE_URL}logo.svg`}
+							alt=""
+							width={36}
+							height={36}
+							decoding="async"
+							fetchPriority="low"
+							aria-hidden="true"
+						/>
+						<div>
+							<p className="c-brand-name">Chain Sub Converter</p>
+							<p className="c-brand-sub">订阅链转换与中转配置工具 · Scheme C</p>
+						</div>
+					</div>
+					<div className="c-appbar-stages">
+						<StatusPill label={workflow.stage1Status.label} tone={workflow.stage1Status.tone} />
+						<span className="c-stage-sep" aria-hidden="true">
+							→
+						</span>
+						<StatusPill label={workflow.stage2Status.label} tone={workflow.stage2Status.tone} />
+						<span className="c-stage-sep" aria-hidden="true">
+							→
+						</span>
+						<StatusPill label={workflow.stage3Status.label} tone={workflow.stage3Status.tone} />
+					</div>
+				</header>
+
+				{globalErrors.length > 0 ? (
+					<div className="c-global-notice c-global-notice--error">
+						<p className="c-global-notice-title">
+							{workflow.originStageLabel ? `${workflow.originStageLabel} 错误` : "系统错误"}
+						</p>
+						<ErrorBlock errors={globalErrors} />
+					</div>
+				) : null}
+
+				<SectionShell
+					n="1"
+					title="输入"
+					desc="录入落地节点、中转信息与高级参数，然后执行转换并自动填充阶段 2。"
+					status={<StatusPill label={workflow.stage1Status.label} tone={workflow.stage1Status.tone} />}
+					action={
+						<div className="c-section-footer-stack">
+							{(stage1PrimaryBlockingErrors.length > 0 || workflow.shouldShowStage2StaleNotice) ? (
+								<div className="c-section-feedback">
+									{stage1PrimaryBlockingErrors.length > 0 ? (
+										<StageFeedbackStrip errors={stage1PrimaryBlockingErrors} stageLabel={workflow.originStageLabel} />
+									) : null}
+									{workflow.shouldShowStage2StaleNotice ? (
+										<div className="c-notice c-notice--warning">阶段 1 已变更，当前配置已过期，请重新转换后再生成链接。</div>
+									) : null}
+								</div>
+							) : null}
+							<button
+								type="button"
+								className="c-btn c-btn--primary"
+								onClick={() => void workflow.handleStage1Convert()}
+								disabled={workflow.isConverting || stage1Empty}
+							>
+								{workflow.isConverting ? "转换中…" : "转换并自动填充 →"}
+							</button>
+						</div>
+					}
+				>
+					<div className="c-input-grid">
+						<LineNumberTextarea
+							id={`${stage1Id}-landing`}
+							label="落地节点"
+							labelAction={
+								<button type="button" className="c-link-btn" onClick={() => setShowSocksModal(true)}>
+									＋ 手动添加 SOCKS5
+								</button>
+							}
+							value={stage1Input.landingRawText}
+							onChange={(next) => workflow.updateStage1Input((cur) => ({ ...cur, landingRawText: next }))}
+							placeholder="订阅 URL / 节点 URI / tg://socks?..."
+							hasError={workflow.getStage1FieldErrors("landingRawText").length > 0}
+							errorText={workflow.getStage1FieldErrors("landingRawText")[0]?.message}
+						/>
+
+						<LineNumberTextarea
+							id={`${stage1Id}-transit`}
+							label="中转信息"
+							labelAction={
+								stage1Input.advancedOptions.enablePortForward ? (
+									<button type="button" className="c-link-btn" onClick={openRelayModal}>
+										＋ 端口转发服务
+									</button>
+								) : null
+							}
+							value={stage1Input.transitRawText}
+							onChange={(next) => workflow.updateStage1Input((cur) => ({ ...cur, transitRawText: next }))}
+							placeholder="订阅 URL / 节点 URI / data:text/plain,..."
+							hasError={workflow.getStage1FieldErrors("transitRawText").length > 0}
+							errorText={workflow.getStage1FieldErrors("transitRawText")[0]?.message}
+							bottomContent={
+								stage1Input.advancedOptions.enablePortForward ? (
+									<div className="c-relay-row">
+										<span className="c-field-sub">端口转发服务</span>
+										<TagChips
+											items={stage1Input.forwardRelayItems}
+											empty="尚未添加"
+											onRemove={(i) => workflow.updateStage1Input((cur) => removeForwardRelayItem(cur, i))}
+										/>
+										<ErrorBlock errors={workflow.getStage1FieldErrors("forwardRelayItems")} />
+									</div>
+								) : null
+							}
+						/>
+					</div>
+
+					<div className="c-advanced">
+						<button type="button" className="c-adv-toggle" onClick={() => setShowAdvanced((v) => !v)} aria-expanded={showAdvanced}>
+							<span className={`c-adv-arrow${showAdvanced ? " c-adv-arrow--open" : ""}`} aria-hidden="true">
+								▶
+							</span>
+							高级选项
+						</button>
+						{showAdvanced ? (
+							<div className="c-adv-body">
+								<div className="c-adv-grid">
+									<div className="c-field c-field--span2">
+										<label htmlFor={`${stage1Id}-template`}>模板 URL</label>
+										<div className="c-template-row">
+											<input
+												id={`${stage1Id}-template`}
+												type="text"
+												value={currentTemplateURL}
+												onChange={(e) =>
+													workflow.updateStage1Input((cur) => ({
+														...cur,
+														advancedOptions: {
+															...cur.advancedOptions,
+															config: e.target.value.trim() === "" ? null : e.target.value,
+														},
+													}))
+												}
+												placeholder="留空使用部署默认模板"
+												className="c-mono"
+											/>
+											<button
+												type="button"
+												className="c-btn c-btn--sm"
+												disabled={currentTemplateURL.trim() === templateDefaultURL}
+												onClick={() =>
+													workflow.updateStage1Input((cur) => ({
+														...cur,
+														advancedOptions: { ...cur.advancedOptions, config: templateDefaultURL },
+													}))
+												}
+											>
+												恢复默认
+											</button>
+										</div>
+										<ErrorBlock errors={workflow.getStage1FieldErrors("config")} />
+									</div>
+
+									<div className="c-field">
+										<label>Include 标签</label>
+										<div className="c-tag-input-row">
+											<input
+												type="text"
+												value={inclDraft}
+												onChange={(e) => setInclDraft(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														e.preventDefault();
+														addTag("include", inclDraft, () => setInclDraft(""));
+													}
+												}}
+												placeholder="输入后回车"
+											/>
+											<button
+												type="button"
+												className="c-btn c-btn--sm"
+												onClick={() => addTag("include", inclDraft, () => setInclDraft(""))}
+											>
+												添加
+											</button>
+										</div>
+										<TagChips
+											items={stage1Input.advancedOptions.include ?? []}
+											empty="无"
+											onRemove={(i) => setAdvTags("include", removeTagAtIndex(stage1Input.advancedOptions.include, i))}
+										/>
+										<ErrorBlock errors={workflow.getStage1FieldErrors("include")} />
+									</div>
+
+									<div className="c-field">
+										<label>Exclude 标签</label>
+										<div className="c-tag-input-row">
+											<input
+												type="text"
+												value={exclDraft}
+												onChange={(e) => setExclDraft(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														e.preventDefault();
+														addTag("exclude", exclDraft, () => setExclDraft(""));
+													}
+												}}
+												placeholder="输入后回车"
+											/>
+											<button
+												type="button"
+												className="c-btn c-btn--sm"
+												onClick={() => addTag("exclude", exclDraft, () => setExclDraft(""))}
+											>
+												添加
+											</button>
+										</div>
+										<TagChips
+											items={stage1Input.advancedOptions.exclude ?? []}
+											empty="无"
+											onRemove={(i) => setAdvTags("exclude", removeTagAtIndex(stage1Input.advancedOptions.exclude, i))}
+										/>
+										<ErrorBlock errors={workflow.getStage1FieldErrors("exclude")} />
+									</div>
+
+									<div className="c-check-group">
+										<label className="c-check">
+											<input
+												type="checkbox"
+												checked={Boolean(stage1Input.advancedOptions.emoji)}
+												onChange={(e) =>
+													workflow.updateStage1Input((cur) => ({
+														...cur,
+														advancedOptions: { ...cur.advancedOptions, emoji: e.target.checked ? true : null },
+													}))
+												}
+											/>
+											emoji
+										</label>
+										<label className="c-check">
+											<input
+												type="checkbox"
+												checked={Boolean(stage1Input.advancedOptions.udp)}
+												onChange={(e) =>
+													workflow.updateStage1Input((cur) => ({
+														...cur,
+														advancedOptions: { ...cur.advancedOptions, udp: e.target.checked ? true : null },
+													}))
+												}
+											/>
+											udp
+										</label>
+										<label className="c-check">
+											<input
+												type="checkbox"
+												checked={Boolean(stage1Input.advancedOptions.skipCertVerify)}
+												onChange={(e) =>
+													workflow.updateStage1Input((cur) => ({
+														...cur,
+														advancedOptions: { ...cur.advancedOptions, skipCertVerify: e.target.checked ? true : null },
+													}))
+												}
+											/>
+											跳过证书校验（scv）
+										</label>
+										<label className="c-check c-check--switch">
+											<input
+												type="checkbox"
+												checked={stage1Input.advancedOptions.enablePortForward}
+												onChange={(e) => {
+													const enabled = e.target.checked;
+													workflow.updateStage1Input((cur) => setPortForwardEnabled(cur, enabled));
+													if (!enabled) {
+														setRelayDraftTags(null);
+														setShowRelayModal(false);
+													}
+												}}
+											/>
+											<span className="c-switch" aria-hidden="true" />
+											启用端口转发服务
+										</label>
+									</div>
+								</div>
+							</div>
+						) : null}
+					</div>
+				</SectionShell>
+
+				<SectionShell
+					n="2"
+					title="配置"
+					desc="为每个落地节点选择中转模式与对应目标节点。"
+					status={<StatusPill label={workflow.stage2Status.label} tone={workflow.stage2Status.tone} />}
+					action={
+						<div className="c-section-footer-stack">
+							{stage2PrimaryBlockingErrors.length > 0 ? (
+								<div className="c-section-feedback">
+									<StageFeedbackStrip errors={stage2PrimaryBlockingErrors} stageLabel={workflow.originStageLabel} />
+								</div>
+							) : null}
+							<button
+								type="button"
+								className="c-btn c-btn--primary"
+								onClick={() => void workflow.handleGenerate()}
+								disabled={!workflow.canGenerate}
+							>
+								{workflow.isGenerating ? "生成中…" : "生成链接 →"}
+							</button>
+						</div>
+					}
+				>
+					{workflow.isConflictReadonly ? (
+						<div className="c-notice c-notice--warning">
+							当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。
+						</div>
+					) : null}
+
+					{workflow.stage2Rows.length === 0 ? (
+						<p className="c-empty-state">Stage 1 转换成功后，此处将出现各落地节点的配置行。</p>
+					) : (
+						<div className="c-row-list">
+							{workflow.stage2Rows.map((row) => {
+								const rowKey = getStage2RowStrictKey(row);
+								const sourceLandingName = getStage2RowSourceLandingName(row);
+								const sourceRow = isStage2SourceRow(row);
+								const canDeleteRow = !sourceRow && workflow.canDeleteStage2Row(rowKey);
+								const meta = workflow.getStage2RowMeta(rowKey);
+								const rowErrors = workflow.getStage2RowErrors(rowKey);
+								const displayModeOptions = getStage2DisplayModeOptions(workflow.state.stage2Init, row.mode);
+								return (
+									<div key={rowKey} className={`c-row-item${rowErrors.length > 0 ? " c-row-item--error" : ""}`}>
+										<div className="c-row-head">
+											<div className="c-row-title">
+												<input
+													type="text"
+													className="c-row-name-input c-mono"
+													value={getStage2RowEditableName(row)}
+													disabled={!workflow.isStage2Editable}
+													aria-label="节点名"
+													onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}
+												/>
+												<p className="c-row-source">来源：{sourceLandingName}</p>
+											</div>
+											<div className="c-row-head-side">
+												<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>
+												<div className="c-row-actions">
+													{sourceRow ? (
+														<button
+															type="button"
+															className="c-btn c-btn--sm"
+															disabled={!workflow.isStage2Editable}
+															onClick={() => workflow.handleCloneStage2Row(rowKey)}
+														>
+															复制
+														</button>
+													) : (
+														<button
+															type="button"
+															className="c-btn c-btn--sm"
+															disabled={!workflow.isStage2Editable || !canDeleteRow}
+															title={canDeleteRow ? undefined : "至少保留一行"}
+															onClick={() => workflow.handleDeleteStage2Row(rowKey)}
+														>
+															删除
+														</button>
+													)}
+												</div>
+											</div>
+										</div>
+										<div className="c-row-controls">
+											<div className="c-mode-tabs" role="group" aria-label="配置方式">
+												{displayModeOptions.map((mode) => {
+													const s = getModeState(meta, mode);
+													return (
+														<button
+															key={mode}
+															type="button"
+															className={`c-mode-tab${row.mode === mode ? " c-mode-tab--active" : ""}`}
+															onClick={() => workflow.handleModeChange(rowKey, mode)}
+															disabled={s.disabled}
+															title={s.reasonText ?? s.warningText ?? undefined}
+														>
+															{MODE_LABELS[mode]}
+														</button>
+													);
+												})}
+											</div>
+											<div className="c-row-target">{renderTargetSelect(row, rowKey, meta)}</div>
+										</div>
+										{meta?.modeWarnings?.[row.mode]?.reasonText ? (
+											<p className="c-row-hint">⚠ {meta.modeWarnings[row.mode]?.reasonText}</p>
+										) : null}
+										<ErrorBlock errors={rowErrors} />
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</SectionShell>
+
+				<SectionShell
+					n="3"
+					title="输出"
+					desc="获取生成的订阅链接，支持短链切换、复制与反向解析恢复页面状态。"
+					status={<StatusPill label={workflow.stage3Status.label} tone={workflow.stage3Status.tone} />}
+				>
+					<div className="c-field">
+						<label htmlFor="c-s3-link">当前链接 / 恢复输入</label>
+						<div className={`c-link-row${workflow.getStage3FieldErrors("currentLinkInput").length > 0 ? " c-link-row--error" : ""}`}>
+							<input
+								id="c-s3-link"
+								type="text"
+								value={workflow.state.currentLinkInput}
+								onChange={(e) => workflow.setCurrentLinkInput(e.target.value)}
+								placeholder="生成后自动填入；也可粘贴 longUrl / shortUrl / short ID"
+								className="c-mono"
+								aria-invalid={workflow.getStage3FieldErrors("currentLinkInput").length > 0 ? true : undefined}
+							/>
+							<label className="c-check c-check--switch c-check--inline">
+								<input
+									type="checkbox"
+									checked={workflow.state.preferShortUrl}
+									onChange={(e) => void workflow.handlePreferShortUrl(e.target.checked)}
+									disabled={workflow.isCreatingShortUrl || workflow.isGenerating}
+								/>
+								<span className="c-switch" aria-hidden="true" />
+								{workflow.isCreatingShortUrl ? "短链处理中…" : "使用短链接"}
+							</label>
+						</div>
+						<ErrorBlock errors={workflow.getStage3FieldErrors("currentLinkInput")} />
+					</div>
+
+					<div className="c-action-row">
+						<button
+							type="button"
+							className="c-btn c-btn--ghost"
+							onClick={outputActions.openCurrentLink}
+							disabled={!workflow.state.currentLinkInput.trim()}
+						>
+							打开预览
+						</button>
+						<button
+							type="button"
+							className="c-btn c-btn--ghost"
+							onClick={() => void outputActions.copyCurrentLink()}
+							disabled={!workflow.state.currentLinkInput.trim()}
+						>
+							{outputActions.copyState === "done" ? "✓ 已复制" : outputActions.copyState === "failed" ? "复制失败" : "复制链接"}
+						</button>
+						<button
+							type="button"
+							className="c-btn c-btn--ghost"
+							onClick={outputActions.downloadCurrentLink}
+							disabled={!workflow.state.currentLinkInput.trim()}
+						>
+							下载 YAML
+						</button>
+						<button
+							type="button"
+							className="c-btn c-btn--primary"
+							onClick={() => void workflow.handleRestore()}
+							disabled={!workflow.state.currentLinkInput.trim() || workflow.isRestoring}
+						>
+							{workflow.isRestoring ? "解析中…" : "反向解析"}
+						</button>
+					</div>
+
+					{stage3PrimaryBlockingErrors.length > 0 ? (
+						<StageFeedbackStrip errors={stage3PrimaryBlockingErrors} stageLabel={workflow.originStageLabel} />
+					) : null}
+					{outputActions.copyState === "done" ? <p className="c-toast c-toast--ok">已复制到剪贴板</p> : null}
+					{outputActions.copyState === "failed" ? <p className="c-toast c-toast--err">复制失败，请检查权限或手动复制</p> : null}
+				</SectionShell>
+
+				{showSocksModal ? (
+					<Modal title="手动添加 SOCKS5 节点" onClose={() => setShowSocksModal(false)}>
+						<div className="c-modal-body">
+							<div className="c-modal-grid">
+								<div className="c-field c-field--span2">
+									<label>节点名称</label>
+									<input
+										type="text"
+										value={socksForm.name}
+										onChange={(e) => setSocksForm((f) => ({ ...f, name: e.target.value }))}
+									/>
+								</div>
+								<div className="c-field">
+									<label>服务器地址</label>
+									<input
+										type="text"
+										value={socksForm.server}
+										onChange={(e) => setSocksForm((f) => ({ ...f, server: e.target.value }))}
+										className="c-mono"
+									/>
+								</div>
+								<div className="c-field">
+									<label>端口</label>
+									<input
+										type="text"
+										value={socksForm.port}
+										onChange={(e) => setSocksForm((f) => ({ ...f, port: e.target.value }))}
+										className="c-mono"
+									/>
+								</div>
+								<div className="c-field">
+									<label>用户名（可选）</label>
+									<input
+										type="text"
+										value={socksForm.username}
+										onChange={(e) => setSocksForm((f) => ({ ...f, username: e.target.value }))}
+									/>
+								</div>
+								<div className="c-field">
+									<label>密码（可选）</label>
+									<input
+										type="text"
+										value={socksForm.password}
+										onChange={(e) => setSocksForm((f) => ({ ...f, password: e.target.value }))}
+									/>
+								</div>
+							</div>
+							<div className="c-field">
+								<label>SOCKS5 URI（可选，粘贴后失焦自动解析）</label>
+								<input
+									type="text"
+									value={socksURI}
+									onChange={(e) => {
+										setSocksURI(e.target.value);
+										if (socksErr) setSocksErr(null);
+									}}
+									onBlur={handleSocksURIBlur}
+									placeholder="socks5://user:pass@host:1080#节点名"
+									className="c-mono"
+								/>
+							</div>
+							{socksErr ? <div className="c-notice c-notice--error">{socksErr}</div> : null}
+							<div className="c-modal-footer">
+								<button type="button" className="c-btn c-btn--ghost" onClick={() => setShowSocksModal(false)}>
+									取消
+								</button>
+								<button type="button" className="c-btn c-btn--primary" onClick={handleSocksSubmit}>
+									追加到落地节点
+								</button>
+							</div>
+						</div>
+					</Modal>
+				) : null}
+
+				{showRelayModal ? (
+					<Modal title="添加端口转发服务" onClose={() => setShowRelayModal(false)}>
+						<div className="c-modal-body">
+							<div className="c-field">
+								<label>转发信息（server:port）</label>
+								<div className="c-tag-input-row">
+									<input
+										type="text"
+										value={relayDraft}
+										onChange={(e) => setRelayDraft(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												e.preventDefault();
+												addRelayDraftTag();
+											}
+										}}
+										placeholder="输入 server:port，回车添加多个"
+										className="c-mono"
+									/>
+									<button type="button" className="c-btn c-btn--sm" onClick={addRelayDraftTag}>
+										添加
+									</button>
+								</div>
+								<TagChips
+									items={relayDraftTags ?? []}
+									empty="尚未添加条目"
+									onRemove={(i) =>
+										setRelayDraftTags((current) => {
+											if (!current) return null;
+											const next = current.filter((_, index) => index !== i);
+											return next.length === 0 ? [] : next;
+										})
+									}
+								/>
+							</div>
+							{relayErr ? <div className="c-notice c-notice--error">{relayErr}</div> : null}
+							<div className="c-modal-footer">
+								<button type="button" className="c-btn c-btn--ghost" onClick={() => setShowRelayModal(false)}>
+									取消
+								</button>
+								<button type="button" className="c-btn c-btn--primary" onClick={handleRelaySubmit}>
+									确认
+								</button>
+							</div>
+						</div>
+					</Modal>
+				) : null}
+			</div>
+
+			<LogPanel entries={workflow.workflowLog} />
+		</div>
+	);
+}

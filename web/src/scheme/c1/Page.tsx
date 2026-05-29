@@ -19,6 +19,8 @@ import {
 	getStage2TargetDisplayLabel,
 } from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
+import type { WorkflowLogEntry } from "../../lib/state";
+import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import "./index.css";
 
 const MODE_LABELS: Record<Stage2Row["mode"], string> = {
@@ -26,6 +28,28 @@ const MODE_LABELS: Record<Stage2Row["mode"], string> = {
 	chain: "链式中转",
 	port_forward: "端口转发",
 };
+
+const LOG_LEVEL_LABEL: Record<WorkflowLogEntry["level"], string> = {
+	info: "信息",
+	warning: "警告",
+	error: "错误",
+	success: "成功",
+};
+
+const STAGE_LABEL: Record<string, string> = {
+	stage1: "S1",
+	stage2: "S2",
+	stage3: "S3",
+};
+
+function formatLogTime(iso: string) {
+	try {
+		const d = new Date(iso);
+		return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+	} catch {
+		return iso;
+	}
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -142,7 +166,7 @@ function Modal({
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPlacement }: AppPageProps) {
+export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPlacement, runtimeConfig }: AppPageProps) {
 	const [showAdvanced, setShowAdvanced] = useState(false);
 	const [showSocksModal, setShowSocksModal] = useState(false);
 	const [showRelayModal, setShowRelayModal] = useState(false);
@@ -153,12 +177,15 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [relayErr, setRelayErr] = useState<string | null>(null);
 	const [inclDraft, setInclDraft] = useState("");
 	const [exclDraft, setExclDraft] = useState("");
+	const [showLog, setShowLog] = useState(false);
+
+	const { workflowLog } = workflow;
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
 
 	const globalErrors = useMemo(
 		() => getGlobalPrimaryBlockingErrors(workflow.state.blockingErrors, workflow.responseOriginStage, primaryBlockingFeedbackPlacement),
 		[primaryBlockingFeedbackPlacement, workflow.responseOriginStage, workflow.state.blockingErrors],
 	);
-	const latestMessage = workflow.visibleMessages.slice(-1);
 
 	function setAdvTags(field: "include" | "exclude", next: string[] | null) {
 		workflow.updateStage1Input((cur) => ({
@@ -331,14 +358,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					<ErrorBlock errors={globalErrors} />
 				</div>
 			) : null}
-			{latestMessage.length > 0 ? (
-				<div className="c-global-notice c-global-notice--info">
-					<p className="c-global-notice-title">{workflow.originStageLabel ? `${workflow.originStageLabel} 消息` : "消息"}</p>
-					{latestMessage.map((m, i) => (
-						<p key={`${m.code}-${i}`} className="c-global-notice-body">{m.message}</p>
-					))}
-				</div>
-			) : null}
 
 			{/* ── Stage 1 ── */}
 			<SectionShell
@@ -421,21 +440,34 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 						<div className="c-adv-body">
 							<div className="c-adv-grid">
 								<div className="c-field">
+								<div className="c-field-label-row">
 									<label>模板 URL</label>
-									<input
-										type="text"
-										value={stage1Input.advancedOptions.config ?? ""}
-										onChange={(e) =>
+									<button
+										type="button"
+										className="c-link-btn"
+										onClick={() =>
 											workflow.updateStage1Input((cur) => ({
 												...cur,
-												advancedOptions: {
-													...cur.advancedOptions,
-													config: e.target.value || null,
-												},
+												advancedOptions: { ...cur.advancedOptions, config: templateDefaultURL },
 											}))
 										}
-										placeholder="留空使用默认模板"
-										className="c-mono"
+									>
+										恢复默认
+									</button>
+								</div>
+								<input
+									type="text"
+									value={stage1Input.advancedOptions.config ?? ""}
+									onChange={(e) =>
+										workflow.updateStage1Input((cur) => ({
+											...cur,
+											advancedOptions: {
+												...cur.advancedOptions,
+												config: e.target.value || null,
+											},
+										}))
+									}
+									placeholder={templateDefaultURL}
 									/>
 									<ErrorBlock errors={workflow.getStage1FieldErrors("config")} />
 								</div>
@@ -542,15 +574,20 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										/>
 										skip cert verify
 									</label>
-									<label className="c-check">
-										<input
-											type="checkbox"
-											checked={stage1Input.advancedOptions.enablePortForward}
-											onChange={(e) =>
-												workflow.updateStage1Input((cur) => setPortForwardEnabled(cur, e.target.checked))
-											}
-										/>
-										启用端口转发服务
+								<label className="c-toggle-label">
+									<input
+										type="checkbox"
+										role="switch"
+										className="c-toggle-input"
+										checked={stage1Input.advancedOptions.enablePortForward}
+										onChange={(e) =>
+											workflow.updateStage1Input((cur) => setPortForwardEnabled(cur, e.target.checked))
+										}
+									/>
+									<span className="c-toggle-track" aria-hidden="true">
+										<span className="c-toggle-thumb" />
+									</span>
+									<span className="c-toggle-text">启用端口转发服务</span>
 									</label>
 									<div>
 										<ErrorBlock errors={workflow.getStage1FieldErrors("emoji")} />
@@ -827,6 +864,49 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					</div>
 				</Modal>
 			) : null}
+
+			{/* ── Workflow Log ── */}
+			<div className="c-log-section">
+				<button
+					type="button"
+					className="c-log-toggle"
+					onClick={() => setShowLog((v) => !v)}
+					aria-expanded={showLog}
+				>
+					<span className={`c-adv-arrow${showLog ? " c-adv-arrow--open" : ""}`} aria-hidden="true">▶</span>
+					<span>工作流日志</span>
+					{workflowLog.length > 0 ? (
+						<span className="c-log-count">{workflowLog.length}</span>
+					) : null}
+					{workflowLog.length > 0 && !showLog ? (
+						<span className={`c-log-preview c-log-preview--${workflowLog[workflowLog.length - 1].level}`}>
+							{workflowLog[workflowLog.length - 1].message}
+						</span>
+					) : null}
+				</button>
+				{showLog ? (
+					workflowLog.length === 0 ? (
+						<p className="c-empty-state">暂无日志。</p>
+					) : (
+						<div className="c-log-list">
+							{workflowLog.slice().reverse().map((entry) => (
+								<div key={entry.id} className={`c-log-entry c-log-entry--${entry.level}`}>
+									<time className="c-log-time" dateTime={entry.createdAt}>
+										{formatLogTime(entry.createdAt)}
+									</time>
+									<span className={`c-log-badge c-log-badge--${entry.level}`}>
+										{LOG_LEVEL_LABEL[entry.level] ?? entry.level}
+									</span>
+									{entry.originStage ? (
+										<span className="c-log-stage">{STAGE_LABEL[entry.originStage] ?? entry.originStage}</span>
+									) : null}
+									<span className="c-log-msg">{entry.message}</span>
+								</div>
+							))}
+						</div>
+					)
+				) : null}
+			</div>
 			</div>
 		</div>
 	);

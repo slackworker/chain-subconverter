@@ -12,7 +12,7 @@
 
 或运行 VS Code 任务：`dev: up`
 
-支持的 `scheme`：`default`、`a`、`b`、`c`
+支持的 `scheme`：`default`、`a`、`b1`、`b2`、`c1`、`c2`
 
 固定端口：
 
@@ -32,7 +32,7 @@
 go test ./...
 cd web && npm run test
 cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
-cd web && npm run build:default && npm run build:a && npm run build:b && npm run build:c
+cd web && npm run build:default && npm run build:a && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2
 docker compose -f deploy/docker-compose.yml config
 ```
 
@@ -57,7 +57,7 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 ```bash
 go test ./...
 cd web && npm run test
-cd web && npm run build && npm run build:b && npm run build:c
+cd web && npm run build && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2
 ```
 
 ### 2. 启动本地 UI
@@ -70,7 +70,7 @@ cd web && npm run build && npm run build:b && npm run build:c
 
 ```text
 http://localhost:<frontend-port>/            （scheme = default 时）
-http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b|c 时）
+http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b1|b2|c1|c2 时）
 ```
 
 除本次启动写入 `runtime.env` 的端口（或你显式设置的 offset 端口组）外，若只能通过其他端口访问，优先判断为旧开发实例残留，不视为正常行为。

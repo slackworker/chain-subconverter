@@ -498,10 +498,10 @@ EOF
 }
 
 case "$SCHEME" in
-  default|a|b|c)
+  default|a|b1|b2|c1|c2)
     ;;
   *)
-    fail "unsupported scheme '$SCHEME' (expected one of: default, a, b, c)"
+    fail "unsupported scheme '$SCHEME' (expected one of: default, a, b1, b2, c1, c2)"
     ;;
 esac
 
@@ -582,6 +582,11 @@ if [[ "$SCHEME" == "default" ]]; then
 else
   log "scheme:   http://localhost:${FRONTEND_PORT}/ui/${SCHEME}"
 fi
+log "preview:  http://localhost:${FRONTEND_PORT}/ui/a"
+log "preview:  http://localhost:${FRONTEND_PORT}/ui/b1"
+log "preview:  http://localhost:${FRONTEND_PORT}/ui/b2"
+log "preview:  http://localhost:${FRONTEND_PORT}/ui/c1"
+log "preview:  http://localhost:${FRONTEND_PORT}/ui/c2"
 log "subconv:  http://127.0.0.1:${SUBCONVERTER_PORT}/sub?"
 log "template: http://host.docker.internal:${BACKEND_PORT}"
 log "backend log: $BACKEND_LOG"

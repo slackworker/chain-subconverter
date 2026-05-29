@@ -1,13 +1,13 @@
 # web
 
-`Vite + React + TypeScript + Tailwind` 前端；共享业务层 + `default` / `a` / `b` / `c` 方案目录。
+`Vite + React + TypeScript + Tailwind` 前端；共享业务层 + `default` / `a` / `b1` / `b2` / `c1` / `c2` 方案目录。
 
 ## 常用命令
 
 ```bash
 npm install
-npm run dev          # 或 dev:a / dev:b / dev:c
-npm run build        # 或 build:default / build:a / build:b / build:c
+npm run dev          # 或 dev:a / dev:b1 / dev:b2 / dev:c1 / dev:c2
+npm run build        # 或 build:default / build:a / build:b1 / …
 npm run test         # Vitest
 npm run test:e2e     # Playwright；需仓库根 ./scripts/dev-up.sh default
 ```
@@ -19,7 +19,7 @@ npm run test:e2e     # Playwright；需仓库根 ./scripts/dev-up.sh default
 在**仓库根**执行：
 
 ```bash
-./scripts/dev-up.sh <scheme>   # default | a | b | c
+./scripts/dev-up.sh <scheme>   # default | a | b1 | b2 | c1 | c2
 ```
 
 或 VS Code 任务 `dev: up`（固定 scheme `a`）。端口、多 worktree offset、排障见 [docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
@@ -30,16 +30,16 @@ npm run test:e2e     # Playwright；需仓库根 ./scripts/dev-up.sh default
 |------|--------|------|
 | `/` | `default`（发布默认） | `baseline` |
 | `/ui/a` | 对照方案 | `baseline` |
-| `/ui/b` `/ui/c` | 探索性交互方案 | `exploratory` |
+| `/ui/b1` `/ui/b2` `/ui/c1` `/ui/c2` | 探索性交互方案（四变体） | `exploratory` |
 
 探索性方案可脱离 [spec 02](../docs/spec/02-frontend-spec.md) 的交互/风格细节自行设计，但须实现完整业务能力；见 spec 02「方案分级：对照基线与探索性」。
 
 ## 提升某个方案为 Default
 
-- 命令行：在仓库根运行 `./scripts/promote-ui-scheme-to-default.sh <a|b|c>`
-- VS Code：任务 `ui: promote scheme to default`，选择 `a`、`b` 或 `c`
+- 命令行：在仓库根运行 `./scripts/promote-ui-scheme-to-default.sh <a|b1|b2|c1|c2>`
+- VS Code：任务 `ui: promote scheme to default`，选择 `a`、`b1`、`b2`、`c1` 或 `c2`
 - 脚本将所选 scheme 复制到 `src/scheme/default`，重写 `default/index.ts` 元数据，并执行 `npm run build:default`
-- 预览：`./scripts/promote-ui-scheme-to-default.sh <a|b|c> --dry-run`
+- 预览：`./scripts/promote-ui-scheme-to-default.sh <a|b1|b2|c1|c2> --dry-run`
 
 ## 构建环境变量
 
