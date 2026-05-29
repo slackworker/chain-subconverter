@@ -8,6 +8,7 @@ import { NoticeRenderer } from "./Notice";
 import { LOCALES, type Locale } from "./locales";
 import { LineNumberTextarea } from "../b2/LineNumberTextarea";
 import { accentLink, tagListShell } from "../b2/theme";
+import { StageStatusBadge } from "./StageStatusBadge";
 
 interface Stage1Props {
 	workflow: AppWorkflowViewModel;
@@ -94,16 +95,12 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 
 	return (
 		<div className={`flex flex-col gap-6 backdrop-blur-xl border p-6 rounded-2xl shadow-xl transition-all duration-300 ${isDark ? "bg-zinc-900/50 border-zinc-800/80" : "bg-white border-slate-200/80 shadow-slate-100"}`}>
-			<div className="flex items-center justify-between">
+			<div className="flex items-center justify-between gap-4">
 				<div>
 					<h2 className={`text-2xl font-bold tracking-tight ${isDark ? "text-zinc-100" : "text-slate-800"}`}>{copy.stage1Title}</h2>
 					<p className={`text-sm mt-1 ${isDark ? "text-zinc-400" : "text-slate-500"}`}>{copy.stage1Desc}</p>
 				</div>
-				{workflow.stage1Status.tone === "success" && (
-					<span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/20">
-						{locale === "zh" ? "转换成功" : "Converted"}
-					</span>
-				)}
+				<StageStatusBadge status={workflow.stage1Status} colorMode={colorMode} locale={locale} />
 			</div>
 
 			<NoticeRenderer messages={messages} blockingErrors={errors} locale={locale} />

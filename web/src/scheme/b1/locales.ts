@@ -48,6 +48,18 @@ export interface LocaleDict {
 	converting: string;
 	convertAndFill: string;
 	stageChangedNotice: string;
+	statusAwaitingInput: string;
+	statusChanged: string;
+	statusConverted: string;
+	statusEditing: string;
+	statusConflict: string;
+	statusExpired: string;
+	statusStage2Stale: string;
+	statusAwaitingInit: string;
+	statusReady: string;
+	statusAwaitingGenerate: string;
+	statusShortUrlReady: string;
+	statusLongUrlReady: string;
 	stage2Title: string;
 	stage2Desc: string;
 	conflictReadonly: string;
@@ -162,6 +174,18 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
 		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
+		statusAwaitingInput: "等待输入",
+		statusChanged: "已变更",
+		statusConverted: "已转换",
+		statusEditing: "编辑中",
+		statusConflict: "冲突",
+		statusExpired: "已过期",
+		statusStage2Stale: "已过期",
+		statusAwaitingInit: "等待转换",
+		statusReady: "就绪",
+		statusAwaitingGenerate: "等待生成",
+		statusShortUrlReady: "短链接已就绪",
+		statusLongUrlReady: "长链接已就绪",
 		stage2Title: "2. 节点配置",
 		stage2Desc: "按落地节点逐行选择模式与目标",
 		conflictReadonly: "当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。",
@@ -274,6 +298,18 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		converting: "Converting...",
 		convertAndFill: "Convert & Auto-Fill",
 		stageChangedNotice: "Changed: please re-convert before generating link.",
+		statusAwaitingInput: "Awaiting input",
+		statusChanged: "Changed",
+		statusConverted: "Converted",
+		statusEditing: "Editing",
+		statusConflict: "Conflict",
+		statusExpired: "Expired",
+		statusStage2Stale: "Stale",
+		statusAwaitingInit: "Awaiting convert",
+		statusReady: "Ready",
+		statusAwaitingGenerate: "Awaiting generate",
+		statusShortUrlReady: "Short URL ready",
+		statusLongUrlReady: "Long URL ready",
 		stage2Title: "2. Node Configuration",
 		stage2Desc: "Adjust routing modes and targets for each landing node",
 		conflictReadonly: "The restored snapshot targets are invalid. Restored state is readonly. Please re-convert from Stage 1.",
@@ -346,4 +382,40 @@ export function translate(template: string, values: Record<string, string> = {})
 		result = result.replace(`{${key}}`, val);
 	}
 	return result;
+}
+
+type WorkflowStatusLocaleKey = Extract<
+	keyof LocaleDict,
+	| "statusAwaitingInput"
+	| "statusChanged"
+	| "statusConverted"
+	| "statusEditing"
+	| "statusConflict"
+	| "statusExpired"
+	| "statusStage2Stale"
+	| "statusAwaitingInit"
+	| "statusReady"
+	| "statusAwaitingGenerate"
+	| "statusShortUrlReady"
+	| "statusLongUrlReady"
+>;
+
+const WORKFLOW_STATUS_LABEL_KEYS: Record<string, WorkflowStatusLocaleKey> = {
+	"Awaiting Input": "statusAwaitingInput",
+	Changed: "statusChanged",
+	Converted: "statusConverted",
+	Editing: "statusEditing",
+	Conflict: "statusConflict",
+	Expired: "statusExpired",
+	"Stage 2 Stale": "statusStage2Stale",
+	"Awaiting Init": "statusAwaitingInit",
+	Ready: "statusReady",
+	"Awaiting Generate": "statusAwaitingGenerate",
+	"Short URL Ready": "statusShortUrlReady",
+	"Long URL Ready": "statusLongUrlReady",
+};
+
+export function getWorkflowStatusLabel(label: string, locale: Locale): string {
+	const copyKey = WORKFLOW_STATUS_LABEL_KEYS[label];
+	return copyKey ? LOCALES[locale][copyKey] : label;
 }

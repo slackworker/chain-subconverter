@@ -10,6 +10,7 @@ import {
 import { NoticeRenderer } from "./Notice";
 import { AlertTriangleIcon } from "./Icons";
 import { LOCALES, translate, type Locale } from "./locales";
+import { StageStatusBadge } from "./StageStatusBadge";
 import { TargetPickerPortal } from "./TargetPickerPortal";
 
 interface Stage2Props {
@@ -28,17 +29,19 @@ export function Stage2({ workflow, locale, colorMode }: Stage2Props) {
 
 	return (
 		<div className={`flex flex-col gap-6 backdrop-blur-xl border p-6 rounded-2xl shadow-xl transition-all duration-300 ${isDark ? "bg-zinc-900/50 border-zinc-800/80" : "bg-white border-slate-200/80 shadow-slate-100"}`}>
-			<div className="flex items-center justify-between">
+			<div className="flex items-center justify-between gap-4">
 				<div>
 					<h2 className={`text-2xl font-bold tracking-tight ${isDark ? "text-zinc-100" : "text-slate-800"}`}>{copy.stage2Title}</h2>
 					<p className={`text-sm mt-1 ${isDark ? "text-zinc-400" : "text-slate-500"}`}>{copy.stage2Desc}</p>
 				</div>
-				{shouldShowStage2StaleNotice && (
-					<span className="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-semibold rounded-full border border-amber-500/20">
-						{locale === "zh" ? "数据已过期，请重新转换" : "Data is stale, please re-convert"}
-					</span>
-				)}
+				<StageStatusBadge status={workflow.stage2Status} colorMode={colorMode} locale={locale} />
 			</div>
+
+			{shouldShowStage2StaleNotice && !isConflictReadonly ? (
+				<div className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+					{copy.stageChangedNotice}
+				</div>
+			) : null}
 
 			<NoticeRenderer messages={messages} blockingErrors={errors} locale={locale} />
 

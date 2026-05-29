@@ -3,6 +3,7 @@ import type { OutputActions } from "../../lib/composition";
 import { CopyIcon, DownloadIcon, ExternalLinkIcon, CheckIcon } from "./Icons";
 import { NoticeRenderer } from "./Notice";
 import { LOCALES, type Locale } from "./locales";
+import { StageStatusBadge } from "./StageStatusBadge";
 
 interface Stage3Props {
 	workflow: AppWorkflowViewModel;
@@ -24,9 +25,12 @@ export function Stage3({ workflow, outputActions, locale, colorMode }: Stage3Pro
 
 	return (
 		<div className={`flex flex-col gap-6 backdrop-blur-xl border p-6 rounded-2xl shadow-xl transition-all duration-300 ${isDark ? "bg-zinc-900/50 border-zinc-800/80" : "bg-white border-slate-200/80 shadow-slate-100"}`}>
-			<div>
-				<h2 className={`text-2xl font-bold tracking-tight ${isDark ? "text-zinc-100" : "text-slate-800"}`}>{copy.stage3Title}</h2>
-				<p className={`text-sm mt-1 ${isDark ? "text-zinc-400" : "text-slate-500"}`}>{copy.stage3Desc}</p>
+			<div className="flex items-center justify-between gap-4">
+				<div>
+					<h2 className={`text-2xl font-bold tracking-tight ${isDark ? "text-zinc-100" : "text-slate-800"}`}>{copy.stage3Title}</h2>
+					<p className={`text-sm mt-1 ${isDark ? "text-zinc-400" : "text-slate-500"}`}>{copy.stage3Desc}</p>
+				</div>
+				<StageStatusBadge status={workflow.stage3Status} colorMode={colorMode} locale={locale} />
 			</div>
 
 			<NoticeRenderer messages={messages} blockingErrors={errors} locale={locale} />
