@@ -10,9 +10,11 @@ import (
 
 	"github.com/slackworker/chain-subconverter/internal/api"
 	"github.com/slackworker/chain-subconverter/internal/config"
+	"github.com/slackworker/chain-subconverter/internal/runtimestatus"
 	"github.com/slackworker/chain-subconverter/internal/service"
 	shortlinkstore "github.com/slackworker/chain-subconverter/internal/store"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
+	"github.com/slackworker/chain-subconverter/internal/version"
 )
 
 const (
@@ -61,6 +63,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	upstreamVersionURL, err := subconverterCfg.UpstreamVersionURL()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "subconverter version URL: %v\n", err)
+		os.Exit(1)
+	}
+	runtimeStatusService := runtimestatus.NewService(
+		version.Version,
+		shortLinkStore,
+		runtimestatus.NewUpstreamProber(upstreamVersionURL, subconverterCfg.Timeout),
+	)
+
 	handler, err := api.NewHandler(managedSource, templateStore, shortLinkStore, serverCfg.UserFacingBaseURL, serverCfg.SubconverterFacingBaseURL, serverCfg.MaxLongURLLength, service.InputLimits{
 		MaxRequestURLLength: serverCfg.MaxUpstreamRequestURLLength,
 		MaxURLsPerField:     serverCfg.MaxURLsPerField,
@@ -69,6 +82,7 @@ func main() {
 		api.WithWriteRequestsPerMinute(serverCfg.WriteRequestsPerMinute),
 		api.WithReadRequestsPerMinute(serverCfg.ReadRequestsPerMinute),
 		api.WithTrustedProxyCIDRs(serverCfg.TrustedProxyCIDRs),
+		api.WithRuntimeStatus(runtimeStatusService),
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "init HTTP handler: %v\n", err)
@@ -76,7 +90,7 @@ func main() {
 	}
 
 	server := &http.Server{
-		Handler:           api.WithFrontendAssets(handler, serverCfg.FrontendDistDir),
+		Handler:           api.WithAccessLog(api.WithFrontendAssets(handler, serverCfg.FrontendDistDir)),
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,

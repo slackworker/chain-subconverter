@@ -236,6 +236,42 @@
 - `maxPublicLongURLLength` 表示当前部署对外公开 longUrl 的预算上限；当前 Web 前端必须据此决定何时自动切换为短链接展示
 - 该接口不承载鉴权、转换、模板拉取或健康检查语义
 
+### 1b. `GET /api/runtime-status`
+
+用途：返回部署运行态摘要（应用版本、subconverter 探测结果、短链存储用量）。
+
+请求：
+
+- 不需要请求体
+- 可选查询参数 `refresh=1`：跳过后端探测缓存并重新访问上游 `/version`
+
+成功响应：
+
+```json
+{
+  "app": { "version": "v1.2.3" },
+  "subconverter": {
+    "healthy": true,
+    "latencyMs": 42,
+    "version": "subconverter v0.9.1",
+    "lastCheckedAt": "2026-05-29T12:00:00.000000000Z"
+  },
+  "storage": {
+    "mode": "temporary",
+    "used": 1,
+    "capacity": 1000
+  }
+}
+```
+
+约束：
+
+- `app.version` 由构建注入（优先 release tag）
+- `subconverter` 字段由后端探测上游 `/version` 获得；`error` 为脱敏摘要
+- `storage.mode` 由 `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH` 推断：`/tmp` 下为 `temporary`，否则为 `persistent`
+- 与 `GET /healthz` 职责分离：本接口用于运行态展示，不替代存活探测
+- 不并入 `GET /api/runtime-config`
+
 ### 2. `POST /api/stage1/convert`
 
 用途：接收阶段 1 输入，并返回本次转换得到的 `stage2Init`。

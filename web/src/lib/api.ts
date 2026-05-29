@@ -4,6 +4,7 @@ import type {
 	GenerateResponse,
 	ResolveURLResponse,
 	RuntimeConfigResponse,
+	RuntimeStatusResponse,
 	ShortLinkResponse,
 	Stage1ConvertRequest,
 	Stage1ConvertResponse,
@@ -157,4 +158,9 @@ export function postShortLink(longUrl: string) {
 
 export function getRuntimeConfig() {
 	return getJSON<RuntimeConfigResponse>("/api/runtime-config");
+}
+
+export function getRuntimeStatus(refresh = false) {
+	const query = refresh ? "?refresh=1" : "";
+	return getJSON<RuntimeStatusResponse>(`/api/runtime-status${query}`);
 }

@@ -107,6 +107,42 @@ func TestLoadSubconverterFromEnv(t *testing.T) {
 	}
 }
 
+func TestSubconverterUpstreamVersionURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		want    string
+	}{
+		{
+			name:    "dev-up default with query",
+			baseURL: "http://127.0.0.1:25500/sub?",
+			want:    "http://127.0.0.1:25500/version",
+		},
+		{
+			name:    "docker default",
+			baseURL: DefaultSubconverterUpstreamBaseURL,
+			want:    "http://subconverter:25500/version",
+		},
+		{
+			name:    "extra query params on sub path",
+			baseURL: "http://localhost:25500/sub?target=clash",
+			want:    "http://localhost:25500/version",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Subconverter{UpstreamBaseURL: tt.baseURL}.UpstreamVersionURL()
+			if err != nil {
+				t.Fatalf("UpstreamVersionURL() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("UpstreamVersionURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSubconverterValidate(t *testing.T) {
 	tests := []struct {
 		name    string

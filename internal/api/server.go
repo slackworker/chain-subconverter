@@ -10,6 +10,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/slackworker/chain-subconverter/internal/runtimestatus"
 	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
@@ -32,6 +33,7 @@ type Handler struct {
 	writeRateLimiter    *ipRateLimiter
 	readRateLimiter     *ipRateLimiter
 	requestOrigin       *requestOriginResolver
+	runtimeStatus       *runtimestatus.Service
 	managedTemplatePath string
 	shortSubPath        string
 	subPath             string
@@ -93,6 +95,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 	mux.HandleFunc("POST /api/short-links", handler.rateLimitWrite(handler.handleShortLinks))
 	mux.HandleFunc("POST /api/resolve-url", handler.rateLimitWrite(handler.handleResolveURL))
 	mux.HandleFunc("GET /api/runtime-config", handler.handleRuntimeConfig)
+	mux.HandleFunc("GET /api/runtime-status", handler.handleRuntimeStatus)
 	mux.HandleFunc(managedTemplatePath, handler.handleManagedTemplate)
 	mux.HandleFunc("GET "+shortSubPath, handler.rateLimitRead(handler.handleShortSubscription))
 	mux.HandleFunc("GET "+subPath, handler.rateLimitRead(handler.handleSubscription))

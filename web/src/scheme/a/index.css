@@ -548,15 +548,9 @@
 .a-footer__inner {
 	display: grid;
 	grid-template-columns: 1fr auto 1fr;
-	align-items: baseline;
+	align-items: center;
 	column-gap: 0.75rem;
 	width: 100%;
-}
-
-.a-footer__inner--solo {
-	display: flex;
-	justify-content: center;
-	text-align: center;
 }
 
 .a-footer__credit {
@@ -570,7 +564,6 @@
 .a-log-footer__toggle {
 	grid-column: 3;
 	justify-self: end;
-	align-self: end;
 	margin: 0;
 	padding: 0;
 	border: 0;

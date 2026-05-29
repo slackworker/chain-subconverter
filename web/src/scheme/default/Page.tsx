@@ -25,6 +25,7 @@ import {
 	getStage2TargetDisplayLabel,
 	isStage2SourceRow,
 } from "../../lib/stage2";
+import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
@@ -553,8 +554,8 @@ function WorkflowLogPanel({ entries, locale, footerCredit }: { entries: Workflow
 
 	if (entries.length === 0) {
 		return (
-			<div className="a-footer__inner a-footer__inner--solo">
-				<p className="a-footer__credit">{footerCredit}</p>
+			<div className="a-footer__inner">
+				<RuntimeStatusBadges locale={locale} footerCredit={footerCredit} />
 			</div>
 		);
 	}
@@ -582,17 +583,22 @@ function WorkflowLogPanel({ entries, locale, footerCredit }: { entries: Workflow
 				</ul>
 			</section>
 			<div className="a-footer__inner">
-				<p className="a-footer__credit">{footerCredit}</p>
-				<button
-					type="button"
-					className="a-log-footer__toggle"
-					aria-expanded={open}
-					aria-controls={panelId}
-					aria-label={collapsedAriaLabel}
-					onClick={() => setOpen((current) => !current)}
-				>
-					{copy.logToggle}
-				</button>
+				<RuntimeStatusBadges
+					locale={locale}
+					footerCredit={footerCredit}
+					endSlot={
+						<button
+							type="button"
+							className="a-log-footer__toggle"
+							aria-expanded={open}
+							aria-controls={panelId}
+							aria-label={collapsedAriaLabel}
+							onClick={() => setOpen((current) => !current)}
+						>
+							{copy.logToggle}
+						</button>
+					}
+				/>
 			</div>
 		</div>
 	);

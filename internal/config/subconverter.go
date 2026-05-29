@@ -68,6 +68,22 @@ func LoadSubconverterFromEnv() (Subconverter, error) {
 	return cfg, nil
 }
 
+// UpstreamVersionURL returns the subconverter /version endpoint for the same host as UpstreamBaseURL.
+func (cfg Subconverter) UpstreamVersionURL() (string, error) {
+	normalizedBaseURL, err := NormalizeSubconverterBaseURL(cfg.UpstreamBaseURL)
+	if err != nil {
+		return "", err
+	}
+	parsedURL, err := url.Parse(normalizedBaseURL)
+	if err != nil {
+		return "", fmt.Errorf("parse subconverter upstream base URL: %w", err)
+	}
+	if parsedURL.Host == "" {
+		return "", fmt.Errorf("subconverter upstream base URL must include host")
+	}
+	return parsedURL.Scheme + "://" + parsedURL.Host + "/version", nil
+}
+
 func (cfg Subconverter) Validate() error {
 	if strings.TrimSpace(cfg.UpstreamBaseURL) == "" {
 		return fmt.Errorf("subconverter upstream base URL must not be empty")

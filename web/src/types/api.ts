@@ -128,6 +128,24 @@ export interface RuntimeConfigResponse {
 	maxPublicLongURLLength: number;
 }
 
+export interface RuntimeStatusResponse {
+	app: {
+		version: string;
+	};
+	subconverter: {
+		healthy: boolean;
+		latencyMs?: number;
+		version?: string;
+		lastCheckedAt?: string;
+		error?: string;
+	};
+	storage: {
+		mode: string;
+		used: number;
+		capacity: number;
+	};
+}
+
 export interface ErrorResponse {
 	messages: Message[];
 	blockingErrors: BlockingError[];

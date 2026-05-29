@@ -20,6 +20,7 @@ import (
 // It provides LRU eviction when the store reaches its configured capacity.
 type SQLiteShortLinkStore struct {
 	db          *sql.DB
+	dbPath      string
 	maxCapacity int
 	writeMu     sync.Mutex
 }
@@ -45,7 +46,7 @@ func NewSQLiteShortLinkStore(dbPath string, maxCapacity int) (*SQLiteShortLinkSt
 		return nil, fmt.Errorf("init schema: %w", err)
 	}
 
-	return &SQLiteShortLinkStore{db: db, maxCapacity: maxCapacity}, nil
+	return &SQLiteShortLinkStore{db: db, dbPath: dbPath, maxCapacity: maxCapacity}, nil
 }
 
 func initSchema(db *sql.DB) error {
