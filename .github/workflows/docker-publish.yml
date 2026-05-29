@@ -137,7 +137,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ steps.plan.outputs.checkout_ref }}
 
@@ -158,7 +158,7 @@ jobs:
 
       - name: Wait for CI workflow success on source revision
         if: needs.prepare.outputs.should_skip_validation != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           TARGET_SHA: ${{ needs.prepare.outputs.source_sha }}
         with:
@@ -227,7 +227,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare.outputs.checkout_ref }}
 
