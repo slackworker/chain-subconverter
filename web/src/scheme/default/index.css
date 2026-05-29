@@ -1055,10 +1055,12 @@
 }
 
 .a-current-link-row {
+	--a-current-link-inner-r: calc(10px - 1px);
 	display: flex;
 	align-items: center;
 	gap: 0.65rem;
-	padding-right: 0.6rem;
+	width: 100%;
+	padding-right: 0;
 	border: 1px solid var(--color-line);
 	border-radius: 10px;
 	background: var(--color-elevated);
@@ -1099,8 +1101,11 @@
 
 .a-current-link-row .a-check--switch {
 	flex-shrink: 0;
-	padding-left: 0.55rem;
+	align-self: stretch;
+	box-sizing: border-box;
+	padding: 0 0.55rem;
 	border-left: 1px solid var(--color-line);
+	border-radius: 0 var(--a-current-link-inner-r) var(--a-current-link-inner-r) 0;
 }
 
 .a-input:focus {
@@ -2299,22 +2304,6 @@ select.a-select {
 @media (max-width: 520px) {
 	.a-modal__row-two {
 		grid-template-columns: 1fr;
-	}
-}
-
-@media (max-width: 600px) {
-	.a-current-link-row {
-		flex-direction: column;
-		align-items: stretch;
-		gap: 0;
-		padding-right: 0;
-	}
-
-	.a-current-link-row .a-check--switch {
-		padding: 0.5rem 0.65rem 0.55rem;
-		border-left: none;
-		border-top: 1px solid var(--color-line);
-		justify-content: space-between;
 	}
 }
 
