@@ -44,7 +44,8 @@
 | Fixture Freshness | `go run ./cmd/testfixturegen -repo-root .`，再 `git diff --exit-code -- internal/review/testdata` |
 | Worker Fixture Freshness | `deploy/test-fixtures-worker` 内 `npm run check`（校验 canonical → Worker 公网快照未漂移） |
 | Web Unit Test | `cd web && npm run test`（Vitest） |
-| Web Build Matrix | 六 scheme：`build:default` / `build:a` / `build:b1` / `build:b2` / `build:c1` / `build:c2` |
+| Web Build (release baseline) | **blocking**：`build:default`、`build:a`（发布默认与对照基线，见 [spec 02 §方案分级](../spec/02-frontend-spec.md)） |
+| Web Build (exploratory) | **非 blocking**（`continue-on-error`）：`build:b1` / `build:b2` / `build:c1` / `build:c2`；失败不挡 `beta` / `main` / tag 发布 |
 | Web Mock E2E | `cd web && npm run test:e2e:mock`（job `web-mock-e2e`，**blocking**） |
 | Compose Config | `docker compose -f deploy/docker-compose.yml config` |
 
@@ -52,7 +53,7 @@
 
 ### `docker-publish.yml`（推 `beta` / `main` 或 tag 时发镜像）
 
-`validate` job 在 **push** 与绝大多数 `workflow_dispatch` 手动发布时都不重复跑测试命令，而是轮询等待同 commit SHA 的 `ci.yml` workflow run **成功**（超时约 30 分钟）。因此 `beta` / `main` / tag 发布，以及非 `dev-latest` 的手动发布，都会间接要求 `ci.yml` 的 blocking job 全绿，含 Go test、fixture freshness、Vitest、mock E2E、四 scheme build、`compose config` 等。
+`validate` job 在 **push** 与绝大多数 `workflow_dispatch` 手动发布时都不重复跑测试命令，而是轮询等待同 commit SHA 的 `ci.yml` workflow run **成功**（超时约 30 分钟）。因此 `beta` / `main` / tag 发布，以及非 `dev-latest` 的手动发布，都会间接要求 `ci.yml` 的 blocking job 全绿，含 Go test、fixture freshness、Vitest、mock E2E、`default`/`a` 双 scheme build、`compose config` 等；探索性 `b1`/`b2`/`c1`/`c2` build 在独立 job 中跑但不挡门禁。
 
 **刻意保留的例外**：`workflow_dispatch` 中仅 `image_tag=dev-latest` 的开发线手动发布会跳过 `validate`，用于保留开发阶段的快速构建路径；其它手动发布与 push 发布继续共用同一条 CI 门禁。
 

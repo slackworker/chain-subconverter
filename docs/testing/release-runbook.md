@@ -12,7 +12,7 @@
 
 ## 发布前检查
 
-- [ ] 自动化：`go test`、web 单测、E2E（`default-happy-path`、`port-forward-happy-path`）、四套 `build:<scheme>`、`docker compose config` — 见 [local-dev-smoke.md](local-dev-smoke.md)「发布前完整检查」
+- [ ] 自动化：`go test`、web 单测、E2E（`default-happy-path`、`port-forward-happy-path`）、`build:default`（及对照 `build:a`；探索性 `b1`/`b2`/`c1`/`c2` 非发布门禁）、`docker compose config` — 见 [local-dev-smoke.md](local-dev-smoke.md)「发布前完整检查」与 [test-system-review.md](test-system-review.md) CI 门禁
 - [ ] fixture 策略见 [test-system-review.md](test-system-review.md)
 - [ ] E2E / Playwright 环境见 [local-dev-smoke.md](local-dev-smoke.md)
 - [ ] 本地 smoke：`./scripts/dev-up.sh default` — 确认 `healthz`、`stage1/convert`、Stage 3、workflow log
