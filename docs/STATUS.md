@@ -1,12 +1,12 @@
 # 项目状态
 
-> 最近更新：2026-05-29 · 滚动镜像 **`beta-latest`**（digest `sha256:36a8eb9f…`，`beta` @ `86922c3`；上一正式 Beta tag 仍为 **`v3.0.0-beta.2`**）
+> 最近更新：2026-05-29 · 正式 Beta tag **`v3.0.0-beta.3`**；滚动镜像 **`beta-latest`**（digest `sha256:36a8eb9f…`，`beta` @ `86922c3`）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
 
 ## 当前结论
 
-- **3.0 Beta 线已发布**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1)、[`v3.0.0-beta.2`](../RELEASES.md#v300-beta2)
+- **3.0 Beta 线已发布**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1)、[`v3.0.0-beta.2`](../RELEASES.md#v300-beta2)、[`v3.0.0-beta.3`](../RELEASES.md#v300-beta3)
 - **Phase 0–4 已完成**；维护期以回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/a` 为对照方案；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
@@ -51,7 +51,7 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 | 日期 | 摘要 |
 |------|------|
-| 2026-05-29 | vps-01/02 原地升级滚动 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:36a8eb9f…`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
+| 2026-05-29 | 文档/发版口径 **`v3.0.0-beta.3`**（落地副本 + Stage 2 行复制/`rowId`）；vps-01/02 滚动 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:36a8eb9f…`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
 | 2026-05-27 | snapshot-first + stage2 `rowId`/复制行：spec 对齐；`go test ./...`、`npm test`、`test:e2e:mock` **通过** |
 | 2026-05-25 | `v3.0.0-beta.2`；vps-01/02 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:afa71279…`） |
 | 2026-05-24 | `v3.0.0-beta.1` |
