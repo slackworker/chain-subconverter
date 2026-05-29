@@ -17,17 +17,17 @@
 
 | 形态 | 设备 / 平台 | 最近回归 | 结果 |
 |------|-------------|----------|------|
-| **内网一体化** | vps-01（LAN Compose） | 2026-05-25 | **通过** |
-| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-05-25 | **通过** |
+| **内网一体化** | vps-01（LAN Compose） | 2026-05-29 | **通过** |
+| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-05-29 | **通过** |
 | **双 Docker 分离** | Railway + Koyeb（demo preview） | 2026-05-23 | **通过** |
 
 外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
 
 ---
 
-## 内网一体化 — vps-01（2026-05-25，`beta-latest` / `v3.0.0-beta.2`）
+## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:afa71279f0513f51bdda0f503c2629164f4a5c46a70747a54f28f959df438546`，与 vps-02 一致；对应 Git tag `v3.0.0-beta.2`）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:d5fc88615146b7098e7ff0dc720bbe303959dc9d285a7e82b865be09f7572410`，与 vps-02 一致；`beta` @ `6fa6a46`，非新 Beta tag）；`subconverter:integration-chain-subconverter`
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）
@@ -36,15 +36,21 @@
 
 ---
 
-## 公网 HTTPS 一体化 — vps-02（2026-05-25，`beta-latest` / `v3.0.0-beta.2`）
+## 公网 HTTPS 一体化 — vps-02（2026-05-29，`beta-latest` 滚动构建）
 
-- **镜像 tag**：与 vps-01 同 digest（`beta-latest` / `v3.0.0-beta.2`）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest` 滚动，`beta` @ `6fa6a46`）；`subconverter:integration-chain-subconverter`
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致生成链接为 `http://`）
 - **回归**：公网 HTTPS、`deployed-smoke`（origin 须与 `E2E_BASE_URL` 一致）、generate / short-links / 订阅读取
 - **结果**：**通过**
 - **细节**：SSH、域名、smoke 命令见本地文件
+
+---
+
+## 历史 — `beta-latest` / `v3.0.0-beta.2`（2026-05-25）
+
+vps-01 / vps-02 以 digest `sha256:afa71279f0513f51bdda0f503c2629164f4a5c46a70747a54f28f959df438546`（Git tag `v3.0.0-beta.2`）完成内网与公网一体化回归，`deployed-smoke` 均为 **通过**。
 
 ---
 

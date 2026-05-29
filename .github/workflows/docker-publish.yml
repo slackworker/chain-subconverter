@@ -41,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       checkout_ref: ${{ steps.plan.outputs.checkout_ref }}
+      image_version: ${{ steps.plan.outputs.image_version }}
       source_sha: ${{ steps.source.outputs.sha }}
       tags: ${{ steps.plan.outputs.tags }}
       labels: ${{ steps.plan.outputs.labels }}
@@ -123,6 +124,7 @@ jobs:
 
           {
             echo "checkout_ref=$checkout_ref"
+            echo "image_version=$image_version"
             echo "primary_tag=$primary_tag"
             echo "should_trigger_render=$should_trigger_render"
             echo "should_skip_validation=$should_skip_validation"
@@ -248,6 +250,8 @@ jobs:
           labels: |
             ${{ needs.prepare.outputs.labels }}
             org.opencontainers.image.revision=${{ needs.prepare.outputs.source_sha }}
+          build-args: |
+            APP_VERSION=${{ needs.prepare.outputs.image_version }}
           outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=docker-publish-${{ matrix.platform_pair }}
           cache-to: type=gha,scope=docker-publish-${{ matrix.platform_pair }},mode=max
