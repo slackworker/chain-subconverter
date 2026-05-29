@@ -11,6 +11,7 @@ import {
 	appendForwardRelayItems,
 	buildManualSocks5URI,
 	initialManualSocks5FormState,
+	normalizeForwardRelayItem,
 	parseSocks5URIToManualSocks5FormState,
 	type ManualSocks5FormState,
 	removeForwardRelayItem,
@@ -29,7 +30,7 @@ import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
-import { TagField } from "./TagField";
+import { TagField, type TagFieldHandle, type TagFieldReject } from "./TagField";
 import { useStage2TableColumns } from "./useStage2TableColumns";
 import "./index.css";
 
@@ -156,6 +157,8 @@ const COPY = {
 		socksFormValidationFailed: "表单校验失败",
 		socksParseFailed: "SOCKS5 URI 解析失败",
 		portForwardValidationFailed: "端口转发服务校验失败",
+		portForwardDuplicate: "端口转发服务 {tag} 已存在",
+		portForwardNothingToAdd: "请至少添加一条端口转发服务",
 		stage1Label: "阶段 1",
 		stage2Label: "阶段 2",
 		stage3Label: "阶段 3",
@@ -275,6 +278,8 @@ const COPY = {
 		socksFormValidationFailed: "Form validation failed",
 		socksParseFailed: "Failed to parse the SOCKS5 URI",
 		portForwardValidationFailed: "Port forwarding validation failed",
+		portForwardDuplicate: "Port forwarding service {tag} already exists",
+		portForwardNothingToAdd: "Add at least one port forwarding entry",
 		stage1Label: "Stage 1",
 		stage2Label: "Stage 2",
 		stage3Label: "Stage 3",
@@ -659,6 +664,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [headerScrolled, setHeaderScrolled] = useState(false);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
+	const portForwardTagFieldRef = useRef<TagFieldHandle>(null);
 	const chainTargetMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const chainTargetMenuPanelRef = useRef<HTMLDivElement | null>(null);
 	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
@@ -819,8 +825,26 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		setPortForwardDraftTags(null);
 	}
 
+	function portForwardRejectMessage(reject: TagFieldReject) {
+		if (reject.reason === "duplicate") {
+			return translate(copy.portForwardDuplicate, { tag: reject.tag ?? "" });
+		}
+		return reject.message ?? copy.portForwardValidationFailed;
+	}
+
 	function submitPortForwardTags() {
-		const nextTags = portForwardDraftTags ?? [];
+		const flush = portForwardTagFieldRef.current?.flushDraft();
+		let nextTags = portForwardDraftTags ?? [];
+		if (flush?.kind === "committed") {
+			nextTags = flush.next ?? [];
+		} else if (flush?.kind === "rejected" && nextTags.length === 0) {
+			setPortForwardError(portForwardRejectMessage(flush));
+			return;
+		}
+		if (nextTags.length === 0) {
+			setPortForwardError(copy.portForwardNothingToAdd);
+			return;
+		}
 		try {
 			const nextStage1Input = appendForwardRelayItems(state.stage1Input, nextTags);
 			updateStage1Input(() => nextStage1Input);
@@ -1848,6 +1872,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							{copy.addPortForwardModal}
 						</h2>
 						<TagField
+							ref={portForwardTagFieldRef}
 							label={copy.forwardInfo}
 							values={portForwardDraftTags}
 							onChange={(next) => {
@@ -1856,9 +1881,12 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 									setPortForwardError(null);
 								}
 							}}
+							onReject={(reject) => setPortForwardError(portForwardRejectMessage(reject))}
 							placeholder={copy.forwardPlaceholder}
 							addLabel={copy.add}
 							removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
+							formatTag={normalizeForwardRelayItem}
+							existingTags={state.stage1Input.forwardRelayItems}
 						/>
 						{portForwardError ? <p className="a-field-error">{portForwardError}</p> : null}
 						<div className="a-modal__actions">

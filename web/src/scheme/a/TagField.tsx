@@ -1,4 +1,23 @@
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
+
+import { tryAppendTag, type AppendTagResult } from "../../lib/tags";
+
+export type TagFieldRejectReason = "duplicate" | "invalid";
+
+export type TagFieldReject = {
+	reason: TagFieldRejectReason;
+	tag?: string;
+	message?: string;
+};
+
+export type TagFieldFlushResult =
+	| { kind: "unchanged"; reason: "empty" }
+	| { kind: "rejected"; reason: TagFieldRejectReason; tag?: string; message?: string }
+	| { kind: "committed"; next: string[] | null };
+
+export type TagFieldHandle = {
+	flushDraft: () => TagFieldFlushResult;
+};
 
 interface TagFieldProps {
 	label: string;
@@ -8,30 +27,82 @@ interface TagFieldProps {
 	placeholder?: string;
 	addLabel?: string;
 	removeTagAriaLabel?: (tag: string) => string;
+	/** 与列表内已有项、{@link existingTags} 比较时的规范化（如端口转发 server:port）。 */
+	formatTag?: (raw: string) => string;
+	/** 已提交到表单其它处的标签（如 modal 草稿对比 stage1 已有端口转发）。 */
+	existingTags?: readonly string[];
+	onReject?: (reject: TagFieldReject) => void;
 }
 
-export function TagField({
-	label,
-	values,
-	onChange,
-	disabled,
-	placeholder,
-	addLabel = "添加",
-	removeTagAriaLabel,
-}: TagFieldProps) {
+function rejectFromAppend(result: Extract<AppendTagResult, { ok: false }>): TagFieldReject | null {
+	if (result.reason === "empty") {
+		return null;
+	}
+	if (result.reason === "duplicate") {
+		return { reason: "duplicate", tag: result.tag };
+	}
+	return { reason: "invalid", message: result.message };
+}
+
+function flushFromAppend(result: AppendTagResult): TagFieldFlushResult {
+	if (result.ok) {
+		return { kind: "committed", next: result.next.length ? result.next : null };
+	}
+	if (result.reason === "empty") {
+		return { kind: "unchanged", reason: "empty" };
+	}
+	const reject = rejectFromAppend(result);
+	return reject
+		? { kind: "rejected", reason: reject.reason, tag: reject.tag, message: reject.message }
+		: { kind: "unchanged", reason: "empty" };
+}
+
+export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagField(
+	{
+		label,
+		values,
+		onChange,
+		disabled,
+		placeholder,
+		addLabel = "添加",
+		removeTagAriaLabel,
+		formatTag,
+		existingTags,
+		onReject,
+	},
+	ref,
+) {
 	const [draft, setDraft] = useState("");
 
 	const list = values ?? [];
 
-	function commitDraft() {
-		const trimmed = draft.trim();
-		if (trimmed === "") {
+	function applyAppend(trimmed: string): TagFieldFlushResult {
+		const result = tryAppendTag(trimmed, list, existingTags ?? [], formatTag);
+		if (result.ok) {
+			onChange(result.next.length ? result.next : null);
 			setDraft("");
-			return;
+			return { kind: "committed", next: result.next.length ? result.next : null };
 		}
-		const next = [...list, trimmed];
-		onChange(next.length ? next : null);
-		setDraft("");
+		const reject = rejectFromAppend(result);
+		if (reject) {
+			setDraft("");
+			onReject?.(reject);
+			return {
+				kind: "rejected",
+				reason: reject.reason,
+				tag: reject.tag,
+				message: reject.message,
+			};
+		}
+		return { kind: "unchanged", reason: "empty" };
+	}
+
+	useImperativeHandle(ref, () => ({
+		flushDraft: () => applyAppend(draft.trim()),
+	}));
+
+	function commitDraft() {
+		applyAppend(draft.trim());
 	}
 
 	function removeAt(index: number) {
@@ -87,4 +158,4 @@ export function TagField({
 			</div>
 		</div>
 	);
-}
+});
