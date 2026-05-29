@@ -131,6 +131,9 @@ export interface RuntimeConfigResponse {
 export interface RuntimeStatusResponse {
 	app: {
 		version: string;
+		releaseTag?: string;
+		imageTag?: string;
+		revision?: string;
 	};
 	subconverter: {
 		healthy: boolean;

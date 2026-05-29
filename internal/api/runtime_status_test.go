@@ -27,7 +27,12 @@ func TestRuntimeStatusHandler(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 
 	runtimeStatusService := runtimestatus.NewService(
-		"test-app",
+		runtimestatus.AppStatus{
+			Version:    "v3.0.0-beta.2",
+			ReleaseTag: "v3.0.0-beta.2",
+			ImageTag:   "beta-latest",
+			Revision:   "86922c3deadbeef86922c3deadbeef86922c3d",
+		},
 		store,
 		runtimestatus.NewUpstreamProber(upstream.URL, 2*time.Second),
 	)
@@ -46,8 +51,17 @@ func TestRuntimeStatusHandler(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if payload.App.Version != "test-app" {
-		t.Fatalf("app version = %q, want test-app", payload.App.Version)
+	if payload.App.Version != "v3.0.0-beta.2" {
+		t.Fatalf("app version = %q, want v3.0.0-beta.2", payload.App.Version)
+	}
+	if payload.App.ReleaseTag != "v3.0.0-beta.2" {
+		t.Fatalf("app release tag = %q, want v3.0.0-beta.2", payload.App.ReleaseTag)
+	}
+	if payload.App.ImageTag != "beta-latest" {
+		t.Fatalf("app image tag = %q, want beta-latest", payload.App.ImageTag)
+	}
+	if payload.App.Revision != "86922c3deadbeef86922c3deadbeef86922c3d" {
+		t.Fatalf("app revision = %q", payload.App.Revision)
 	}
 	if !payload.Subconverter.Healthy {
 		t.Fatalf("subconverter healthy = false, error=%q", payload.Subconverter.Error)

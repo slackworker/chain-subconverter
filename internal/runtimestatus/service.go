@@ -13,20 +13,34 @@ type StorageStatsProvider interface {
 
 // Service assembles the runtime status snapshot.
 type Service struct {
-	appVersion     string
-	storage        StorageStatsProvider
-	subconverter   *UpstreamProber
+	app          AppStatus
+	storage      StorageStatsProvider
+	subconverter *UpstreamProber
 }
 
-func NewService(appVersion string, storage StorageStatsProvider, subconverter *UpstreamProber) *Service {
-	if appVersion == "" {
-		appVersion = version.Version
-	}
+func NewService(app AppStatus, storage StorageStatsProvider, subconverter *UpstreamProber) *Service {
+	app = normalizeAppStatus(app)
 	return &Service{
-		appVersion:   appVersion,
+		app:          app,
 		storage:      storage,
 		subconverter: subconverter,
 	}
+}
+
+func normalizeAppStatus(app AppStatus) AppStatus {
+	if app.Version == "" {
+		app.Version = version.DisplayVersion()
+	}
+	if app.ReleaseTag == "" {
+		app.ReleaseTag = version.ReleaseTag
+	}
+	if app.ImageTag == "" {
+		app.ImageTag = version.ImageTag
+	}
+	if app.Revision == "" {
+		app.Revision = version.Revision
+	}
+	return app
 }
 
 func (service *Service) Snapshot(ctx context.Context, refresh bool) (Snapshot, error) {
@@ -38,9 +52,7 @@ func (service *Service) Snapshot(ctx context.Context, refresh bool) (Snapshot, e
 	subconverterStatus := service.subconverter.Status(ctx, refresh)
 
 	return Snapshot{
-		App: AppStatus{
-			Version: service.appVersion,
-		},
+		App:          service.app,
 		Subconverter: subconverterStatus,
 		Storage:      storage,
 	}, nil

@@ -15,6 +15,7 @@ interface RuntimeStatusBadgesProps {
 const LABELS = {
 	zh: {
 		app: "应用",
+		revision: "SHA",
 		subconverter: "Subconverter",
 		storage: "短链存储",
 		healthy: "可用",
@@ -26,6 +27,7 @@ const LABELS = {
 	},
 	en: {
 		app: "App",
+		revision: "SHA",
 		subconverter: "Subconverter",
 		storage: "Short links",
 		healthy: "healthy",
@@ -62,13 +64,14 @@ function formatStorageTooltip(status: RuntimeStatusResponse, locale: Locale): st
 	return `${copy.storage}: ${storageLine}`;
 }
 
-function formatFooterTooltip(status: RuntimeStatusResponse, locale: Locale): string {
+function formatAppTooltip(status: RuntimeStatusResponse, locale: Locale): string {
 	const copy = LABELS[locale];
 	return [
 		`${copy.app}: ${status.app.version}`,
-		formatSubconverterTooltip(status, locale),
-		formatStorageTooltip(status, locale),
-	].join("\n");
+		status.app.revision ? `${copy.revision}: ${status.app.revision}` : "",
+	]
+		.filter((part) => part && part.trim() !== "")
+		.join(" · ");
 }
 
 /** 在 © 前插入应用版本，形如「Chain Subconverter - dev © 2026」。 */
@@ -99,9 +102,13 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 		void load(false);
 	}, [load]);
 
-	const footerTooltip = status ? formatFooterTooltip(status, locale) : copy.loading;
 	const subTooltip = status ? formatSubconverterTooltip(status, locale) : copy.loading;
 	const storageTooltip = status ? formatStorageTooltip(status, locale) : copy.loading;
+	const appTooltip = status
+		? [formatAppTooltip(status, locale), formatSubconverterTooltip(status, locale), formatStorageTooltip(status, locale)]
+				.filter((part) => part && part.trim() !== "")
+				.join(" · ")
+		: copy.loading;
 	const subLabel =
 		status === null
 			? "…"
@@ -136,7 +143,7 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 	return (
 		<>
 			{footerCredit ? (
-				<p className="a-footer__credit" title={footerTooltip}>
+				<p className="a-footer__credit" title={appTooltip}>
 					{footerCreditWithAppVersion(footerCredit, appLabel)}
 				</p>
 			) : null}

@@ -13,6 +13,9 @@ FROM --platform=$TARGETPLATFORM golang:1.25-alpine AS builder
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 ARG APP_VERSION=dev
+ARG APP_RELEASE_TAG=
+ARG APP_IMAGE_TAG=dev
+ARG APP_REVISION=
 
 WORKDIR /src
 
@@ -24,7 +27,7 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 
-RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X github.com/slackworker/chain-subconverter/internal/version.Version=${APP_VERSION}" -o /out/chain-subconverter ./cmd/server
+RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w -X github.com/slackworker/chain-subconverter/internal/version.Version=${APP_VERSION} -X github.com/slackworker/chain-subconverter/internal/version.ReleaseTag=${APP_RELEASE_TAG} -X github.com/slackworker/chain-subconverter/internal/version.ImageTag=${APP_IMAGE_TAG} -X github.com/slackworker/chain-subconverter/internal/version.Revision=${APP_REVISION}" -o /out/chain-subconverter ./cmd/server
 
 FROM alpine:3.20
 

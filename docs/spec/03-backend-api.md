@@ -249,7 +249,12 @@
 
 ```json
 {
-  "app": { "version": "v1.2.3" },
+  "app": {
+    "version": "v3.0.0-beta.2",
+    "releaseTag": "v3.0.0-beta.2",
+    "imageTag": "3.0.0-beta.2",
+    "revision": "86922c3deadbeef86922c3deadbeef86922c3d"
+  },
   "subconverter": {
     "healthy": true,
     "latencyMs": 42,
@@ -266,7 +271,10 @@
 
 约束：
 
-- `app.version` 由构建注入（优先 release tag）
+- `app.version` 为展示字段：优先 `releaseTag`，否则回退 `imageTag`，再回退本地构建默认值
+- `app.releaseTag` 仅在版本发布 tag 构建时返回（例如 `v3.0.0-beta.2`）
+- `app.imageTag` 为当前镜像 tag（例如 `beta-latest`、`latest`、`dev-latest` 或版本号镜像 tag）
+- `app.revision` 为构建来源 commit SHA，供 hover / 诊断展示
 - `subconverter` 字段由后端探测上游 `/version` 获得；`error` 为脱敏摘要
 - `storage.mode` 由 `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH` 推断：`/tmp` 下为 `temporary`，否则为 `persistent`
 - 与 `GET /healthz` 职责分离：本接口用于运行态展示，不替代存活探测

@@ -8,7 +8,10 @@ type Snapshot struct {
 }
 
 type AppStatus struct {
-	Version string `json:"version"`
+	Version    string `json:"version"`
+	ReleaseTag string `json:"releaseTag,omitempty"`
+	ImageTag   string `json:"imageTag,omitempty"`
+	Revision   string `json:"revision,omitempty"`
 }
 
 type SubconverterStatus struct {

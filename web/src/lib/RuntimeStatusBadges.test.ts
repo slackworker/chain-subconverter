@@ -35,6 +35,9 @@ function buildStatus(overrides: Partial<RuntimeStatusResponse> = {}): RuntimeSta
 	return {
 		app: {
 			version: "v1.2.3",
+			releaseTag: "v1.2.3",
+			imageTag: "beta-latest",
+			revision: "86922c3deadbeef86922c3deadbeef86922c3d",
 			...overrides.app,
 		},
 		subconverter: {
@@ -84,14 +87,20 @@ async function flushEffects() {
 }
 
 describe("RuntimeStatusBadges", () => {
-	it("loads runtime status on mount and shows app version in the footer credit", async () => {
+	it("loads runtime status on mount and shows app version in the footer credit tooltip", async () => {
 		mockGetRuntimeStatus.mockResolvedValueOnce(buildStatus());
 
 		const container = renderBadges();
 		await flushEffects();
+		const credit = container.querySelector(".a-footer__credit");
+		if (!(credit instanceof HTMLParagraphElement)) {
+			throw new Error("footer credit element not found");
+		}
 
 		expect(mockGetRuntimeStatus).toHaveBeenCalledWith(false);
 		expect(container.textContent).toContain("Chain Subconverter - v1.2.3 © 2026");
+		expect(credit.title).toContain("App: v1.2.3");
+		expect(credit.title).toContain("SHA: 86922c3deadbeef86922c3deadbeef86922c3d");
 		expect(container.textContent).toContain("42ms");
 		expect(container.textContent).toContain("1/1000");
 	});

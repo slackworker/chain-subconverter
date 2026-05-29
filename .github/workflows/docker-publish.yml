@@ -42,6 +42,8 @@ jobs:
     outputs:
       checkout_ref: ${{ steps.plan.outputs.checkout_ref }}
       image_version: ${{ steps.plan.outputs.image_version }}
+      release_tag: ${{ steps.plan.outputs.release_tag }}
+      image_tag: ${{ steps.plan.outputs.image_tag }}
       source_sha: ${{ steps.source.outputs.sha }}
       tags: ${{ steps.plan.outputs.tags }}
       labels: ${{ steps.plan.outputs.labels }}
@@ -71,6 +73,8 @@ jobs:
           should_skip_validation=false
           primary_tag=''
           image_version=''
+          release_tag=''
+          image_tag=''
           tags=()
 
           case "$EVENT_NAME" in
@@ -78,15 +82,19 @@ jobs:
               if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
                 primary_tag="${IMAGE_NAME}:latest"
                 image_version='latest'
+                image_tag='latest'
                 tags+=("$primary_tag")
               elif [[ "$GITHUB_REF" == "refs/heads/beta" ]]; then
                 primary_tag="${IMAGE_NAME}:beta-latest"
                 image_version='beta-latest'
+                image_tag='beta-latest'
                 tags+=("$primary_tag")
               elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
                 version="${GITHUB_REF_NAME#v}"
                 primary_tag="${IMAGE_NAME}:${version}"
-                image_version="$version"
+                image_version="$GITHUB_REF_NAME"
+                release_tag="$GITHUB_REF_NAME"
+                image_tag="$version"
                 tags+=("$primary_tag")
                 if [[ "$version" == *-beta.* ]]; then
                   tags+=("${IMAGE_NAME}:beta-latest")
@@ -102,6 +110,7 @@ jobs:
             workflow_dispatch)
               primary_tag="${IMAGE_NAME}:${INPUT_IMAGE_TAG}"
               image_version="$INPUT_IMAGE_TAG"
+              image_tag="$INPUT_IMAGE_TAG"
               tags+=("$primary_tag")
               if [[ "$INPUT_IMAGE_TAG" == "dev-latest" ]]; then
                 should_skip_validation=true
@@ -125,6 +134,8 @@ jobs:
           {
             echo "checkout_ref=$checkout_ref"
             echo "image_version=$image_version"
+            echo "release_tag=$release_tag"
+            echo "image_tag=$image_tag"
             echo "primary_tag=$primary_tag"
             echo "should_trigger_render=$should_trigger_render"
             echo "should_skip_validation=$should_skip_validation"
@@ -252,6 +263,9 @@ jobs:
             org.opencontainers.image.revision=${{ needs.prepare.outputs.source_sha }}
           build-args: |
             APP_VERSION=${{ needs.prepare.outputs.image_version }}
+            APP_RELEASE_TAG=${{ needs.prepare.outputs.release_tag }}
+            APP_IMAGE_TAG=${{ needs.prepare.outputs.image_tag }}
+            APP_REVISION=${{ needs.prepare.outputs.source_sha }}
           outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=docker-publish-${{ matrix.platform_pair }}
           cache-to: type=gha,scope=docker-publish-${{ matrix.platform_pair }},mode=max
