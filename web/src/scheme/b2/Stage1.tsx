@@ -13,6 +13,24 @@ import { TagInput } from "./TagInput";
 import { ChevronDownIcon } from "./Icons";
 import { NoticeRenderer } from "./Notice";
 import { LineNumberTextarea } from "./LineNumberTextarea";
+import type { ColorMode } from "./theme";
+import {
+	accentLink,
+	advancedDivider,
+	advancedPanel,
+	advancedToggle,
+	cardShell,
+	cardSubtitle,
+	cardTitle,
+	checkboxLabel,
+	isDark,
+	neutralBadge,
+	outlineButton,
+	sectionLabel,
+	tagListShell,
+	textInput,
+	verticalRule,
+} from "./theme";
 
 function appendMultilineLine(currentValue: string, nextLine: string) {
 	if (currentValue === "") {
@@ -24,13 +42,16 @@ function appendMultilineLine(currentValue: string, nextLine: string) {
 export function Stage1({
 	workflow,
 	templateDefaultURL = DEFAULT_TEMPLATE_URL,
+	colorMode,
 }: {
 	workflow: AppWorkflowViewModel;
 	templateDefaultURL?: string;
+	colorMode: ColorMode;
 }) {
 	const [isSocks5Open, setIsSocks5Open] = useState(false);
 	const [isPortForwardOpen, setIsPortForwardOpen] = useState(false);
 	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+	const dark = isDark(colorMode);
 
 	const { state, updateStage1Input, isConverting, shouldShowStage2StaleNotice } = workflow;
 	const stage1Input = state.stage1Input;
@@ -51,22 +72,21 @@ export function Stage1({
 		setIsPortForwardOpen(false);
 	}
 
+	const statusBadgeClass =
+		workflow.stage1Status.tone === "success"
+			? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+			: workflow.stage1Status.tone === "warning"
+				? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+				: neutralBadge(colorMode);
+
 	return (
-		<div className="flex flex-col gap-6 bg-zinc-900/50 backdrop-blur-xl border border-zinc-800/80 p-6 rounded-2xl shadow-xl">
+		<div className={cardShell(colorMode)}>
 			<div className="flex items-center justify-between">
 				<div>
-					<h2 className="text-2xl font-semibold text-zinc-100 tracking-tight">1. 输入订阅信息</h2>
-					<p className="text-zinc-400 text-sm mt-1">请填写您的落地节点与中转节点信息</p>
+					<h2 className={cardTitle(colorMode)}>1. 输入订阅信息</h2>
+					<p className={cardSubtitle(colorMode)}>请填写您的落地节点与中转节点信息</p>
 				</div>
-				<span
-					className={`px-3 py-1 text-xs font-medium rounded-full border ${
-						workflow.stage1Status.tone === "success"
-							? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-							: workflow.stage1Status.tone === "warning"
-								? "bg-amber-500/10 text-amber-400 border-amber-500/20"
-								: "bg-zinc-800/80 text-zinc-400 border-zinc-700/50"
-					}`}
-				>
+				<span className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusBadgeClass}`}>
 					{workflow.stage1Status.label}
 				</span>
 			</div>
@@ -81,13 +101,10 @@ export function Stage1({
 				<div className="flex-1">
 					<LineNumberTextarea
 						id="b-stage1-landing"
+						colorMode={colorMode}
 						label="落地节点信息"
 						labelAction={
-							<button
-								type="button"
-								onClick={() => setIsSocks5Open(true)}
-								className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-							>
+							<button type="button" onClick={() => setIsSocks5Open(true)} className={accentLink()}>
 								+ 添加 SOCKS5
 							</button>
 						}
@@ -102,14 +119,11 @@ export function Stage1({
 				<div className="flex-1">
 					<LineNumberTextarea
 						id="b-stage1-transit"
+						colorMode={colorMode}
 						label="中转信息"
 						labelAction={
 							portForwardEnabled ? (
-								<button
-									type="button"
-									onClick={openPortForwardModal}
-									className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-								>
+								<button type="button" onClick={openPortForwardModal} className={accentLink()}>
 									+ 端口转发
 								</button>
 							) : null
@@ -121,20 +135,20 @@ export function Stage1({
 						errorText={workflow.getStage1FieldErrors("transitRawText")[0]?.message}
 						bottomContent={
 							portForwardEnabled && stage1Input.forwardRelayItems.length > 0 ? (
-								<ul className="flex flex-wrap gap-2 p-2 bg-zinc-950 border border-zinc-800 rounded-lg">
+								<ul className={tagListShell(colorMode)} aria-label="端口转发标签">
 									{stage1Input.forwardRelayItems.map((item, index) => (
 										<li
 											key={`${item}-${index}`}
-											className="flex items-center gap-1.5 text-xs px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/20"
+											className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 font-mono"
 										>
 											<span>{item}</span>
 											<button
 												type="button"
-												className="hover:text-white transition-colors"
+												className="hover:text-red-400 font-bold transition-colors"
 												aria-label={`移除 ${item}`}
 												onClick={() => updateStage1Input((current) => removeForwardRelayItem(current, index))}
 											>
-												×
+												&times;
 											</button>
 										</li>
 									))}
@@ -143,17 +157,17 @@ export function Stage1({
 						}
 					/>
 					{workflow.getStage1FieldErrors("forwardRelayItems").map((error, index) => (
-						<span key={index} className="text-xs text-red-400 mt-1 block">
+						<span key={index} className="text-xs text-red-400 font-semibold mt-1 block">
 							{error.message}
 						</span>
 					))}
 				</div>
 			</div>
 
-			<div className="flex flex-col gap-3 bg-zinc-950/50 border border-zinc-800/50 rounded-xl p-4">
+			<div className={advancedPanel(colorMode)}>
 				<button
 					type="button"
-					className="flex items-center gap-2 text-zinc-300 text-sm font-medium hover:text-white transition-colors w-full text-left"
+					className={advancedToggle(colorMode)}
 					onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
 					aria-expanded={isAdvancedOpen}
 				>
@@ -162,14 +176,12 @@ export function Stage1({
 				</button>
 
 				{isAdvancedOpen ? (
-					<div className="flex flex-col gap-5 pt-3 border-t border-zinc-800/50">
+					<div className={advancedDivider(colorMode)}>
 						<div className="flex flex-col gap-2">
-							<label className="text-xs text-zinc-400">模板 URL</label>
+							<label className={sectionLabel()}>模板 URL</label>
 							<div className="flex gap-2">
 								<input
-									className={`flex-1 bg-zinc-950 border rounded-lg p-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors ${
-										workflow.getStage1FieldErrors("config").length > 0 ? "border-red-500/70" : "border-zinc-800"
-									}`}
+									className={textInput(colorMode, workflow.getStage1FieldErrors("config").length > 0)}
 									placeholder="请使用带地域分组的模板 URL"
 									value={currentTemplateURL}
 									onChange={(event) =>
@@ -184,7 +196,7 @@ export function Stage1({
 								/>
 								<button
 									type="button"
-									className="px-3 py-2 text-xs rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40"
+									className={outlineButton(colorMode)}
 									disabled={currentTemplateURL.trim() === templateDefaultURL}
 									onClick={() =>
 										updateStage1Input((current) => ({
@@ -200,7 +212,7 @@ export function Stage1({
 								</button>
 							</div>
 							{workflow.getStage1FieldErrors("config").map((error, index) => (
-								<span key={index} className="text-xs text-red-400">
+								<span key={index} className="text-xs text-red-400 font-semibold">
 									{error.message}
 								</span>
 							))}
@@ -208,8 +220,9 @@ export function Stage1({
 
 						<div className="flex flex-col md:flex-row gap-4">
 							<div className="flex-1 flex flex-col gap-2">
-								<label className="text-xs text-zinc-400">包含节点 (include)</label>
+								<label className={sectionLabel()}>包含节点 (include)</label>
 								<TagInput
+									colorMode={colorMode}
 									tags={stage1Input.advancedOptions.include || []}
 									onChange={(tags) =>
 										updateStage1Input((current) => ({
@@ -221,8 +234,9 @@ export function Stage1({
 								/>
 							</div>
 							<div className="flex-1 flex flex-col gap-2">
-								<label className="text-xs text-zinc-400">排除节点 (exclude)</label>
+								<label className={sectionLabel()}>排除节点 (exclude)</label>
 								<TagInput
+									colorMode={colorMode}
 									tags={stage1Input.advancedOptions.exclude || []}
 									onChange={(tags) =>
 										updateStage1Input((current) => ({
@@ -235,8 +249,9 @@ export function Stage1({
 							</div>
 						</div>
 
-						<div className="flex flex-wrap gap-6 pt-2">
+						<div className="flex flex-wrap gap-6 pt-2 select-none">
 							<CheckboxField
+								colorMode={colorMode}
 								label="emoji"
 								checked={stage1Input.advancedOptions.emoji === true}
 								onChange={(checked) =>
@@ -247,6 +262,7 @@ export function Stage1({
 								}
 							/>
 							<CheckboxField
+								colorMode={colorMode}
 								label="udp"
 								checked={stage1Input.advancedOptions.udp === true}
 								onChange={(checked) =>
@@ -257,6 +273,7 @@ export function Stage1({
 								}
 							/>
 							<CheckboxField
+								colorMode={colorMode}
 								label="跳过证书校验 (scv)"
 								checked={stage1Input.advancedOptions.skipCertVerify === true}
 								onChange={(checked) =>
@@ -267,12 +284,12 @@ export function Stage1({
 								}
 							/>
 
-							<div className="w-px bg-zinc-800 mx-2" />
+							<div className={verticalRule(colorMode)} />
 
 							<label className="flex items-center gap-2 cursor-pointer group">
 								<div
 									className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-										portForwardEnabled ? "bg-indigo-600" : "bg-zinc-700"
+										portForwardEnabled ? "bg-indigo-600" : dark ? "bg-zinc-700" : "bg-slate-300"
 									}`}
 								>
 									<span
@@ -293,9 +310,7 @@ export function Stage1({
 										}}
 									/>
 								</div>
-								<span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">
-									启用端口转发服务
-								</span>
+								<span className={checkboxLabel(colorMode)}>启用端口转发服务</span>
 							</label>
 						</div>
 					</div>
@@ -323,7 +338,7 @@ export function Stage1({
 					type="button"
 					onClick={() => void workflow.handleStage1Convert()}
 					disabled={isConverting || stage1Empty}
-					className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center min-w-[140px]"
+					className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center min-w-[140px]"
 				>
 					{isConverting ? (
 						<div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -356,17 +371,22 @@ function CheckboxField({
 	label,
 	checked,
 	onChange,
+	colorMode,
 }: {
 	label: string;
 	checked: boolean;
 	onChange: (checked: boolean) => void;
+	colorMode: ColorMode;
 }) {
+	const dark = isDark(colorMode);
 	return (
 		<label className="flex items-center gap-2 cursor-pointer group">
 			<div className="relative flex items-center justify-center">
 				<input
 					type="checkbox"
-					className="peer appearance-none w-5 h-5 border border-zinc-700 rounded bg-zinc-950 checked:bg-indigo-600 checked:border-indigo-500 transition-colors cursor-pointer"
+					className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${
+						dark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"
+					}`}
 					checked={checked}
 					onChange={(event) => onChange(event.target.checked)}
 				/>
@@ -379,7 +399,7 @@ function CheckboxField({
 					<path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			</div>
-			<span className="text-sm text-zinc-300 group-hover:text-zinc-100 transition-colors">{label}</span>
+			<span className={checkboxLabel(colorMode)}>{label}</span>
 		</label>
 	);
 }

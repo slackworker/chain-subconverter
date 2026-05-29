@@ -1,10 +1,13 @@
 import { useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
+import type { ColorMode } from "./theme";
+import { fieldLabel, monoFieldShell, monoGutter, monoTextarea } from "./theme";
 
 interface LineNumberTextareaProps {
 	id: string;
 	label: string;
 	value: string;
 	onChange: (next: string) => void;
+	colorMode: ColorMode;
 	placeholder?: string;
 	disabled?: boolean;
 	labelAction?: ReactNode;
@@ -18,6 +21,7 @@ export function LineNumberTextarea({
 	label,
 	value,
 	onChange,
+	colorMode,
 	placeholder,
 	disabled,
 	labelAction,
@@ -71,28 +75,19 @@ export function LineNumberTextarea({
 	return (
 		<div className="flex flex-col gap-2">
 			<div className="flex justify-between items-center">
-				<label className="text-sm font-medium text-zinc-300" htmlFor={id}>
+				<label className={fieldLabel(colorMode)} htmlFor={id}>
 					{label}
 				</label>
 				{labelAction}
 			</div>
-			<div
-				ref={shellRef}
-				className={`flex overflow-x-auto rounded-xl border bg-zinc-950/80 font-mono text-sm ${
-					hasError ? "border-red-500/70" : "border-zinc-800"
-				}`}
-			>
-				<div
-					ref={gutterRef}
-					className="select-none shrink-0 border-r border-zinc-800 px-3 py-3 text-right text-xs leading-5 text-zinc-600"
-					aria-hidden
-				>
+			<div ref={shellRef} className={monoFieldShell(colorMode, hasError)}>
+				<div ref={gutterRef} className={monoGutter(colorMode)} aria-hidden>
 					<pre className="m-0 whitespace-pre">{gutterText}</pre>
 				</div>
 				<textarea
 					ref={taRef}
 					id={id}
-					className="min-h-[10rem] resize-none border-0 bg-transparent px-3 py-3 leading-5 text-zinc-200 outline-none disabled:opacity-50 whitespace-pre overflow-x-auto"
+					className={monoTextarea(colorMode)}
 					value={value}
 					onChange={(event) => onChange(event.target.value)}
 					placeholder={placeholder}
@@ -102,7 +97,7 @@ export function LineNumberTextarea({
 				/>
 			</div>
 			{bottomContent}
-			{errorText ? <span className="text-xs text-red-400">{errorText}</span> : null}
+			{errorText ? <span className="text-xs text-red-400 font-semibold">{errorText}</span> : null}
 		</div>
 	);
 }
