@@ -1153,6 +1153,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											}))
 										}
 										placeholder={copy.tagPlaceholder}
+										addLabel={copy.add}
 										removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
 									/>
 									<TagField
@@ -1165,6 +1166,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											}))
 										}
 										placeholder={copy.tagPlaceholder}
+										addLabel={copy.add}
 										removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
 									/>
 								</div>
@@ -1854,6 +1856,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 								}
 							}}
 							placeholder={copy.forwardPlaceholder}
+							addLabel={copy.add}
 							removeTagAriaLabel={(tag) => translate(copy.removeTag, { tag })}
 						/>
 						{portForwardError ? <p className="a-field-error">{portForwardError}</p> : null}
