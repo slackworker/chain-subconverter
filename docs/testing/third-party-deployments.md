@@ -25,9 +25,9 @@
 
 ---
 
-## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建）
+## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建第 2 轮）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:d5fc88615146b7098e7ff0dc720bbe303959dc9d285a7e82b865be09f7572410`，与 vps-02 一致；`beta` @ `6fa6a46`，非新 Beta tag）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:36a8eb9fa16a618a08b9bd974479bb103e264993906227e29287ff273bf1265b`，与 vps-02 一致；`beta` @ `86922c3`，非新 Beta tag）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）
@@ -36,9 +36,9 @@
 
 ---
 
-## 公网 HTTPS 一体化 — vps-02（2026-05-29，`beta-latest` 滚动构建）
+## 公网 HTTPS 一体化 — vps-02（2026-05-29，`beta-latest` 滚动构建第 2 轮）
 
-- **镜像 tag**：与 vps-01 同 digest（`beta-latest` 滚动，`beta` @ `6fa6a46`）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest` 滚动，`beta` @ `86922c3`）；`subconverter:integration-chain-subconverter` 同 digest（`sha256:c7073588...`，`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致生成链接为 `http://`）
