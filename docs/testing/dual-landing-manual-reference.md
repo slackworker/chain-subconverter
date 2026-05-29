@@ -80,4 +80,4 @@ relay-b.example.com:8443
 
 ## 验收
 
-- short ID 金样：`87bvTvKucsT`（Stage3 反向解析；预览站每次生成 ID 不同，Stage2 组合应一致）
+- short ID 金样：`FPJw27S4ey`（Stage3 反向解析；预览站每次生成 ID 不同，Stage2 组合应一致）
