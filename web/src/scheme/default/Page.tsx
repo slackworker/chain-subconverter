@@ -1220,6 +1220,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										/>
 										{copy.skipCertVerify}
 									</label>
+									<div className="a-check-row__divider" aria-hidden />
 									<label className="a-check a-check--switch">
 										<input
 											className="a-switch__input"

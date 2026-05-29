@@ -1307,7 +1307,16 @@
 .a-check-row {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
 	gap: 0.85rem 1.25rem;
+}
+
+.a-check-row__divider {
+	flex: 0 0 auto;
+	align-self: stretch;
+	width: 1px;
+	margin: 0 0.5rem;
+	background: color-mix(in srgb, var(--color-line) 65%, transparent);
 }
 
 .a-check {
