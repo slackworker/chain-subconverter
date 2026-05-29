@@ -1,6 +1,6 @@
 # 项目状态
 
-> 最近更新：2026-05-29 · 正式 Beta tag **`v3.0.0-beta.3`**；滚动镜像 **`beta-latest`**（digest `sha256:36a8eb9f…`，`beta` @ `86922c3`）
+> 最近更新：2026-05-29 · 正式 Beta tag **`v3.0.0-beta.3`**；滚动镜像 **`beta-latest`**（digest `sha256:1262e8a0…`，`beta` @ `32d5cfb`）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
 
@@ -51,6 +51,7 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 | 日期 | 摘要 |
 |------|------|
+| 2026-05-29 | vps-01/02 滚动 `beta-latest` 第 3 轮 + `deployed-smoke` **通过**（digest `sha256:1262e8a0…`，`beta` @ `32d5cfb`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
 | 2026-05-29 | 文档/发版口径 **`v3.0.0-beta.3`**（落地副本 + Stage 2 行复制/`rowId`）；vps-01/02 滚动 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:36a8eb9f…`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
 | 2026-05-27 | snapshot-first + stage2 `rowId`/复制行：spec 对齐；`go test ./...`、`npm test`、`test:e2e:mock` **通过** |
 | 2026-05-25 | `v3.0.0-beta.2`；vps-01/02 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:afa71279…`） |
