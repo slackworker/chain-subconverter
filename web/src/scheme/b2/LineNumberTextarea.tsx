@@ -73,7 +73,7 @@ export function LineNumberTextarea({
 	}, [adjustLayout]);
 
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="flex w-full min-w-0 flex-col gap-2">
 			<div className="flex justify-between items-center">
 				<label className={fieldLabel(colorMode)} htmlFor={id}>
 					{label}

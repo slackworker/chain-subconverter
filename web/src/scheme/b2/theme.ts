@@ -59,15 +59,15 @@ export function textInput(colorMode: ColorMode, hasError = false): string {
 export function monoFieldShell(colorMode: ColorMode, hasError = false): string {
 	const dark = isDark(colorMode);
 	const border = hasError ? "border-red-500/70" : dark ? "border-zinc-800" : "border-slate-200";
-	return `flex overflow-x-auto rounded-xl border font-mono text-sm ${border} ${dark ? "bg-zinc-950/80" : "bg-slate-50"}`;
+	return `grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] overflow-x-auto overflow-y-hidden rounded-xl border font-mono text-sm ${border} ${dark ? "bg-zinc-950/80" : "bg-slate-50"}`;
 }
 
 export function monoGutter(colorMode: ColorMode): string {
-	return `select-none shrink-0 border-r px-3 py-3 text-right text-xs leading-5 ${isDark(colorMode) ? "border-zinc-800 text-zinc-600" : "border-slate-200 text-slate-400"}`;
+	return `sticky left-0 z-10 select-none overflow-hidden self-stretch border-r px-3 py-3 text-right text-xs leading-5 ${isDark(colorMode) ? "border-zinc-800 bg-zinc-950/80 text-zinc-600" : "border-slate-200 bg-slate-50 text-slate-400"}`;
 }
 
 export function monoTextarea(colorMode: ColorMode): string {
-	return `min-h-[10rem] resize-none border-0 bg-transparent px-3 py-3 leading-5 outline-none disabled:opacity-50 whitespace-pre overflow-x-auto ${isDark(colorMode) ? "text-zinc-200" : "text-slate-800"}`;
+	return `block min-h-[10rem] resize-none overflow-hidden border-0 bg-transparent px-3 py-3 leading-5 outline-none disabled:opacity-50 whitespace-pre ${isDark(colorMode) ? "text-zinc-200" : "text-slate-800"}`;
 }
 
 export function selectField(colorMode: ColorMode, hasError = false): string {

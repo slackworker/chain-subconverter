@@ -6,6 +6,8 @@ import { TagInput } from "./TagInput";
 import { ChevronDownIcon } from "./Icons";
 import { NoticeRenderer } from "./Notice";
 import { LOCALES, type Locale } from "./locales";
+import { LineNumberTextarea } from "../b2/LineNumberTextarea";
+import { accentLink, tagListShell } from "../b2/theme";
 
 interface Stage1Props {
 	workflow: AppWorkflowViewModel;
@@ -106,70 +108,77 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 
 			<NoticeRenderer messages={messages} blockingErrors={errors} locale={locale} />
 
-			<div className="flex flex-col md:flex-row gap-6">
-				{/* 落地节点 */}
-				<div className="flex-1 flex flex-col gap-2">
-					<div className="flex justify-between items-center">
-						<label className={`text-sm font-semibold ${isDark ? "text-zinc-300" : "text-slate-700"}`}>{copy.landingInfo}</label>
-						<button 
-							onClick={() => setIsSocks5Open(true)}
-							disabled={isConflictReadonly}
-							className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors disabled:opacity-50"
-						>
-							{copy.addSocks5}
-						</button>
-					</div>
-					<textarea
-						className={`w-full h-40 border rounded-xl p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50 whitespace-pre overflow-x-auto ${isDark ? "bg-zinc-950/80 border-zinc-800 text-zinc-200 focus:border-indigo-500/50" : "bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500/50"}`}
-						placeholder={copy.landingPlaceholder}
+			<div className="flex flex-col gap-6 md:flex-row">
+				<div className="min-w-0 flex-1">
+					<LineNumberTextarea
+						id="b1-stage1-landing"
+						colorMode={colorMode}
+						label={copy.landingInfo}
+						labelAction={
+							<button
+								type="button"
+								onClick={() => setIsSocks5Open(true)}
+								disabled={isConflictReadonly}
+								className={accentLink()}
+							>
+								{copy.addSocks5}
+							</button>
+						}
 						value={stage1Input.landingRawText}
-						aria-label={copy.landingInfo}
+						onChange={(next) => updateStage1Input((current) => ({ ...current, landingRawText: next }))}
+						placeholder={copy.landingPlaceholder}
 						disabled={isConflictReadonly}
-						onChange={e => updateStage1Input(c => ({ ...c, landingRawText: e.target.value }))}
+						hasError={workflow.getStage1FieldErrors("landingRawText").length > 0}
+						errorText={workflow.getStage1FieldErrors("landingRawText")[0]?.message}
 					/>
-					<FieldErrors errors={workflow.getStage1FieldErrors("landingRawText")} />
 				</div>
 
-				{/* 中转节点 */}
-				<div className="flex-1 flex flex-col gap-2">
-					<div className="flex justify-between items-center">
-						<label className={`text-sm font-semibold ${isDark ? "text-zinc-300" : "text-slate-700"}`}>{copy.transitInfo}</label>
-						{stage1Input.advancedOptions.enablePortForward && (
-							<button 
-								onClick={handleOpenPortForward}
-								disabled={isConflictReadonly}
-								className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors disabled:opacity-50"
-							>
-								{copy.addPortForward}
-							</button>
-						)}
-					</div>
-					<textarea
-						className={`w-full h-40 border rounded-xl p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50 whitespace-pre overflow-x-auto ${isDark ? "bg-zinc-950/80 border-zinc-800 text-zinc-200 focus:border-indigo-500/50" : "bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500/50"}`}
-						placeholder={copy.transitPlaceholder}
+				<div className="min-w-0 flex-1 flex flex-col gap-2">
+					<LineNumberTextarea
+						id="b1-stage1-transit"
+						colorMode={colorMode}
+						label={copy.transitInfo}
+						labelAction={
+							stage1Input.advancedOptions.enablePortForward ? (
+								<button
+									type="button"
+									onClick={handleOpenPortForward}
+									disabled={isConflictReadonly}
+									className={accentLink()}
+								>
+									{copy.addPortForward}
+								</button>
+							) : null
+						}
 						value={stage1Input.transitRawText}
-						aria-label={copy.transitInfo}
+						onChange={(next) => updateStage1Input((current) => ({ ...current, transitRawText: next }))}
+						placeholder={copy.transitPlaceholder}
 						disabled={isConflictReadonly}
-						onChange={e => updateStage1Input(c => ({ ...c, transitRawText: e.target.value }))}
+						hasError={workflow.getStage1FieldErrors("transitRawText").length > 0}
+						errorText={workflow.getStage1FieldErrors("transitRawText")[0]?.message}
+						bottomContent={
+							stage1Input.advancedOptions.enablePortForward && stage1Input.forwardRelayItems.length > 0 ? (
+								<ul className={tagListShell(colorMode)} aria-label={copy.portForwardTags}>
+									{stage1Input.forwardRelayItems.map((item: string, index: number) => (
+										<li
+											key={`${item}-${index}`}
+											className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 font-mono"
+										>
+											<span>{item}</span>
+											<button
+												type="button"
+												onClick={() => handleRemoveForwardTag(index)}
+												aria-label={copy.removeTag.replace("{tag}", item)}
+												className="hover:text-red-400 font-bold transition-colors"
+											>
+												&times;
+											</button>
+										</li>
+									))}
+								</ul>
+							) : null
+						}
 					/>
-					<FieldErrors errors={workflow.getStage1FieldErrors("transitRawText")} />
-					
-					{stage1Input.advancedOptions.enablePortForward && stage1Input.forwardRelayItems.length > 0 && (
-						<ul className={`flex flex-wrap gap-2 p-2.5 border rounded-lg ${isDark ? "bg-zinc-950 border-zinc-850" : "bg-slate-50 border-slate-200"}`} aria-label={copy.portForwardTags}>
-							{stage1Input.forwardRelayItems.map((item: string, index: number) => (
-								<li key={`${item}-${index}`} className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 font-mono">
-									<span>{item}</span>
-									<button 
-										onClick={() => handleRemoveForwardTag(index)}
-										aria-label={copy.removeTag.replace("{tag}", item)}
-										className="hover:text-red-400 font-bold transition-colors"
-									>
-										&times;
-									</button>
-								</li>
-							))}
-						</ul>
-					)}
 					<FieldErrors errors={workflow.getStage1FieldErrors("forwardRelayItems")} />
 				</div>
 			</div>

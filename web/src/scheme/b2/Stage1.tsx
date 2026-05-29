@@ -97,8 +97,8 @@ export function Stage1({
 				responseOriginStage={workflow.responseOriginStage}
 			/>
 
-			<div className="flex flex-col md:flex-row gap-6">
-				<div className="flex-1">
+			<div className="flex flex-col gap-6 md:flex-row">
+				<div className="min-w-0 flex-1">
 					<LineNumberTextarea
 						id="b-stage1-landing"
 						colorMode={colorMode}
@@ -116,7 +116,7 @@ export function Stage1({
 					/>
 				</div>
 
-				<div className="flex-1">
+				<div className="min-w-0 flex-1">
 					<LineNumberTextarea
 						id="b-stage1-transit"
 						colorMode={colorMode}
