@@ -6,13 +6,13 @@ export const SHELL_LOCALES = {
 		themeToDark: "切换到暗色主题",
 		themeToLight: "切换到亮色主题",
 		githubRepo: "打开 GitHub 仓库",
-		stage1Desc: "输入落地与中转信息，执行转换以生成阶段 2 配置基底",
+		stage1Desc: "填写落地与中转，转换生成配置基底",
 	},
 	en: {
 		languageToggle: "Toggle language",
 		themeToDark: "Toggle Dark Mode",
 		themeToLight: "Toggle Light Mode",
 		githubRepo: "GitHub Repository",
-		stage1Desc: "Enter landing and transit information to initialize Stage 2 base",
+		stage1Desc: "Fill landing & transit, convert for config baseline",
 	},
 } as const satisfies Record<ShellLocale, Record<string, string>>;
