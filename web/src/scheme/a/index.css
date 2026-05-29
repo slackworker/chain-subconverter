@@ -561,6 +561,22 @@
 	text-align: center;
 }
 
+@media (max-width: 640px) {
+	.a-footer__inner {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.a-footer__credit {
+		grid-column: 1;
+		justify-self: start;
+		text-align: left;
+	}
+
+	.a-footer__end {
+		grid-column: 2;
+	}
+}
+
 .a-log-footer__toggle {
 	grid-column: 3;
 	justify-self: end;
