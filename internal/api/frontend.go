@@ -41,6 +41,18 @@ type frontendAssetsHandler struct {
 	files     http.Handler
 }
 
+func (handler *frontendAssetsHandler) requestOriginFor(request *http.Request) requestOrigin {
+	if provider, ok := handler.next.(accessLogOriginProvider); ok {
+		return provider.requestOriginFor(request)
+	}
+
+	return requestOrigin{
+		clientIP: clientIPAddress(request.RemoteAddr),
+		scheme:   requestScheme(request),
+		host:     requestHost(request),
+	}
+}
+
 func (handler *frontendAssetsHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodGet && request.Method != http.MethodHead {
 		handler.next.ServeHTTP(writer, request)

@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type accessLogOriginProvider interface {
+	requestOriginFor(request *http.Request) requestOrigin
+}
+
 type accessLogResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -42,7 +46,7 @@ func WithAccessLog(next http.Handler) http.Handler {
 
 		statusCode := wrapped.statusCode
 		duration := time.Since(start)
-		clientIP := clientIPAddress(request.RemoteAddr)
+		clientIP := accessLogClientIP(next, request)
 
 		path := redactRequestPath(request.URL.Path, request.URL.RawQuery)
 		message := fmt.Sprintf(
@@ -65,6 +69,14 @@ func WithAccessLog(next http.Handler) http.Handler {
 			log.Printf("INFO %s", message)
 		}
 	})
+}
+
+func accessLogClientIP(next http.Handler, request *http.Request) string {
+	if provider, ok := next.(accessLogOriginProvider); ok {
+		return provider.requestOriginFor(request).clientIP
+	}
+
+	return clientIPAddress(request.RemoteAddr)
 }
 
 func redactRequestPath(requestPath string, rawQuery string) string {
