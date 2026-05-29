@@ -98,9 +98,9 @@ describe("RuntimeStatusBadges", () => {
 
 	it("refreshes runtime status on hover and focus intent", async () => {
 		mockGetRuntimeStatus
-			.mockResolvedValueOnce(buildStatus({ subconverter: { latencyMs: 42 } }))
-			.mockResolvedValueOnce(buildStatus({ subconverter: { latencyMs: 84 } }))
-			.mockResolvedValueOnce(buildStatus({ subconverter: { latencyMs: 126 } }));
+			.mockResolvedValueOnce(buildStatus({ subconverter: { healthy: true, latencyMs: 42 } }))
+			.mockResolvedValueOnce(buildStatus({ subconverter: { healthy: true, latencyMs: 84 } }))
+			.mockResolvedValueOnce(buildStatus({ subconverter: { healthy: true, latencyMs: 126 } }));
 
 		const container = renderBadges();
 		await flushEffects();
