@@ -25,9 +25,9 @@
 
 ---
 
-## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建第 4 轮）
+## 内网一体化 — vps-01（2026-05-29，`beta-latest` 滚动构建第 5 轮）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:61c4789344c6ec187442919670bea6ae4545157232196de427a7b77f3a86c215`，与 vps-02 一致；`beta` @ `07f99f4`；发版口径 **`v3.0.0-beta.3`**）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:fe44dd397bb7572390300efad731f6265869a523fa0b19b7bac93f9f0e1a4478`，与 vps-02 一致；`beta` @ `3f8212e`；发版口径 **`v3.0.0-beta.3`**）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）
@@ -36,15 +36,21 @@
 
 ---
 
-## 公网 HTTPS 一体化 — vps-02（2026-05-29，`beta-latest` 滚动构建第 4 轮）
+## 公网 HTTPS 一体化 — vps-02（2026-05-29，`beta-latest` 滚动构建第 5 轮）
 
-- **镜像 tag**：与 vps-01 同 digest（`beta-latest` 滚动，`beta` @ `07f99f4`；发版口径 **`v3.0.0-beta.3`**）；`subconverter:integration-chain-subconverter` 同 digest（`sha256:c7073588...`，`/version` = `v0.9.2-c7b26b5-...`）
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest` 滚动，`beta` @ `3f8212e`；发版口径 **`v3.0.0-beta.3`**）；`subconverter:integration-chain-subconverter` 同 digest（`sha256:c7073588...`，`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致生成链接为 `http://`）
 - **回归**：公网 HTTPS、`deployed-smoke`（origin 须与 `E2E_BASE_URL` 一致）、generate / short-links / 订阅读取
 - **结果**：**通过**
 - **细节**：SSH、域名、smoke 命令见本地文件
+
+---
+
+## 历史 — 内网/公网一体化（2026-05-29，`beta-latest` 滚动构建第 4 轮）
+
+vps-01 / vps-02 以 digest `sha256:61c4789344c6ec187442919670bea6ae4545157232196de427a7b77f3a86c215`（`beta` @ `07f99f4`；发版口径 **`v3.0.0-beta.3`**）完成内网与公网一体化回归，`deployed-smoke` 均为 **通过**。
 
 ---
 
