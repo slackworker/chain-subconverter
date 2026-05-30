@@ -28,6 +28,7 @@ import {
 } from "../../lib/stage2";
 import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import type { WorkflowLogEntry } from "../../lib/state";
+import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField, type TagFieldHandle, type TagFieldReject } from "./TagField";
@@ -345,26 +346,6 @@ function getStageLabel(stage: "stage1" | "stage2" | "stage3" | null, locale: Loc
 		return undefined;
 	}
 	return COPY[locale][`${stage}Label` as const];
-}
-
-function getWorkflowLogLevelLabel(level: WorkflowLogEntry["level"], locale: Locale) {
-	const map = {
-		info: "logLevelInfo",
-		warning: "logLevelWarning",
-		success: "logLevelSuccess",
-		error: "logLevelError",
-	} satisfies Record<WorkflowLogEntry["level"], keyof typeof COPY.zh>;
-	return COPY[locale][map[level]];
-}
-
-function formatWorkflowLogTime(createdAt: string, locale: Locale) {
-	const formatter = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", {
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-		hour12: false,
-	});
-	return formatter.format(new Date(createdAt));
 }
 
 function getStatusLabel(label: string, locale: Locale) {

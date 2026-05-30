@@ -201,6 +201,52 @@
       }
     ]
   },
-  "messages": [],
+  "messages": [
+    {
+      "level": "info",
+      "code": "STAGE1_CONVERT_SUMMARY",
+      "message": "已识别 7 个落地节点、2 个中继，Stage 2 已初始化 7 行，其中 7 行已自动填入链式目标。"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇭🇰 Alpha-SS-HK」自动填入 🇭🇰 香港节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇭🇰 Alpha-Reality-HK-PortForward」自动填入 🇭🇰 香港节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇭🇰 Alpha-Reality-HK-Direct」自动填入 🇭🇰 香港节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇯🇵 Beta-SS-JP」自动填入 🇯🇵 日本节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇯🇵 Beta-Reality-JP-PortForward」自动填入 🇯🇵 日本节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇯🇵 Beta-Reality-JP-Direct」自动填入 🇯🇵 日本节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇭🇰 Manual-SOCKS5-HK-Fallback」自动填入 🇭🇰 香港节点"
+    },
+    {
+      "level": "warning",
+      "code": "CHAIN_TARGET_REVIEW",
+      "message": "有 4 行建议复核链式目标选择。"
+    }
+  ],
   "blockingErrors": []
 }

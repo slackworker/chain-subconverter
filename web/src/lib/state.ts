@@ -11,6 +11,7 @@ export interface WorkflowLogEntry {
 	message: string;
 	source: "backend" | "frontend";
 	originStage: ResponseOriginStage | null;
+	kind?: "entry" | "separator";
 }
 
 export interface GeneratedUrls {

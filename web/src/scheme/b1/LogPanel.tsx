@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { WorkflowLogEntry } from "../../lib/state";
+import { formatWorkflowLogTime, getWorkflowLogLevelLabel, getWorkflowSourceLabel, getWorkflowStageLabel } from "../../lib/workflow-log-display";
 import { InfoIcon, AlertTriangleIcon, AlertCircleIcon, ChevronDownIcon, TerminalIcon } from "./Icons";
 import { LOCALES, type Locale } from "./locales";
 
@@ -45,38 +46,6 @@ export function LogPanel({ entries, locale }: LogPanelProps) {
 		}
 	};
 
-	const getLevelText = (level: string) => {
-		switch (level) {
-			case "error": return copy.logLevelError;
-			case "warning": return copy.logLevelWarning;
-			case "success": return copy.logLevelSuccess;
-			default: return copy.logLevelInfo;
-		}
-	};
-
-	const getStageText = (stage: string) => {
-		switch (stage) {
-			case "stage1": return locale === "zh" ? "输入" : "Stage 1";
-			case "stage2": return locale === "zh" ? "配置" : "Stage 2";
-			case "stage3": return locale === "zh" ? "输出" : "Stage 3";
-			default: return stage;
-		}
-	};
-
-	const formatTime = (createdAt: string) => {
-		try {
-			const date = new Date(createdAt);
-			return date.toLocaleTimeString(locale === "zh" ? "zh-CN" : "en-US", {
-				hour: "2-digit",
-				minute: "2-digit",
-				second: "2-digit",
-				hour12: false,
-			});
-		} catch {
-			return "";
-		}
-	};
-
 	return (
 		<div className="fixed bottom-8 right-8 z-50 select-none" ref={panelRef}>
 			{/* Expanded Panel */}
@@ -113,16 +82,22 @@ export function LogPanel({ entries, locale }: LogPanelProps) {
 										<p className="text-[13px] text-zinc-300 leading-relaxed break-words font-medium">
 											{entry.message}
 										</p>
-										<div className="flex items-center gap-3 mt-1.5">
+										<div className="flex flex-wrap items-center gap-2 mt-1.5">
 											<span className="text-[10px] text-zinc-500 font-mono">
-												{formatTime(entry.createdAt)}
+												{formatWorkflowLogTime(entry.createdAt, locale)}
+											</span>
+											<span className="text-[10px] text-zinc-600 bg-zinc-900 px-1.5 py-0.5 rounded font-mono">
+												{entry.code}
+											</span>
+											<span className="text-[10px] text-zinc-600 bg-zinc-900 px-1.5 py-0.5 rounded">
+												{getWorkflowSourceLabel(entry.source, locale)}
 											</span>
 											<span className={`text-[9px] px-1 py-0.2 rounded font-bold uppercase tracking-wider ${getLevelColor(entry.level)}`}>
-												{getLevelText(entry.level)}
+												{getWorkflowLogLevelLabel(entry.level, locale)}
 											</span>
 											{entry.originStage && (
 												<span className="text-[10px] text-zinc-600 bg-zinc-900 px-1.5 py-0.5 rounded uppercase tracking-widest font-bold">
-													{getStageText(entry.originStage)}
+													{getWorkflowStageLabel(entry.originStage, locale, "short")}
 												</span>
 											)}
 										</div>

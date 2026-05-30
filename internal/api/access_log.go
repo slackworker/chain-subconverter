@@ -1,11 +1,12 @@
 package api
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/slackworker/chain-subconverter/internal/applog"
+	"github.com/slackworker/chain-subconverter/internal/service"
 )
 
 type accessLogOriginProvider interface {
@@ -14,8 +15,10 @@ type accessLogOriginProvider interface {
 
 type accessLogResponseWriter struct {
 	http.ResponseWriter
-	statusCode int
-	wrote      bool
+	statusCode   int
+	wrote        bool
+	errorCode    string
+	warningCodes []string
 }
 
 func (writer *accessLogResponseWriter) WriteHeader(statusCode int) {
@@ -45,38 +48,84 @@ func WithAccessLog(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapped, request)
 
 		statusCode := wrapped.statusCode
+		requestInfo, ok := RequestContextFrom(request.Context())
+		operation := operationForRequest(request.Method, request.URL.Path)
+		requestID := ""
+		if ok {
+			requestID = requestInfo.RequestID
+			if requestInfo.Operation != "" {
+				operation = requestInfo.Operation
+			}
+			if wrapped.errorCode == "" {
+				wrapped.errorCode = requestInfo.ErrorCode
+			}
+		}
+		if !shouldLogAccessRequest(request, statusCode, operation, wrapped.warningCodes) {
+			return
+		}
+
 		duration := time.Since(start)
-		clientIP := accessLogClientIP(next, request)
+		origin := accessLogOrigin(next, request)
 
 		path := redactRequestPath(request.URL.Path, request.URL.RawQuery)
-		message := fmt.Sprintf(
-			"access method=%s path=%s status=%d duration_ms=%d client_ip=%s",
-			request.Method,
-			path,
-			statusCode,
-			duration.Milliseconds(),
-			clientIP,
-		)
-
-		switch {
-		case statusCode == http.StatusTooManyRequests:
-			log.Printf("WARN %s", message)
-		case statusCode >= 500:
-			log.Printf("ERROR %s", message)
-		case statusCode >= 400:
-			log.Printf("WARN %s", message)
-		default:
-			log.Printf("INFO %s", message)
-		}
+		applog.Access(applog.AccessMeta{
+			Method:       request.Method,
+			Path:         path,
+			Status:       statusCode,
+			Duration:     duration.Milliseconds(),
+			ClientIP:     origin.clientIP,
+			RequestID:    requestID,
+			Operation:    operation,
+			ErrorCode:    wrapped.errorCode,
+			WarningCodes: wrapped.warningCodes,
+			OriginScheme: origin.scheme,
+			OriginHost:   origin.host,
+			TrustedProxy: origin.trustedProxyUsed,
+		})
 	})
 }
 
-func accessLogClientIP(next http.Handler, request *http.Request) string {
-	if provider, ok := next.(accessLogOriginProvider); ok {
-		return provider.requestOriginFor(request).clientIP
+func (writer *accessLogResponseWriter) SetAccessLogErrorCode(code string) {
+	if writer == nil || writer.errorCode != "" {
+		return
+	}
+	writer.errorCode = strings.TrimSpace(code)
+}
+
+func (writer *accessLogResponseWriter) SetAccessLogMessages(messages []service.Message) {
+	if writer == nil {
+		return
 	}
 
-	return clientIPAddress(request.RemoteAddr)
+	codes := make([]string, 0, len(messages))
+	seen := make(map[string]struct{}, len(messages))
+	for _, message := range messages {
+		if strings.TrimSpace(message.Level) != "warning" {
+			continue
+		}
+		code := strings.TrimSpace(message.Code)
+		if code == "" {
+			continue
+		}
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+		codes = append(codes, code)
+	}
+	writer.warningCodes = codes
+}
+
+func accessLogOrigin(next http.Handler, request *http.Request) requestOrigin {
+	if provider, ok := next.(accessLogOriginProvider); ok {
+		return provider.requestOriginFor(request)
+	}
+
+	return requestOrigin{
+		clientIP: clientIPAddress(request.RemoteAddr),
+		scheme:   requestScheme(request),
+		host:     requestHost(request),
+	}
 }
 
 func redactRequestPath(requestPath string, rawQuery string) string {
@@ -90,4 +139,17 @@ func redactRequestPath(requestPath string, rawQuery string) string {
 		return requestPath + "?[redacted]"
 	}
 	return requestPath
+}
+
+func shouldLogAccessRequest(request *http.Request, statusCode int, operation string, warningCodes []string) bool {
+	if statusCode >= http.StatusBadRequest || len(warningCodes) > 0 {
+		return true
+	}
+
+	switch operation {
+	case "stage1_convert", "generate", "short_link_create", "resolve_url", "render_subscription", "render_short_subscription":
+		return true
+	default:
+		return false
+	}
 }

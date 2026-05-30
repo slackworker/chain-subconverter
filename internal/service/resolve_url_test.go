@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -60,8 +61,12 @@ func TestResolveURLFromSource_Replayable(t *testing.T) {
 	if row.RowID != "🇺🇸 SS2022-Test-256-US" || row.SourceLandingNodeName != "🇺🇸 SS2022-Test-256-US" || row.ProxyName != "🇺🇸 SS2022-Test-256-US" {
 		t.Fatalf("derived row identity mismatch: got %+v", row)
 	}
-	if len(response.Messages) != 0 {
-		t.Fatalf("expected 0 messages, got %d: %v", len(response.Messages), response.Messages)
+	if !reflect.DeepEqual(response.Messages, []Message{{
+		Level:   "info",
+		Code:    "RESTORE_METADATA_READY",
+		Message: "已读取恢复快照。",
+	}}) {
+		t.Fatalf("expected replayable restore summary, got %v", response.Messages)
 	}
 	if len(response.BlockingErrors) != 0 {
 		t.Fatalf("expected 0 blocking errors, got %d", len(response.BlockingErrors))
@@ -118,6 +123,9 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 	}
 	if response.Messages[0].Code != "RESTORE_CONFLICT" {
 		t.Fatalf("message code mismatch: got %q want %q", response.Messages[0].Code, "RESTORE_CONFLICT")
+	}
+	if strings.Contains(strings.ToLower(response.Messages[0].Message), "restore conflict") {
+		t.Fatalf("restore conflict message should be business-facing, got %q", response.Messages[0].Message)
 	}
 	// Original snapshot should still be returned.
 	if len(response.Stage2Snapshot.Rows) != 1 || response.Stage2Snapshot.Rows[0].LandingNodeName != "HK 01" {

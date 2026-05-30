@@ -64,7 +64,9 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 		await route.fulfill({
 			json: {
 				longUrl: longURL,
-				messages: [],
+				messages: [
+					{ level: "info", code: "GENERATE_METADATA_READY", message: "已生成完整长链接。" },
+				],
 				blockingErrors: [],
 			},
 		});
@@ -77,7 +79,9 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 			json: {
 				longUrl: request.longUrl,
 				shortUrl: shortURL,
-				messages: [],
+				messages: [
+					{ level: "info", code: "SHORT_LINK_CREATED", message: "已准备好短链接。" },
+				],
 				blockingErrors: [],
 			},
 		});
@@ -97,7 +101,9 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 				restoreStatus: "replayable",
 				stage1Input: latestGenerateRequest.stage1Input,
 				stage2Snapshot: latestGenerateRequest.stage2Snapshot,
-				messages: [],
+				messages: [
+					{ level: "info", code: "RESTORE_METADATA_READY", message: "已读取恢复快照。" },
+				],
 				blockingErrors: [],
 			},
 		});
@@ -131,9 +137,9 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 	await logToggle.click();
 
 	const logPanel = page.locator("#a-workflow-log-panel");
-	await expect(logPanel.getByText("已生成长链接。", { exact: true })).toBeVisible();
-	await expect(logPanel.getByText("已生成短链接。", { exact: true })).toBeVisible();
-	await expect(logPanel.getByText("已恢复页面状态，可继续编辑和生成。", { exact: true })).toBeVisible();
+	await expect(logPanel.getByText("已生成完整长链接。", { exact: true })).toBeVisible();
+	await expect(logPanel.getByText("已准备好短链接。", { exact: true })).toBeVisible();
+	await expect(logPanel.getByText("已读取恢复快照。", { exact: true })).toBeVisible();
 
 	expect(stage1Requests).toHaveLength(2);
 	expect(generateRequests).toHaveLength(1);

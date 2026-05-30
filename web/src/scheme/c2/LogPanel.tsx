@@ -1,29 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { WorkflowLogEntry } from "../../lib/state";
-
-const LEVEL_LABELS: Record<WorkflowLogEntry["level"], string> = {
-	info: "提示",
-	warning: "警告",
-	success: "成功",
-	error: "失败",
-};
-
-function formatTime(createdAt: string) {
-	return new Intl.DateTimeFormat("zh-CN", {
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-		hour12: false,
-	}).format(new Date(createdAt));
-}
-
-function stageLabel(stage: WorkflowLogEntry["originStage"]) {
-	if (stage === "stage1") return "阶段 1";
-	if (stage === "stage2") return "阶段 2";
-	if (stage === "stage3") return "阶段 3";
-	return null;
-}
+import { formatWorkflowLogTime, getWorkflowLogLevelLabel, getWorkflowSourceLabel, getWorkflowStageLabel } from "../../lib/workflow-log-display";
 
 export function LogPanel({ entries }: { entries: WorkflowLogEntry[] }) {
 	const [open, setOpen] = useState(false);
@@ -58,13 +36,21 @@ export function LogPanel({ entries }: { entries: WorkflowLogEntry[] }) {
 					</div>
 					<ul className="c-log-list">
 						{entries.slice().reverse().map((entry) => (
-							<li key={entry.id} className={`c-log-item c-log-item--${entry.level}`}>
-								<time className="c-log-time" dateTime={entry.createdAt}>
-									{formatTime(entry.createdAt)}
-								</time>
-								<span className="c-log-stage">{stageLabel(entry.originStage) ?? "\u00a0"}</span>
-								<span className="c-log-level">{LEVEL_LABELS[entry.level]}</span>
-								<p className="c-log-msg">{entry.message}</p>
+							<li key={entry.id} className={`c-log-item c-log-item--${entry.level}${entry.kind === "separator" ? " c-log-item--separator" : ""}`}>
+								{entry.kind === "separator" ? (
+									<p className="c-log-msg c-log-msg--separator">{entry.message}</p>
+								) : (
+									<>
+										<time className="c-log-time" dateTime={entry.createdAt}>
+											{formatWorkflowLogTime(entry.createdAt)}
+										</time>
+										<span className="c-log-stage">{getWorkflowStageLabel(entry.originStage) ?? "\u00a0"}</span>
+										<span className="c-log-level">{getWorkflowLogLevelLabel(entry.level)}</span>
+										<span className="c-log-code">{entry.code}</span>
+										<span className="c-log-source">{getWorkflowSourceLabel(entry.source)}</span>
+										<p className="c-log-msg">{entry.message}</p>
+									</>
+								)}
 							</li>
 						))}
 					</ul>

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/slackworker/chain-subconverter/internal/api"
+	"github.com/slackworker/chain-subconverter/internal/applog"
 	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/runtimestatus"
 	"github.com/slackworker/chain-subconverter/internal/service"
@@ -26,6 +27,8 @@ const (
 )
 
 func main() {
+	applog.Init()
+
 	subconverterCfg, err := config.LoadSubconverterFromEnv()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "load subconverter config: %v\n", err)
@@ -95,7 +98,7 @@ func main() {
 	}
 
 	server := &http.Server{
-		Handler:           api.WithAccessLog(api.WithFrontendAssets(handler, serverCfg.FrontendDistDir)),
+		Handler:           api.WithRequestContext(api.WithAccessLog(api.WithFrontendAssets(handler, serverCfg.FrontendDistDir))),
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
@@ -108,12 +111,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf(
-		"chain-subconverter listening on %s (user-facing base URL: %s, frontend dist: %s, subconverter upstream: %s)\n",
-		listener.Addr().String(),
-		serverCfg.UserFacingBaseURL,
-		serverCfg.FrontendDistDir,
-		subconverterCfg.UpstreamBaseURL,
+	applog.Info("listening", applog.StringAttr("listen_addr", listener.Addr().String()))
+	applog.Info("runtime_config",
+		applog.StringAttr("user_facing_base_url", serverCfg.UserFacingBaseURL),
+		applog.StringAttr("frontend_dist", serverCfg.FrontendDistDir),
+		applog.StringAttr("subconverter_upstream", subconverterCfg.UpstreamBaseURL),
 	)
 
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {

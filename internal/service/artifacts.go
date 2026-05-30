@@ -57,10 +57,12 @@ func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixt
 	if err != nil {
 		return Stage1ConvertResponse{}, err
 	}
+	messages := append([]Message{}, fixtures.Messages...)
+	messages = buildStage1ConvertMessages(stage2Init, messages)
 
 	return Stage1ConvertResponse{
 		Stage2Init:     stage2Init,
-		Messages:       append([]Message{}, fixtures.Messages...),
+		Messages:       messages,
 		BlockingErrors: []BlockingError{},
 	}, nil
 }
@@ -75,10 +77,12 @@ func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtur
 	if err != nil {
 		return GenerateResponse{}, err
 	}
+	messages := append([]Message{}, fixtures.Messages...)
+	messages = append(messages, generateWorkflowMessages()...)
 
 	return GenerateResponse{
 		LongURL:        longURL,
-		Messages:       append([]Message{}, fixtures.Messages...),
+		Messages:       messages,
 		BlockingErrors: []BlockingError{},
 	}, nil
 }

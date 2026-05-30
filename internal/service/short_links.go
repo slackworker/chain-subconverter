@@ -76,7 +76,7 @@ func BuildShortLinkResponse(ctx context.Context, publicBaseURL string, shortLink
 	return ShortLinkResponse{
 		LongURL:        canonicalTarget.LongURL,
 		ShortURL:       shortURL,
-		Messages:       []Message{},
+		Messages:       shortLinkWorkflowMessages(),
 		BlockingErrors: []BlockingError{},
 	}, nil
 }

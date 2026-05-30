@@ -56,7 +56,9 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	if err != nil {
 		return ResolveURLResponse{}, err
 	}
-	messages = append(append([]Message{}, fixtures.Messages...), messages...)
+	baseMessages := append([]Message{}, fixtures.Messages...)
+	baseMessages = append(baseMessages, restoreWorkflowMessages(restoreStatus)...)
+	messages = append(baseMessages, messages...)
 
 	return ResolveURLResponse{
 		LongURL:        resolved,
@@ -147,11 +149,10 @@ func determineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapsh
 		}
 		return "", nil, err
 	}
-
 	return "conflicted", []Message{{
 		Level:   "warning",
 		Code:    "RESTORE_CONFLICT",
-		Message: fmt.Sprintf("restore conflict: %s", err.Error()),
+		Message: restoreConflictMessage(err),
 	}}, nil
 }
 

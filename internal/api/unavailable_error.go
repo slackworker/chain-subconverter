@@ -28,10 +28,11 @@ type unavailableClassification struct {
 	timedOut        bool
 }
 
-func writeUnavailableBlockingError(writer http.ResponseWriter, err error) {
+func writeUnavailableBlockingError(writer http.ResponseWriter, request *http.Request, err error) {
 	blockingError := buildUnavailableBlockingError(err)
 	writeBlockingError(
 		writer,
+		request,
 		http.StatusServiceUnavailable,
 		blockingError.Code,
 		blockingError.Message,
@@ -67,15 +68,6 @@ func classifyUnavailableError(err error) unavailableClassification {
 	switch {
 	case op == "acquire subconverter slot":
 		classification.problemClass = unavailableProblemServiceUnreachable
-	case strings.Contains(op, "landing-discovery pass"):
-		classification.userInputSource = unavailableInputSourceLanding
-		classifyPassFailure(&classification, cause)
-	case strings.Contains(op, "transit-discovery pass"):
-		classification.userInputSource = unavailableInputSourceTransit
-		classifyPassFailure(&classification, cause)
-	case strings.Contains(op, "full-base pass"):
-		classification.userInputSource = unavailableInputSourceStage1Input
-		classifyPassFailure(&classification, cause)
 	case strings.Contains(op, "parse landing-discovery result") || strings.Contains(op, "validate landing-discovery names"):
 		classification.problemClass = unavailableProblemConversionResultInvalid
 		classification.userInputSource = unavailableInputSourceLanding
@@ -85,6 +77,15 @@ func classifyUnavailableError(err error) unavailableClassification {
 	case strings.Contains(op, "parse full-base") || strings.Contains(op, "validate full-base region proxy-groups"):
 		classification.problemClass = unavailableProblemConversionResultInvalid
 		classification.userInputSource = unavailableInputSourceManagedTemplate
+	case strings.Contains(op, "landing-discovery"):
+		classification.userInputSource = unavailableInputSourceLanding
+		classifyPassFailure(&classification, cause)
+	case strings.Contains(op, "transit-discovery"):
+		classification.userInputSource = unavailableInputSourceTransit
+		classifyPassFailure(&classification, cause)
+	case strings.Contains(op, "full-base"):
+		classification.userInputSource = unavailableInputSourceStage1Input
+		classifyPassFailure(&classification, cause)
 	default:
 		classifyPassFailure(&classification, cause)
 	}

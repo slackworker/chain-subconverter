@@ -305,8 +305,12 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 	if row.RowID != "🇺🇸 SS2022-Test-256-US" || row.SourceLandingNodeName != "🇺🇸 SS2022-Test-256-US" || row.ProxyName != "🇺🇸 SS2022-Test-256-US" {
 		t.Fatalf("derived row identity mismatch: got %+v", row)
 	}
-	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
-		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
+	if !reflect.DeepEqual(response.Messages, []service.Message{{
+		Level:   "info",
+		Code:    "RESTORE_METADATA_READY",
+		Message: "已读取恢复快照。",
+	}}) || len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected replayable restore summary only, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
 	}
 }
 
@@ -517,8 +521,12 @@ func TestShortLinksHandler_HappyPath(t *testing.T) {
 	if response.ShortURL != wantShortURL {
 		t.Fatalf("shortUrl mismatch: got %q want %q", response.ShortURL, wantShortURL)
 	}
-	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
-		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
+	if !reflect.DeepEqual(response.Messages, []service.Message{{
+		Level:   "info",
+		Code:    "SHORT_LINK_CREATED",
+		Message: "已准备好短链接。",
+	}}) || len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected short-link summary only, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
 	}
 
 	request = httptest.NewRequest(http.MethodPost, "/api/short-links", strings.NewReader(`{"longUrl":"`+legacyLongURL+`"}`))
@@ -1388,7 +1396,7 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 
 	assertBlockingError(t, recorder, http.StatusInternalServerError, service.BlockingError{
 		Code:    "RENDER_FAILED",
-		Message: `apply stage2 row for landing node "HK Landing": proxy is missing server field`,
+		Message: internalErrorUserMessage,
 		Scope:   "global",
 	})
 }
@@ -1733,8 +1741,12 @@ func assertResolveURLReplayableResponse(t *testing.T, response service.ResolveUR
 	if !reflect.DeepEqual(normalizeStage2SnapshotForContract(response.Stage2Snapshot), normalizeStage2SnapshotForContract(requestPayload.Stage2Snapshot)) {
 		t.Fatalf("stage2Snapshot mismatch: got %#v want %#v", response.Stage2Snapshot, requestPayload.Stage2Snapshot)
 	}
-	if len(response.Messages) != 0 || len(response.BlockingErrors) != 0 {
-		t.Fatalf("expected empty messages/errors, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
+	if !reflect.DeepEqual(response.Messages, []service.Message{{
+		Level:   "info",
+		Code:    "RESTORE_METADATA_READY",
+		Message: "已读取恢复快照。",
+	}}) || len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected replayable restore summary only, got messages=%v blockingErrors=%v", response.Messages, response.BlockingErrors)
 	}
 }
 

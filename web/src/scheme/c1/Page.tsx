@@ -20,6 +20,7 @@ import {
 } from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
 import type { WorkflowLogEntry } from "../../lib/state";
+import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
 import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import "./index.css";
 
@@ -29,27 +30,11 @@ const MODE_LABELS: Record<Stage2Row["mode"], string> = {
 	port_forward: "端口转发",
 };
 
-const LOG_LEVEL_LABEL: Record<WorkflowLogEntry["level"], string> = {
-	info: "信息",
-	warning: "警告",
-	error: "错误",
-	success: "成功",
-};
-
 const STAGE_LABEL: Record<string, string> = {
 	stage1: "S1",
 	stage2: "S2",
 	stage3: "S3",
 };
-
-function formatLogTime(iso: string) {
-	try {
-		const d = new Date(iso);
-		return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-	} catch {
-		return iso;
-	}
-}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -892,10 +877,10 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							{workflowLog.slice().reverse().map((entry) => (
 								<div key={entry.id} className={`c-log-entry c-log-entry--${entry.level}`}>
 									<time className="c-log-time" dateTime={entry.createdAt}>
-										{formatLogTime(entry.createdAt)}
+										{formatWorkflowLogTime(entry.createdAt)}
 									</time>
 									<span className={`c-log-badge c-log-badge--${entry.level}`}>
-										{LOG_LEVEL_LABEL[entry.level] ?? entry.level}
+										{getWorkflowLogLevelLabel(entry.level)}
 									</span>
 									{entry.originStage ? (
 										<span className="c-log-stage">{STAGE_LABEL[entry.originStage] ?? entry.originStage}</span>

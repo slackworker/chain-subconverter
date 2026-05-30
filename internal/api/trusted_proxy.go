@@ -12,9 +12,10 @@ type requestOriginResolver struct {
 }
 
 type requestOrigin struct {
-	clientIP string
-	scheme   string
-	host     string
+	clientIP         string
+	scheme           string
+	host             string
+	trustedProxyUsed bool
 }
 
 func WithTrustedProxyCIDRs(trustedProxyCIDRs string) HandlerOption {
@@ -76,6 +77,7 @@ func (resolver *requestOriginResolver) resolve(request *http.Request) requestOri
 	if !ok || !resolver.isTrusted(peerAddr) {
 		return origin
 	}
+	origin.trustedProxyUsed = true
 
 	if clientIP := resolver.clientIPFromForwardedFor(request.Header.Get("X-Forwarded-For")); clientIP != "" {
 		origin.clientIP = clientIP

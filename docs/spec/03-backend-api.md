@@ -175,6 +175,7 @@
 
 - `messages[]` 只承载 `info` 与 `warning`
 - `messages[]` 表示服务端返回的非阻断用户提示；它是前端 workflow log 的后端消息源之一，但不等同于整个前端日志系统
+- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED` 与 `RESTORE_CONFLICT`
 - `messages[]` 不承诺字段级或行级定位语义，也不单独决定前端展示位置
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `blockingErrors[]` 只承载阻断当前请求的错误
@@ -196,6 +197,7 @@
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE.message` 必须是面向最终用户的业务化提示，不得出现 pass 名称、容器主机名、内部请求 URL、查询串或原始技术错误串
 - `SUBCONVERTER_UNAVAILABLE` 如返回 `context.diagnostic`，公开字段只允许使用 `problemClass` 与 `userInputSource`
+- 所有 `500` 级内部异常的 `message` 都必须是脱敏后的用户文案；原始技术原因只允许进入 operator log，并通过 `X-Request-ID` 关联
 - `RATE_LIMITED` 用于命中服务端 per-IP 限速；当前用于 `POST /api/stage1/convert`、`POST /api/generate`、`POST /api/short-links`、`POST /api/resolve-url`、`GET /sub` 与 `GET /sub/<id>`，必须返回 `scope = global`，可返回 `retryable = true`；限速分桶默认按连接对端地址识别客户端，只有当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时才允许改用 `X-Forwarded-For` 推断客户端 IP
 
 ### 5. HTTP 状态码
@@ -207,6 +209,7 @@
 - `503`：依赖暂时不可用；`blockingErrors[]` 必须非空；若返回 `retryable`，其值必须为 `true`
 - `500`：未知内部错误；`blockingErrors[]` 必须非空
 - `POST /api/resolve-url` 返回 `restoreStatus = conflicted` 时仍是 `200`，不视为接口失败
+- 所有 `/api/*` 与 `/sub*` 响应应返回 `X-Request-ID` header，供前端问题与服务端 access / operation log 关联；该值不进入 JSON body
 
 ---
 

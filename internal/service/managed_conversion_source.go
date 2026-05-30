@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/slackworker/chain-subconverter/internal/applog"
 	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
@@ -125,6 +126,9 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 	templateConfig, usedStaleTemplate, err := source.fetchTemplateConfig(ctx, effectiveTemplateURL, isDefaultTemplate)
 	if err != nil {
 		return PreparedConversion{}, err
+	}
+	if usedStaleTemplate {
+		applog.TemplateCacheUsed(effectiveTemplateURL)
 	}
 	regionMatchers, err := parseRegionMatchers(templateConfig)
 	if err != nil {

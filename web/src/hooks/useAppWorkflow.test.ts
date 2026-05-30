@@ -234,9 +234,8 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.messages).toEqual(response.messages);
 		expect(workflow.current.state.blockingErrors).toEqual([]);
 		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
-			"STAGE1_CONVERT_STARTED",
+			"ACTION_STAGE1_CONVERT",
 			"AUTO_CHAIN_TARGET_SELECTED",
-			"STAGE1_CONVERT_SUCCEEDED",
 		]);
 	});
 
@@ -271,7 +270,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.blockingErrors).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.getStage1FieldErrors("landingRawText")).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
-			"STAGE1_CONVERT_STARTED",
+			"ACTION_STAGE1_CONVERT",
 			"LANDING_REVIEW_REQUIRED",
 			"STAGE1_CONVERT_FAILED",
 		]);
@@ -352,10 +351,9 @@ describe("useAppWorkflow", () => {
 		]);
 		expect(workflow.current.state.blockingErrors).toEqual([]);
 		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
-			"RESTORE_STARTED",
+			"ACTION_RESTORE",
 			"RESTORE_METADATA_READY",
 			"CHAIN_TARGET_REVIEW",
-			"RESTORE_SUCCEEDED",
 		]);
 	});
 
@@ -422,9 +420,8 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.canGenerate).toBe(false);
 		expect(workflow.current.state.messages).toEqual(restoreResponse.messages);
 		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
-			"RESTORE_STARTED",
+			"ACTION_RESTORE",
 			"RESTORE_CONFLICT",
-			"RESTORE_CONFLICTED",
 		]);
 	});
 
@@ -498,7 +495,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.messages).toEqual(restoreResponse.messages);
 		expect(workflow.current.state.blockingErrors).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
-			"RESTORE_STARTED",
+			"ACTION_RESTORE",
 			"RESTORE_METADATA_READY",
 			"RESTORE_REINIT_FAILED",
 		]);
@@ -537,10 +534,9 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.responseOriginStage).toBe("stage2");
 		expect(workflow.current.state.messages).toEqual(generateResponse.messages);
 		expect(workflow.current.state.blockingErrors).toEqual([]);
-		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-3)).toEqual([
-			"GENERATE_STARTED",
+		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-2)).toEqual([
+			"ACTION_GENERATE",
 			"GENERATE_METADATA_READY",
-			"GENERATE_SUCCEEDED",
 		]);
 	});
 
@@ -571,10 +567,11 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.blockingErrors).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-3)).toEqual([
-			"GENERATE_STARTED",
+			"ACTION_GENERATE",
 			"TARGET_SELECTION_REQUIRED",
 			"GENERATE_FAILED",
 		]);
+		expect(workflow.current.workflowLog.at(-1)?.message).toBe("生成链接未成功：存在未完成配置的行");
 	});
 
 	it("supports strict row keys so source-row edits do not fan out to derived rows", async () => {
@@ -754,11 +751,45 @@ describe("useAppWorkflow", () => {
 			...shortLinkResponse.messages,
 		]);
 		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-4)).toEqual([
-			"GENERATE_STARTED",
+			"ACTION_GENERATE",
 			"GENERATE_METADATA_READY",
 			"SHORT_LINK_CREATED",
-			"SHORT_URL_READY",
+			"SHORT_URL_REQUIRED",
 		]);
+	});
+
+	it("does not emit SHORT_URL_REQUIRED when generate creates a preferred short URL within budget", async () => {
+		const workflow = renderWorkflow();
+		await initializeStage2ReadyState(workflow);
+		const longUrl = "https://public.example.com/sub?data=generated-long-url";
+		const shortUrl = "https://public.example.com/s/preferred-short";
+		const generateResponse = buildGenerateResponse(
+			longUrl,
+			[{ level: "info", code: "GENERATE_METADATA_READY", message: "已生成完整长链接" }],
+		);
+		const shortLinkResponse = buildShortLinkResponse(
+			longUrl,
+			shortUrl,
+			[{ level: "info", code: "SHORT_LINK_CREATED", message: "已为当前长链接生成短链接" }],
+		);
+
+		await runWorkflowAction(() => workflow.current.handlePreferShortUrl(true));
+		mockPostGenerate.mockResolvedValueOnce(generateResponse);
+		mockPostShortLink.mockResolvedValueOnce(shortLinkResponse);
+
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		expect(workflow.current.state.preferShortUrl).toBe(true);
+		expect(workflow.current.state.generatedUrls).toEqual({
+			longUrl,
+			shortUrl,
+		});
+		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-3)).toEqual([
+			"ACTION_GENERATE",
+			"GENERATE_METADATA_READY",
+			"SHORT_LINK_CREATED",
+		]);
+		expect(workflow.current.workflowLog.some((entry) => entry.code === "SHORT_URL_REQUIRED")).toBe(false);
 	});
 
 	it("creates a short URL on demand for an existing long URL", async () => {
@@ -796,10 +827,9 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.responseOriginStage).toBe("stage3");
 		expect(workflow.current.state.messages).toEqual(shortLinkResponse.messages);
 		expect(workflow.current.state.blockingErrors).toEqual([]);
-		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-3)).toEqual([
-			"SHORT_URL_STARTED",
+		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-2)).toEqual([
+			"ACTION_SHORT_URL",
 			"SHORT_LINK_CREATED",
-			"SHORT_URL_READY",
 		]);
 	});
 
@@ -873,7 +903,7 @@ describe("useAppWorkflow", () => {
 		]);
 		expect(workflow.current.state.blockingErrors).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-4)).toEqual([
-			"GENERATE_STARTED",
+			"ACTION_GENERATE",
 			"GENERATE_METADATA_READY",
 			"SHORT_LINK_RETRYABLE",
 			"SHORT_URL_FAILED",
@@ -916,7 +946,7 @@ describe("useAppWorkflow", () => {
 		]);
 		expect(workflow.current.state.blockingErrors).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-4)).toEqual([
-			"GENERATE_STARTED",
+			"ACTION_GENERATE",
 			"GENERATE_METADATA_READY",
 			"SHORT_LINK_REQUIRED_RETRY",
 			"SHORT_URL_REQUIRED_FAILED",
@@ -960,7 +990,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.messages).toEqual(errorBody.messages);
 		expect(workflow.current.state.blockingErrors).toEqual(errorBody.blockingErrors);
 		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-3)).toEqual([
-			"SHORT_URL_STARTED",
+			"ACTION_SHORT_URL",
 			"SHORT_LINK_RETRYABLE",
 			"SHORT_URL_FAILED",
 		]);

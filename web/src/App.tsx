@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { useAppWorkflow } from "./hooks/useAppWorkflow";
 import { copyTextToClipboard } from "./lib/clipboard";
+import { debugError, debugLog } from "./lib/debug-log";
 import { getRuntimeConfig } from "./lib/api";
 import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH, DEFAULT_TEMPLATE_URL } from "./lib/defaults";
 import type { OutputActions } from "./lib/composition";
@@ -84,11 +85,11 @@ export default function App() {
 		}
 		const url = getConsumableHTTPURL(trimmedCurrentLinkValue);
 		if (url === null) {
-			workflow.recordWorkflowEvent("warning", "OPEN_PREVIEW_INVALID_URL", INVALID_CURRENT_LINK_MESSAGE, "stage3");
+			workflow.recordWorkflowEvent("OPEN_PREVIEW_INVALID_URL");
 			workflow.reportCurrentLinkInputError(INVALID_CURRENT_LINK_MESSAGE, "打开预览");
 			return;
 		}
-		workflow.recordWorkflowEvent("info", "OPEN_PREVIEW", "已在新标签页打开当前链接。", "stage3");
+		debugLog("open_preview", url.toString());
 		window.open(url.toString(), "_blank", "noopener,noreferrer");
 	}
 
@@ -99,10 +100,11 @@ export default function App() {
 		const copied = await copyTextToClipboard(trimmedCurrentLinkValue);
 		if (copied) {
 			setCopyState("done");
-			workflow.recordWorkflowEvent("success", "COPY_LINK_SUCCEEDED", "已复制当前链接。", "stage3");
+			debugLog("copy_link_succeeded");
 		} else {
 			setCopyState("failed");
-			workflow.recordWorkflowEvent("error", "COPY_LINK_FAILED", "复制当前链接失败。", "stage3");
+			debugError("copy_link_failed");
+			workflow.recordWorkflowEvent("COPY_LINK_FAILED");
 		}
 	}
 
@@ -112,11 +114,11 @@ export default function App() {
 		}
 		const downloadURL = withDownloadFlag(trimmedCurrentLinkValue);
 		if (downloadURL === null) {
-			workflow.recordWorkflowEvent("warning", "DOWNLOAD_INVALID_URL", INVALID_CURRENT_LINK_MESSAGE, "stage3");
+			workflow.recordWorkflowEvent("DOWNLOAD_INVALID_URL");
 			workflow.reportCurrentLinkInputError(INVALID_CURRENT_LINK_MESSAGE, "下载 YAML");
 			return;
 		}
-		workflow.recordWorkflowEvent("info", "DOWNLOAD_YAML", "已触发当前链接的 YAML 下载。", "stage3");
+		debugLog("download_yaml", downloadURL);
 		const anchor = document.createElement("a");
 		anchor.href = downloadURL;
 		anchor.download = "subscription.yaml";

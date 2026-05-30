@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/slackworker/chain-subconverter/internal/applog"
 	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/inpututil"
 )
@@ -80,19 +81,19 @@ func (client *Client) ConvertWithPlan(ctx context.Context, request Request, plan
 	if err != nil {
 		return ThreePassResult{}, err
 	}
-	landingYAML, err := client.executePass(ctx, "landing-discovery pass", requestURLs.LandingDiscovery)
+	landingYAML, err := client.executePass(ctx, "landing-discovery", requestURLs.LandingDiscovery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
 
-	transitYAML, err := client.executePass(ctx, "transit-discovery pass", requestURLs.TransitDiscovery)
+	transitYAML, err := client.executePass(ctx, "transit-discovery", requestURLs.TransitDiscovery)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
 
 	fullBase := PassResult{}
 	if plan.IncludeFullBase {
-		fullBaseYAML, err := client.executePass(ctx, "full-base pass", requestURLs.FullBase)
+		fullBaseYAML, err := client.executePass(ctx, "full-base", requestURLs.FullBase)
 		if err != nil {
 			return ThreePassResult{}, err
 		}
@@ -156,29 +157,34 @@ func BuildRequestURLsWithPlan(baseURL string, request Request, plan ConvertPlan)
 	}, nil
 }
 
-func (client *Client) executePass(ctx context.Context, op string, rawURL string) (string, error) {
+func (client *Client) executePass(ctx context.Context, pass string, rawURL string) (string, error) {
 	if err := client.acquire(); err != nil {
 		return "", err
 	}
 	defer client.release()
 
+	start := time.Now()
 	timeoutCtx, cancel := context.WithTimeout(ctx, client.timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(timeoutCtx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return "", NewUnavailableError(op, fmt.Errorf("build request: %w", err))
+		passErr := fmt.Errorf("build request: %w", err)
+		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
+		return "", NewUnavailableError(pass, passErr)
 	}
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return "", NewUnavailableError(op, err)
+		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), err)
+		return "", NewUnavailableError(pass, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", NewUnavailableError(op, err)
+		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), err)
+		return "", NewUnavailableError(pass, err)
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
@@ -186,13 +192,18 @@ func (client *Client) executePass(ctx context.Context, op string, rawURL string)
 		if details := strings.TrimSpace(string(body)); details != "" {
 			message += ": " + details
 		}
-		return "", NewUnavailableError(op, fmt.Errorf("%s", message))
+		passErr := fmt.Errorf("%s", message)
+		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
+		return "", NewUnavailableError(pass, passErr)
 	}
 
 	if len(strings.TrimSpace(string(body))) == 0 {
-		return "", NewUnavailableError(op, fmt.Errorf("empty response body"))
+		passErr := fmt.Errorf("empty response body")
+		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
+		return "", NewUnavailableError(pass, passErr)
 	}
 
+	applog.SubconverterPass(pass, time.Since(start).Milliseconds(), nil)
 	return string(body), nil
 }
 

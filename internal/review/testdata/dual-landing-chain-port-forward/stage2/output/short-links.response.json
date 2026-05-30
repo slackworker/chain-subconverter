@@ -1,6 +1,12 @@
 {
   "longUrl": "http://localhost:11200/sub?data=H4sIAAAAAAAC_8xWzW7cNhB-lYC9iquVvE43AoQ0dRHEcRsb3qKXOjAoarRiRJECSe0Pgr3kYqAvUBQo4FN7apFeCrQv5LY3P0JBSeufrbRWFwUaHgiSM99wvtlvh3qLtCFT8A5FURoUvEUknhFBIT4uDJNC2yMqRcKmKECpMYUOXFeR-WDKTFpGpQZFpTAgzIDK3H0GJgWlCeNSuQelNjI_Py5AHHCi0_PTkoN2FSTaTYHE2s0JEy5NpmvXym3ABEMOgly-YSgwqgQHwYLyMgYUiJJzBzFxb6szVhyAMl-BYskSBQnhGhxUxkWNXzkokWpOVHwKnCwPDeQaBV8jZXeYDGBB8oKDZRB8PBrtIacxRfdMY2t67SBORMzE9JTMv4SFQQHStij-0PdxxEkGe5iAxv7-YzyleUB4kRKsNU4zrIEqMJ94T8aDfW_gDYcDbxiMRnsfPaucJhP84uhMzDhUEb1m4Goa2Wm83q7HRiyb4lMQVC2rny8UUsBZORz6jzXQUjGzDBUQzsyyORUsrBK8S7Q2FVFWm3BRRpxRnEEDSoqQpkrmTeSEy3m4MFxjVagFnjHNpKhNZllAaGjR8Dutr8YvjvCJVOZ5_Zv8K8L-B0C4m9VnTAE1Z2KrICIwlR7eFG168Co9fGp9JhP88uS2On4zcDWN7DReb5vhbYR6skN1bHrtxakS_w_EUJFbV-3lSbsWerD1_3e2nZTWQjDTwHW1pJl-qkHNQIU5ESXhuDrDaXZztwFtmsulMqE3HA_rrYKcqEyHX9TAyfHB0WTfiu054TwiNKvdbCcOY8gltqsmEtG6PrMr5CCjiNDM3HaudUdP2MKUCvTdUriNNyZYl5GmilVlHZiFORO9gNE_gGjl1A-OPxGk0Kms3hwl57YfV4vDGAXo-vLi5-vLi18e3emLyEFalorC53X7fSVjeEVy6HYvlFwst7vk0r4iiKaECVsfoqZgNiF__fjd1W_v__zm3R_vfkcrpzPN9vbWP-9O_BYinZiGmRXTeXJzeo9g5_PXj2Ot8Z3o3UD7Mbtxb0jZP_YGGfshsJH2--vLi18f3XbS7Zm2eG8k1-LxgHxqxNW3P1x9_1O7fO7EbG-IvZPuhHez6IT01k7L91Evgn2k8wCyF63dhFOrsLPf9lH8NnCr5rcBdmhSr1cOmqHAX_0dAAD__5lDkmfgCwAA",
   "shortUrl": "http://localhost:11200/sub/FPJw27S4ey",
-  "messages": [],
+  "messages": [
+    {
+      "level": "info",
+      "code": "SHORT_LINK_CREATED",
+      "message": "已准备好短链接。"
+    }
+  ],
   "blockingErrors": []
 }

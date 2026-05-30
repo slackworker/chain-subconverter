@@ -10,10 +10,13 @@ import (
 	"path"
 	"strings"
 
+	"github.com/slackworker/chain-subconverter/internal/applog"
 	"github.com/slackworker/chain-subconverter/internal/runtimestatus"
 	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
+
+const internalErrorUserMessage = "服务内部出现问题，请稍后重试。"
 
 const (
 	jsonContentType  = "application/json; charset=utf-8"
@@ -129,20 +132,20 @@ func (handler *Handler) rateLimit(next http.HandlerFunc, limiter *ipRateLimiter)
 		}
 
 		retryable := true
-		writeBlockingError(writer, http.StatusTooManyRequests, "RATE_LIMITED", "rate limit exceeded", "global", nil, &retryable)
+		writeBlockingError(writer, request, http.StatusTooManyRequests, "RATE_LIMITED", "rate limit exceeded", "global", nil, &retryable)
 	}
 }
 
 func (handler *Handler) handleStage1Convert(writer http.ResponseWriter, request *http.Request) {
 	var payload service.Stage1ConvertRequest
 	if err := decodeJSONBody(writer, request, &payload); err != nil {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
 
 	response, err := service.BuildStage1ConvertResponseFromSource(request.Context(), handler.source, payload.Stage1Input, handler.inputLimits)
 	if err != nil {
-		writeOperationError(writer, err)
+		writeOperationError(writer, request, "POST /api/stage1/convert", err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
@@ -158,7 +161,7 @@ func (handler *Handler) handleRuntimeConfig(writer http.ResponseWriter, request 
 func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http.Request) {
 	var payload service.GenerateRequest
 	if err := decodeJSONBody(writer, request, &payload); err != nil {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
 
@@ -171,7 +174,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 		handler.inputLimits,
 	)
 	if err != nil {
-		writeOperationError(writer, err)
+		writeOperationError(writer, request, "POST /api/generate", err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
@@ -180,7 +183,7 @@ func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http
 func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *http.Request) {
 	var payload service.ShortLinkRequest
 	if err := decodeJSONBody(writer, request, &payload); err != nil {
-		writeStage3DecodeError(writer, err)
+		writeStage3DecodeError(writer, request, err)
 		return
 	}
 
@@ -193,7 +196,7 @@ func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *ht
 		handler.inputLimits,
 	)
 	if err != nil {
-		writeOperationError(writer, err)
+		writeOperationError(writer, request, "POST /api/short-links", err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
@@ -202,7 +205,7 @@ func (handler *Handler) handleShortLinks(writer http.ResponseWriter, request *ht
 func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *http.Request) {
 	var payload service.ResolveURLRequest
 	if err := decodeJSONBody(writer, request, &payload); err != nil {
-		writeStage3DecodeError(writer, err)
+		writeStage3DecodeError(writer, request, err)
 		return
 	}
 
@@ -216,7 +219,7 @@ func (handler *Handler) handleResolveURL(writer http.ResponseWriter, request *ht
 		handler.inputLimits,
 	)
 	if err != nil {
-		writeOperationError(writer, err)
+		writeOperationError(writer, request, "POST /api/resolve-url", err)
 		return
 	}
 	writeJSON(writer, http.StatusOK, response)
@@ -316,7 +319,7 @@ func managedTemplateRoutePath(subconverterFacingBaseURL string) (string, error) 
 func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *http.Request) {
 	dataValue := strings.TrimSpace(request.URL.Query().Get("data"))
 	if dataValue == "" {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "missing data query parameter", "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", "missing data query parameter", "global", nil, nil)
 		return
 	}
 	handler.renderSubscription(writer, request, request.URL.String(), "subscription.yaml")
@@ -325,30 +328,30 @@ func (handler *Handler) handleSubscription(writer http.ResponseWriter, request *
 func (handler *Handler) handleShortSubscription(writer http.ResponseWriter, request *http.Request) {
 	if handler.shortLinkStore == nil {
 		retryable := true
-		writeBlockingError(writer, http.StatusServiceUnavailable, "SHORT_LINK_STORE_UNAVAILABLE", "short link store is unavailable", "global", nil, &retryable)
+		writeBlockingError(writer, request, http.StatusServiceUnavailable, "SHORT_LINK_STORE_UNAVAILABLE", "short link store is unavailable", "global", nil, &retryable)
 		return
 	}
 
 	requestPath := request.URL.Path
 	if !strings.HasPrefix(requestPath, handler.shortSubPath) {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "short URL path is invalid", "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", "short URL path is invalid", "global", nil, nil)
 		return
 	}
 
 	shortID := strings.TrimSpace(strings.TrimPrefix(requestPath, handler.shortSubPath))
 	if shortID == "" || strings.Contains(shortID, "/") {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", "short URL path is invalid", "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", "short URL path is invalid", "global", nil, nil)
 		return
 	}
 
 	longURL, err := handler.shortLinkStore.ResolveShortID(request.Context(), shortID)
 	if err != nil {
 		if errors.Is(err, service.ErrShortURLNotFound) {
-			writeBlockingError(writer, http.StatusUnprocessableEntity, "SHORT_URL_NOT_FOUND", "short URL not found", "global", nil, nil)
+			writeBlockingError(writer, request, http.StatusUnprocessableEntity, "SHORT_URL_NOT_FOUND", "short URL not found", "global", nil, nil)
 			return
 		}
 		retryable := true
-		writeBlockingError(writer, http.StatusServiceUnavailable, "SHORT_LINK_STORE_UNAVAILABLE", "short link store is unavailable", "global", nil, &retryable)
+		writeBlockingError(writer, request, http.StatusServiceUnavailable, "SHORT_LINK_STORE_UNAVAILABLE", "short link store is unavailable", "global", nil, &retryable)
 		return
 	}
 
@@ -359,12 +362,12 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 
 	payload, err := service.DecodeLongURLPayload(longURL, handler.inputLimits)
 	if err != nil {
-		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
 	}
 	payload.Stage1Input, err = service.ApplyLongURLCompatibleQueryOverrides(payload.Stage1Input, request.URL.Query())
 	if err != nil {
-		writeBlockingError(writer, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
+		writeBlockingError(writer, request, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
 	}
 
@@ -378,10 +381,11 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 	)
 	if err != nil {
 		if subconverter.IsUnavailable(err) {
-			writeUnavailableBlockingError(writer, err)
+			writeUnavailableBlockingError(writer, request, err)
 			return
 		}
-		writeBlockingError(writer, http.StatusInternalServerError, "RENDER_FAILED", err.Error(), "global", nil, nil)
+		logOperationFailure(request, http.StatusInternalServerError, "RENDER_FAILED", "global", nil, err)
+		writeBlockingError(writer, request, http.StatusInternalServerError, "RENDER_FAILED", internalErrorUserMessage, "global", nil, nil)
 		return
 	}
 
@@ -416,9 +420,10 @@ func decodeJSONBody(writer http.ResponseWriter, request *http.Request, target an
 	return nil
 }
 
-func writeStage3DecodeError(writer http.ResponseWriter, err error) {
+func writeStage3DecodeError(writer http.ResponseWriter, request *http.Request, err error) {
 	writeBlockingError(
 		writer,
+		request,
 		http.StatusBadRequest,
 		"INVALID_REQUEST",
 		err.Error(),
@@ -429,21 +434,33 @@ func writeStage3DecodeError(writer http.ResponseWriter, err error) {
 }
 
 func writeJSON(writer http.ResponseWriter, statusCode int, value any) {
+	setAccessLogMessages(writer, value)
 	writer.Header().Set("Content-Type", jsonContentType)
 	writer.WriteHeader(statusCode)
 	_ = json.NewEncoder(writer).Encode(value)
 }
 
-func writeOperationError(writer http.ResponseWriter, err error) {
+func writeOperationError(writer http.ResponseWriter, request *http.Request, operation string, err error) {
 	if subconverter.IsUnavailable(err) {
-		writeUnavailableBlockingError(writer, err)
+		requestInfo, _ := RequestContextFrom(request.Context())
+		classification := classifyUnavailableError(err)
+		applog.UpstreamUnavailable(applog.UpstreamUnavailableMeta{
+			RequestID:       requestInfo.RequestID,
+			Operation:       operation,
+			ProblemClass:    classification.problemClass,
+			UserInputSource: classification.userInputSource,
+			Cause:           sanitizeLogValue(err),
+		})
+		writeUnavailableBlockingError(writer, request, err)
 		return
 	}
 
 	if responseErr, ok := service.AsResponseError(err); ok {
 		blockingError := responseErr.BlockingError()
+		logOperationFailure(request, responseErr.StatusCode(), blockingError.Code, blockingError.Scope, blockingError.Retryable, err)
 		writeBlockingError(
 			writer,
+			request,
 			responseErr.StatusCode(),
 			blockingError.Code,
 			blockingError.Message,
@@ -456,14 +473,22 @@ func writeOperationError(writer http.ResponseWriter, err error) {
 
 	var syntaxErr *json.SyntaxError
 	if errors.As(err, &syntaxErr) {
-		writeBlockingError(writer, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		logOperationFailure(request, http.StatusBadRequest, "INVALID_REQUEST", "global", nil, err)
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
 		return
 	}
 
-	writeBlockingError(writer, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error(), "global", nil, nil)
+	logOperationFailure(request, http.StatusInternalServerError, "INTERNAL_ERROR", "global", nil, err)
+	writeBlockingError(writer, request, http.StatusInternalServerError, "INTERNAL_ERROR", internalErrorUserMessage, "global", nil, nil)
 }
 
-func writeBlockingError(writer http.ResponseWriter, statusCode int, code string, message string, scope string, context map[string]any, retryable *bool) {
+func writeBlockingError(writer http.ResponseWriter, request *http.Request, statusCode int, code string, message string, scope string, context map[string]any, retryable *bool) {
+	if request != nil {
+		SetRequestErrorCode(request.Context(), code)
+	}
+	if recorder, ok := writer.(interface{ SetAccessLogErrorCode(string) }); ok {
+		recorder.SetAccessLogErrorCode(code)
+	}
 	writeJSON(writer, statusCode, struct {
 		Messages       []service.Message       `json:"messages"`
 		BlockingErrors []service.BlockingError `json:"blockingErrors"`
@@ -479,4 +504,76 @@ func writeBlockingError(writer http.ResponseWriter, statusCode int, code string,
 			},
 		},
 	})
+}
+
+func setAccessLogMessages(writer http.ResponseWriter, value any) {
+	recorder, ok := writer.(interface{ SetAccessLogMessages([]service.Message) })
+	if !ok {
+		return
+	}
+
+	switch response := value.(type) {
+	case service.Stage1ConvertResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case *service.Stage1ConvertResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case service.GenerateResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case *service.GenerateResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case service.ResolveURLResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case *service.ResolveURLResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case service.ShortLinkResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case *service.ShortLinkResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	}
+}
+
+func logOperationFailure(request *http.Request, statusCode int, code string, scope string, retryable *bool, err error) {
+	if request == nil {
+		return
+	}
+	if statusCode < http.StatusInternalServerError && statusCode != http.StatusTooManyRequests {
+		return
+	}
+
+	requestInfo, _ := RequestContextFrom(request.Context())
+	if requestInfo.Operation == "" {
+		requestInfo.Operation = operationForRequest(request.Method, request.URL.Path)
+	}
+	meta := applog.APIErrorMeta{
+		RequestID: requestInfo.RequestID,
+		Operation: requestInfo.Operation,
+		Status:    statusCode,
+		Code:      strings.TrimSpace(code),
+		Scope:     scope,
+		Retryable: retryable,
+		Cause:     sanitizeLogValue(err),
+	}
+	var unavailableErr *subconverter.Error
+	if errors.As(err, &unavailableErr) && strings.TrimSpace(unavailableErr.Op) != "" {
+		meta.UpstreamOp = sanitizeLogValue(unavailableErr.Op)
+	}
+	applog.APIError(meta)
+}
+
+func sanitizeLogValue(value any) string {
+	if value == nil {
+		return ""
+	}
+	text := strings.TrimSpace(fmt.Sprint(value))
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.ReplaceAll(text, "\r", " ")
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) > 240 {
+		return text[:240]
+	}
+	return text
+}
+
+func boolPointer(value bool) *bool {
+	return &value
 }

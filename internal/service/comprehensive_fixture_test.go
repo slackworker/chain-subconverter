@@ -137,8 +137,12 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 	if len(response.BlockingErrors) != 0 {
 		t.Fatalf("expected 0 blocking errors, got %v", response.BlockingErrors)
 	}
-	if len(response.Messages) != 0 {
-		t.Fatalf("expected 0 messages, got %v", response.Messages)
+	if !reflect.DeepEqual(response.Messages, []Message{{
+		Level:   "info",
+		Code:    "RESTORE_METADATA_READY",
+		Message: "已读取恢复快照。",
+	}}) {
+		t.Fatalf("expected replayable restore summary, got %v", response.Messages)
 	}
 	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Alpha-Reality-HK-PortForward", "port_forward", "relay-a.example.com:7443")
 	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Alpha-Reality-HK-Direct", "none", "")
@@ -198,6 +202,13 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL(t *test
 	}
 	if response.LongURL != shortLinkResponse.LongURL {
 		t.Fatalf("LongURL mismatch: got %q want %q", response.LongURL, shortLinkResponse.LongURL)
+	}
+	if !reflect.DeepEqual(response.Messages, []Message{{
+		Level:   "info",
+		Code:    "RESTORE_METADATA_READY",
+		Message: "已读取恢复快照。",
+	}}) {
+		t.Fatalf("expected replayable restore summary, got %v", response.Messages)
 	}
 }
 

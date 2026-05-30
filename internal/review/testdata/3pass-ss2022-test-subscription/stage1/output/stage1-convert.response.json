@@ -283,6 +283,17 @@
       }
     ]
   },
-  "messages": [],
+  "messages": [
+    {
+      "level": "info",
+      "code": "STAGE1_CONVERT_SUMMARY",
+      "message": "已识别 1 个落地节点，Stage 2 已初始化 1 行，其中 1 行已自动填入链式目标。"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇺🇸 SS2022-Test-256-US」自动填入 🇺🇸 美国节点"
+    }
+  ],
   "blockingErrors": []
 }
