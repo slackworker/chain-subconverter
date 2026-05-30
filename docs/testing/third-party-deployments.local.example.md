@@ -2,7 +2,7 @@
 
 复制为本目录下的 `third-party-deployments.local.md`（已 gitignore，勿提交）。
 
-公开结论写在同目录 [third-party-deployments.md](third-party-deployments.md)。
+公开结论写在同目录 [third-party-deployments.md](third-party-deployments.md)（每种形态只保留最新一轮，覆盖写）。
 
 ---
 

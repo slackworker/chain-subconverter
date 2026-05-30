@@ -1,6 +1,6 @@
 # 发布与回归 Runbook
 
-发版 / beta.N 前**检查清单**。分支与镜像口径见 [../STATUS.md](../STATUS.md)；部署见 [deploy/README.md](../../deploy/README.md)；结论归档 [third-party-deployments.md](third-party-deployments.md)。
+发版 / beta.N 前**检查清单**。分支与镜像口径见 [../STATUS.md](../STATUS.md)；部署见 [deploy/README.md](../../deploy/README.md)；设备结论**覆盖**写入 [third-party-deployments.md](third-party-deployments.md)（不滚历史）。
 
 **命令与 smoke 步骤**只在 [local-dev-smoke.md](local-dev-smoke.md) 维护；本文不重复命令块。
 
@@ -31,4 +31,4 @@
 
 `healthz` 不稳、主流程不可用、第三方只能依赖开发机部署、或无法区分代码回归与外部漂移 → 停止对外分发当前滚动镜像。
 
-发版后更新 [STATUS.md](../STATUS.md) 最近验证与 third-party-deployments。
+发版后：**覆盖** [third-party-deployments.md](third-party-deployments.md) 已测形态节与覆盖表；[STATUS.md](../STATUS.md) 更新页眉与 §最近验证「第三方部署」一行（digest 不重复抄写，见 [MAINTENANCE.md](../MAINTENANCE.md)）。

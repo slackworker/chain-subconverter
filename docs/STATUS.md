@@ -1,6 +1,6 @@
 # 项目状态
 
-> 最近更新：2026-05-29 · 正式 Beta tag **`v3.0.0-beta.3`**；滚动镜像 **`beta-latest`**（digest `sha256:fe44dd39…`，`beta` @ `3f8212e`）
+> 最近更新：2026-05-30 · 正式 Beta tag **`v3.0.0-beta.3`**；vps-01/02 已切 **`dev-latest`**（digest `sha256:eeff0ea6…`，`dev` @ `65e4f01`）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
 
@@ -39,7 +39,7 @@
 | UI 探索方案 B/C | 定位为 `exploratory`（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）；不要求与 default 壳层一致，以业务能力验收为准 |
 | 安全 | 基础 SSRF/限速已落地；更严格出站与 egress 待评估 |
 | 可复现性 | 验收依赖外部模板/订阅；`subconverter` 浮动 tag 须在回归记录中注明 |
-| 反馈 | Issue + [third-party-deployments.md](testing/third-party-deployments.md) 归档 |
+| 反馈 | Issue；部署失败或未解问题写在 [third-party-deployments.md](testing/third-party-deployments.md) 对应节 |
 
 ## 测试基线
 
@@ -47,17 +47,9 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 ## 最近验证
 
-> 更早记录见 Git 历史。
+> 例行部署结论以 [third-party-deployments.md](testing/third-party-deployments.md) 为准（覆盖写，不滚历史）；更早记录见 Git 历史。正式 tag 见 [RELEASES.md](../RELEASES.md)。
 
-| 日期 | 摘要 |
+| 类别 | 摘要 |
 |------|------|
-| 2026-05-29 | vps-01/02 滚动 `beta-latest` 第 5 轮 + `deployed-smoke` **通过**（digest `sha256:fe44dd39…`，`beta` @ `3f8212e`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
-| 2026-05-29 | vps-01/02 滚动 `beta-latest` 第 4 轮 + `deployed-smoke` **通过**（digest `sha256:61c47893…`，`beta` @ `07f99f4`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
-| 2026-05-29 | vps-01/02 滚动 `beta-latest` 第 3 轮 + `deployed-smoke` **通过**（digest `sha256:1262e8a0…`，`beta` @ `32d5cfb`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
-| 2026-05-29 | 文档/发版口径 **`v3.0.0-beta.3`**（落地副本 + Stage 2 行复制/`rowId`）；vps-01/02 滚动 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:36a8eb9f…`；subconverter 维持 `sha256:c7073588…` / `v0.9.2`） |
-| 2026-05-27 | snapshot-first + stage2 `rowId`/复制行：spec 对齐；`go test ./...`、`npm test`、`test:e2e:mock` **通过** |
-| 2026-05-25 | `v3.0.0-beta.2`；vps-01/02 `beta-latest` + `deployed-smoke` **通过**（digest `sha256:afa71279…`） |
-| 2026-05-24 | `v3.0.0-beta.1` |
-| 2026-05-23 | 第三方回归：内网 / 公网 / 双 Docker |
-| 2026-05-22 | Worker 公网 `Landing-Subscription?target=URI` 复核 7 行 |
-| 2026-05-21 | dual-landing 全链路自动化通过 |
+| **第三方部署** | 2026-05-30 vps-01/02 `dev-latest` + `deployed-smoke` **通过** — 字段见 [third-party-deployments.md](testing/third-party-deployments.md) |
+| **本地自动化基线** | 2026-05-27 snapshot-first + stage2 `rowId`/复制行 spec 对齐；`go test ./...`、`npm test`、`test:e2e:mock` **通过** |
