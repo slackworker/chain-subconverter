@@ -17,7 +17,8 @@ import (
 )
 
 // SQLiteShortLinkStore implements ShortLinkStore backed by a local SQLite file.
-// It provides LRU eviction when the store reaches its configured capacity.
+// It provides LRU eviction when the store reaches its configured capacity and
+// trims historical overflow on write after capacity is reduced.
 type SQLiteShortLinkStore struct {
 	db          *sql.DB
 	dbPath      string
@@ -105,7 +106,15 @@ func recreateLegacySchema(db *sql.DB) error {
 // CreateOrGet atomically upserts a short-link mapping. If a record with the
 // same state_key already exists, it returns the existing record, refreshes its
 // last_accessed_at, and updates the stored long_url to the current canonical
-// long URL. If the store is at capacity, it evicts the LRU record.
+// long URL.
+//
+// If configured capacity is reduced below existing record count, this write
+// path trims overflow by LRU before continuing:
+//   - existing state_key write: trim to maxCapacity
+//   - new state_key write: trim to maxCapacity-1, then insert
+//
+// This keeps read-only paths lossless until the first write and guarantees a
+// successful write finishes at or below configured capacity.
 func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, stateKey string, shortID string, longURL string) (ShortLinkEntry, error) {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -119,8 +128,23 @@ func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, stateKey string,
 	defer tx.Rollback() //nolint:errcheck
 
 	// Check if a record for this canonical state already exists.
-	existingShortID, existingLongURL, err := lookupByStateKey(ctx, tx, stateKey)
-	if err == nil {
+	existingShortID, existingLongURL, lookupErr := lookupByStateKey(ctx, tx, stateKey)
+	hasExistingStateKey := lookupErr == nil
+	if lookupErr != nil && !errors.Is(lookupErr, sql.ErrNoRows) {
+		return ShortLinkEntry{}, fmt.Errorf("lookup existing state key: %w", lookupErr)
+	}
+
+	trimTargetCount := s.maxCapacity - 1
+	trimProtectedShortID := ""
+	if hasExistingStateKey {
+		trimTargetCount = s.maxCapacity
+		trimProtectedShortID = existingShortID
+	}
+	if err := trimOverflowBeforeWrite(ctx, tx, trimTargetCount, trimProtectedShortID); err != nil {
+		return ShortLinkEntry{}, err
+	}
+
+	if hasExistingStateKey {
 		if existingLongURL != longURL {
 			if err := updateLongURL(ctx, tx, existingShortID, longURL); err != nil {
 				return ShortLinkEntry{}, err
@@ -133,25 +157,6 @@ func (s *SQLiteShortLinkStore) CreateOrGet(ctx context.Context, stateKey string,
 			return ShortLinkEntry{}, fmt.Errorf("commit tx: %w", err)
 		}
 		return ShortLinkEntry{ShortID: existingShortID, LongURL: longURL}, nil
-	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return ShortLinkEntry{}, fmt.Errorf("lookup existing state key: %w", err)
-	}
-
-	// Evict LRU if at capacity.
-	var count int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM short_links`).Scan(&count); err != nil {
-		return ShortLinkEntry{}, fmt.Errorf("count records: %w", err)
-	}
-	if count >= s.maxCapacity {
-		_, err := tx.ExecContext(ctx, `
-			DELETE FROM short_links WHERE short_id = (
-				SELECT short_id FROM short_links ORDER BY last_accessed_at ASC, rowid ASC LIMIT 1
-			)
-		`)
-		if err != nil {
-			return ShortLinkEntry{}, fmt.Errorf("evict lru: %w", err)
-		}
 	}
 
 	// Insert new record.
@@ -236,6 +241,64 @@ func lookupByStateKey(ctx context.Context, tx *sql.Tx, stateKey string) (string,
 		return "", "", err
 	}
 	return shortID, longURL, nil
+}
+
+func trimOverflowBeforeWrite(ctx context.Context, tx *sql.Tx, targetCount int, protectedShortID string) error {
+	if targetCount < 0 {
+		targetCount = 0
+	}
+
+	currentCount, err := countShortLinks(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if currentCount <= targetCount {
+		return nil
+	}
+
+	trimCount := currentCount - targetCount
+	var result sql.Result
+	if protectedShortID == "" {
+		result, err = tx.ExecContext(ctx, `
+			DELETE FROM short_links
+			WHERE short_id IN (
+				SELECT short_id FROM short_links
+				ORDER BY last_accessed_at ASC, rowid ASC
+				LIMIT ?
+			)
+		`, trimCount)
+	} else {
+		result, err = tx.ExecContext(ctx, `
+			DELETE FROM short_links
+			WHERE short_id IN (
+				SELECT short_id FROM short_links
+				WHERE short_id <> ?
+				ORDER BY last_accessed_at ASC, rowid ASC
+				LIMIT ?
+			)
+		`, protectedShortID, trimCount)
+	}
+	if err != nil {
+		return fmt.Errorf("trim overflow: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected for trim overflow: %w", err)
+	}
+	if int(affected) != trimCount {
+		return fmt.Errorf("trim overflow: expected %d rows, got %d", trimCount, affected)
+	}
+
+	return nil
+}
+
+func countShortLinks(ctx context.Context, tx *sql.Tx) (int, error) {
+	var count int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM short_links`).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count records: %w", err)
+	}
+	return count, nil
 }
 
 func updateLongURL(ctx context.Context, tx *sql.Tx, shortID string, longURL string) error {

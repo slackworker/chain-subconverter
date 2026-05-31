@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -279,6 +280,122 @@ func TestNewSQLiteShortLinkStore_InvalidPath(t *testing.T) {
 	}
 }
 
+func TestCreateOrGet_TrimsOverflowOnFirstNewWriteAfterCapacityReduction(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "capacity-reduction.db")
+
+	store, err := NewSQLiteShortLinkStore(dbPath, 100)
+	if err != nil {
+		t.Fatalf("NewSQLiteShortLinkStore(100) error = %v", err)
+	}
+	populateSequentialRecords(t, ctx, store, 100)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() initial store error = %v", err)
+	}
+
+	store, err = NewSQLiteShortLinkStore(dbPath, 10)
+	if err != nil {
+		t.Fatalf("NewSQLiteShortLinkStore(10) error = %v", err)
+	}
+	defer store.Close()
+
+	if got := mustRecordCount(t, store); got != 100 {
+		t.Fatalf("record count before first write = %d, want 100", got)
+	}
+
+	entry, err := store.CreateOrGet(ctx, "state-new", "idNEW", "http://example.com/sub?data=new")
+	if err != nil {
+		t.Fatalf("CreateOrGet(new) error = %v", err)
+	}
+	if entry.ShortID != "idNEW" {
+		t.Fatalf("CreateOrGet(new) shortID = %q, want idNEW", entry.ShortID)
+	}
+
+	if got := mustRecordCount(t, store); got != 10 {
+		t.Fatalf("record count after first write = %d, want 10", got)
+	}
+
+	if _, err := store.ResolveShortID(ctx, "id090"); err != service.ErrShortURLNotFound {
+		t.Fatalf("ResolveShortID(id090) error = %v, want ErrShortURLNotFound", err)
+	}
+	for _, kept := range []string{"id091", "id099", "idNEW"} {
+		if _, err := store.ResolveShortID(ctx, kept); err != nil {
+			t.Fatalf("ResolveShortID(%q) after trim error = %v", kept, err)
+		}
+	}
+}
+
+func TestCreateOrGet_TrimsOverflowOnFirstIdempotentWriteAfterCapacityReduction(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "capacity-reduction-idempotent.db")
+
+	store, err := NewSQLiteShortLinkStore(dbPath, 100)
+	if err != nil {
+		t.Fatalf("NewSQLiteShortLinkStore(100) error = %v", err)
+	}
+	populateSequentialRecords(t, ctx, store, 100)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() initial store error = %v", err)
+	}
+
+	store, err = NewSQLiteShortLinkStore(dbPath, 10)
+	if err != nil {
+		t.Fatalf("NewSQLiteShortLinkStore(10) error = %v", err)
+	}
+	defer store.Close()
+
+	entry, err := store.CreateOrGet(ctx, "state099", "id-different", "http://example.com/sub?data=099")
+	if err != nil {
+		t.Fatalf("CreateOrGet(idempotent) error = %v", err)
+	}
+	if entry.ShortID != "id099" {
+		t.Fatalf("CreateOrGet(idempotent) shortID = %q, want id099", entry.ShortID)
+	}
+
+	if got := mustRecordCount(t, store); got != 10 {
+		t.Fatalf("record count after idempotent write = %d, want 10", got)
+	}
+
+	if _, err := store.ResolveShortID(ctx, "id089"); err != service.ErrShortURLNotFound {
+		t.Fatalf("ResolveShortID(id089) error = %v, want ErrShortURLNotFound", err)
+	}
+	for _, kept := range []string{"id090", "id099"} {
+		if _, err := store.ResolveShortID(ctx, kept); err != nil {
+			t.Fatalf("ResolveShortID(%q) after idempotent trim error = %v", kept, err)
+		}
+	}
+}
+
+func TestResolveShortID_DoesNotTrimOverflowAfterCapacityReduction(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "capacity-reduction-read-only.db")
+
+	store, err := NewSQLiteShortLinkStore(dbPath, 100)
+	if err != nil {
+		t.Fatalf("NewSQLiteShortLinkStore(100) error = %v", err)
+	}
+	populateSequentialRecords(t, ctx, store, 100)
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close() initial store error = %v", err)
+	}
+
+	store, err = NewSQLiteShortLinkStore(dbPath, 10)
+	if err != nil {
+		t.Fatalf("NewSQLiteShortLinkStore(10) error = %v", err)
+	}
+	defer store.Close()
+
+	if got := mustRecordCount(t, store); got != 100 {
+		t.Fatalf("record count before read = %d, want 100", got)
+	}
+	if _, err := store.ResolveShortID(ctx, "id000"); err != nil {
+		t.Fatalf("ResolveShortID(id000) error = %v", err)
+	}
+	if got := mustRecordCount(t, store); got != 100 {
+		t.Fatalf("record count after read = %d, want 100", got)
+	}
+}
+
 func mustLastAccessedAt(t *testing.T, store *SQLiteShortLinkStore, shortID string) time.Time {
 	t.Helper()
 
@@ -292,4 +409,28 @@ func mustLastAccessedAt(t *testing.T, store *SQLiteShortLinkStore, shortID strin
 		t.Fatalf("parse last_accessed_at for %q: %v", shortID, err)
 	}
 	return parsed
+}
+
+func mustRecordCount(t *testing.T, store *SQLiteShortLinkStore) int {
+	t.Helper()
+
+	var count int
+	err := store.db.QueryRow(`SELECT COUNT(*) FROM short_links`).Scan(&count)
+	if err != nil {
+		t.Fatalf("query short_links count: %v", err)
+	}
+	return count
+}
+
+func populateSequentialRecords(t *testing.T, ctx context.Context, store *SQLiteShortLinkStore, count int) {
+	t.Helper()
+
+	for i := 0; i < count; i++ {
+		stateKey := fmt.Sprintf("state%03d", i)
+		shortID := fmt.Sprintf("id%03d", i)
+		longURL := fmt.Sprintf("http://example.com/sub?data=%03d", i)
+		if _, err := store.CreateOrGet(ctx, stateKey, shortID, longURL); err != nil {
+			t.Fatalf("CreateOrGet(%q) error = %v", shortID, err)
+		}
+	}
 }
