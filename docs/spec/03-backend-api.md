@@ -257,7 +257,8 @@
     "version": "v3.0.0-beta.3",
     "releaseTag": "v3.0.0-beta.3",
     "imageTag": "3.0.0-beta.3",
-    "revision": "86922c3deadbeef86922c3deadbeef86922c3d"
+    "revision": "86922c3deadbeef86922c3deadbeef86922c3d",
+    "imageDigest": "sha256:eeff0ea63c5d5f23e3605e69486922af7b75fe02ce3ae3abe7af906605ed3c24"
   },
   "subconverter": {
     "healthy": true,
@@ -279,9 +280,10 @@
 - `app.version` 为展示字段：优先 `releaseTag`，否则回退 `imageTag`，再回退本地构建默认值
 - `app.releaseTag` 仅在版本发布 tag 构建时返回（例如 `v3.0.0-beta.3`）
 - `app.imageTag` 为当前镜像 tag（例如 `beta-latest`、`latest`、`dev-latest` 或版本号镜像 tag）
-- `app.revision` 为构建来源 commit SHA，供 hover / 诊断展示
+- `app.revision` 为构建来源 commit SHA，供诊断与发布追溯
+- `app.imageDigest` 为当前部署镜像 digest（`sha256:…`）；构建时经 `APP_IMAGE_DIGEST` 注入，或由运行时环境变量 `CHAIN_SUBCONVERTER_IMAGE_DIGEST` 覆盖；footer hover 展示构建元信息（`releaseTag`、`imageTag`、短 `revision`、`imageDigest`）
 - `subconverter` 字段由后端探测上游 `/version` 获得；`error` 为脱敏摘要
-- `subconverter.networkScope` 由后端按 `app -> subconverter` 实际访问地址推断：`internal` 表示内网/同网络可达，`cross_network` 表示跨网络访问
+- `subconverter.networkScope` 采用推荐部署约定：当 `app -> subconverter` 访问主机名为 compose 服务名 `subconverter` 时标记为 `internal`，其余场景标记为 `cross_network`
 - 前端展示建议：`healthy + internal` 显示绿色、`healthy + cross_network` 显示黄色、`healthy = false` 显示红色
 - `storage.mode` 由 `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH` 推断：`/tmp` 下为 `temporary`，否则为 `persistent`
 - 与 `GET /healthz` 职责分离：本接口用于运行态展示，不替代存活探测

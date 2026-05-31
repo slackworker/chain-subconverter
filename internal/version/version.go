@@ -13,6 +13,9 @@ var ImageTag = "dev"
 // Revision carries the source commit SHA for the current build.
 var Revision = ""
 
+// ImageDigest carries the deployed container image digest (sha256:…), when known.
+var ImageDigest = ""
+
 // DisplayVersion prefers the release tag, then the image tag, then the legacy fallback version.
 func DisplayVersion() string {
 	if ReleaseTag != "" {

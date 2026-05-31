@@ -43,6 +43,7 @@ const (
 	EnvTemplateFetchCacheTTL        = "CHAIN_SUBCONVERTER_TEMPLATE_FETCH_CACHE_TTL"
 	EnvTemplateAllowPrivateNetworks = "CHAIN_SUBCONVERTER_TEMPLATE_ALLOW_PRIVATE_NETWORKS"
 	EnvTrustedProxyCIDRs            = "CHAIN_SUBCONVERTER_TRUSTED_PROXY_CIDRS"
+	EnvImageDigest                  = "CHAIN_SUBCONVERTER_IMAGE_DIGEST"
 )
 
 type Server struct {
@@ -62,6 +63,7 @@ type Server struct {
 	TemplateFetchCacheTTL        time.Duration
 	TemplateAllowPrivateNetworks bool
 	TrustedProxyCIDRs            string
+	ImageDigest                  string
 }
 
 func DefaultServer() Server {
@@ -175,6 +177,9 @@ func LoadServerFromEnv() (Server, error) {
 			return Server{}, fmt.Errorf("parse %s: %w", EnvTrustedProxyCIDRs, err)
 		}
 		cfg.TrustedProxyCIDRs = normalized
+	}
+	if value, ok := lookupTrimmedEnv(EnvImageDigest); ok {
+		cfg.ImageDigest = value
 	}
 
 	if err := cfg.Validate(); err != nil {

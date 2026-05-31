@@ -73,10 +73,11 @@ func main() {
 	}
 	runtimeStatusService := runtimestatus.NewService(
 		runtimestatus.AppStatus{
-			Version:    version.DisplayVersion(),
-			ReleaseTag: version.ReleaseTag,
-			ImageTag:   version.ImageTag,
-			Revision:   version.Revision,
+			Version:     version.DisplayVersion(),
+			ReleaseTag:  version.ReleaseTag,
+			ImageTag:    version.ImageTag,
+			Revision:    version.Revision,
+			ImageDigest: serverCfg.ImageDigest,
 		},
 		shortLinkStore,
 		runtimestatus.NewUpstreamProber(upstreamVersionURL, subconverterCfg.Timeout),

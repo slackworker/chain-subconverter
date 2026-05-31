@@ -25,8 +25,8 @@ func TestUpstreamProber_CachesUntilRefresh(t *testing.T) {
 	if !first.Healthy || !second.Healthy {
 		t.Fatalf("expected healthy probe results")
 	}
-	if first.NetworkScope != SubconverterNetworkScopeInternal {
-		t.Fatalf("first network scope = %q, want %q", first.NetworkScope, SubconverterNetworkScopeInternal)
+	if first.NetworkScope != SubconverterNetworkScopeCrossNetwork {
+		t.Fatalf("first network scope = %q, want %q", first.NetworkScope, SubconverterNetworkScopeCrossNetwork)
 	}
 	if calls != 1 {
 		t.Fatalf("expected one upstream call, got %d", calls)
@@ -47,10 +47,10 @@ func TestResolveSubconverterNetworkScope(t *testing.T) {
 		versionURL string
 		want       SubconverterNetworkScope
 	}{
-		{name: "docker service host", versionURL: "http://subconverter:25500/version", want: SubconverterNetworkScopeInternal},
-		{name: "localhost", versionURL: "http://127.0.0.1:25500/version", want: SubconverterNetworkScopeInternal},
-		{name: "private ipv4", versionURL: "http://10.0.0.25:25500/version", want: SubconverterNetworkScopeInternal},
-		{name: "internal hostname suffix", versionURL: "https://subconverter.internal/version", want: SubconverterNetworkScopeInternal},
+		{name: "recommended compose service host", versionURL: "http://subconverter:25500/version", want: SubconverterNetworkScopeInternal},
+		{name: "localhost", versionURL: "http://127.0.0.1:25500/version", want: SubconverterNetworkScopeCrossNetwork},
+		{name: "private ipv4", versionURL: "http://10.0.0.25:25500/version", want: SubconverterNetworkScopeCrossNetwork},
+		{name: "internal hostname suffix", versionURL: "https://subconverter.internal/version", want: SubconverterNetworkScopeCrossNetwork},
 		{name: "public hostname", versionURL: "https://subconverter.example.com/version", want: SubconverterNetworkScopeCrossNetwork},
 		{name: "public ipv4", versionURL: "http://8.8.8.8:25500/version", want: SubconverterNetworkScopeCrossNetwork},
 	}

@@ -40,6 +40,9 @@ func normalizeAppStatus(app AppStatus) AppStatus {
 	if app.Revision == "" {
 		app.Revision = version.Revision
 	}
+	if app.ImageDigest == "" {
+		app.ImageDigest = version.ImageDigest
+	}
 	return app
 }
 

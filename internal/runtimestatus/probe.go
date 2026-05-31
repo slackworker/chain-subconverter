@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
@@ -13,6 +12,7 @@ import (
 )
 
 const defaultProbeCacheTTL = 15 * time.Second
+const recommendedComposeSubconverterHost = "subconverter"
 
 // UpstreamProber fetches subconverter /version and records latency.
 type UpstreamProber struct {
@@ -47,21 +47,8 @@ func resolveSubconverterNetworkScope(rawURL string) SubconverterNetworkScope {
 	}
 
 	lowerHostname := strings.ToLower(hostname)
-	if lowerHostname == "localhost" || lowerHostname == "host.docker.internal" || strings.HasSuffix(lowerHostname, ".localhost") {
-		return SubconverterNetworkScopeInternal
-	}
-	if strings.HasSuffix(lowerHostname, ".local") || strings.HasSuffix(lowerHostname, ".internal") {
-		return SubconverterNetworkScopeInternal
-	}
-	if !strings.Contains(lowerHostname, ".") {
-		return SubconverterNetworkScopeInternal
-	}
-
-	addr, err := netip.ParseAddr(hostname)
-	if err != nil {
-		return SubconverterNetworkScopeCrossNetwork
-	}
-	if addr.IsLoopback() || addr.IsPrivate() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() {
+	// Keep classification simple: only the recommended docker-compose service host is internal.
+	if lowerHostname == recommendedComposeSubconverterHost {
 		return SubconverterNetworkScopeInternal
 	}
 

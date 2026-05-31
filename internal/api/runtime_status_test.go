@@ -28,10 +28,11 @@ func TestRuntimeStatusHandler(t *testing.T) {
 
 	runtimeStatusService := runtimestatus.NewService(
 		runtimestatus.AppStatus{
-			Version:    "v-test-release",
-			ReleaseTag: "v-test-release",
-			ImageTag:   "image-latest",
-			Revision:   "86922c3deadbeef86922c3deadbeef86922c3d",
+			Version:     "v-test-release",
+			ReleaseTag:  "v-test-release",
+			ImageTag:    "image-latest",
+			Revision:    "86922c3deadbeef86922c3deadbeef86922c3d",
+			ImageDigest: "sha256:abc123",
 		},
 		store,
 		runtimestatus.NewUpstreamProber(upstream.URL, 2*time.Second),
@@ -63,11 +64,14 @@ func TestRuntimeStatusHandler(t *testing.T) {
 	if payload.App.Revision != "86922c3deadbeef86922c3deadbeef86922c3d" {
 		t.Fatalf("app revision = %q", payload.App.Revision)
 	}
+	if payload.App.ImageDigest != "sha256:abc123" {
+		t.Fatalf("app image digest = %q", payload.App.ImageDigest)
+	}
 	if !payload.Subconverter.Healthy {
 		t.Fatalf("subconverter healthy = false, error=%q", payload.Subconverter.Error)
 	}
-	if payload.Subconverter.NetworkScope != runtimestatus.SubconverterNetworkScopeInternal {
-		t.Fatalf("subconverter network scope = %q, want %q", payload.Subconverter.NetworkScope, runtimestatus.SubconverterNetworkScopeInternal)
+	if payload.Subconverter.NetworkScope != runtimestatus.SubconverterNetworkScopeCrossNetwork {
+		t.Fatalf("subconverter network scope = %q, want %q", payload.Subconverter.NetworkScope, runtimestatus.SubconverterNetworkScopeCrossNetwork)
 	}
 	if payload.Subconverter.Version != "subconverter v0.9.1-test" {
 		t.Fatalf("subconverter version = %q", payload.Subconverter.Version)

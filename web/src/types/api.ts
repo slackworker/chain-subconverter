@@ -134,6 +134,7 @@ export interface RuntimeStatusResponse {
 		releaseTag?: string;
 		imageTag?: string;
 		revision?: string;
+		imageDigest?: string;
 	};
 	subconverter: {
 		healthy: boolean;

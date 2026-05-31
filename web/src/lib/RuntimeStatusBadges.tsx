@@ -12,32 +12,43 @@ interface RuntimeStatusBadgesProps {
 	endSlot?: ReactNode;
 }
 
+const STORAGE_MODES = {
+	zh: {
+		persistent: "持久化",
+		temporary: "临时",
+	},
+	en: {
+		persistent: "persistent",
+		temporary: "temporary",
+	},
+} as const;
+
 const LABELS = {
 	zh: {
-		app: "应用",
-		revision: "SHA",
+		releaseTag: "发布标签",
+		imageTag: "镜像 tag",
+		revision: "构建 revision",
+		imageDigest: "镜像 digest",
 		subconverter: "Subconverter",
 		storage: "短链存储",
 		healthy: "可用",
 		internalNetwork: "内部网络",
 		crossNetwork: "跨网络",
 		unhealthy: "不可用",
-		latency: "延迟 {ms}ms",
-		storageDetail: "{mode} · {used}/{capacity}",
 		loading: "状态加载中…",
 		unavailable: "状态暂不可用",
 	},
 	en: {
-		app: "App",
-		revision: "SHA",
+		releaseTag: "Release tag",
+		imageTag: "Image tag",
+		revision: "Revision",
+		imageDigest: "Image digest",
 		subconverter: "Subconverter",
 		storage: "Short links",
 		healthy: "healthy",
 		internalNetwork: "internal network",
 		crossNetwork: "cross-network",
 		unhealthy: "unavailable",
-		latency: "latency {ms}ms",
-		storageDetail: "{mode} · {used}/{capacity}",
 		loading: "Loading status…",
 		unavailable: "Status unavailable",
 	},
@@ -50,21 +61,23 @@ function formatNetworkScope(scope: RuntimeStatusResponse["subconverter"]["networ
 	return scope === "internal" ? copy.internalNetwork : copy.crossNetwork;
 }
 
+function formatStorageModeLabel(mode: string, locale: Locale): string {
+	if (mode === "persistent" || mode === "temporary") {
+		return STORAGE_MODES[locale][mode];
+	}
+	return mode;
+}
+
 function formatSubconverterTooltip(status: RuntimeStatusResponse, locale: Locale): string {
 	const copy = LABELS[locale];
-	const subLatency =
-		status.subconverter.latencyMs !== undefined
-			? copy.latency.replace("{ms}", String(status.subconverter.latencyMs))
-			: "";
-	return [
-		`${copy.subconverter}: ${status.subconverter.healthy ? copy.healthy : copy.unhealthy}`,
+	const details = [
 		status.subconverter.healthy ? formatNetworkScope(status.subconverter.networkScope, locale) : "",
 		status.subconverter.version,
-		subLatency,
 		status.subconverter.error,
 	]
 		.filter((part) => part && part.trim() !== "")
 		.join(" · ");
+	return details ? `${copy.subconverter}: ${details}` : copy.subconverter;
 }
 
 export type StorageBadgeState = BadgeState;
@@ -108,21 +121,27 @@ function dotClass(state: BadgeState | undefined): string {
 
 function formatStorageTooltip(status: RuntimeStatusResponse, locale: Locale): string {
 	const copy = LABELS[locale];
-	const storageLine = copy.storageDetail
-		.replace("{mode}", status.storage.mode)
-		.replace("{used}", String(status.storage.used))
-		.replace("{capacity}", String(status.storage.capacity));
-	return `${copy.storage}: ${storageLine}`;
+	return `${copy.storage}: ${formatStorageModeLabel(status.storage.mode, locale)}`;
+}
+
+function shortRevision(revision: string | undefined): string | undefined {
+	if (!revision) {
+		return undefined;
+	}
+	return revision.slice(0, 12);
 }
 
 function formatAppTooltip(status: RuntimeStatusResponse, locale: Locale): string {
 	const copy = LABELS[locale];
-	return [
-		`${copy.app}: ${status.app.version}`,
-		status.app.revision ? `${copy.revision}: ${status.app.revision}` : "",
+	const details = [
+		status.app.releaseTag ? `${copy.releaseTag}: ${status.app.releaseTag}` : "",
+		status.app.imageTag ? `${copy.imageTag}: ${status.app.imageTag}` : "",
+		shortRevision(status.app.revision) ? `${copy.revision}: ${shortRevision(status.app.revision)}` : "",
+		status.app.imageDigest ? `${copy.imageDigest}: ${status.app.imageDigest}` : "",
 	]
-		.filter((part) => part && part.trim() !== "")
+		.filter((part) => part !== "")
 		.join(" · ");
+	return details;
 }
 
 /** 在 © 前插入应用版本，形如「Chain Subconverter - dev © 2026」。 */
@@ -169,7 +188,7 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 		? resolveStorageBadgeState(status.storage.used, status.storage.capacity)
 		: undefined;
 	const subconverterBadgeState = status ? resolveSubconverterBadgeState(status.subconverter) : undefined;
-	const appLabel = status?.app.version ?? "…";
+	const appLabel = status?.app.version;
 
 		function handleRefreshIntent() {
 			void load(true);
@@ -194,8 +213,8 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 	return (
 		<>
 			{footerCredit ? (
-				<p className="a-footer__credit" title={appTooltip}>
-					{footerCreditWithAppVersion(footerCredit, appLabel)}
+				<p className="a-footer__credit" title={appTooltip || undefined}>
+					{appLabel ? footerCreditWithAppVersion(footerCredit, appLabel) : footerCredit}
 				</p>
 			) : null}
 			<div className="a-footer__end">
