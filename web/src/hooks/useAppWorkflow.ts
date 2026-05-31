@@ -436,12 +436,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 
 			try {
 				const convertResponse = await postStage1Convert({ stage1Input: restoreResponse.stage1Input });
-				const mergedMessages = mergeMessages(restoreResponse.messages, convertResponse.messages);
-				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage3");
+				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3");
 				setState((current) => applyRestoreReinitializedState(current, convertResponse.stage2Init, {
 					blockingErrors: restoreResponse.blockingErrors.length > 0 ? restoreResponse.blockingErrors : convertResponse.blockingErrors,
 					logEntries,
-					messages: mergedMessages,
+					messages: restoreResponse.messages,
 					restoredStage1Input,
 					restoreStatus: restoreResponse.restoreStatus,
 					resolvedLongUrl: restoreResponse.longUrl,

@@ -345,15 +345,11 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.preferShortUrl).toBe(true);
 		expect(workflow.current.state.restoreStatus).toBe("replayable");
 		expect(workflow.current.state.stage2Stale).toBe(false);
-		expect(workflow.current.state.messages).toEqual([
-			...restoreResponse.messages,
-			...convertResponse.messages,
-		]);
+		expect(workflow.current.state.messages).toEqual(restoreResponse.messages);
 		expect(workflow.current.state.blockingErrors).toEqual([]);
 		expect(workflow.current.workflowLog.map((entry) => entry.code)).toEqual([
 			"ACTION_RESTORE",
 			"RESTORE_METADATA_READY",
-			"CHAIN_TARGET_REVIEW",
 		]);
 	});
 
