@@ -35,7 +35,11 @@ afterEach(() => {
 	}
 });
 
-function buildStatus(overrides: Partial<RuntimeStatusResponse> = {}): RuntimeStatusResponse {
+function buildStatus(overrides: {
+	app?: Partial<RuntimeStatusResponse["app"]>;
+	subconverter?: Partial<RuntimeStatusResponse["subconverter"]>;
+	storage?: Partial<RuntimeStatusResponse["storage"]>;
+} = {}): RuntimeStatusResponse {
 	return {
 		app: {
 			version: "v1.2.3",
