@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
 import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
@@ -22,7 +22,6 @@ import {
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	matchesStage2RowKey,
-	pickNextDerivedProxyName,
 	pickNextTarget,
 } from "../lib/stage2";
 import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
@@ -39,6 +38,15 @@ import { WORKFLOW_EVENTS, type WorkflowEventCode } from "../lib/workflow-log-eve
 import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
+import {
+	applyStage2InitState,
+	cloneStage2RowState,
+	deleteStage2RowState,
+	reportCurrentLinkInputErrorState,
+	setCurrentLinkInputState,
+	updateStage1InputState,
+	updateStage2RowState,
+} from "./useAppWorkflow.state";
 
 export type WorkflowTone = "neutral" | "warning" | "success";
 
@@ -53,7 +61,6 @@ interface RequestFailureContext {
 	requestPath: string;
 }
 
-type Stage2SnapshotRow = typeof initialAppState.stage2Snapshot.rows[number];
 type Stage2SnapshotRows = typeof initialAppState.stage2Snapshot.rows;
 
 export interface AppWorkflowViewModel {
@@ -100,19 +107,6 @@ export interface AppWorkflowViewModel {
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
 }
 
-let stage2DerivedRowSequence = 0;
-
-function snapshotRowsFromInit(stage2Init: Stage2Init) {
-	return stage2Init.rows.map((row) => ({
-		rowId: row.rowId,
-		sourceLandingNodeName: row.sourceLandingNodeName,
-		proxyName: row.proxyName,
-		landingNodeName: row.landingNodeName,
-		mode: row.mode,
-		targetName: row.targetName,
-	}));
-}
-
 function fallbackBlockingError(error: unknown, context: RequestFailureContext): BlockingError {
 	const requestError = typeof error === "object" && error !== null ? error as APIRequestError : null;
 	const detail = error instanceof Error ? error.message : "请求失败";
@@ -141,15 +135,6 @@ function mergeMessages(...messageGroups: Message[][]): Message[] {
 		return true;
 	});
 }
-
-function nextStage2DerivedRowID(sourceLandingNodeName: string) {
-	stage2DerivedRowSequence += 1;
-	const normalizedSource = sourceLandingNodeName.trim().replace(/\s+/g, "-").replace(/[^\w\u0080-\uFFFF-]/g, "").slice(0, 32);
-	const sourcePrefix = normalizedSource === "" ? "stage2-row" : normalizedSource;
-	const randomPart = globalThis.crypto?.randomUUID?.().slice(0, 8) ?? `${Date.now()}-${stage2DerivedRowSequence}`;
-	return `${sourcePrefix}-${randomPart}`;
-}
-
 
 function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined) {
 	return {
@@ -250,6 +235,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	const [isRestoring, setIsRestoring] = useState(false);
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
+	const stage2DerivedRowSequenceRef = useRef(0);
 
 	const stage2Rows = state.stage2Snapshot.rows;
 	const modeOptions = getModeOptions(state.stage2Init);
@@ -293,6 +279,14 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			? { label: "Short URL Ready", tone: "success" }
 			: { label: "Long URL Ready", tone: "success" };
 
+	function nextStage2DerivedRowID(sourceLandingNodeName: string) {
+		stage2DerivedRowSequenceRef.current += 1;
+		const normalizedSource = sourceLandingNodeName.trim().replace(/\s+/g, "-").replace(/[^\w\u0080-\uFFFF-]/g, "").slice(0, 32);
+		const sourcePrefix = normalizedSource === "" ? "stage2-row" : normalizedSource;
+		const randomPart = globalThis.crypto?.randomUUID?.().slice(0, 8) ?? `${Date.now()}-${stage2DerivedRowSequenceRef.current}`;
+		return `${sourcePrefix}-${randomPart}`;
+	}
+
 	function applyDefaultTemplateURL(templateURL: string) {
 		const normalizedTemplateURL = templateURL.trim();
 		if (normalizedTemplateURL === "") {
@@ -313,31 +307,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function setCurrentLinkInput(value: string) {
-		setState((current) => ({
-			...current,
-			currentLinkInput: value,
-			stage3Expired: false,
-			blockingErrors: clearStage3ActionErrors(clearStage3FieldErrors(current.blockingErrors, "currentLinkInput")),
-		}));
+		setState((current) => setCurrentLinkInputState(current, value));
 	}
 
 	function reportCurrentLinkInputError(message: string, actionLabel: string) {
-		setState((current) => ({
-			...current,
-			responseOriginStage: "stage3",
-			blockingErrors: [
-				...clearStage3ActionErrors(clearStage3FieldErrors(current.blockingErrors, "currentLinkInput")),
-				{
-					code: "INVALID_CURRENT_LINK",
-					message,
-					scope: "stage3_field",
-					context: {
-						field: "currentLinkInput",
-						action: actionLabel,
-					},
-				},
-			],
-		}));
+		setState((current) => reportCurrentLinkInputErrorState(current, message, actionLabel));
 	}
 
 	function summarizeBlockingErrors(errors: BlockingError[], fallback: string) {
@@ -362,36 +336,12 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		setState((current) => {
 			const nextStage1Input = updater(current.stage1Input);
 			const changedFields = getChangedStage1Fields(current.stage1Input, nextStage1Input);
-			const becomesStale = current.stage2Snapshot.rows.length > 0;
-			let blockingErrors = clearStage1FieldErrors(current.blockingErrors, changedFields);
-			if (changedFields.length > 0 && current.responseOriginStage === "stage1") {
-				blockingErrors = [];
-			}
-			if (becomesStale) {
-				blockingErrors = clearBlockingErrorsSupersededByStage2Stale(blockingErrors, current.responseOriginStage);
-			}
-
-			return {
-				...current,
-				stage1Input: nextStage1Input,
-				generatedUrls: null,
-				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
-				stage2Stale: becomesStale ? true : current.stage2Stale,
-				blockingErrors,
-			};
+			return updateStage1InputState(current, nextStage1Input, changedFields);
 		});
 	}
 
 	function applyStage2Init(stage2Init: Stage2Init) {
-		setState((current) => ({
-			...current,
-			stage2Init,
-			stage2Snapshot: { rows: snapshotRowsFromInit(stage2Init) },
-			generatedUrls: null,
-			stage3Expired: false,
-			stage2Stale: false,
-			restoreStatus: "idle",
-		}));
+		setState((current) => applyStage2InitState(current, stage2Init));
 	}
 
 	function getStage1FieldErrors(field: string) {
@@ -581,21 +531,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function updateStage2Row(landingNodeName: string, updater: (row: Stage2Row) => Stage2Row) {
-		setState((current) => {
-			const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
-			if (matchedRow === null) {
-				return current;
-			}
-			return {
-				...current,
-				generatedUrls: null,
-				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
-				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
-				stage2Snapshot: {
-					rows: current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
-				},
-			};
-		});
+		setState((current) => updateStage2RowState(current, landingNodeName, updater));
 	}
 
 	function handleProxyNameChange(landingNodeName: string, proxyName: string) {
@@ -612,33 +548,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			if (matchedRow === null) {
 				return current;
 			}
-
 			const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-			const clonedProxyName = pickNextDerivedProxyName(current.stage2Snapshot.rows, sourceLandingNodeName);
-			const clonedRow: Stage2Row = {
-				...matchedRow,
-				rowId: nextStage2DerivedRowID(sourceLandingNodeName),
-				proxyName: clonedProxyName,
-				landingNodeName: clonedProxyName,
-			};
-
-			const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, landingNodeName));
-			const groupLastIndex = current.stage2Snapshot.rows.reduce((lastIndex, row, index) => (
-				getStage2RowSourceLandingName(row) === sourceLandingNodeName ? index : lastIndex
-			), -1);
-			const insertIndex = groupLastIndex >= 0 ? groupLastIndex + 1 : matchedIndex + 1;
-			const nextRows = [...current.stage2Snapshot.rows];
-			nextRows.splice(insertIndex, 0, clonedRow);
-
-			return {
-				...current,
-				generatedUrls: null,
-				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
-				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
-				stage2Snapshot: {
-					rows: nextRows,
-				},
-			};
+			return cloneStage2RowState(current, landingNodeName, nextStage2DerivedRowID(sourceLandingNodeName));
 		});
 	}
 
@@ -652,25 +563,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleDeleteStage2Row(landingNodeName: string) {
-		setState((current) => {
-			const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
-			if (matchedRow === null) {
-				return current;
-			}
-			const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-			if (current.stage2Snapshot.rows.filter((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName).length <= 1) {
-				return current;
-			}
-			return {
-				...current,
-				generatedUrls: null,
-				stage3Expired: current.generatedUrls !== null || current.stage3Expired,
-				blockingErrors: current.blockingErrors.filter((error) => error.scope !== "stage2_row"),
-				stage2Snapshot: {
-					rows: current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
-				},
-			};
-		});
+		setState((current) => deleteStage2RowState(current, landingNodeName));
 	}
 
 	function handleModeChange(landingNodeName: string, mode: Stage2Row["mode"]) {
