@@ -39,11 +39,23 @@ import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from 
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
 import {
-	applyStage2InitState,
+	applyGenerateLongURLSuccessState,
+	applyGenerateShortURLFailureState,
+	applyGenerateShortURLSuccessState,
+	applyRestoreConflictState,
+	applyRestoreReinitializedState,
+	applyRestoreReinitFailedState,
+	applyShortURLCreationFailureState,
+	applyShortURLCreationSuccessState,
+	applyShortURLPreferenceToggleState,
+	applyStage1ConvertSuccessState,
 	cloneStage2RowState,
+	completeWorkflowRequestState,
 	deleteStage2RowState,
 	reportCurrentLinkInputErrorState,
 	setCurrentLinkInputState,
+	startShortURLCreationState,
+	startWorkflowRequestState,
 	updateStage1InputState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
@@ -134,13 +146,6 @@ function mergeMessages(...messageGroups: Message[][]): Message[] {
 		seen.add(key);
 		return true;
 	});
-}
-
-function buildGeneratedUrls(longUrl: string, shortUrl: string | null | undefined) {
-	return {
-		longUrl,
-		shortUrl: shortUrl ?? null,
-	};
 }
 
 function getDisplayedGeneratedUrl(
@@ -340,10 +345,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		});
 	}
 
-	function applyStage2Init(stage2Init: Stage2Init) {
-		setState((current) => applyStage2InitState(current, stage2Init));
-	}
-
 	function getStage1FieldErrors(field: string) {
 		return getFieldErrors(state.blockingErrors, field);
 	}
@@ -377,25 +378,18 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	async function handleStage1Convert() {
 		const stage1Input = state.stage1Input;
 		setIsConverting(true);
-		setState((current) => ({
-			...current,
-			responseOriginStage: "stage1",
-			messages: [],
-			workflowLog: appendWorkflowLogEntries(current.workflowLog, [workflowActionSeparator("ACTION_STAGE1_CONVERT")]),
-			blockingErrors: [],
-		}));
+		setState((current) => startWorkflowRequestState(current, "stage1", workflowActionSeparator("ACTION_STAGE1_CONVERT")));
 
 		try {
 			const response = await postStage1Convert({ stage1Input: toStage1InputPayload(stage1Input) });
-			applyStage2Init(response.stage2Init);
 			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage1");
-			setState((current) => ({
-				...current,
-				responseOriginStage: "stage1",
-				messages: response.messages,
-				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
-				blockingErrors: response.blockingErrors,
-			}));
+			setState((current) => applyStage1ConvertSuccessState(
+				current,
+				response.stage2Init,
+				response.messages,
+				response.blockingErrors,
+				logEntries,
+			));
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
 			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
@@ -407,13 +401,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			const logEntries = backendMessagesToWorkflowLog(messages, "stage1").concat(
 				frontendWorkflowFailureEvent("STAGE1_CONVERT_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
 			);
-			setState((current) => ({
-				...current,
-				responseOriginStage: "stage1",
-				messages,
-				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
-				blockingErrors,
-			}));
+			setState((current) => completeWorkflowRequestState(current, "stage1", messages, blockingErrors, logEntries));
 		} finally {
 			setIsConverting(false);
 		}
@@ -426,35 +414,22 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}
 
 		setIsRestoring(true);
-		setState((current) => ({
-			...current,
-			responseOriginStage: "stage3",
-			messages: [],
-			stage3Expired: false,
-			workflowLog: appendWorkflowLogEntries(current.workflowLog, [workflowActionSeparator("ACTION_RESTORE")]),
-			blockingErrors: [],
-		}));
+		setState((current) => startWorkflowRequestState(current, "stage3", workflowActionSeparator("ACTION_RESTORE"), { resetStage3Expired: true }));
 
 		try {
 			const restoreResponse = await postResolveURL(restoreInput);
 			const restoredStage1Input = hydrateStage1Input(restoreResponse.stage1Input);
 			if (restoreResponse.restoreStatus === "conflicted") {
 				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3");
-				setState((current) => ({
-					...current,
-					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
-					preferShortUrl: Boolean(restoreResponse.shortUrl),
-					stage1Input: restoredStage1Input,
-					stage2Init: null,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
-					stage3Expired: false,
-					stage2Stale: false,
-					restoreStatus: restoreResponse.restoreStatus,
-					responseOriginStage: "stage3",
+				setState((current) => applyRestoreConflictState(current, {
+					blockingErrors: restoreResponse.blockingErrors,
+					logEntries,
 					messages: restoreResponse.messages,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
-					blockingErrors: restoreResponse.blockingErrors.filter((error) => error.scope !== "stage2_row"),
+					restoredStage1Input,
+					restoreStatus: restoreResponse.restoreStatus,
+					resolvedLongUrl: restoreResponse.longUrl,
+					resolvedShortUrl: restoreResponse.shortUrl,
+					stage2Snapshot: restoreResponse.stage2Snapshot,
 				}));
 				return;
 			}
@@ -463,21 +438,15 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				const convertResponse = await postStage1Convert({ stage1Input: restoreResponse.stage1Input });
 				const mergedMessages = mergeMessages(restoreResponse.messages, convertResponse.messages);
 				const logEntries = backendMessagesToWorkflowLog(mergedMessages, "stage3");
-				setState((current) => ({
-					...current,
-					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
-					preferShortUrl: Boolean(restoreResponse.shortUrl),
-					stage1Input: restoredStage1Input,
-					stage2Init: convertResponse.stage2Init,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
-					stage3Expired: false,
-					stage2Stale: false,
-					restoreStatus: restoreResponse.restoreStatus,
-					responseOriginStage: "stage3",
-					messages: mergedMessages,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				setState((current) => applyRestoreReinitializedState(current, convertResponse.stage2Init, {
 					blockingErrors: restoreResponse.blockingErrors.length > 0 ? restoreResponse.blockingErrors : convertResponse.blockingErrors,
+					logEntries,
+					messages: mergedMessages,
+					restoredStage1Input,
+					restoreStatus: restoreResponse.restoreStatus,
+					resolvedLongUrl: restoreResponse.longUrl,
+					resolvedShortUrl: restoreResponse.shortUrl,
+					stage2Snapshot: restoreResponse.stage2Snapshot,
 				}));
 			} catch (convertError) {
 				const errorResponse = getErrorResponse(convertError);
@@ -489,21 +458,15 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3").concat(
 					frontendWorkflowFailureEvent("RESTORE_REINIT_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
 				);
-				setState((current) => ({
-					...current,
-					currentLinkInput: restoreResponse.shortUrl ?? restoreResponse.longUrl,
-					preferShortUrl: Boolean(restoreResponse.shortUrl),
-					stage1Input: restoredStage1Input,
-					stage2Init: null,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-					generatedUrls: buildGeneratedUrls(restoreResponse.longUrl, restoreResponse.shortUrl),
-					stage3Expired: false,
-					stage2Stale: true,
-					restoreStatus: restoreResponse.restoreStatus,
-					responseOriginStage: "stage3",
-					messages: restoreResponse.messages,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				setState((current) => applyRestoreReinitFailedState(current, {
 					blockingErrors,
+					logEntries,
+					messages: restoreResponse.messages,
+					restoredStage1Input,
+					restoreStatus: restoreResponse.restoreStatus,
+					resolvedLongUrl: restoreResponse.longUrl,
+					resolvedShortUrl: restoreResponse.shortUrl,
+					stage2Snapshot: restoreResponse.stage2Snapshot,
 				}));
 			}
 		} catch (error) {
@@ -517,13 +480,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			const logEntries = backendMessagesToWorkflowLog(messages, "stage3").concat(
 				frontendWorkflowFailureEvent("RESTORE_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
 			);
-			setState((current) => ({
-				...current,
-				responseOriginStage: "stage3",
-				messages,
-				stage3Expired: false,
-				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
-				blockingErrors,
+			setState((current) => completeWorkflowRequestState(current, "stage3", messages, blockingErrors, logEntries, {
+				patch: { stage3Expired: false },
 			}));
 		} finally {
 			setIsRestoring(false);
@@ -587,13 +545,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		const preferShortUrl = state.preferShortUrl;
 
 		setIsGenerating(true);
-		setState((current) => ({
-			...current,
-			responseOriginStage: "stage2",
-			messages: [],
-			workflowLog: appendWorkflowLogEntries(current.workflowLog, [workflowActionSeparator("ACTION_GENERATE")]),
-			blockingErrors: [],
-		}));
+		setState((current) => startWorkflowRequestState(current, "stage2", workflowActionSeparator("ACTION_GENERATE")));
 
 		try {
 			const response = await postGenerate({
@@ -603,15 +555,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			const forceShortUrl = exceedsPublicLongURLBudget(response.longUrl, maxPublicLongURLLength);
 			if (!preferShortUrl && !forceShortUrl) {
 				const logEntries = backendMessagesToWorkflowLog(response.messages, "stage2");
-				setState((current) => ({
-					...current,
-					generatedUrls: buildGeneratedUrls(response.longUrl, null),
-					currentLinkInput: response.longUrl,
-					stage3Expired: false,
-					responseOriginStage: "stage2",
-					messages: response.messages,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				setState((current) => applyGenerateLongURLSuccessState(current, {
 					blockingErrors: response.blockingErrors,
+					logEntries,
+					messages: response.messages,
+					resolvedLongURL: response.longUrl,
 				}));
 				return;
 			}
@@ -625,16 +573,13 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 						? [buildWorkflowLogEntry("warning", "SHORT_URL_REQUIRED", "长链接超过公开长度上限，已自动切换为短链接。", "frontend", "stage2")]
 						: [],
 				);
-				setState((current) => ({
-					...current,
-					preferShortUrl: preferShortUrl || forceShortUrl,
-					generatedUrls: buildGeneratedUrls(shortLinkResponse.longUrl, shortLinkResponse.shortUrl),
-					currentLinkInput: shortLinkResponse.shortUrl,
-					stage3Expired: false,
-					responseOriginStage: "stage2",
-					messages: mergedMessages,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				setState((current) => applyGenerateShortURLSuccessState(current, {
 					blockingErrors: shortLinkResponse.blockingErrors,
+					logEntries,
+					messages: mergedMessages,
+					preferShortURL: preferShortUrl || forceShortUrl,
+					resolvedLongURL: shortLinkResponse.longUrl,
+					resolvedShortURL: shortLinkResponse.shortUrl,
 				}));
 			} catch (error) {
 				const errorResponse = getErrorResponse(error);
@@ -650,16 +595,12 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 						summarizeBlockingErrors(blockingErrors, "请求失败。"),
 					),
 				);
-				setState((current) => ({
-					...current,
-					preferShortUrl: forceShortUrl ? true : false,
-					generatedUrls: forceShortUrl ? null : buildGeneratedUrls(response.longUrl, null),
-					currentLinkInput: forceShortUrl ? current.currentLinkInput : response.longUrl,
-					stage3Expired: forceShortUrl ? current.stage3Expired : false,
-					responseOriginStage: "stage3",
-					messages: mergedMessages,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+				setState((current) => applyGenerateShortURLFailureState(current, {
 					blockingErrors,
+					logEntries,
+					messages: mergedMessages,
+					requireShortURL: forceShortUrl,
+					resolvedLongURL: response.longUrl,
 				}));
 			} finally {
 				setIsCreatingShortUrl(false);
@@ -675,74 +616,35 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			const logEntries = backendMessagesToWorkflowLog(messages, "stage2").concat(
 				frontendWorkflowFailureEvent("GENERATE_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
 			);
-			setState((current) => ({
-				...current,
-				responseOriginStage: "stage2",
-				messages,
-				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
-				blockingErrors,
-			}));
+			setState((current) => completeWorkflowRequestState(current, "stage2", messages, blockingErrors, logEntries));
 		} finally {
 			setIsGenerating(false);
 		}
 	}
 
 	async function handlePreferShortUrl(checked: boolean) {
-		if (!checked) {
-			if (state.generatedUrls && exceedsPublicLongURLBudget(state.generatedUrls.longUrl, maxPublicLongURLLength)) {
-				setState((current) => ({
-					...current,
-					preferShortUrl: true,
-					currentLinkInput: getDisplayedGeneratedUrl(current.generatedUrls, true) || current.currentLinkInput,
-					workflowLog: appendWorkflowLogEntries(current.workflowLog, [frontendWorkflowEvent("SHORT_URL_REQUIRED")]),
-				}));
-				return;
-			}
-			setState((current) => ({
-				...current,
-				preferShortUrl: false,
-				currentLinkInput: getDisplayedGeneratedUrl(current.generatedUrls, false) || current.currentLinkInput,
-			}));
+		const requireShortURL = Boolean(state.generatedUrls && exceedsPublicLongURLBudget(state.generatedUrls.longUrl, maxPublicLongURLLength));
+		setState((current) => applyShortURLPreferenceToggleState(current, checked, {
+			requireShortURL,
+			requiredLogEntry: requireShortURL ? frontendWorkflowEvent("SHORT_URL_REQUIRED") : undefined,
+		}));
+		if (!checked || state.generatedUrls === null || state.generatedUrls.shortUrl) {
 			return;
 		}
-		if (state.generatedUrls === null) {
-			setState((current) => ({
-				...current,
-				preferShortUrl: true,
-			}));
-			return;
-		}
-		if (state.generatedUrls.shortUrl) {
-			setState((current) => ({
-				...current,
-				preferShortUrl: true,
-				currentLinkInput: getDisplayedGeneratedUrl(current.generatedUrls, true) || current.currentLinkInput,
-			}));
-			return;
-		}
+		const longURL = state.generatedUrls.longUrl;
 
 		setIsCreatingShortUrl(true);
-		setState((current) => ({
-			...current,
-			preferShortUrl: true,
-			responseOriginStage: "stage3",
-			messages: [],
-			workflowLog: appendWorkflowLogEntries(current.workflowLog, [workflowActionSeparator("ACTION_SHORT_URL")]),
-			blockingErrors: [],
-		}));
+		setState((current) => startShortURLCreationState(current, workflowActionSeparator("ACTION_SHORT_URL")));
 
 		try {
-			const response = await postShortLink(state.generatedUrls.longUrl);
+			const response = await postShortLink(longURL);
 			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage3");
-			setState((current) => ({
-				...current,
-				generatedUrls: buildGeneratedUrls(response.longUrl, response.shortUrl),
-				currentLinkInput: response.shortUrl,
-				stage3Expired: false,
-				responseOriginStage: "stage3",
-				messages: response.messages,
-				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+			setState((current) => applyShortURLCreationSuccessState(current, {
 				blockingErrors: response.blockingErrors,
+				logEntries,
+				messages: response.messages,
+				resolvedLongURL: response.longUrl,
+				resolvedShortURL: response.shortUrl,
 			}));
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
@@ -755,13 +657,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			const logEntries = backendMessagesToWorkflowLog(messages, "stage3").concat(
 				frontendWorkflowFailureEvent("SHORT_URL_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
 			);
-			setState((current) => ({
-				...current,
-				preferShortUrl: false,
-				responseOriginStage: "stage3",
-				messages,
-				workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+			setState((current) => applyShortURLCreationFailureState(current, {
 				blockingErrors,
+				logEntries,
+				messages,
+				resolvedLongURL: longURL,
 			}));
 		} finally {
 			setIsCreatingShortUrl(false);

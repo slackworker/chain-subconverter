@@ -4,14 +4,15 @@ import {
 	clearStage3ActionErrors,
 	clearStage3FieldErrors,
 } from "../lib/notices";
-import type { AppState } from "../lib/state";
+import type { AppState, ResponseOriginStage, WorkflowLogEntry } from "../lib/state";
+import { appendWorkflowLogEntries } from "../lib/workflow-log";
 import {
 	findStage2RowByKey,
 	getStage2RowSourceLandingName,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 } from "../lib/stage2";
-import type { Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 
 function expireGeneratedOutput(current: AppState) {
 	return {
@@ -24,6 +25,40 @@ function clearStage2RowErrors(current: AppState) {
 	return current.blockingErrors.filter((error) => error.scope !== "stage2_row");
 }
 
+interface RequestStartStateOptions {
+	resetStage3Expired?: boolean;
+}
+
+interface RequestCompletionStateOptions {
+	patch?: Partial<AppState>;
+}
+
+interface ShortURLPreferenceToggleOptions {
+	requireShortURL: boolean;
+	requiredLogEntry?: WorkflowLogEntry;
+}
+
+interface ShortURLCreationStateOptions {
+	blockingErrors: BlockingError[];
+	logEntries: WorkflowLogEntry[];
+	messages: Message[];
+	resolvedLongURL: string;
+	resolvedShortURL?: string;
+}
+
+interface GenerateSuccessStateOptions {
+	blockingErrors: BlockingError[];
+	logEntries: WorkflowLogEntry[];
+	messages: Message[];
+	resolvedLongURL: string;
+	resolvedShortURL?: string;
+	preferShortURL?: boolean;
+}
+
+interface GenerateShortURLFailureStateOptions extends ShortURLCreationStateOptions {
+	requireShortURL: boolean;
+}
+
 export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 	return stage2Init.rows.map((row) => ({
 		rowId: row.rowId,
@@ -33,6 +68,16 @@ export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 		mode: row.mode,
 		targetName: row.targetName,
 	}));
+}
+
+function getDisplayedGeneratedURL(generatedUrls: AppState["generatedUrls"], preferShortURL: boolean) {
+	if (generatedUrls === null) {
+		return "";
+	}
+	if (preferShortURL && generatedUrls.shortUrl) {
+		return generatedUrls.shortUrl;
+	}
+	return generatedUrls.longUrl;
 }
 
 export function setCurrentLinkInputState(current: AppState, value: string): AppState {
@@ -61,6 +106,91 @@ export function reportCurrentLinkInputErrorState(current: AppState, message: str
 			},
 		],
 	};
+}
+
+export function startWorkflowRequestState(
+	current: AppState,
+	originStage: ResponseOriginStage,
+	actionEntry: WorkflowLogEntry,
+	options: RequestStartStateOptions = {},
+): AppState {
+	return {
+		...current,
+		responseOriginStage: originStage,
+		messages: [],
+		stage3Expired: options.resetStage3Expired ? false : current.stage3Expired,
+		workflowLog: appendWorkflowLogEntries(current.workflowLog, [actionEntry]),
+		blockingErrors: [],
+	};
+}
+
+export function completeWorkflowRequestState(
+	current: AppState,
+	originStage: ResponseOriginStage,
+	messages: Message[],
+	blockingErrors: BlockingError[],
+	logEntries: WorkflowLogEntry[],
+	options: RequestCompletionStateOptions = {},
+): AppState {
+	return {
+		...current,
+		...options.patch,
+		responseOriginStage: originStage,
+		messages,
+		workflowLog: appendWorkflowLogEntries(current.workflowLog, logEntries),
+		blockingErrors,
+	};
+}
+
+export function applyShortURLPreferenceToggleState(
+	current: AppState,
+	checked: boolean,
+	options: ShortURLPreferenceToggleOptions,
+): AppState {
+	if (!checked) {
+		if (options.requireShortURL) {
+			return {
+				...current,
+				preferShortUrl: true,
+				currentLinkInput: getDisplayedGeneratedURL(current.generatedUrls, true) || current.currentLinkInput,
+				workflowLog: options.requiredLogEntry
+					? appendWorkflowLogEntries(current.workflowLog, [options.requiredLogEntry])
+					: current.workflowLog,
+			};
+		}
+		return {
+			...current,
+			preferShortUrl: false,
+			currentLinkInput: getDisplayedGeneratedURL(current.generatedUrls, false) || current.currentLinkInput,
+		};
+	}
+
+	if (current.generatedUrls === null) {
+		return {
+			...current,
+			preferShortUrl: true,
+		};
+	}
+	if (current.generatedUrls.shortUrl) {
+		return {
+			...current,
+			preferShortUrl: true,
+			currentLinkInput: getDisplayedGeneratedURL(current.generatedUrls, true) || current.currentLinkInput,
+		};
+	}
+
+	return current;
+}
+
+export function startShortURLCreationState(current: AppState, actionEntry: WorkflowLogEntry): AppState {
+	return startWorkflowRequestState(
+		{
+			...current,
+			preferShortUrl: true,
+		},
+		"stage3",
+		actionEntry,
+	);
 }
 
 export function updateStage1InputState(
@@ -96,6 +226,205 @@ export function applyStage2InitState(current: AppState, stage2Init: Stage2Init):
 		stage2Stale: false,
 		restoreStatus: "idle",
 	};
+}
+
+export function applyStage1ConvertSuccessState(
+	current: AppState,
+	stage2Init: Stage2Init,
+	messages: Message[],
+	blockingErrors: BlockingError[],
+	logEntries: WorkflowLogEntry[],
+): AppState {
+	return completeWorkflowRequestState(
+		applyStage2InitState(current, stage2Init),
+		"stage1",
+		messages,
+		blockingErrors,
+		logEntries,
+	);
+}
+
+interface RestoreStateOptions {
+	blockingErrors: BlockingError[];
+	logEntries: WorkflowLogEntry[];
+	messages: Message[];
+	restoredStage1Input: Stage1Input;
+	restoreStatus: AppState["restoreStatus"];
+	resolvedLongUrl: string;
+	resolvedShortUrl?: string;
+	stage2Snapshot: AppState["stage2Snapshot"];
+}
+
+function buildRestorePatch(options: RestoreStateOptions) {
+	return {
+		currentLinkInput: options.resolvedShortUrl ?? options.resolvedLongUrl,
+		preferShortUrl: Boolean(options.resolvedShortUrl),
+		stage1Input: options.restoredStage1Input,
+		stage2Snapshot: options.stage2Snapshot,
+		generatedUrls: {
+			longUrl: options.resolvedLongUrl,
+			shortUrl: options.resolvedShortUrl ?? null,
+		},
+		stage3Expired: false,
+		restoreStatus: options.restoreStatus,
+	};
+}
+
+export function applyRestoreConflictState(current: AppState, options: RestoreStateOptions): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage3",
+		options.messages,
+		options.blockingErrors.filter((error) => error.scope !== "stage2_row"),
+		options.logEntries,
+		{
+			patch: {
+				...buildRestorePatch(options),
+				stage2Init: null,
+				stage2Stale: false,
+			},
+		},
+	);
+}
+
+export function applyRestoreReinitializedState(
+	current: AppState,
+	stage2Init: Stage2Init,
+	options: RestoreStateOptions,
+): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage3",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				...buildRestorePatch(options),
+				stage2Init,
+				stage2Stale: false,
+			},
+		},
+	);
+}
+
+export function applyRestoreReinitFailedState(current: AppState, options: RestoreStateOptions): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage3",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				...buildRestorePatch(options),
+				stage2Init: null,
+				stage2Stale: true,
+			},
+		},
+	);
+}
+
+export function applyGenerateLongURLSuccessState(current: AppState, options: GenerateSuccessStateOptions): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage2",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				generatedUrls: {
+					longUrl: options.resolvedLongURL,
+					shortUrl: null,
+				},
+				currentLinkInput: options.resolvedLongURL,
+				stage3Expired: false,
+			},
+		},
+	);
+}
+
+export function applyGenerateShortURLSuccessState(current: AppState, options: GenerateSuccessStateOptions): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage2",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				preferShortUrl: options.preferShortURL ?? current.preferShortUrl,
+				generatedUrls: {
+					longUrl: options.resolvedLongURL,
+					shortUrl: options.resolvedShortURL ?? null,
+				},
+				currentLinkInput: options.resolvedShortURL ?? options.resolvedLongURL,
+				stage3Expired: false,
+			},
+		},
+	);
+}
+
+export function applyGenerateShortURLFailureState(
+	current: AppState,
+	options: GenerateShortURLFailureStateOptions,
+): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage3",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				preferShortUrl: options.requireShortURL,
+				generatedUrls: options.requireShortURL
+					? null
+					: {
+						longUrl: options.resolvedLongURL,
+						shortUrl: null,
+					},
+				currentLinkInput: options.requireShortURL ? current.currentLinkInput : options.resolvedLongURL,
+				stage3Expired: options.requireShortURL ? current.stage3Expired : false,
+			},
+		},
+	);
+}
+
+export function applyShortURLCreationSuccessState(current: AppState, options: ShortURLCreationStateOptions): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage3",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				generatedUrls: {
+					longUrl: options.resolvedLongURL,
+					shortUrl: options.resolvedShortURL ?? null,
+				},
+				currentLinkInput: options.resolvedShortURL ?? options.resolvedLongURL,
+				stage3Expired: false,
+			},
+		},
+	);
+}
+
+export function applyShortURLCreationFailureState(current: AppState, options: ShortURLCreationStateOptions): AppState {
+	return completeWorkflowRequestState(
+		current,
+		"stage3",
+		options.messages,
+		options.blockingErrors,
+		options.logEntries,
+		{
+			patch: {
+				preferShortUrl: false,
+			},
+		},
+	);
 }
 
 export function updateStage2RowState(
