@@ -131,11 +131,7 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 
 	const subTooltip = status ? formatSubconverterTooltip(status, locale) : copy.loading;
 	const storageTooltip = status ? formatStorageTooltip(status, locale) : copy.loading;
-	const appTooltip = status
-		? [formatAppTooltip(status, locale), formatSubconverterTooltip(status, locale), formatStorageTooltip(status, locale)]
-				.filter((part) => part && part.trim() !== "")
-				.join(" · ")
-		: copy.loading;
+	const appTooltip = status ? formatAppTooltip(status, locale) : copy.loading;
 	const subLabel =
 		status === null
 			? "…"
