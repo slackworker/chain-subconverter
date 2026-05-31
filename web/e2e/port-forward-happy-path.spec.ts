@@ -122,9 +122,6 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	await page.getByLabel("落地信息").fill(canonicalStage1Inputs.landingInput);
 	await page.getByLabel("中转信息").fill(canonicalStage1Inputs.transitInput);
 
-	await page.getByRole("button", { name: "高级选项" }).click();
-	await page.getByRole("checkbox", { name: "启用端口转发" }).setChecked(true, { force: true });
-
 	const addRelayButton = page.getByRole("button", { name: "+ 添加 端口转发" });
 	await expect(addRelayButton).toBeVisible();
 	await addRelayButton.click();
@@ -165,7 +162,6 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	await expect(currentLink).toHaveValue(shortURL);
 
 	await page.getByRole("button", { name: "反向解析" }).click();
-	await expect(page.getByRole("checkbox", { name: "启用端口转发" })).toBeChecked();
 	await expect(relayTagList.getByText(relayA, { exact: true })).toBeVisible();
 	await expect(relayTagList.getByText(relayB, { exact: true })).toBeVisible();
 	await expect(rowA.locator("select").first()).toHaveValue("port_forward");
@@ -221,9 +217,6 @@ test("default UI port-forward modal preserves draft tags after backdrop close", 
 	});
 
 	await page.goto("/");
-
-	await page.getByRole("button", { name: "高级选项" }).click();
-	await page.getByRole("checkbox", { name: "启用端口转发" }).setChecked(true, { force: true });
 
 	const addRelayButton = page.getByRole("button", { name: "+ 添加 端口转发" });
 	await addRelayButton.click();

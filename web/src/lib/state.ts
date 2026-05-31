@@ -46,7 +46,7 @@ export const initialStage1Input: Stage1Input = {
 		config: null,
 		include: null,
 		exclude: null,
-		enablePortForward: false,
+		enablePortForward: true,
 	},
 };
 
@@ -66,7 +66,7 @@ export function hydrateStage1Input(stage1Input: Stage1InputPayload): Stage1Input
 		...stage1Input,
 		advancedOptions: {
 			...stage1Input.advancedOptions,
-			enablePortForward: stage1Input.forwardRelayItems.length > 0,
+			enablePortForward: true,
 		},
 	};
 }

@@ -91,7 +91,7 @@ describe("state helpers", () => {
 		});
 	});
 
-	it("keeps enablePortForward disabled when hydration restores no relay items", () => {
+	it("keeps enablePortForward enabled when hydration restores no relay items", () => {
 		expect(
 			hydrateStage1Input({
 				landingRawText: "landing://demo",
@@ -106,7 +106,7 @@ describe("state helpers", () => {
 					exclude: null,
 				},
 			}).advancedOptions.enablePortForward,
-		).toBe(false);
+		).toBe(true);
 	});
 
 	it("keeps the initial app state aligned with the Stage 1 defaults", () => {

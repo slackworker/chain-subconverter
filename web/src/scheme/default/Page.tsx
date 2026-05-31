@@ -15,7 +15,6 @@ import {
 	parseSocks5URIToManualSocks5FormState,
 	type ManualSocks5FormState,
 	removeForwardRelayItem,
-	setPortForwardEnabled,
 } from "../../lib/stage1";
 import {
 	getStage2DisplayModeOptions,
@@ -105,7 +104,6 @@ const COPY = {
 		excludeTags: "exclude 标签",
 		tagPlaceholder: "输入后按 Enter 添加",
 		skipCertVerify: "跳过证书校验（scv）",
-		enablePortForward: "启用端口转发",
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
 		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
@@ -226,7 +224,6 @@ const COPY = {
 		excludeTags: "Exclude tags",
 		tagPlaceholder: "Type and press Enter to add",
 		skipCertVerify: "Skip certificate verification (scv)",
-		enablePortForward: "Enable port forwarding",
 		converting: "Converting...",
 		convertAndFill: "Convert and autofill",
 		stageChangedNotice: "Inputs changed. Convert again before generating a link.",
@@ -696,7 +693,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 	const preferShort = state.preferShortUrl;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
-	const portForwardEnabled = state.stage1Input.advancedOptions.enablePortForward;
 	const stage1Empty =
 		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === "";
 
@@ -1036,11 +1032,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 						<LineNumberTextarea
 							id={`${stage1Id}-transit`}
 							label={copy.transitInfo}
-							labelAction={portForwardEnabled ? (
+							labelAction={
 								<button type="button" className="a-link-btn" onClick={openPortForwardModal}>
 									{copy.addPortForward}
 								</button>
-							) : null}
+							}
 							value={state.stage1Input.transitRawText}
 							onChange={(next) =>
 								updateStage1Input((current) => ({
@@ -1050,7 +1046,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							}
 							placeholder={copy.transitPlaceholder}
 							bottomLeftContent={
-								portForwardEnabled && state.stage1Input.forwardRelayItems.length > 0 ? (
+								state.stage1Input.forwardRelayItems.length > 0 ? (
 									<ul className={`a-tag-list ${forwardRelayErrors.length > 0 ? "a-tag-list--error" : ""}`} aria-label={copy.portForwardTags}>
 										{state.stage1Input.forwardRelayItems.map((item, index) => (
 											<li key={`${item}-${index}`} className="a-tag-chip">
@@ -1227,24 +1223,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											}
 										/>
 										{copy.skipCertVerify}
-									</label>
-									<div className="a-check-row__divider" aria-hidden />
-									<label className="a-check a-check--switch">
-										<input
-											className="a-switch__input"
-											type="checkbox"
-											checked={portForwardEnabled}
-											onChange={(event) => {
-												const enabled = event.target.checked;
-												updateStage1Input((current) => setPortForwardEnabled(current, enabled));
-												if (!enabled) {
-													resetPortForwardDraft();
-													closePortForwardModal();
-												}
-											}}
-										/>
-										<span className="a-switch" aria-hidden />
-										{copy.enablePortForward}
 									</label>
 								</div>
 								</div>
@@ -1841,7 +1819,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					</div>
 				</div>
 			) : null}
-			{portForwardEnabled && portForwardOpen ? (
+			{portForwardOpen ? (
 				<div className="a-modal-backdrop" role="presentation" onClick={closePortForwardModal}>
 					<div
 						className="a-modal"
