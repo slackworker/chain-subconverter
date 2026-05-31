@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +19,7 @@ type UpstreamProber struct {
 	client  *http.Client
 	version string
 	ttl     time.Duration
+	scope   SubconverterNetworkScope
 
 	mu       sync.Mutex
 	cached   SubconverterStatus
@@ -28,7 +31,41 @@ func NewUpstreamProber(versionURL string, timeout time.Duration) *UpstreamProber
 		client:  &http.Client{Timeout: timeout},
 		version: strings.TrimSuffix(versionURL, "/"),
 		ttl:     defaultProbeCacheTTL,
+		scope:   resolveSubconverterNetworkScope(versionURL),
 	}
+}
+
+func resolveSubconverterNetworkScope(rawURL string) SubconverterNetworkScope {
+	parsedURL, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return SubconverterNetworkScopeCrossNetwork
+	}
+
+	hostname := strings.TrimSpace(parsedURL.Hostname())
+	if hostname == "" {
+		return SubconverterNetworkScopeCrossNetwork
+	}
+
+	lowerHostname := strings.ToLower(hostname)
+	if lowerHostname == "localhost" || lowerHostname == "host.docker.internal" || strings.HasSuffix(lowerHostname, ".localhost") {
+		return SubconverterNetworkScopeInternal
+	}
+	if strings.HasSuffix(lowerHostname, ".local") || strings.HasSuffix(lowerHostname, ".internal") {
+		return SubconverterNetworkScopeInternal
+	}
+	if !strings.Contains(lowerHostname, ".") {
+		return SubconverterNetworkScopeInternal
+	}
+
+	addr, err := netip.ParseAddr(hostname)
+	if err != nil {
+		return SubconverterNetworkScopeCrossNetwork
+	}
+	if addr.IsLoopback() || addr.IsPrivate() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() {
+		return SubconverterNetworkScopeInternal
+	}
+
+	return SubconverterNetworkScopeCrossNetwork
 }
 
 func (prober *UpstreamProber) Status(ctx context.Context, refresh bool) SubconverterStatus {
@@ -53,6 +90,7 @@ func (prober *UpstreamProber) probe(ctx context.Context) SubconverterStatus {
 	if err != nil {
 		return SubconverterStatus{
 			Healthy:       false,
+			NetworkScope:  prober.scope,
 			LastCheckedAt: checkedAt,
 			Error:         sanitizeProbeError(err),
 		}
@@ -65,6 +103,7 @@ func (prober *UpstreamProber) probe(ctx context.Context) SubconverterStatus {
 	if err != nil {
 		return SubconverterStatus{
 			Healthy:       false,
+			NetworkScope:  prober.scope,
 			LatencyMs:     &latency,
 			LastCheckedAt: checkedAt,
 			Error:         sanitizeProbeError(err),
@@ -76,6 +115,7 @@ func (prober *UpstreamProber) probe(ctx context.Context) SubconverterStatus {
 	if readErr != nil {
 		return SubconverterStatus{
 			Healthy:       false,
+			NetworkScope:  prober.scope,
 			LatencyMs:     &latency,
 			LastCheckedAt: checkedAt,
 			Error:         sanitizeProbeError(readErr),
@@ -85,6 +125,7 @@ func (prober *UpstreamProber) probe(ctx context.Context) SubconverterStatus {
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return SubconverterStatus{
 			Healthy:       false,
+			NetworkScope:  prober.scope,
 			LatencyMs:     &latency,
 			LastCheckedAt: checkedAt,
 			Error:         fmt.Sprintf("upstream returned HTTP %d", response.StatusCode),
@@ -98,6 +139,7 @@ func (prober *UpstreamProber) probe(ctx context.Context) SubconverterStatus {
 
 	return SubconverterStatus{
 		Healthy:       true,
+		NetworkScope:  prober.scope,
 		LatencyMs:     &latency,
 		Version:       versionText,
 		LastCheckedAt: checkedAt,

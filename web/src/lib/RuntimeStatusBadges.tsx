@@ -19,6 +19,8 @@ const LABELS = {
 		subconverter: "Subconverter",
 		storage: "短链存储",
 		healthy: "可用",
+		internalNetwork: "内部网络",
+		crossNetwork: "跨网络",
 		unhealthy: "不可用",
 		latency: "延迟 {ms}ms",
 		storageDetail: "{mode} · {used}/{capacity}",
@@ -31,6 +33,8 @@ const LABELS = {
 		subconverter: "Subconverter",
 		storage: "Short links",
 		healthy: "healthy",
+		internalNetwork: "internal network",
+		crossNetwork: "cross-network",
 		unhealthy: "unavailable",
 		latency: "latency {ms}ms",
 		storageDetail: "{mode} · {used}/{capacity}",
@@ -38,6 +42,13 @@ const LABELS = {
 		unavailable: "Status unavailable",
 	},
 } as const;
+
+type BadgeState = "ok" | "warn" | "error";
+
+function formatNetworkScope(scope: RuntimeStatusResponse["subconverter"]["networkScope"], locale: Locale): string {
+	const copy = LABELS[locale];
+	return scope === "internal" ? copy.internalNetwork : copy.crossNetwork;
+}
 
 function formatSubconverterTooltip(status: RuntimeStatusResponse, locale: Locale): string {
 	const copy = LABELS[locale];
@@ -47,6 +58,7 @@ function formatSubconverterTooltip(status: RuntimeStatusResponse, locale: Locale
 			: "";
 	return [
 		`${copy.subconverter}: ${status.subconverter.healthy ? copy.healthy : copy.unhealthy}`,
+		status.subconverter.healthy ? formatNetworkScope(status.subconverter.networkScope, locale) : "",
 		status.subconverter.version,
 		subLatency,
 		status.subconverter.error,
@@ -55,7 +67,7 @@ function formatSubconverterTooltip(status: RuntimeStatusResponse, locale: Locale
 		.join(" · ");
 }
 
-export type StorageBadgeState = "ok" | "warn" | "error";
+export type StorageBadgeState = BadgeState;
 
 /** 有空余容量 ok；满容 LRU warn；用量超过容量 error。 */
 export function resolveStorageBadgeState(used: number, capacity: number): StorageBadgeState {
@@ -68,14 +80,26 @@ export function resolveStorageBadgeState(used: number, capacity: number): Storag
 	return "ok";
 }
 
-function storageBadgeClass(state: StorageBadgeState | undefined): string {
+export function resolveSubconverterBadgeState(
+	subconverter: RuntimeStatusResponse["subconverter"],
+): BadgeState {
+	if (!subconverter.healthy) {
+		return "error";
+	}
+	if (subconverter.networkScope === "cross_network") {
+		return "warn";
+	}
+	return "ok";
+}
+
+function badgeClass(state: BadgeState | undefined): string {
 	if (state === undefined) {
 		return "a-runtime-status__badge";
 	}
 	return `a-runtime-status__badge a-runtime-status__badge--${state}`;
 }
 
-function storageDotClass(state: StorageBadgeState | undefined): string {
+function dotClass(state: BadgeState | undefined): string {
 	if (state === undefined) {
 		return "a-runtime-status__dot";
 	}
@@ -144,6 +168,7 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 	const storageBadgeState = status
 		? resolveStorageBadgeState(status.storage.used, status.storage.capacity)
 		: undefined;
+	const subconverterBadgeState = status ? resolveSubconverterBadgeState(status.subconverter) : undefined;
 	const appLabel = status?.app.version ?? "…";
 
 		function handleRefreshIntent() {
@@ -183,22 +208,19 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 					onMouseEnter={handleRefreshIntent}
 				>
 					<span
-						className={`a-runtime-status__badge ${status?.subconverter.healthy ? "a-runtime-status__badge--ok" : "a-runtime-status__badge--warn"}`}
+						className={badgeClass(subconverterBadgeState)}
 						title={status ? subTooltip : copy.unavailable}
 						aria-label={copy.subconverter}
 					>
-						<span
-							className={`a-runtime-status__dot ${status?.subconverter.healthy ? "a-runtime-status__dot--ok" : "a-runtime-status__dot--warn"}`}
-							aria-hidden
-						/>
+						<span className={dotClass(subconverterBadgeState)} aria-hidden />
 						{subLabel}
 					</span>
 					<span
-						className={storageBadgeClass(storageBadgeState)}
+						className={badgeClass(storageBadgeState)}
 						title={status ? storageTooltip : copy.unavailable}
 						aria-label={copy.storage}
 					>
-						<span className={storageDotClass(storageBadgeState)} aria-hidden />
+						<span className={dotClass(storageBadgeState)} aria-hidden />
 						{storageLabel}
 					</span>
 				</div>

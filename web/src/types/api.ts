@@ -137,6 +137,7 @@ export interface RuntimeStatusResponse {
 	};
 	subconverter: {
 		healthy: boolean;
+		networkScope: "internal" | "cross_network";
 		latencyMs?: number;
 		version?: string;
 		lastCheckedAt?: string;

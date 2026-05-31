@@ -1,5 +1,12 @@
 package runtimestatus
 
+type SubconverterNetworkScope string
+
+const (
+	SubconverterNetworkScopeInternal     SubconverterNetworkScope = "internal"
+	SubconverterNetworkScopeCrossNetwork SubconverterNetworkScope = "cross_network"
+)
+
 // Snapshot is the JSON body for GET /api/runtime-status.
 type Snapshot struct {
 	App          AppStatus          `json:"app"`
@@ -15,11 +22,12 @@ type AppStatus struct {
 }
 
 type SubconverterStatus struct {
-	Healthy       bool   `json:"healthy"`
-	LatencyMs     *int64 `json:"latencyMs,omitempty"`
-	Version       string `json:"version,omitempty"`
-	LastCheckedAt string `json:"lastCheckedAt,omitempty"`
-	Error         string `json:"error,omitempty"`
+	Healthy       bool                     `json:"healthy"`
+	NetworkScope  SubconverterNetworkScope `json:"networkScope"`
+	LatencyMs     *int64                   `json:"latencyMs,omitempty"`
+	Version       string                   `json:"version,omitempty"`
+	LastCheckedAt string                   `json:"lastCheckedAt,omitempty"`
+	Error         string                   `json:"error,omitempty"`
 }
 
 type StorageStatus struct {

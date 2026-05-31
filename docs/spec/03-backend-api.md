@@ -261,6 +261,7 @@
   },
   "subconverter": {
     "healthy": true,
+    "networkScope": "internal",
     "latencyMs": 42,
     "version": "subconverter v0.9.1",
     "lastCheckedAt": "2026-05-29T12:00:00.000000000Z"
@@ -280,6 +281,8 @@
 - `app.imageTag` 为当前镜像 tag（例如 `beta-latest`、`latest`、`dev-latest` 或版本号镜像 tag）
 - `app.revision` 为构建来源 commit SHA，供 hover / 诊断展示
 - `subconverter` 字段由后端探测上游 `/version` 获得；`error` 为脱敏摘要
+- `subconverter.networkScope` 由后端按 `app -> subconverter` 实际访问地址推断：`internal` 表示内网/同网络可达，`cross_network` 表示跨网络访问
+- 前端展示建议：`healthy + internal` 显示绿色、`healthy + cross_network` 显示黄色、`healthy = false` 显示红色
 - `storage.mode` 由 `CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH` 推断：`/tmp` 下为 `temporary`，否则为 `persistent`
 - 与 `GET /healthz` 职责分离：本接口用于运行态展示，不替代存活探测
 - 不并入 `GET /api/runtime-config`

@@ -13,7 +13,11 @@ vi.mock("./api", async () => {
 });
 
 import { getRuntimeStatus } from "./api";
-import { resolveStorageBadgeState, RuntimeStatusBadges } from "./RuntimeStatusBadges";
+import {
+	resolveStorageBadgeState,
+	resolveSubconverterBadgeState,
+	RuntimeStatusBadges,
+} from "./RuntimeStatusBadges";
 
 declare global {
 	var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -42,6 +46,7 @@ function buildStatus(overrides: Partial<RuntimeStatusResponse> = {}): RuntimeSta
 		},
 		subconverter: {
 			healthy: true,
+			networkScope: "internal",
 			latencyMs: 42,
 			version: "subconverter v0.9.1",
 			lastCheckedAt: "2026-05-29T12:00:00.000000000Z",
@@ -134,6 +139,47 @@ describe("RuntimeStatusBadges", () => {
 		expect(container.textContent).toContain("126ms");
 	});
 
+	it("shows ok subconverter badge for internal deployments", async () => {
+		mockGetRuntimeStatus.mockResolvedValueOnce(
+			buildStatus({ subconverter: { healthy: true, networkScope: "internal", latencyMs: 15 } }),
+		);
+
+		const container = renderBadges({ locale: "zh" });
+		await flushEffects();
+
+		const subconverterBadge = container.querySelector('[aria-label="Subconverter"]');
+		expect(subconverterBadge?.className).toContain("a-runtime-status__badge--ok");
+		expect(subconverterBadge?.querySelector(".a-runtime-status__dot--ok")).not.toBeNull();
+		expect(subconverterBadge?.getAttribute("title")).toContain("内部网络");
+	});
+
+	it("shows warn subconverter badge for cross-network deployments", async () => {
+		mockGetRuntimeStatus.mockResolvedValueOnce(
+			buildStatus({ subconverter: { healthy: true, networkScope: "cross_network", latencyMs: 88 } }),
+		);
+
+		const container = renderBadges();
+		await flushEffects();
+
+		const subconverterBadge = container.querySelector('[aria-label="Subconverter"]');
+		expect(subconverterBadge?.className).toContain("a-runtime-status__badge--warn");
+		expect(subconverterBadge?.querySelector(".a-runtime-status__dot--warn")).not.toBeNull();
+		expect(subconverterBadge?.getAttribute("title")).toContain("cross-network");
+	});
+
+	it("shows error subconverter badge when the service is unavailable", async () => {
+		mockGetRuntimeStatus.mockResolvedValueOnce(
+			buildStatus({ subconverter: { healthy: false, networkScope: "internal", error: "upstream connection refused" } }),
+		);
+
+		const container = renderBadges();
+		await flushEffects();
+
+		const subconverterBadge = container.querySelector('[aria-label="Subconverter"]');
+		expect(subconverterBadge?.className).toContain("a-runtime-status__badge--error");
+		expect(subconverterBadge?.querySelector(".a-runtime-status__dot--error")).not.toBeNull();
+	});
+
 	it("shows storage badge state by usage", async () => {
 		mockGetRuntimeStatus.mockResolvedValueOnce(
 			buildStatus({ storage: { mode: "persistent", used: 15, capacity: 1000 } }),
@@ -180,5 +226,17 @@ describe("resolveStorageBadgeState", () => {
 		expect(resolveStorageBadgeState(999, 1000)).toBe("ok");
 		expect(resolveStorageBadgeState(1000, 1000)).toBe("warn");
 		expect(resolveStorageBadgeState(1001, 1000)).toBe("error");
+	});
+});
+
+describe("resolveSubconverterBadgeState", () => {
+	it("maps internal, cross-network, and unavailable states", () => {
+		expect(resolveSubconverterBadgeState(buildStatus().subconverter)).toBe("ok");
+		expect(
+			resolveSubconverterBadgeState(buildStatus({ subconverter: { networkScope: "cross_network" } }).subconverter),
+		).toBe("warn");
+		expect(
+			resolveSubconverterBadgeState(buildStatus({ subconverter: { healthy: false } }).subconverter),
+		).toBe("error");
 	});
 });

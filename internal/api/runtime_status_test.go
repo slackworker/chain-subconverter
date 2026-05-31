@@ -66,6 +66,9 @@ func TestRuntimeStatusHandler(t *testing.T) {
 	if !payload.Subconverter.Healthy {
 		t.Fatalf("subconverter healthy = false, error=%q", payload.Subconverter.Error)
 	}
+	if payload.Subconverter.NetworkScope != runtimestatus.SubconverterNetworkScopeInternal {
+		t.Fatalf("subconverter network scope = %q, want %q", payload.Subconverter.NetworkScope, runtimestatus.SubconverterNetworkScopeInternal)
+	}
 	if payload.Subconverter.Version != "subconverter v0.9.1-test" {
 		t.Fatalf("subconverter version = %q", payload.Subconverter.Version)
 	}
