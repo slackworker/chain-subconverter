@@ -14,7 +14,7 @@
 
 在当前收口与微调阶段，默认按以下方向对齐实现与文档；若治理结论调整，以最新确认文档为准。
 
-- 项目统一采用 `Go + Gin + React + TypeScript + Vite + Tailwind CSS + SQLite + Docker Compose`
+- 项目统一采用 `Go（net/http）+ React + TypeScript + Vite + Tailwind CSS + SQLite + Docker Compose`
 - `subconverter` 默认以**同一 Compose 部署内的内部容器**形式集成；如部署方已有独立 Docker 化实例，也允许通过私有网络地址接入
 - 主后端统一提供 API 与前端静态资源；当前不单独引入 `nginx`
 - 短链接索引默认使用本地 SQLite 文件持久化
@@ -33,7 +33,7 @@
 
 | 层 | 选型 | 约束 |
 |----|------|------|
-| 后端 API | `Go + Gin` | 对应阶段默认由主后端承接 HTTP API、长短链接、快照编码解码、YAML 改写、`subconverter` 调用与静态资源分发 |
+| 后端 API | `Go（net/http + ServeMux）` | 对应阶段默认由主后端承接 HTTP API、长短链接、快照编码解码、YAML 改写、`subconverter` 调用与静态资源分发；HTTP 实现在 `internal/api` |
 | 前端 | `React + TypeScript + Vite` | 对应阶段默认采用单页应用；负责三阶段表单、状态展示与交互，不做 SSR |
 | 前端样式 | `Tailwind CSS` | 仅作为样式与布局层；不引入重量级前端框架 |
 | 数据存储 | `SQLite` | 默认承载短链接索引与必要元数据；不引入独立数据库服务 |
@@ -43,7 +43,8 @@
 ## 4. 后端实现约束
 
 - Go 是后端唯一实现语言；不再保留 Python 作为正式实现路径
-- 若引入 Web 框架，默认选用 `Gin`；不额外叠加更重的后端框架
+- **当前** HTTP 层使用标准库 `net/http` 与 `http.ServeMux`（Go 1.22+ 方法式路由注册）；不引入第三方 Web 框架
+- 若未来因路由或中间件复杂度需要引入 Web 框架，默认选用 `Gin`；不额外叠加更重的后端框架
 - 数据访问统一使用 Go 原生 SQL 生态；当前不引入 ORM
 - 后端代码按清晰边界组织为：HTTP 层、业务服务层、存储层、外部集成层
 - `subconverter` 调用必须封装在独立集成模块内；业务层不得散落拼接其请求细节
