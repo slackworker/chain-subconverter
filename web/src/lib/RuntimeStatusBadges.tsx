@@ -55,6 +55,33 @@ function formatSubconverterTooltip(status: RuntimeStatusResponse, locale: Locale
 		.join(" · ");
 }
 
+export type StorageBadgeState = "ok" | "warn" | "error";
+
+/** 有空余容量 ok；满容 LRU warn；用量超过容量 error。 */
+export function resolveStorageBadgeState(used: number, capacity: number): StorageBadgeState {
+	if (used > capacity) {
+		return "error";
+	}
+	if (used >= capacity) {
+		return "warn";
+	}
+	return "ok";
+}
+
+function storageBadgeClass(state: StorageBadgeState | undefined): string {
+	if (state === undefined) {
+		return "a-runtime-status__badge";
+	}
+	return `a-runtime-status__badge a-runtime-status__badge--${state}`;
+}
+
+function storageDotClass(state: StorageBadgeState | undefined): string {
+	if (state === undefined) {
+		return "a-runtime-status__dot";
+	}
+	return `a-runtime-status__dot a-runtime-status__dot--${state}`;
+}
+
 function formatStorageTooltip(status: RuntimeStatusResponse, locale: Locale): string {
 	const copy = LABELS[locale];
 	const storageLine = copy.storageDetail
@@ -118,6 +145,9 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 					: copy.healthy
 				: copy.unhealthy;
 	const storageLabel = status ? `${status.storage.used}/${status.storage.capacity}` : "…";
+	const storageBadgeState = status
+		? resolveStorageBadgeState(status.storage.used, status.storage.capacity)
+		: undefined;
 	const appLabel = status?.app.version ?? "…";
 
 		function handleRefreshIntent() {
@@ -168,10 +198,11 @@ export function RuntimeStatusBadges({ locale, footerCredit, endSlot }: RuntimeSt
 						{subLabel}
 					</span>
 					<span
-						className="a-runtime-status__badge"
+						className={storageBadgeClass(storageBadgeState)}
 						title={status ? storageTooltip : copy.unavailable}
 						aria-label={copy.storage}
 					>
+						<span className={storageDotClass(storageBadgeState)} aria-hidden />
 						{storageLabel}
 					</span>
 				</div>

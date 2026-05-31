@@ -13,7 +13,7 @@ vi.mock("./api", async () => {
 });
 
 import { getRuntimeStatus } from "./api";
-import { RuntimeStatusBadges } from "./RuntimeStatusBadges";
+import { resolveStorageBadgeState, RuntimeStatusBadges } from "./RuntimeStatusBadges";
 
 declare global {
 	var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -132,5 +132,53 @@ describe("RuntimeStatusBadges", () => {
 
 		expect(mockGetRuntimeStatus.mock.calls).toEqual([[false], [true], [true]]);
 		expect(container.textContent).toContain("126ms");
+	});
+
+	it("shows storage badge state by usage", async () => {
+		mockGetRuntimeStatus.mockResolvedValueOnce(
+			buildStatus({ storage: { mode: "persistent", used: 15, capacity: 1000 } }),
+		);
+
+		const container = renderBadges({ locale: "zh" });
+		await flushEffects();
+
+		const storageBadge = container.querySelector('[aria-label="短链存储"]');
+		expect(storageBadge?.className).toContain("a-runtime-status__badge--ok");
+		expect(storageBadge?.querySelector(".a-runtime-status__dot--ok")).not.toBeNull();
+	});
+
+	it("shows warn storage badge when at capacity (LRU active)", async () => {
+		mockGetRuntimeStatus.mockResolvedValueOnce(
+			buildStatus({ storage: { mode: "persistent", used: 1000, capacity: 1000 } }),
+		);
+
+		const container = renderBadges();
+		await flushEffects();
+
+		const storageBadge = container.querySelector('[aria-label="Short links"]');
+		expect(storageBadge?.className).toContain("a-runtime-status__badge--warn");
+		expect(storageBadge?.querySelector(".a-runtime-status__dot--warn")).not.toBeNull();
+	});
+
+	it("shows error storage badge when used exceeds capacity", async () => {
+		mockGetRuntimeStatus.mockResolvedValueOnce(
+			buildStatus({ storage: { mode: "persistent", used: 1001, capacity: 1000 } }),
+		);
+
+		const container = renderBadges();
+		await flushEffects();
+
+		const storageBadge = container.querySelector('[aria-label="Short links"]');
+		expect(storageBadge?.className).toContain("a-runtime-status__badge--error");
+		expect(storageBadge?.querySelector(".a-runtime-status__dot--error")).not.toBeNull();
+	});
+});
+
+describe("resolveStorageBadgeState", () => {
+	it("maps usage to ok, warn, and error", () => {
+		expect(resolveStorageBadgeState(15, 1000)).toBe("ok");
+		expect(resolveStorageBadgeState(999, 1000)).toBe("ok");
+		expect(resolveStorageBadgeState(1000, 1000)).toBe("warn");
+		expect(resolveStorageBadgeState(1001, 1000)).toBe("error");
 	});
 });
