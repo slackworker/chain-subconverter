@@ -1,0 +1,15 @@
+.cs-tooltip {
+	position: fixed;
+	z-index: 61;
+	max-width: min(20rem, calc(100vw - 1rem));
+	padding: 0.45rem 0.6rem;
+	border-radius: 8px;
+	font-size: 0.8rem;
+	line-height: 1.45;
+	color: var(--color-ink, #1a1a1a);
+	background: var(--color-elevated, #fff);
+	border: 1px solid var(--color-line, #ccc);
+	box-shadow: var(--shadow, 0 6px 20px rgba(0, 0, 0, 0.14));
+	pointer-events: auto;
+	overflow-wrap: anywhere;
+}

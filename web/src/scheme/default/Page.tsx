@@ -27,6 +27,7 @@ import {
 	isStage2SourceRow,
 } from "../../lib/stage2";
 import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
+import { Tooltip } from "../../lib/Tooltip";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
@@ -1089,9 +1090,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 								<label className="a-field a-field--inline">
 									<span className="a-field-label">
 										{copy.templateUrl}{" "}
-										<span className="a-hint" title={copy.templateUrlHint} aria-label={copy.templateUrlHintAria}>
-											?
-										</span>
+										<Tooltip content={copy.templateUrlHint}>
+											<span className="a-hint" aria-label={copy.templateUrlHintAria}>
+												?
+											</span>
+										</Tooltip>
 									</span>
 									<div
 										className={`a-template-url-row ${configFieldErrors.length > 0 ? "a-template-url-row--error" : ""}`}
@@ -1459,34 +1462,32 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																	<span id={modeWarnId} className="a-sr-only">
 																		{activeModeWarning.reasonText}
 																	</span>
-																	<span
-																		className="a-mode-warning-hint"
-																		title={activeModeWarning.reasonText}
-																		aria-hidden="true"
-																	>
-																		<svg
-																			xmlns="http://www.w3.org/2000/svg"
-																			viewBox="0 0 24 24"
-																			width="18"
-																			height="18"
-																			fill="none"
-																			aria-hidden="true"
-																		>
-																			<circle
-																				cx="12"
-																				cy="12"
-																				r="10"
-																				stroke="var(--color-line)"
-																				strokeWidth="2"
-																			/>
-																			<path
-																				d="M12 8v4M12 16h.01"
-																				stroke="currentColor"
-																				strokeWidth="2"
-																				strokeLinecap="round"
-																			/>
-																		</svg>
-																	</span>
+																	<Tooltip content={activeModeWarning.reasonText} placement="top">
+																		<span className="a-mode-warning-hint" aria-hidden="true">
+																			<svg
+																				xmlns="http://www.w3.org/2000/svg"
+																				viewBox="0 0 24 24"
+																				width="18"
+																				height="18"
+																				fill="none"
+																				aria-hidden="true"
+																			>
+																				<circle
+																					cx="12"
+																					cy="12"
+																					r="10"
+																					stroke="var(--color-line)"
+																					strokeWidth="2"
+																				/>
+																				<path
+																					d="M12 8v4M12 16h.01"
+																					stroke="currentColor"
+																					strokeWidth="2"
+																					strokeLinecap="round"
+																				/>
+																			</svg>
+																		</span>
+																	</Tooltip>
 																</>
 															) : null}
 														</span>
