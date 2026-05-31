@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
@@ -208,39 +209,58 @@ func ConversionFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
 	if err != nil {
-		return ConversionFixtures{}, subconverter.NewUnavailableError("parse landing-discovery result", err)
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse landing-discovery result",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
 	if len(landingProxies) == 0 {
 		return ConversionFixtures{}, subconverter.NewUnavailableError(
 			"parse landing-discovery result",
 			fmt.Errorf("landing-discovery proxies list is empty"),
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
 		)
 	}
 
 	transitProxies, err := parseInlineProxyList(fixtures.TransitDiscoveryYAML)
 	if err != nil {
-		return ConversionFixtures{}, subconverter.NewUnavailableError("parse transit-discovery result", err)
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse transit-discovery result",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
+		)
 	}
 
 	fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
 	if err != nil {
-		return ConversionFixtures{}, subconverter.NewUnavailableError("parse full-base proxies", err)
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse full-base proxies",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
+		)
 	}
 	if len(fullBaseProxies) == 0 {
 		return ConversionFixtures{}, subconverter.NewUnavailableError(
 			"parse full-base proxies",
 			fmt.Errorf("full-base proxies list is empty"),
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
 		)
 	}
 
 	fullBaseGroups, err := parseProxyGroups(fixtures.FullBaseYAML)
 	if err != nil {
-		return ConversionFixtures{}, subconverter.NewUnavailableError("parse full-base proxy-groups", err)
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse full-base proxy-groups",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
+		)
 	}
 	if len(fullBaseGroups) == 0 {
 		return ConversionFixtures{}, subconverter.NewUnavailableError(
 			"parse full-base proxy-groups",
 			fmt.Errorf("full-base proxy-groups list is empty"),
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
 		)
 	}
 
@@ -263,17 +283,26 @@ func stage1InitFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
 	if err != nil {
-		return ConversionFixtures{}, subconverter.NewUnavailableError("parse landing-discovery result", err)
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse landing-discovery result",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
 	if len(landingProxies) == 0 {
 		return ConversionFixtures{}, subconverter.NewUnavailableError(
 			"parse landing-discovery result",
 			fmt.Errorf("landing-discovery proxies list is empty"),
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
 		)
 	}
 
 	if _, err := parseInlineProxyList(fixtures.TransitDiscoveryYAML); err != nil {
-		return ConversionFixtures{}, subconverter.NewUnavailableError("parse transit-discovery result", err)
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse transit-discovery result",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
+		)
 	}
 
 	return fixtures, nil
@@ -337,8 +366,20 @@ func ensureDiscoveryNamesResolvable(discoveryProxies []inlineProxy, fullBaseProx
 		return subconverter.NewUnavailableError(
 			fmt.Sprintf("validate %s-discovery names", label),
 			fmt.Errorf("proxy %q is missing from full-base result", proxy.Name),
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, unavailableUserInputSourceForDiscoveryLabel(label)),
 		)
 	}
 
 	return nil
+}
+
+func unavailableUserInputSourceForDiscoveryLabel(label string) subconverter.UnavailableUserInputSource {
+	switch strings.TrimSpace(label) {
+	case "landing":
+		return subconverter.UnavailableInputSourceLanding
+	case "transit":
+		return subconverter.UnavailableInputSourceTransit
+	default:
+		return ""
+	}
 }

@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	unavailableProblemServiceUnreachable      = "service_unreachable"
-	unavailableProblemSourceFetchFailed       = "source_fetch_failed"
-	unavailableProblemConversionResultInvalid = "conversion_result_invalid"
+	unavailableProblemServiceUnreachable      = string(subconverter.UnavailableProblemServiceUnreachable)
+	unavailableProblemSourceFetchFailed       = string(subconverter.UnavailableProblemSourceFetchFailed)
+	unavailableProblemConversionResultInvalid = string(subconverter.UnavailableProblemConversionResultInvalid)
 
-	unavailableInputSourceLanding         = "landing"
-	unavailableInputSourceTransit         = "transit"
-	unavailableInputSourceStage1Input     = "stage1_input"
-	unavailableInputSourceManagedTemplate = "managed_template"
+	unavailableInputSourceLanding         = string(subconverter.UnavailableInputSourceLanding)
+	unavailableInputSourceTransit         = string(subconverter.UnavailableInputSourceTransit)
+	unavailableInputSourceStage1Input     = string(subconverter.UnavailableInputSourceStage1Input)
+	unavailableInputSourceManagedTemplate = string(subconverter.UnavailableInputSourceManagedTemplate)
 )
 
 type unavailableClassification struct {
@@ -61,6 +61,9 @@ func classifyUnavailableError(err error) unavailableClassification {
 	if !errors.As(err, &unavailableErr) {
 		return classification
 	}
+	if classified, ok := classificationFromUnavailableMetadata(unavailableErr, unavailableErr.Cause); ok {
+		return classified
+	}
 
 	op := strings.ToLower(strings.TrimSpace(unavailableErr.Op))
 	cause := unavailableErr.Cause
@@ -91,6 +94,31 @@ func classifyUnavailableError(err error) unavailableClassification {
 	}
 
 	return classification
+}
+
+func classificationFromUnavailableMetadata(unavailableErr *subconverter.Error, cause error) (unavailableClassification, bool) {
+	if unavailableErr == nil {
+		return unavailableClassification{}, false
+	}
+
+	metadata := unavailableErr.UnavailableMetadata()
+	if metadata == (subconverter.UnavailableMetadata{}) {
+		return unavailableClassification{}, false
+	}
+
+	classification := unavailableClassification{
+		problemClass:    string(metadata.ProblemClass),
+		userInputSource: string(metadata.UserInputSource),
+	}
+	if classification.problemClass == "" {
+		classification.problemClass = unavailableProblemServiceUnreachable
+		classifyPassFailure(&classification, cause)
+		return classification, true
+	}
+	if classification.problemClass == unavailableProblemSourceFetchFailed && isUnavailableTimeout(cause) {
+		classification.timedOut = true
+	}
+	return classification, true
 }
 
 func classifyPassFailure(classification *unavailableClassification, cause error) {

@@ -364,6 +364,7 @@ func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]s
 					`missing recognized region proxy-group %q in full-base result; subconverter did not successfully fetch or apply the managed template`,
 					groupName,
 				),
+				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
 			)
 		},
 	)
@@ -382,6 +383,7 @@ func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landi
 					`missing recognized region proxy-group %q in transit-discovery result; subconverter did not return grouped transit discovery output`,
 					groupName,
 				),
+				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
 			)
 		},
 	)
@@ -595,7 +597,11 @@ func resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies []inlineProxy)
 	for _, proxy := range landingProxies {
 		if _, exists := seenNames[proxy.Name]; exists {
 			cause := fmt.Errorf("landing discovery proxy %q is duplicated within landing-discovery result", proxy.Name)
-			return nil, subconverter.NewUnavailableError("validate landing-discovery names", cause)
+			return nil, subconverter.NewUnavailableError(
+				"validate landing-discovery names",
+				cause,
+				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+			)
 		}
 		seenNames[proxy.Name] = struct{}{}
 		resolved = append(resolved, resolvedLandingProxy{
@@ -616,10 +622,18 @@ func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[strin
 	}
 	if count > 1 {
 		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", resolvedName, count)
-		return "", "", 0, subconverter.NewUnavailableError("validate landing-discovery names", cause)
+		return "", "", 0, subconverter.NewUnavailableError(
+			"validate landing-discovery names",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
 	cause := fmt.Errorf("landing discovery proxy %q is missing from full-base result", resolvedName)
-	return "", "", 0, subconverter.NewUnavailableError("validate landing-discovery names", cause)
+	return "", "", 0, subconverter.NewUnavailableError(
+		"validate landing-discovery names",
+		cause,
+		subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+	)
 }
 
 func extractInlineProxyPort(proxy inlineProxy) int {

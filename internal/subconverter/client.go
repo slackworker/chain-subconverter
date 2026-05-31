@@ -171,20 +171,20 @@ func (client *Client) executePass(ctx context.Context, pass string, rawURL strin
 	if err != nil {
 		passErr := fmt.Errorf("build request: %w", err)
 		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
-		return "", NewUnavailableError(pass, passErr)
+		return "", NewUnavailableError(pass, passErr, WithUnavailableUserInputSource(unavailableUserInputSourceForPass(pass)))
 	}
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
 		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), err)
-		return "", NewUnavailableError(pass, err)
+		return "", NewUnavailableError(pass, err, WithUnavailableUserInputSource(unavailableUserInputSourceForPass(pass)))
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), err)
-		return "", NewUnavailableError(pass, err)
+		return "", NewUnavailableError(pass, err, WithUnavailableUserInputSource(unavailableUserInputSourceForPass(pass)))
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
@@ -194,13 +194,13 @@ func (client *Client) executePass(ctx context.Context, pass string, rawURL strin
 		}
 		passErr := fmt.Errorf("%s", message)
 		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
-		return "", NewUnavailableError(pass, passErr)
+		return "", NewUnavailableError(pass, passErr, WithUnavailableUserInputSource(unavailableUserInputSourceForPass(pass)))
 	}
 
 	if len(strings.TrimSpace(string(body))) == 0 {
 		passErr := fmt.Errorf("empty response body")
 		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
-		return "", NewUnavailableError(pass, passErr)
+		return "", NewUnavailableError(pass, passErr, WithUnavailableUserInputSource(unavailableUserInputSourceForPass(pass)))
 	}
 
 	applog.SubconverterPass(pass, time.Since(start).Milliseconds(), nil)
@@ -304,6 +304,19 @@ func appendExtraQuery(params []string, extraQuery url.Values) []string {
 
 func normalizeSubconverterURLInput(rawInput string) string {
 	return inpututil.NormalizeURLText(rawInput)
+}
+
+func unavailableUserInputSourceForPass(pass string) UnavailableUserInputSource {
+	switch strings.TrimSpace(pass) {
+	case "landing-discovery":
+		return UnavailableInputSourceLanding
+	case "transit-discovery":
+		return UnavailableInputSourceTransit
+	case "full-base":
+		return UnavailableInputSourceStage1Input
+	default:
+		return ""
+	}
 }
 
 func (client *Client) acquire() error {
