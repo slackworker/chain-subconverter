@@ -2,6 +2,7 @@
 # Go
 # =====================
 bin/
+build/
 *.exe
 *.exe~
 *.dll
@@ -32,6 +33,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 
 # =====================
 # IDE & OS
