@@ -39,6 +39,7 @@
 - `forwardRelayItems[]` 的每个元素对应一个独立端口转发输入项；数组顺序保留用户输入顺序，不使用连续文本序列化
 - `advancedOptions` 只保留前端可配置且会影响转换和生成结果的字段；固定隐藏 `subconverter` 参数不进入接口快照
 - 接口接受层中，`advancedOptions` 采用显式快照模型：`emoji`、`udp`、`skipCertVerify` 使用 `true | false | null`；`config` 使用非空字符串；`include`、`exclude` 使用 `非空字符串数组 | null`
+- `enablePortForward` 不属于后端 API 契约，也不属于长链接状态载荷；若请求体或长链接 payload 仍携带该字段，后端必须按未知字段拒绝，而不是静默兼容
 - `advancedOptions.config` 的字段名保留 `config`，用于兼容 `subconverter` 的既有 `config` 查询参数；其业务语义固定为“模板 URL”或“外部配置（模板）URL”，不得理解为最终 Mihomo YAML
 - 复选框语义为：`true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；`include = null`、`exclude = null` 表示对应 Tag 列表留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
 - `config` 表示当前快照使用的模板 URL，必须是非空 HTTP(S) URL；`include` 与 `exclude` 为透传 Tag 列表。为兼容空输入，服务端可接受 `include = []`、`exclude = []`，但必须在入站归一化为 `null`
@@ -624,6 +625,7 @@
 
 - `v` 是长链接编码版本字段，当前固定为 `2`（`v = 1` 视为无效）
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
+- `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
 ### 3. 额外 query 兼容层

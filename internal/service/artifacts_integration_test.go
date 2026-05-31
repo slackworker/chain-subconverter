@@ -177,6 +177,26 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) {
+	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"rows":[]},"v":1}`)
+	encodedData, err := encodeCompressedData(payloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	longURL, err := joinSubURL("http://localhost:11200", encodedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "unmarshal long URL payload: json: unknown field \"enablePortForward\"") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
 func TestDecodeLongURLPayload_AppliesCompatibleOuterQueryOverride(t *testing.T) {
 	emoji := true
 	longURL, err := EncodeLongURL(

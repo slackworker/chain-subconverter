@@ -140,6 +140,24 @@ func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
 	}
 }
 
+func TestStage1ConvertHandler_RejectsLegacyEnablePortForwardField(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{})
+
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"/api/stage1/convert",
+		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":null,"config":"https://templates.example.com/default.ini","include":null,"exclude":null,"enablePortForward":true}}}`),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
+		Code:    "INVALID_REQUEST",
+		Message: "decode JSON body: json: unknown field \"enablePortForward\"",
+		Scope:   "global",
+	})
+}
+
 func TestStage1ConvertHandler_MapsTransitTimeoutToBusinessMessage(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
@@ -244,6 +262,24 @@ func TestGenerateHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
 	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
 		t.Fatalf("dual-landing generate response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
 	}
+}
+
+func TestGenerateHandler_RejectsLegacyEnablePortForwardField(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{})
+
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"/api/generate",
+		strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":null,"config":"https://templates.example.com/default.ini","include":null,"exclude":null,"enablePortForward":true}},"stage2Snapshot":{"rows":[]}}`),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
+		Code:    "INVALID_REQUEST",
+		Message: "decode JSON body: json: unknown field \"enablePortForward\"",
+		Scope:   "global",
+	})
 }
 
 func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {

@@ -43,7 +43,7 @@ https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/do
 https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta
 ```
 
-### 端口转发（高级菜单开开关 → + 端口转发）
+### 端口转发（直接 + 端口转发）
 
 ```
 relay-a.example.com:7443

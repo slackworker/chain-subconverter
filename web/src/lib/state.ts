@@ -61,12 +61,16 @@ export function toStage1InputPayload(stage1Input: Stage1Input): Stage1InputPaylo
 	};
 }
 
+function deriveEnablePortForward(stage1Input: Stage1InputPayload): boolean {
+	return stage1Input.forwardRelayItems.length > 0;
+}
+
 export function hydrateStage1Input(stage1Input: Stage1InputPayload): Stage1Input {
 	return {
 		...stage1Input,
 		advancedOptions: {
 			...stage1Input.advancedOptions,
-			enablePortForward: true,
+			enablePortForward: deriveEnablePortForward(stage1Input),
 		},
 	};
 }

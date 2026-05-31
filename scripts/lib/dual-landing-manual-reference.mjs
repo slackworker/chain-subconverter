@@ -188,7 +188,7 @@ export function renderDualLandingManualReference({
 		"",
 		codeBlockLines(transitURLs),
 		"",
-		"### 端口转发（高级菜单开开关 → + 端口转发）",
+		"### 端口转发（直接 + 端口转发）",
 		"",
 		codeBlockLines(relayLines),
 		"",
