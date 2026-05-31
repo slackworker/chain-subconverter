@@ -83,3 +83,15 @@
 	top: -0.06em;
 	align-self: center;
 }
+
+@media (max-width: 640px) {
+	.a-footer__end {
+		grid-column: 1;
+		justify-self: center;
+		justify-content: center;
+	}
+
+	.a-runtime-status {
+		justify-content: center;
+	}
+}

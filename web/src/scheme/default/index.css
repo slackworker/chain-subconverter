@@ -563,17 +563,15 @@
 
 @media (max-width: 640px) {
 	.a-footer__inner {
-		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-columns: 1fr;
+		justify-items: center;
+		row-gap: 0.5rem;
 	}
 
 	.a-footer__credit {
 		grid-column: 1;
-		justify-self: start;
-		text-align: left;
-	}
-
-	.a-footer__end {
-		grid-column: 2;
+		justify-self: center;
+		text-align: center;
 	}
 }
 
