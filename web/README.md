@@ -2,6 +2,8 @@
 
 `Vite + React + TypeScript + Tailwind` 前端；共享业务层 + `default` / `a` / `b1` / `b2` / `c1` / `c2` 方案目录。
 
+包管理器：**npm**（见 [spec 05 §5](../docs/spec/05-tech-stack.md#5-前端实现约束)）；勿使用 pnpm / yarn。
+
 ## 常用命令
 
 ```bash

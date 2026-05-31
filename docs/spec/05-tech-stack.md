@@ -53,6 +53,7 @@
 
 ## 5. 前端实现约束
 
+- **`web/` 包管理器为 npm**（`npm ci` / `npm install`）；CI、`scripts/dev-up.sh` 与测试 runbook 均按此路径；不支持 pnpm / yarn（`web/package-lock.json` 为唯一锁文件）
 - 前端阶段默认使用 `React + TypeScript`
 - 构建工具默认使用 `Vite`
 - 当前定位为单页应用；不引入 `Next.js`、SSR、服务端组件或全栈 React 框架

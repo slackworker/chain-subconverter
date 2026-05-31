@@ -3,7 +3,9 @@
 	"private": true,
 	"version": "0.1.0",
 	"type": "module",
+	"packageManager": "npm@10.9.2",
 	"scripts": {
+		"preinstall": "npx --yes only-allow npm",
 		"dev": "vite",
 		"dev:default": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=default vite",
 		"dev:a": "VITE_CHAIN_SUBCONVERTER_UI_SCHEME=a vite",
