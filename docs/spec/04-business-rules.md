@@ -9,22 +9,12 @@
 - 后端统一通过本地 HTTP 服务访问 `subconverter`
 - `subconverter` 作为本项目部署内的内部转换组件存在
 - 本章定义的转换规则均建立在该集成前提之上
+- 运行时与部署层约束（如超时、并发、缓存、重试与部署拓扑）见 [05-tech-stack](05-tech-stack.md) §4.1、§6
 
-### 0.1 `subconverter` 运行边界
+### 0.1 运行边界与部署约束
 
-- 后端统一调用同部署内常驻的 `subconverter` HTTP 服务
-- 后端对 `subconverter` 的每次调用都必须设置超时；超时值必须可配置，默认 `15s`
-- 默认部署下，`subconverter` 以“开启订阅/配置/规则集缓存”或“等价的重复拉取收敛机制”运行
-- 后端对 `subconverter` 的同时在途请求数必须受控且可配置，默认 `10`
-- 达到并发上限时，后端立即失败，不转发、不排队
-- 业务层默认不对失败的 `subconverter` 调用自动重试
-- 若显式启用重试，最多只允许 `1` 次串行重试，且不得并行放大请求
-- 后端在转发给 `subconverter` 前先校验参与本次转换的输入边界；超限请求直接拒绝
-- 当前阶段 1 的主预算口径固定为“完整上游请求 URI 长度”：`landing-discovery pass`、`transit-discovery pass`、`full-base pass` 三个请求中任意一个超过预算都必须在转发前阻断；该上限必须可配置，默认 `16384` bytes
-- 若阶段 1 支持多 URL 输入，`landingRawText` 与 `transitRawText` 各自承载的输入项数量上限都必须可配置，默认每个字段最多 `32` 条
-- `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应、不可解析结果或并发上限拒绝，均视为该 pass 失败
-- `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
-- 若本次有效模板已识别出某地域策略组，但该地域策略组在同一条转换管线的 `full-base pass` 产物（经 `1.3` 后处理后的 `baseCompleteConfig`）中完全不存在，必须视为 `full-base pass` 失败；不得按空组静默降级
+- `subconverter` 运行边界（默认值与失败语义）以 [05-tech-stack](05-tech-stack.md) §4.1 为准
+- 部署拓扑与网络暴露约束以 [05-tech-stack](05-tech-stack.md) §6 为准
 
 ### 0.2 `subconverter` 调用契约
 
@@ -32,6 +22,9 @@
 - 三个 pass 都必须复用同一组固定参数与阶段 1 高级选项映射结果
 - 三个 pass 必须属于同一条转换管线；`full-base pass` 必须与同一管线中的两个 discovery pass 保持输入快照一致
 - 实现必须核对 discovery pass 返回的每个落地/中转身份，都能在同一管线的 `full-base pass` 完整代理集合中完成唯一定位；若不能唯一定位，视为 pass 失败
+- `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应或不可解析结果，均视为该 pass 失败
+- `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
+- 若本次有效模板已识别出某地域策略组，但该地域策略组在同一条转换管线的 `full-base pass` 产物（经 `1.3` 后处理后的 `baseCompleteConfig`）中完全不存在，必须视为 `full-base pass` 失败；不得按空组静默降级
 
 ### 0.2.1 pass 级参数约束
 

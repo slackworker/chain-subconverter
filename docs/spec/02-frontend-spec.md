@@ -68,11 +68,8 @@
 
 ### `scope` 与阶段标签
 
-- `blockingErrors[].scope` 是共享层稳定的错误定位语义，不是 Stage 枚举
-- 当前 `scope` 承担 5 类定位：`global`、`stage1_field`、`stage2_row`、`stage3_field`、`stage3_action`
-- 前端若需要在 UI 上明确标记“该错误来自 Stage 1 / Stage 2 / Stage 3”，该标签属于方案层展示语义，可按当前请求入口或工作流上下文派生为 `originStage`
-- `originStage` 只表示本次请求从哪个阶段发起；它不替代 `scope`，也不进入后端响应结构
-- 阶段标签不得反向改变 `scope` 契约；Stage 3 的展示标签与 `stage3_*` scope 仍分别承担“请求来源说明”与“局部定位”的不同职责
+- `blockingErrors[].scope`、`originStage` 的权威定义见 [03-backend-api](03-backend-api.md)「4. 消息与错误模型」
+- 本章只约束前端展示边界：`scope` 负责局部定位语义；阶段标签只负责请求来源说明
 
 ### 共享通知承载模型
 
@@ -104,30 +101,26 @@
 ### 1.1 落地节点信息输入区
 
 - 用途：输入落地节点或落地订阅信息
-- 输入方式：通过多行文本框输入订阅 URL、节点 URI；通过按钮弹出表单手动添加 SOCKS5 节点
-- 展示规则：每条一行，显示行号，不自动换行，允许横向滚动
-- 手动添加 SOCKS5 节点按钮位置：位于“落地节点”输入区的右上角
+- 输入内容：订阅 URL、节点 URI，以及手动补录的 SOCKS5 节点
 
 #### 1.1.1 手动添加 SOCKS5 节点
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `name` | text | 是 | 节点名称 |
-| `server` | text | 是 | 服务器地址 |
-| `port` | number | 是 | 端口号 |
-| `username` | text | 否 | 用户名 |
-| `password` | text | 否 | 密码 |
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `name` | 是 | 节点名称 |
+| `server` | 是 | 服务器地址 |
+| `port` | 是 | 端口号 |
+| `username` | 否 | 用户名 |
+| `password` | 否 | 密码 |
 
 - 仅支持手动添加 SOCKS5 类型的节点
 - `username` 与 `password` 必须成对出现
 - `server`、`port` 的录入合法性必须在前端共享层统一校验：`server` 只允许 IPv4 或 ASCII 域名，`port` 只允许 `1-65535` 的十进制整数
-- 表单应提供可选 `socks5://` URI 粘贴输入框；当前端收到该 URI 时，必须先解析为 `name/server/port/username/password`，再允许用户确认或补充后提交
-- 弹窗字段布局建议为四行：第一行 `name`；第二行左 `server` / 右 `port`；第三行左 `username` / 右 `password`；第四行 `socks5://` URI（可选）
-- `socks5://` URI 输入框不单独提供提交按钮，与分字段输入共用同一个提交动作
+- 若前端支持 `socks5://` URI 粘贴输入，收到后必须先解析为 `name/server/port/username/password` 再进入提交流程
 - 提交后必须转换为一条 `subconverter` 可解析的 SOCKS URI 追加到落地输入区
 - 提交时必须统一编码为 `tg://socks?server=<server>&port=<port>&remarks=<name>`；若存在认证信息，则继续追加 `&user=<username>&pass=<password>`
 - 统一使用 `tg://socks` 是权威口径，不再区分 `IPv4` / 主机名，也不再生成 `socks://<base64>`；原因是 `subconverter` 已正式支持 Telegram 风格 SOCKS 源，且该格式可以规避当前 `socks://<base64>` 在“域名 + 认证”等组合上的解析局限
-- 方案层只负责表单交互、错误展示、弹窗开关与提交时机；`server` / `port` 的共享合法性规则不得散落在单一 UI 方案组件内重复实现
+- `server` / `port` 的共享合法性规则不得散落在单一 UI 方案组件内重复实现
 
 #### 1.1.2 落地副本
 
@@ -139,23 +132,15 @@
 
 - 用途：输入中转节点或中转订阅信息
 - 输入方式：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
-- 展示规则：每条一行，显示行号，不自动换行，允许横向滚动
-- `+端口转发` 按钮视觉上挂靠在“中转信息”输入区右上角，但其承载的不是 `transitRawText` 文本输入本身；`default` / `a` 方案始终显示该入口
+- 端口转发服务录入能力属于阶段 1 的独立逻辑块，不是 `transitRawText` 文本输入本身
 - 具体输入归一化与上游传递规则见 [04-business-rules](04-business-rules.md)
-- 若横向宽度充足，允许与“落地节点信息输入区”左右排列
 
 #### 1.2.1 端口转发服务
 
 - `default` / `a` 方案无启用开关，端口转发入口默认暴露；探索性方案（`b1`、`b2`、`c1`、`c2`）仍可通过各自 UI 开关控制
-- 端口转发服务在视觉编排上挂靠“中转信息输入区”，在业务语义上是阶段 1 的独立逻辑块
+- 端口转发服务在业务语义上是阶段 1 的独立逻辑块
 - 端口转发服务不写入 `transitRawText`，而是以独立字段 `forwardRelayItems` 进入阶段 1 快照
 - 端口转发服务的后续消费链路独立于中转节点文本输入；其输入、校验、去重与阶段 2 消费均按独立业务语义处理
-- 触发控件：`+端口转发` 是当前 Web 前端唯一录入入口
-- 交互形态：点击按钮后弹出独立 modal；modal 标题为“添加端口转发服务”
-- 输入形态：modal 内使用 TagInput 录入一个或多个 `server:port`
-- 提交时机：用户点击 modal 的“确认”后，才将本次录入的端口转发服务写入阶段 1 快照
-- 展示规则：确认后，已录入条目以 Tag 列表显示在“中转信息”输入框下方；未录入任何条目时不展示列表；探索性方案在 `enablePortForward` 关闭时隐藏中转区周边的端口转发入口、Tag 列表与相关局部反馈
-- 布局规则：若“落地节点信息输入区”和“中转信息输入区”左右排列，端口转发服务的入口按钮、Tag 列表与错误反馈仍跟随“中转信息输入区”展示，不跨列到落地区
 - 提交阶段 1 快照时，端口转发服务必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
 - `enablePortForward` 是前端本地 UI 控制字段，不进入后端 API 请求体，也不进入长链接共享状态
 - `default` / `a` 方案：不提供 `enablePortForward` switch；用户可直接使用“+端口转发”入口而无需先开启开关
@@ -167,29 +152,15 @@
 ### 1.3 高级菜单区
 
 - 形态：默认折叠/隐藏
-- 阶段 1 中可配置的 `subconverter` 其他参数，以及探索性方案使用的端口转发开关，收纳在此区域
+- 阶段 1 中可配置的 `subconverter` 参数，以及探索性方案使用的端口转发开关，收纳在此区域
 - 前端控件集合：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
 - 阶段 1 提交模型必须保持结构化：高级菜单区中的 API 字段作为 `advancedOptions` 对象提交；端口转发服务作为 `forwardRelayItems` 数组提交；`enablePortForward` 不提交
-- 行位顺序：第 1 行为“模板 URL”；第 2、3 行为 `include`、`exclude`，默认各占一行，横向宽度充足时可左右同排；第 4 行为 `emoji`、`udp`、`skipCertVerify`（`default` / `a` 方案不含 `enablePortForward` switch）
-- 控件类型：
-  - `config`：单行文本输入框
-  - `include`、`exclude`：单行TagInput
-  - `emoji`、`udp`、`skipCertVerify`：checkbox
-  - `enablePortForward`：switch（仅探索性方案）
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
 - “模板 URL”输入框默认填入 `GET /api/runtime-config` 返回的 `defaultTemplateURL`
 - 前端同时从 `GET /api/runtime-config` 读取 `maxPublicLongURLLength`，用于决定何时必须强制切换为短链接展示
 - 前端必须把默认模板 URL 作为普通输入值写入 `advancedOptions.config`；该值随阶段 1 请求、生成请求与长链接状态载荷一起提交
-- 模板 URL 输入框右侧必须提供“恢复默认”动作；触发后将输入框值改回当前 `defaultTemplateURL`
-- 前端不得在输入框外重复展示“当前默认模板”URL 文本块；用户复制默认 URL 时直接从输入框选中文本复制
-- 若运行时配置读取失败，方案层可回退到内置推荐 Aethersailor 模板 URL 并写入 `advancedOptions.config`
-- 方案层Tooltip可说明该初始值来自部署默认模板 URL，且上游更新可能导致规则变化；具体使用提示 icon、说明文本或其他呈现方式由方案层决定
-- 前端默认状态：`emoji` 与 `udp` 默认勾选，`skipCertVerify` 默认不勾选
-- `default` / `a` 方案不暴露 `enablePortForward` switch，且端口转发入口始终可见；探索性方案默认关闭
-- `include`、`exclude` 使用 TagInput 时，多标签值必须以字符串数组写入阶段 1 快照，数组顺序保留输入顺序；例如前端填写 `TagA`、`TagB`、`TagC`，快照值应为 `["TagA", "TagB", "TagC"]`
-- 当前 Web 前端产出层提交值规则：`emoji`、`udp`、`skipCertVerify` 的 checkbox 只提交 `true | null`（勾选 `true`，未勾选 `null`）；`config` 提交当前输入框中的非空模板 URL；`include`、`exclude` 在无标签时提交 `null`，有标签时提交按输入顺序组成的字符串数组
-- `default` / `a` 方案始终展示“中转信息输入区”周边的端口转发入口；探索性方案仅在 `enablePortForward` 开启后展示，关闭后必须隐藏这些控件并清空 `forwardRelayItems`
-- 前端只负责渲染与提交高级选项快照；接口接受层的三态模型与入站归一化规则以 [03-backend-api](03-backend-api.md) 为准；参数默认值与 `GET /sub` 传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
+- 前端默认值、三态模型与入站归一化规则以 [03-backend-api](03-backend-api.md) 为准
+- 参数默认值与 `GET /sub` 传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
 
 ### 1.4 转换动作
 
@@ -289,7 +260,7 @@
 ### 3.2 链接展示与短链切换
 
 - 阶段 3 必须展示本次生成的订阅链接，并提供“使用短链接”切换能力
-- “使用短链接”切换控件属于阶段 3 稳定能力，位置约束为链接输入框右侧
+- “使用短链接”切换能力属于阶段 3 稳定能力
 - 反向解析须在同一输入框中允许用户输入已有 URL（本系统生成的 `longUrl` 或 `shortUrl`）或对应短链接 `shortID` 供 `resolve-url` 使用
 - 长链接是规范化快照链接，始终作为页面状态来源；短链接是长链接的后端别名；两者都可直接作为订阅地址消费
 - 切换规则：无 `longUrl` 时切换到“使用短链接”只记录展示偏好，不改写当前恢复输入；有 `longUrl` 且首次开启“使用短链接”且尚无 `shortUrl` 时，前端调用 `POST /api/short-links` 创建短链接，成功后展示短链接；若当前 `longUrl` 未超过 `maxPublicLongURLLength`，短链创建失败时允许保持展示长链接并显著提示错误；后续已获得 `shortUrl` 时再次开启只切换展示值，不重新生成链接
