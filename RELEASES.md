@@ -4,6 +4,43 @@
 
 ---
 
+## v3.0.0-beta.4
+
+**Tag:** `v3.0.0-beta.4`  
+**日期:** 2026-06-01  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.0.0-beta.3](#v300-beta3) 基础上，强化**运行态展示**、**工作流日志与消息**、**反代场景访问日志**及默认 `/` / scheme `a` 的端口转发默认行为；移除已废弃的 `enablePortForward` API 字段。无破坏性主流程变更。
+
+### 变更摘要
+
+- **运行态（footer）**：`GET /api/runtime-status` 增加 `imageDigest`、短链存储用量徽章、`subconverter.networkScope`（内网 / 跨网）；subconverter 状态与页脚响应式布局优化。
+- **日志与消息**：运维 access log 与用户 workflow 消息分离；`messages[]` / 不可用错误增加分类与用户输入来源提示。
+- **工作流前端**：`useAppWorkflow` 状态管理重构；Tooltip 与警告图标交互改进；默认 `/` 与 scheme `a` **默认开启端口转发**（不再依赖旧 `enablePortForward` 字段）。
+- **短链存储**：下调 `SHORT_LINK_CAPACITY` 时自动裁剪溢出条目。
+- **访问日志**：反代后客户端 IP / Origin 识别（`TRUSTED_PROXY_CIDRS` 场景）。
+- **构建与文档**：Web 前端统一为 npm；spec / 回归记录与上述行为对齐。
+
+### 自部署
+
+与 beta.3 相同，将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+```
+
+或钉死版本 tag / digest（例如 `v3.0.0-beta.4` 或 `sha256:7bf643fa…`，须自行核对 GHCR manifest）。
+
+从 **beta.3** 升级：拉取新镜像并重启 Compose；短链数据卷可保留。若客户端仍发送 `enablePortForward`，请改由 UI 端口转发开关控制（该字段已从 API 移除）。
+
+### Beta 说明
+
+仍属预发布；安全与部署注意同 beta.1（见下文「Beta 说明」与 [SECURITY.md](SECURITY.md)）。
+
+---
+
 ## v3.0.0-beta.3
 
 **Tag:** `v3.0.0-beta.3`  
@@ -124,7 +161,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 - **设备**：未针对手机浏览器专门优化。
 - **HTTPS / 反代**：若前面有 HTTPS 终止或固定域名，请按 [deploy/README.md](deploy/README.md) 设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，避免生成错误链接。
 
-运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)（2026-05-29 vps-01/02 内网与公网一体化 beta.3 口径 **通过**；2026-05-25 beta.2；2026-05-23 双 Docker 分离形态 **通过**）。
+运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)（2026-06-01 vps-01/02 内网与公网一体化 **beta.4** / `beta-latest` **通过**；2026-05-29 beta.3；2026-05-25 beta.2；2026-05-23 双 Docker 分离形态 **通过**）。
 
 ### 反馈
 

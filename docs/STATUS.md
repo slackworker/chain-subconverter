@@ -1,12 +1,12 @@
 # 项目状态
 
-> 最近更新：2026-05-30 · 正式 Beta tag **`v3.0.0-beta.3`**；vps-01/02 已切 **`dev-latest`**（digest `sha256:eeff0ea6…`，`dev` @ `65e4f01`）
+> 最近更新：2026-06-01 · 正式 Beta tag **`v3.0.0-beta.4`**；vps-01/02 已切 **`beta-latest`**（digest `sha256:7bf643fa…`，`beta` @ `666a100`）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
 
 ## 当前结论
 
-- **3.0 Beta 线已发布**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1)、[`v3.0.0-beta.2`](../RELEASES.md#v300-beta2)、[`v3.0.0-beta.3`](../RELEASES.md#v300-beta3)
+- **3.0 Beta 线已发布**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1)、[`v3.0.0-beta.2`](../RELEASES.md#v300-beta2)、[`v3.0.0-beta.3`](../RELEASES.md#v300-beta3)、[`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)
 - **Phase 0–4 已完成**；维护期以回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/a` 为对照方案；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
@@ -51,5 +51,5 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-05-30 vps-01/02 `dev-latest` + `deployed-smoke` **通过** — 字段见 [third-party-deployments.md](testing/third-party-deployments.md) |
+| **第三方部署** | 2026-06-01 vps-01/02 `beta-latest` + `deployed-smoke` **通过** — 字段见 [third-party-deployments.md](testing/third-party-deployments.md) |
 | **本地自动化基线** | 2026-05-27 snapshot-first + stage2 `rowId`/复制行 spec 对齐；`go test ./...`、`npm test`、`test:e2e:mock` **通过** |
