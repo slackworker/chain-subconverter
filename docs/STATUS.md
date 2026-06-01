@@ -35,6 +35,7 @@
 
 | 项 | 说明 |
 |----|------|
+| 激进链式故障转移双方案 | 见 [proposals/2026-06-aggressive-chain-failover.md](proposals/2026-06-aggressive-chain-failover.md)；待切两条 worktree 并行探索：方案一“目标直指激进策略组”，方案二“落地副本打包成组” |
 | E2E 加深 | blocking 仍为两条 mocked happy path；`include-exclude-filter` 未进 blocking |
 | UI 探索方案 B/C | 定位为 `exploratory`（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）；不要求与 default 壳层一致，以业务能力验收为准 |
 | 安全 | 基础 SSRF/限速已落地；更严格出站与 egress 待评估 |
