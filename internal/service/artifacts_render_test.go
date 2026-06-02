@@ -264,6 +264,18 @@ func TestUnescapeYAMLUnicodeEscapes_ConvertsUnicodeEscapeSequences(t *testing.T)
 	}
 }
 
+func TestUnescapeYAMLUnicodeEscapes_LeavesLowercaseUnicodeEscapesUntouched(t *testing.T) {
+	input := `- "\uD83C\uDDFA\uD83C\uDDF8 Transit-A-UnitedStates-VLESS-01"`
+	got := unescapeYAMLUnicodeEscapes(input)
+
+	if got != input {
+		t.Fatalf("should keep lowercase unicode escapes unchanged, got: %s", got)
+	}
+	if strings.Contains(got, "�") {
+		t.Fatalf("should not introduce replacement chars, got: %s", got)
+	}
+}
+
 func TestRenderCompleteConfig_UnescapesYAMLUnicodeEscapesInRenderedOutput(t *testing.T) {
 	fixtures := singleLandingFixture("HK Landing", "ss", "")
 	const escapedUSMemberLine = `      - "\U0001F1FA\U0001F1F8 Transit-A-UnitedStates-VLESS-01"`
