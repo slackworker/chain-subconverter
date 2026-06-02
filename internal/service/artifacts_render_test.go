@@ -136,3 +136,56 @@ func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
 		t.Fatalf("managed landing is missing port-forward clone:\n%s", rendered)
 	}
 }
+
+func TestRenderCompleteConfig_OverridesChainProxyGroupForAggressiveFallback(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
+		TransitDiscoveryYAML: "proxies:\n- {name: transit-hk, type: ss}\n",
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+			"- {name: transit-hk, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: url-test",
+			"    url: https://example.com/original",
+			"    interval: 300",
+			"    tolerance: 50",
+			"    proxies:",
+			"      - HK Landing",
+			"      - transit-hk",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`url-test`HK\n",
+	}
+
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				LandingNodeName:         "HK Landing",
+				Mode:                    "chain",
+				TargetName:              &targetName,
+				ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "    type: fallback") {
+		t.Fatalf("rendered config should override proxy-group type:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "    lazy: false") || !strings.Contains(rendered, "    timeout: 2000") || !strings.Contains(rendered, "    max-failed-times: 1") {
+		t.Fatalf("rendered config should include aggressive fallback fields:\n%s", rendered)
+	}
+	if strings.Contains(rendered, "    tolerance: 50") {
+		t.Fatalf("rendered config should remove tolerance for fallback profile:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "    url: https://cp.cloudflare.com/generate_204") {
+		t.Fatalf("rendered config should pin the managed health check URL:\n%s", rendered)
+	}
+}

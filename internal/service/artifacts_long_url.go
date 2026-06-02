@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultLongURLMaxLength = 8192
-	longURLSchemaVersion    = 2
+	longURLSchemaVersion    = 3
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -74,6 +74,7 @@ type longURLStage2Row struct {
 	ProxyName             string  `json:"proxyName"`
 	Mode                  string  `json:"mode"`
 	TargetName            *string `json:"targetName"`
+	ChainProxyGroupProfile string `json:"chainProxyGroupProfile,omitempty"`
 }
 
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
@@ -290,6 +291,7 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			LandingNodeName:       row.ProxyName,
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
+			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
 		}
 	}
 
@@ -350,6 +352,11 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		}
 		rowsByProxyName[proxyName] = struct{}{}
 
+		profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
+		if !isSupportedChainProxyGroupProfile(profile) {
+			return fmt.Errorf("unsupported chainProxyGroupProfile %q for proxy %q", row.ChainProxyGroupProfile, proxyName)
+		}
+
 		targetName := ""
 		if row.TargetName != nil {
 			targetName = strings.TrimSpace(*row.TargetName)
@@ -360,9 +367,15 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			if targetName != "" {
 				return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
 			}
+			if profile != "" {
+				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is none", proxyName)
+			}
 		case "chain", "port_forward":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			}
+			if row.Mode == "port_forward" && profile != "" {
+				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is port_forward", proxyName)
 			}
 		default:
 			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
@@ -511,6 +524,7 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			ProxyName:             row.proxyNameOrFallback(),
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
+			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
 		}
 	}
 

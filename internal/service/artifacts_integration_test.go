@@ -177,6 +177,34 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsChainProxyGroupProfileForNoneMode(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{
+				Rows: []Stage2Row{{
+					LandingNodeName:         "HK 01",
+					Mode:                    "none",
+					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: chainProxyGroupProfile must be empty") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
 func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) {
 	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"rows":[]},"v":1}`)
 	encodedData, err := encodeCompressedData(payloadJSON)
@@ -273,7 +301,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":2}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":3}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

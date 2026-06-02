@@ -121,7 +121,7 @@ func renderCompleteConfigViaManagedPass3(
 		return "", err
 	}
 
-	return stripLandingNodesFromCompleteConfigYAML(fullBaseYAML, stage2StripLandingNames(landingProxies, stage2Snapshot.Rows), regionGroupNames)
+	return stripLandingNodesFromCompleteConfigYAML(fullBaseYAML, stage2Snapshot.Rows, stage2StripLandingNames(landingProxies, stage2Snapshot.Rows), regionGroupNames)
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {

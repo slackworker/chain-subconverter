@@ -17,10 +17,12 @@ import {
 } from "../lib/notices";
 import {
 	findStage2RowByKey,
+	findChainTarget,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
+	isChainProxyGroupProfileEligible,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -35,7 +37,7 @@ import {
 } from "../lib/workflow-log";
 import type { ResponseOriginStage, WorkflowLogEntry } from "../lib/state";
 import { WORKFLOW_EVENTS, type WorkflowEventCode } from "../lib/workflow-log-events";
-import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, ChainProxyGroupProfile, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
 import {
@@ -114,9 +116,32 @@ export interface AppWorkflowViewModel {
 	canDeleteStage2Row: (landingNodeName: string) => boolean;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
+	handleChainProxyGroupProfileChange: (landingNodeName: string, profile: ChainProxyGroupProfile | "") => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
+}
+
+function normalizeChainProxyGroupProfileValue(profile: Stage2Row["chainProxyGroupProfile"] | "") {
+	return profile ?? "";
+}
+
+function sanitizeChainProxyGroupProfile(
+	stage2Init: Stage2Init | null,
+	row: Stage2Row,
+	nextMode: Stage2Row["mode"],
+	nextTargetName: string | null,
+) {
+	const nextRow: Stage2Row = {
+		...row,
+		mode: nextMode,
+		targetName: nextTargetName,
+	};
+	if (!isChainProxyGroupProfileEligible(stage2Init, nextRow)) {
+		return undefined;
+	}
+	const currentProfile = normalizeChainProxyGroupProfileValue(row.chainProxyGroupProfile);
+	return currentProfile === "" ? undefined : currentProfile;
 }
 
 function fallbackBlockingError(error: unknown, context: RequestFailureContext): BlockingError {
@@ -528,13 +553,28 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			...row,
 			mode,
 			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
+			chainProxyGroupProfile: sanitizeChainProxyGroupProfile(
+				state.stage2Init,
+				row,
+				mode,
+				pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
+			),
 		}));
 	}
 
 	function handleTargetChange(landingNodeName: string, targetName: string) {
+		const nextTargetName = targetName === "" ? null : targetName;
 		updateStage2Row(landingNodeName, (row) => ({
 			...row,
-			targetName: targetName === "" ? null : targetName,
+			targetName: nextTargetName,
+			chainProxyGroupProfile: sanitizeChainProxyGroupProfile(state.stage2Init, row, row.mode, nextTargetName),
+		}));
+	}
+
+	function handleChainProxyGroupProfileChange(landingNodeName: string, profile: ChainProxyGroupProfile | "") {
+		updateStage2Row(landingNodeName, (row) => ({
+			...row,
+			chainProxyGroupProfile: profile === "" ? undefined : profile,
 		}));
 	}
 
@@ -706,6 +746,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
+		handleChainProxyGroupProfileChange,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

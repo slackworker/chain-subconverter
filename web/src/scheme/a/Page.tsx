@@ -23,6 +23,7 @@ import {
 	getStage2RowStrictKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
+	isChainProxyGroupProfileEligible,
 	isStage2SourceRow,
 } from "../../lib/stage2";
 import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
@@ -127,6 +128,10 @@ const COPY = {
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
 		selectTarget: "请选择",
+		chainProxyGroupProfileLabel: "故障转移策略",
+		chainProxyGroupProfileDefault: "默认模板设置",
+		chainProxyGroupProfileAggressiveFallback: "激进 fallback",
+		chainProxyGroupProfileAggressiveURLTest: "激进 url-test",
 		generating: "生成中…",
 		generateLink: "生成链接",
 		stage3Title: "输出",
@@ -247,6 +252,10 @@ const COPY = {
 		fixedNodes: "Fixed nodes",
 		noCommonChoices: "No common choices available",
 		selectTarget: "Select a target",
+		chainProxyGroupProfileLabel: "Failover profile",
+		chainProxyGroupProfileDefault: "Template default",
+		chainProxyGroupProfileAggressiveFallback: "Aggressive fallback",
+		chainProxyGroupProfileAggressiveURLTest: "Aggressive url-test",
 		generating: "Generating...",
 		generateLink: "Generate link",
 		stage3Title: "Output",
@@ -623,6 +632,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
+		handleChainProxyGroupProfileChange,
 		handleGenerate,
 		handlePreferShortUrl,
 	} = workflow;
@@ -1334,6 +1344,8 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										const selectedTargetLabel =
 											getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
 											(row.mode === "none" ? "--" : copy.selectTarget);
+										const canEditChainProxyGroupProfile = isChainProxyGroupProfileEligible(state.stage2Init, row);
+										const chainProxyGroupProfileValue = row.chainProxyGroupProfile ?? "";
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
 										const rowErrorId = `a-s2-row-error-${rowIndex}`;
@@ -1603,6 +1615,21 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 															</select>
 														</div>
 													)}
+															{canEditChainProxyGroupProfile ? (
+																<div className="a-target-picker">
+																	<select
+																		className="a-select"
+																		value={chainProxyGroupProfileValue}
+																		disabled={!editable}
+																		aria-label={copy.chainProxyGroupProfileLabel}
+																		onChange={(event) => handleChainProxyGroupProfileChange(rowKey, event.target.value as "" | "aggressive_fallback" | "aggressive_url_test")}
+																	>
+																		<option value="">{copy.chainProxyGroupProfileDefault}</option>
+																		<option value="aggressive_fallback">{copy.chainProxyGroupProfileAggressiveFallback}</option>
+																		<option value="aggressive_url_test">{copy.chainProxyGroupProfileAggressiveURLTest}</option>
+																	</select>
+																</div>
+															) : null}
 													{rowErrors.length > 0 ? (
 														<p id={rowErrorId} className="a-sr-only" role="status">
 															{copy.localErrorAriaHint}

@@ -7,6 +7,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const aggressiveChainProxyGroupHealthCheckURL = "https://cp.cloudflare.com/generate_204"
+
 func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
 		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
@@ -15,13 +17,19 @@ func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingName
 		if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
 			return err
 		}
+		if err := applyChainProxyGroupProfiles(root, rows, lines, deletedLines, replacedLines); err != nil {
+			return err
+		}
 		return nil
 	})
 }
 
-func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
-	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, _ []string, deletedLines map[int]struct{}, _ map[int]string) error {
-		return stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines)
+func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
+			return err
+		}
+		return applyChainProxyGroupProfiles(root, rows, lines, deletedLines, replacedLines)
 	})
 }
 
@@ -155,6 +163,135 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 	return nil
 }
 
+func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+	profilesByTarget := collectChainProxyGroupProfiles(rows)
+	if len(profilesByTarget) == 0 {
+		return nil
+	}
+
+	proxyGroupsNode := yamlMappingValue(root, "proxy-groups")
+	if proxyGroupsNode == nil {
+		return fmt.Errorf("full-base YAML is missing proxy-groups")
+	}
+	if proxyGroupsNode.Kind != yaml.SequenceNode {
+		return fmt.Errorf("full-base YAML field %q must be a sequence", "proxy-groups")
+	}
+
+	for index, groupNode := range proxyGroupsNode.Content {
+		if groupNode.Kind != yaml.MappingNode {
+			return fmt.Errorf("proxy-group entry must be a mapping")
+		}
+
+		nameNode := yamlMappingValue(groupNode, "name")
+		if nameNode == nil {
+			return fmt.Errorf("proxy-group entry is missing name")
+		}
+
+		profile, ok := profilesByTarget[nameNode.Value]
+		if !ok {
+			continue
+		}
+
+		if err := applyChainProxyGroupProfileNode(groupNode, profile); err != nil {
+			return fmt.Errorf("apply chain proxy-group profile for %q: %w", nameNode.Value, err)
+		}
+
+		startIndex := groupNode.Line - 1
+		if startIndex < 0 || startIndex >= len(lines) {
+			return fmt.Errorf("proxy-group line %d is out of range", groupNode.Line)
+		}
+
+		endIndex := len(lines)
+		if index+1 < len(proxyGroupsNode.Content) {
+			nextIndex := proxyGroupsNode.Content[index+1].Line - 1
+			if nextIndex > startIndex {
+				endIndex = nextIndex
+			}
+		}
+
+		replacement, err := renderProxyGroupBlock(groupNode, leadingWhitespace(lines[startIndex]))
+		if err != nil {
+			return fmt.Errorf("render proxy-group %q: %w", nameNode.Value, err)
+		}
+		replacedLines[startIndex] = replacement
+		for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+			deletedLines[lineIndex] = struct{}{}
+		}
+	}
+
+	return nil
+}
+
+func collectChainProxyGroupProfiles(rows []Stage2Row) map[string]string {
+	profilesByTarget := make(map[string]string)
+	for _, row := range rows {
+		if row.Mode != "chain" || row.TargetName == nil {
+			continue
+		}
+		profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
+		if profile == "" {
+			continue
+		}
+		profilesByTarget[strings.TrimSpace(*row.TargetName)] = profile
+	}
+	return profilesByTarget
+}
+
+func applyChainProxyGroupProfileNode(groupNode *yaml.Node, profile string) error {
+	membersNode := yamlMappingValue(groupNode, "proxies")
+	if membersNode == nil {
+		nameNode := yamlMappingValue(groupNode, "name")
+		groupName := ""
+		if nameNode != nil {
+			groupName = nameNode.Value
+		}
+		return fmt.Errorf("proxy-group %q is missing proxies", groupName)
+	}
+
+	urlValue := aggressiveChainProxyGroupHealthCheckURL
+	yamlMappingSetScalar(groupNode, "url", urlValue, "!!str")
+	yamlMappingSetScalar(groupNode, "interval", "60", "!!int")
+	yamlMappingSetScalar(groupNode, "lazy", "false", "!!bool")
+	yamlMappingSetScalar(groupNode, "timeout", "2000", "!!int")
+	yamlMappingSetScalar(groupNode, "max-failed-times", "1", "!!int")
+
+	switch normalizeChainProxyGroupProfile(profile) {
+	case ChainProxyGroupProfileAggressiveFallback:
+		yamlMappingSetScalar(groupNode, "type", "fallback", "!!str")
+		yamlMappingDelete(groupNode, "tolerance")
+	case ChainProxyGroupProfileAggressiveURLTest:
+		yamlMappingSetScalar(groupNode, "type", "url-test", "!!str")
+		yamlMappingSetScalar(groupNode, "tolerance", "1", "!!int")
+	default:
+		return fmt.Errorf("unsupported chain proxy-group profile %q", profile)
+	}
+
+	return nil
+}
+
+func renderProxyGroupBlock(groupNode *yaml.Node, indent string) (string, error) {
+	sequence := &yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{groupNode}}
+	document := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{sequence}}
+	encoded, err := yaml.Marshal(document)
+	if err != nil {
+		return "", fmt.Errorf("marshal proxy-group block: %w", err)
+	}
+	block := strings.TrimSuffix(string(encoded), "\n")
+	if indent == "" {
+		return block, nil
+	}
+	parts := strings.Split(block, "\n")
+	for index, part := range parts {
+		parts[index] = indent + part
+	}
+	return strings.Join(parts, "\n"), nil
+}
+
+func leadingWhitespace(line string) string {
+	trimmed := strings.TrimLeft(line, " \t")
+	return line[:len(line)-len(trimmed)]
+}
+
 func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
 	prefix, fields, err := parseInlineProxyLine(line)
 	if err != nil {
@@ -217,6 +354,37 @@ func yamlMappingValue(mapping *yaml.Node, key string) *yaml.Node {
 		}
 	}
 	return nil
+}
+
+func yamlMappingSetScalar(mapping *yaml.Node, key string, value string, tag string) {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return
+	}
+	for index := 0; index+1 < len(mapping.Content); index += 2 {
+		if mapping.Content[index].Value != key {
+			continue
+		}
+		mapping.Content[index+1] = &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value}
+		return
+	}
+	mapping.Content = append(mapping.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key},
+		&yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value},
+	)
+}
+
+func yamlMappingDelete(mapping *yaml.Node, key string) {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return
+	}
+	filtered := mapping.Content[:0]
+	for index := 0; index+1 < len(mapping.Content); index += 2 {
+		if mapping.Content[index].Value == key {
+			continue
+		}
+		filtered = append(filtered, mapping.Content[index], mapping.Content[index+1])
+	}
+	mapping.Content = filtered
 }
 
 type inlineProxyField struct {
