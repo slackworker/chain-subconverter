@@ -17,7 +17,6 @@ import {
 } from "../lib/notices";
 import {
 	findStage2RowByKey,
-	findChainTarget,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
 	getStage2RowKey,

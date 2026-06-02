@@ -188,4 +188,66 @@ func TestRenderCompleteConfig_OverridesChainProxyGroupForAggressiveFallback(t *t
 	if !strings.Contains(rendered, "    url: https://cp.cloudflare.com/generate_204") {
 		t.Fatalf("rendered config should pin the managed health check URL:\n%s", rendered)
 	}
+	if strings.Contains(rendered, `\U0001F1EF`) || strings.Contains(rendered, `\U0001F1F0`) {
+		t.Fatalf("rendered config should preserve literal emoji in proxy-group name:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "  - name: 🇭🇰 香港节点") {
+		t.Fatalf("rendered config should preserve original proxy-group name line:\n%s", rendered)
+	}
+}
+
+func TestRenderCompleteConfig_OverridesChainProxyGroupForAggressiveURLTest(t *testing.T) {
+	targetName := "🇯🇵 日本节点"
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: JP Landing, type: ss}\n",
+		TransitDiscoveryYAML: "proxies:\n- {name: transit-jp, type: ss}\n",
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: JP Landing, type: ss, server: landing.example.com, port: 443}",
+			"- {name: transit-jp, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇯🇵 日本节点",
+			"    type: url-test",
+			"    url: https://example.com/original",
+			"    interval: 300",
+			"    tolerance: 50",
+			"    proxies:",
+			"      - JP Landing",
+			"      - transit-jp",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇯🇵 日本节点`url-test`JP\n",
+	}
+
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				LandingNodeName:        "JP Landing",
+				Mode:                   "chain",
+				TargetName:             &targetName,
+				ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveURLTest,
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "    type: url-test") {
+		t.Fatalf("rendered config should keep url-test type:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "    tolerance: 1") {
+		t.Fatalf("rendered config should override tolerance:\n%s", rendered)
+	}
+	if strings.Contains(rendered, "    tolerance: 50") {
+		t.Fatalf("rendered config should replace old tolerance:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "  - name: 🇯🇵 日本节点") {
+		t.Fatalf("rendered config should preserve original proxy-group name line:\n%s", rendered)
+	}
+	if strings.Contains(rendered, `\U0001F1EF`) {
+		t.Fatalf("rendered config should preserve literal emoji in proxy-group name:\n%s", rendered)
+	}
 }

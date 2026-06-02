@@ -334,6 +334,8 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	}
 
 	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
+	chainProxyGroupProfilesByTarget := make(map[string]string)
+	chainProxyGroupProfileOwners := make(map[string]string)
 	for _, row := range payload.Stage2Snapshot.Rows {
 		rowID := strings.TrimSpace(row.rowIDOrFallback())
 		if rowID == "" {
@@ -370,11 +372,28 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			if profile != "" {
 				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is none", proxyName)
 			}
-		case "chain", "port_forward":
+		case "chain":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
 			}
-			if row.Mode == "port_forward" && profile != "" {
+			if profile == "" {
+				break
+			}
+			if existingProfile, exists := chainProxyGroupProfilesByTarget[targetName]; exists && existingProfile != profile {
+				return fmt.Errorf(
+					"chainProxyGroupProfile for target %q conflicts between proxy %q and proxy %q",
+					targetName,
+					chainProxyGroupProfileOwners[targetName],
+					proxyName,
+				)
+			}
+			chainProxyGroupProfilesByTarget[targetName] = profile
+			chainProxyGroupProfileOwners[targetName] = proxyName
+		case "port_forward":
+			if targetName == "" {
+				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			}
+			if profile != "" {
 				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is port_forward", proxyName)
 			}
 		default:

@@ -192,10 +192,6 @@ func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []str
 			continue
 		}
 
-		if err := applyChainProxyGroupProfileNode(groupNode, profile); err != nil {
-			return fmt.Errorf("apply chain proxy-group profile for %q: %w", nameNode.Value, err)
-		}
-
 		startIndex := groupNode.Line - 1
 		if startIndex < 0 || startIndex >= len(lines) {
 			return fmt.Errorf("proxy-group line %d is out of range", groupNode.Line)
@@ -209,13 +205,8 @@ func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []str
 			}
 		}
 
-		replacement, err := renderProxyGroupBlock(groupNode, leadingWhitespace(lines[startIndex]))
-		if err != nil {
-			return fmt.Errorf("render proxy-group %q: %w", nameNode.Value, err)
-		}
-		replacedLines[startIndex] = replacement
-		for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
-			deletedLines[lineIndex] = struct{}{}
+		if err := applyChainProxyGroupProfileLines(groupNode, profile, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
+			return fmt.Errorf("apply chain proxy-group profile for %q: %w", nameNode.Value, err)
 		}
 	}
 
@@ -237,7 +228,55 @@ func collectChainProxyGroupProfiles(rows []Stage2Row) map[string]string {
 	return profilesByTarget
 }
 
-func applyChainProxyGroupProfileNode(groupNode *yaml.Node, profile string) error {
+var chainProxyGroupProfileFieldOrder = []string{
+	"type",
+	"url",
+	"interval",
+	"lazy",
+	"timeout",
+	"max-failed-times",
+	"tolerance",
+}
+
+type chainProxyGroupProfilePatch struct {
+	set             map[string]string
+	deleteTolerance bool
+}
+
+func chainProxyGroupProfilePatchFor(profile string) (chainProxyGroupProfilePatch, error) {
+	patch := chainProxyGroupProfilePatch{
+		set: map[string]string{
+			"url":              aggressiveChainProxyGroupHealthCheckURL,
+			"interval":         "60",
+			"lazy":             "false",
+			"timeout":          "2000",
+			"max-failed-times": "1",
+		},
+	}
+
+	switch normalizeChainProxyGroupProfile(profile) {
+	case ChainProxyGroupProfileAggressiveFallback:
+		patch.set["type"] = "fallback"
+		patch.deleteTolerance = true
+	case ChainProxyGroupProfileAggressiveURLTest:
+		patch.set["type"] = "url-test"
+		patch.set["tolerance"] = "1"
+	default:
+		return chainProxyGroupProfilePatch{}, fmt.Errorf("unsupported chain proxy-group profile %q", profile)
+	}
+
+	return patch, nil
+}
+
+func applyChainProxyGroupProfileLines(
+	groupNode *yaml.Node,
+	profile string,
+	lines []string,
+	startIndex int,
+	endIndex int,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
 	membersNode := yamlMappingValue(groupNode, "proxies")
 	if membersNode == nil {
 		nameNode := yamlMappingValue(groupNode, "name")
@@ -248,48 +287,102 @@ func applyChainProxyGroupProfileNode(groupNode *yaml.Node, profile string) error
 		return fmt.Errorf("proxy-group %q is missing proxies", groupName)
 	}
 
-	urlValue := aggressiveChainProxyGroupHealthCheckURL
-	yamlMappingSetScalar(groupNode, "url", urlValue, "!!str")
-	yamlMappingSetScalar(groupNode, "interval", "60", "!!int")
-	yamlMappingSetScalar(groupNode, "lazy", "false", "!!bool")
-	yamlMappingSetScalar(groupNode, "timeout", "2000", "!!int")
-	yamlMappingSetScalar(groupNode, "max-failed-times", "1", "!!int")
-
-	switch normalizeChainProxyGroupProfile(profile) {
-	case ChainProxyGroupProfileAggressiveFallback:
-		yamlMappingSetScalar(groupNode, "type", "fallback", "!!str")
-		yamlMappingDelete(groupNode, "tolerance")
-	case ChainProxyGroupProfileAggressiveURLTest:
-		yamlMappingSetScalar(groupNode, "type", "url-test", "!!str")
-		yamlMappingSetScalar(groupNode, "tolerance", "1", "!!int")
-	default:
-		return fmt.Errorf("unsupported chain proxy-group profile %q", profile)
+	patch, err := chainProxyGroupProfilePatchFor(profile)
+	if err != nil {
+		return err
 	}
 
+	fieldIndent := proxyGroupFieldIndent(lines, startIndex, endIndex)
+	pending := make(map[string]string, len(patch.set))
+	for key, value := range patch.set {
+		pending[key] = value
+	}
+
+	proxiesLineIndex := -1
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		indent, key, value, ok := parseMappingFieldLine(lines[lineIndex])
+		if !ok {
+			continue
+		}
+		if fieldIndent == "" {
+			fieldIndent = indent
+		}
+		if key == "proxies" && value == "" {
+			proxiesLineIndex = lineIndex
+			continue
+		}
+		if patchValue, shouldSet := pending[key]; shouldSet {
+			replacedLines[lineIndex] = fieldIndent + key + ": " + patchValue
+			delete(pending, key)
+			continue
+		}
+		if key == "tolerance" && patch.deleteTolerance {
+			deletedLines[lineIndex] = struct{}{}
+		}
+	}
+
+	if len(pending) == 0 {
+		return nil
+	}
+
+	insertLines := make([]string, 0, len(pending))
+	for _, key := range chainProxyGroupProfileFieldOrder {
+		value, ok := pending[key]
+		if !ok {
+			continue
+		}
+		insertLines = append(insertLines, fieldIndent+key+": "+value)
+	}
+
+	if proxiesLineIndex >= 0 {
+		replacedLines[proxiesLineIndex] = strings.Join(insertLines, "\n") + "\n" + lines[proxiesLineIndex]
+		return nil
+	}
+
+	insertIndex := endIndex - 1
+	for insertIndex > startIndex {
+		if _, deleted := deletedLines[insertIndex]; !deleted {
+			break
+		}
+		insertIndex--
+	}
+	if insertIndex <= startIndex {
+		return fmt.Errorf("proxy-group block has no insertion point for profile fields")
+	}
+
+	replacedLines[insertIndex] = lines[insertIndex] + "\n" + strings.Join(insertLines, "\n")
 	return nil
 }
 
-func renderProxyGroupBlock(groupNode *yaml.Node, indent string) (string, error) {
-	sequence := &yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{groupNode}}
-	document := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{sequence}}
-	encoded, err := yaml.Marshal(document)
-	if err != nil {
-		return "", fmt.Errorf("marshal proxy-group block: %w", err)
+func proxyGroupFieldIndent(lines []string, startIndex int, endIndex int) string {
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		indent, _, _, ok := parseMappingFieldLine(lines[lineIndex])
+		if ok {
+			return indent
+		}
 	}
-	block := strings.TrimSuffix(string(encoded), "\n")
-	if indent == "" {
-		return block, nil
-	}
-	parts := strings.Split(block, "\n")
-	for index, part := range parts {
-		parts[index] = indent + part
-	}
-	return strings.Join(parts, "\n"), nil
+	return "    "
 }
 
-func leadingWhitespace(line string) string {
+func parseMappingFieldLine(line string) (indent string, key string, value string, ok bool) {
 	trimmed := strings.TrimLeft(line, " \t")
-	return line[:len(line)-len(trimmed)]
+	if trimmed == "" || strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "#") {
+		return "", "", "", false
+	}
+
+	colonIndex := strings.Index(trimmed, ":")
+	if colonIndex < 0 {
+		return "", "", "", false
+	}
+
+	key = strings.TrimSpace(trimmed[:colonIndex])
+	if key == "" {
+		return "", "", "", false
+	}
+
+	indent = line[:len(line)-len(trimmed)]
+	value = strings.TrimSpace(trimmed[colonIndex+1:])
+	return indent, key, value, true
 }
 
 func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
@@ -354,37 +447,6 @@ func yamlMappingValue(mapping *yaml.Node, key string) *yaml.Node {
 		}
 	}
 	return nil
-}
-
-func yamlMappingSetScalar(mapping *yaml.Node, key string, value string, tag string) {
-	if mapping == nil || mapping.Kind != yaml.MappingNode {
-		return
-	}
-	for index := 0; index+1 < len(mapping.Content); index += 2 {
-		if mapping.Content[index].Value != key {
-			continue
-		}
-		mapping.Content[index+1] = &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value}
-		return
-	}
-	mapping.Content = append(mapping.Content,
-		&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key},
-		&yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: value},
-	)
-}
-
-func yamlMappingDelete(mapping *yaml.Node, key string) {
-	if mapping == nil || mapping.Kind != yaml.MappingNode {
-		return
-	}
-	filtered := mapping.Content[:0]
-	for index := 0; index+1 < len(mapping.Content); index += 2 {
-		if mapping.Content[index].Value == key {
-			continue
-		}
-		filtered = append(filtered, mapping.Content[index], mapping.Content[index+1])
-	}
-	mapping.Content = filtered
 }
 
 type inlineProxyField struct {
