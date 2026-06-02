@@ -164,9 +164,9 @@ func TestRenderCompleteConfig_OverridesChainProxyGroupForAggressiveFallback(t *t
 		Stage1Input{},
 		Stage2Snapshot{
 			Rows: []Stage2Row{{
-				LandingNodeName:         "HK Landing",
-				Mode:                    "chain",
-				TargetName:              &targetName,
+				LandingNodeName:        "HK Landing",
+				Mode:                   "chain",
+				TargetName:             &targetName,
 				ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
 			}},
 		},

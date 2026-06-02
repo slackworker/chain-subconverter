@@ -150,9 +150,9 @@ func TestValidateGenerateSnapshot_RejectsChainProxyGroupProfileForPortForward(t 
 		Stage1Input{ForwardRelayItems: []string{targetName}},
 		Stage2Snapshot{
 			Rows: []Stage2Row{{
-				LandingNodeName:         "HK Landing",
-				Mode:                    "port_forward",
-				TargetName:              &targetName,
+				LandingNodeName:        "HK Landing",
+				Mode:                   "port_forward",
+				TargetName:             &targetName,
 				ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
 			}},
 		},
@@ -175,17 +175,17 @@ func TestValidateGenerateSnapshot_RejectsConflictingChainProxyGroupProfilesForSa
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					SourceLandingNodeName:   "HK Landing",
-					ProxyName:               "HK Landing",
-					Mode:                    "chain",
-					TargetName:              &targetName,
+					SourceLandingNodeName:  "HK Landing",
+					ProxyName:              "HK Landing",
+					Mode:                   "chain",
+					TargetName:             &targetName,
 					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
 				},
 				{
-					SourceLandingNodeName:   "HK Landing",
-					ProxyName:               "HK Landing 2",
-					Mode:                    "chain",
-					TargetName:              &targetName,
+					SourceLandingNodeName:  "HK Landing",
+					ProxyName:              "HK Landing 2",
+					Mode:                   "chain",
+					TargetName:             &targetName,
 					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveURLTest,
 				},
 			},

@@ -69,12 +69,12 @@ type longURLStage2Snapshot struct {
 }
 
 type longURLStage2Row struct {
-	RowID                 string  `json:"rowId"`
-	SourceLandingNodeName string  `json:"sourceLandingNodeName"`
-	ProxyName             string  `json:"proxyName"`
-	Mode                  string  `json:"mode"`
-	TargetName            *string `json:"targetName"`
-	ChainProxyGroupProfile string `json:"chainProxyGroupProfile,omitempty"`
+	RowID                  string  `json:"rowId"`
+	SourceLandingNodeName  string  `json:"sourceLandingNodeName"`
+	ProxyName              string  `json:"proxyName"`
+	Mode                   string  `json:"mode"`
+	TargetName             *string `json:"targetName"`
+	ChainProxyGroupProfile string  `json:"chainProxyGroupProfile,omitempty"`
 }
 
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
@@ -285,12 +285,12 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
 	for index, row := range schema.Stage2Snapshot.Rows {
 		rows[index] = Stage2Row{
-			RowID:                 row.RowID,
-			SourceLandingNodeName: row.SourceLandingNodeName,
-			ProxyName:             row.ProxyName,
-			LandingNodeName:       row.ProxyName,
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
+			RowID:                  row.RowID,
+			SourceLandingNodeName:  row.SourceLandingNodeName,
+			ProxyName:              row.ProxyName,
+			LandingNodeName:        row.ProxyName,
+			Mode:                   row.Mode,
+			TargetName:             row.TargetName,
 			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
 		}
 	}
@@ -519,11 +519,11 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {
 		rows[index] = longURLStage2Row{
-			RowID:                 row.rowIDOrFallback(),
-			SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
-			ProxyName:             row.proxyNameOrFallback(),
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
+			RowID:                  row.rowIDOrFallback(),
+			SourceLandingNodeName:  row.sourceLandingNodeNameOrFallback(),
+			ProxyName:              row.proxyNameOrFallback(),
+			Mode:                   row.Mode,
+			TargetName:             row.TargetName,
 			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
 		}
 	}

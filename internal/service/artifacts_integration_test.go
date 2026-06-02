@@ -184,8 +184,8 @@ func TestDecodeLongURLPayload_RejectsChainProxyGroupProfileForNoneMode(t *testin
 			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
-					LandingNodeName:         "HK 01",
-					Mode:                    "none",
+					LandingNodeName:        "HK 01",
+					Mode:                   "none",
 					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
 				}},
 			},

@@ -59,7 +59,8 @@
         "sourceLandingNodeName": "HK 01",
         "proxyName": "HK 01",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇭🇰 香港节点",
+        "chainProxyGroupProfile": "aggressive_fallback"
       }
     ]
   }
@@ -76,6 +77,9 @@
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
+- `chainProxyGroupProfile` 为可选字符串；当前只允许空值、`aggressive_fallback` 或 `aggressive_url_test`
+- `chainProxyGroupProfile` 只在 `mode = chain` 且 `targetName` 指向 `kind = proxy-groups` 的候选时有语义；其余场景必须为空或省略
+- 同一份 `stage2Snapshot` 中，若多个 `rows[]` 选择同一个 `proxy-groups` 类型的 `targetName`，其 `chainProxyGroupProfile` 必须保持一致
 
 ### 3. 阶段 2 初始化数据
 
@@ -98,7 +102,8 @@
         "landingNodeName": "HK 01",
         "landingNodeType": "SS",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇭🇰 香港节点",
+        "chainProxyGroupProfile": "aggressive_fallback"
       },
       {
         "rowId": "Reality 01",
@@ -131,6 +136,7 @@
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
 - `rows[].landingNodeType`：落地节点类型展示值
+- `rows[].chainProxyGroupProfile`：当前行选中的链式地域组 profile；初始化时默认留空，仅在 `mode = chain` 且目标为 `proxy-groups` 时允许设置
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
 - `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案
@@ -381,7 +387,8 @@
         "sourceLandingNodeName": "HK 01",
         "proxyName": "HK 01",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇭🇰 香港节点",
+        "chainProxyGroupProfile": "aggressive_fallback"
       }
     ]
   }
@@ -432,6 +439,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
+- 若 `stage2Snapshot` 含有不受支持的 `mode`、不受支持的 `chainProxyGroupProfile`，或 `chainProxyGroupProfile` 与 `mode` / `targetName` 组合不合法，后端必须返回 `400 INVALID_REQUEST`，并使用 `scope = stage2_row`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
@@ -598,7 +606,7 @@
 
 ```json
 {
-  "v": 2,
+  "v": 3,
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -619,7 +627,8 @@
         "sourceLandingNodeName": "HK 01",
         "proxyName": "HK 01",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇭🇰 香港节点",
+        "chainProxyGroupProfile": "aggressive_fallback"
       }
     ]
   }
@@ -628,8 +637,9 @@
 
 规则：
 
-- `v` 是长链接编码版本字段，当前固定为 `2`（`v = 1` 视为无效）
+- `v` 是长链接编码版本字段，当前固定为 `3`（`v = 1`、`v = 2` 都视为无效）
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
+- `stage2Snapshot.rows[].chainProxyGroupProfile` 属于规范长链接状态的一部分；若存在，必须按本文“2. 阶段 2 配置快照”的约束编码
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
@@ -680,7 +690,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
 - 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
-- 当前 `v = 2` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- 当前 `v = 3` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
@@ -690,7 +700,7 @@ gzip 规则：
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
-- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 2`
+- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 3`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接公开路径固定为 `/sub?...`
