@@ -9,7 +9,7 @@
 
 手工联调与 E2E 应使用的订阅 URL（中转两行等）以 [dual-landing-manual-reference.md](../../docs/testing/dual-landing-manual-reference.md) 为唯一来源；该文件由 `npm run sync` 从 canonical 自动生成，勿在本文重复维护 URL 表。
 
-公网 chain-subconverter 测试时，单中转订阅 smoke 优先使用 `Airport-Subscription-1` 或 `Airport-Subscription-2`；需要兼容既有单 URL 聚合输入时，可继续使用 `Airport-Subscription`。若要模拟双中转输入，则把 `Airport-Subscription-1` 与 `Airport-Subscription-2` 分两行填入同一个文本框即可。
+公网 chain-subconverter 测试时，单中转订阅 smoke 优先使用 `Airport-Subscription-1` 或 `Airport-Subscription-2`；需要兼容既有单 URL 聚合输入时，可继续使用 `Airport-Subscription`。若要模拟双中转输入，则把 `Airport-Subscription-1` 与 `Airport-Subscription-2` 分两行填入同一个文本框即可。仅 URI + ClashMeta 混用时中转节点数可能为 **19**（review golden 为 **18**，因 golden 两条 transit 均走 URI）；见 [dual-landing-chain-port-forward.md §边界](../../docs/testing/dual-landing-chain-port-forward.md#边界)。
 
 ## 目录与静态文件
 
