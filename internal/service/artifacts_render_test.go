@@ -251,3 +251,60 @@ func TestRenderCompleteConfig_OverridesChainProxyGroupForAggressiveURLTest(t *te
 		t.Fatalf("rendered config should preserve literal emoji in proxy-group name:\n%s", rendered)
 	}
 }
+
+func TestUnescapeYAMLUnicodeEscapes_ConvertsUnicodeEscapeSequences(t *testing.T) {
+	input := `- "\U0001F1FA\U0001F1F8 Transit-A-UnitedStates-VLESS-01"`
+	got := unescapeYAMLUnicodeEscapes(input)
+
+	if strings.Contains(got, `\U0001F1FA`) || strings.Contains(got, `\U0001F1F8`) {
+		t.Fatalf("should unescape unicode escape sequences, got: %s", got)
+	}
+	if !strings.Contains(got, "🇺🇸") {
+		t.Fatalf("should contain US flag emoji after unescaping, got: %s", got)
+	}
+}
+
+func TestRenderCompleteConfig_UnescapesYAMLUnicodeEscapesInRenderedOutput(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "")
+	const escapedUSMemberLine = `      - "\U0001F1FA\U0001F1F8 Transit-A-UnitedStates-VLESS-01"`
+
+	// singleLandingFixture defaults set all region proxy-group members to DIRECT.
+	// Replace the US group member to ensure RenderCompleteConfig carries the original
+	// `\U...` text through rendering, then verifies we unescape it before returning.
+	oldUSGroupBlock := strings.Join([]string{
+		"  - name: 🇺🇸 美国节点",
+		"    type: url-test",
+		"    proxies:",
+		"      - DIRECT",
+	}, "\n")
+
+	newUSGroupBlock := strings.Join([]string{
+		"  - name: 🇺🇸 美国节点",
+		"    type: url-test",
+		"    proxies:",
+		escapedUSMemberLine,
+	}, "\n")
+
+	fixtures.FullBaseYAML = strings.Replace(fixtures.FullBaseYAML, oldUSGroupBlock, newUSGroupBlock, 1)
+
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				LandingNodeName: "HK Landing",
+				Mode:            "none",
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if strings.Contains(rendered, `\U0001F1FA`) || strings.Contains(rendered, `\U0001F1F8`) {
+		t.Fatalf("rendered config should unescape unicode sequences, got:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "🇺🇸 Transit-A-UnitedStates-VLESS-01") {
+		t.Fatalf("rendered config should contain US flag emoji after unescaping, got:\n%s", rendered)
+	}
+}
