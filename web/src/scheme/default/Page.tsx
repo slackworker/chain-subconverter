@@ -128,10 +128,10 @@ const COPY = {
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
 		selectTarget: "请选择",
-		chainProxyGroupProfileLabel: "故障转移策略",
-		chainProxyGroupProfileDefault: "默认模板设置",
-		chainProxyGroupProfileAggressiveFallback: "激进 fallback",
-		chainProxyGroupProfileAggressiveURLTest: "激进 url-test",
+		chainProxyGroupProfileLabel: "目标策略组节点切换优化",
+		chainProxyGroupProfileHint:
+			"开启后，为链式代理所选的地域策略组启用更短的健康检查间隔与更快的节点切换；节点异常时尽快切换到可用节点。关闭时沿用订阅模板中的默认设置。",
+		chainProxyGroupProfileHintAria: "目标策略组节点切换优化说明",
 		generating: "生成中…",
 		generateLink: "生成链接",
 		stage3Title: "输出",
@@ -252,10 +252,10 @@ const COPY = {
 		fixedNodes: "Fixed nodes",
 		noCommonChoices: "No common choices available",
 		selectTarget: "Select a target",
-		chainProxyGroupProfileLabel: "Failover profile",
-		chainProxyGroupProfileDefault: "Template default",
-		chainProxyGroupProfileAggressiveFallback: "Aggressive fallback",
-		chainProxyGroupProfileAggressiveURLTest: "Aggressive url-test",
+		chainProxyGroupProfileLabel: "Target policy-group node switching optimization",
+		chainProxyGroupProfileHint:
+			"When enabled, applies shorter health-check intervals and faster node switching to regional policy groups selected for chain proxies. When disabled, the subscription template defaults apply.",
+		chainProxyGroupProfileHintAria: "Target policy-group node switching optimization help",
 		generating: "Generating...",
 		generateLink: "Generate link",
 		stage3Title: "Output",
@@ -632,7 +632,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
-		handleChainProxyGroupProfileChange,
+		handleGlobalChainProxyGroupProfileChange,
 		handleGenerate,
 		handlePreferShortUrl,
 	} = workflow;
@@ -649,6 +649,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>(null);
 	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
+	const [stage2AdvancedOpen, setStage2AdvancedOpen] = useState(false);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [headerScrolled, setHeaderScrolled] = useState(false);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
@@ -705,6 +706,16 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
 	const stage1Empty =
 		state.stage1Input.landingRawText.trim() === "" && state.stage1Input.transitRawText.trim() === "";
+	const hasChainProxyGroupProfileEligibleRows = useMemo(
+		() => stage2Rows.some((row) => isChainProxyGroupProfileEligible(state.stage2Init, row)),
+		[stage2Rows, state.stage2Init],
+	);
+	const chainProxyGroupProfileGlobalEnabled = useMemo(
+		() => stage2Rows.some(
+			(row) => isChainProxyGroupProfileEligible(state.stage2Init, row) && Boolean(row.chainProxyGroupProfile),
+		),
+		[stage2Rows, state.stage2Init],
+	);
 
 	const stage1PrimaryBlockingErrors = getPrimaryBlockingErrorsForStage("stage1");
 	const stage2PrimaryBlockingErrors = state.stage2Stale || isConflictReadonly ? [] : getPrimaryBlockingErrorsForStage("stage2");
@@ -1344,8 +1355,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										const selectedTargetLabel =
 											getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
 											(row.mode === "none" ? "--" : copy.selectTarget);
-										const canEditChainProxyGroupProfile = isChainProxyGroupProfileEligible(state.stage2Init, row);
-										const chainProxyGroupProfileValue = row.chainProxyGroupProfile ?? "";
 										const activeModeWarning = meta?.modeWarnings?.[row.mode];
 										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
 										const rowErrorId = `a-s2-row-error-${rowIndex}`;
@@ -1615,21 +1624,6 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 															</select>
 														</div>
 													)}
-															{canEditChainProxyGroupProfile ? (
-																<div className="a-target-picker">
-																	<select
-																		className="a-select"
-																		value={chainProxyGroupProfileValue}
-																		disabled={!editable}
-																		aria-label={copy.chainProxyGroupProfileLabel}
-																		onChange={(event) => handleChainProxyGroupProfileChange(rowKey, event.target.value as "" | "aggressive_fallback" | "aggressive_url_test")}
-																	>
-																		<option value="">{copy.chainProxyGroupProfileDefault}</option>
-																		<option value="aggressive_fallback">{copy.chainProxyGroupProfileAggressiveFallback}</option>
-																		<option value="aggressive_url_test">{copy.chainProxyGroupProfileAggressiveURLTest}</option>
-																	</select>
-																</div>
-															) : null}
 													{rowErrors.length > 0 ? (
 														<p id={rowErrorId} className="a-sr-only" role="status">
 															{copy.localErrorAriaHint}
@@ -1644,22 +1638,69 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 						</table>
 					</div>
 
-					<div className="a-stage-actions a-stage-actions--primary-end">
-						{stage2PrimaryBlockingErrors.length > 0 ? (
-							<div className="a-stage-actions__feedback">
-								<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
-							</div>
+					<div className="a-stage2-actions-wrap">
+						{stage2Rows.length > 0 ? (
+							<>
+								<button
+									type="button"
+									className="a-advanced__toggle"
+									onClick={() => setStage2AdvancedOpen((open) => !open)}
+									aria-expanded={stage2AdvancedOpen}
+								>
+									<span className={`a-adv-arrow${stage2AdvancedOpen ? " a-adv-arrow--open" : ""}`} aria-hidden="true">
+										▶
+									</span>
+									{copy.advancedOptions}
+								</button>
+								{stage2AdvancedOpen ? (
+									<div className="a-advanced">
+										<div className="a-advanced__body">
+											<div className="a-check-row">
+												<label className="a-check a-check--switch">
+													<input
+														className="a-switch__input"
+														type="checkbox"
+														checked={chainProxyGroupProfileGlobalEnabled}
+														disabled={!isStage2Editable || !hasChainProxyGroupProfileEligibleRows}
+														aria-label={copy.chainProxyGroupProfileLabel}
+														onChange={(event) =>
+															handleGlobalChainProxyGroupProfileChange(event.target.checked)
+														}
+													/>
+													<span className="a-switch" aria-hidden />
+													<Tooltip content={copy.chainProxyGroupProfileHint}>
+														<span
+															className="a-advanced__switch-label"
+															aria-label={copy.chainProxyGroupProfileHintAria}
+														>
+															{copy.chainProxyGroupProfileLabel}
+														</span>
+													</Tooltip>
+												</label>
+											</div>
+										</div>
+									</div>
+								) : null}
+							</>
 						) : null}
-						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
-							{isGenerating ? (
-								copy.generating
-							) : (
-								<>
-									{copy.generateLink}
-									<ArrowRightIcon className="a-icon" aria-hidden />
-								</>
-							)}
-						</button>
+
+						<div className="a-stage-actions a-stage-actions--primary-end">
+							{stage2PrimaryBlockingErrors.length > 0 ? (
+								<div className="a-stage-actions__feedback">
+									<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
+								</div>
+							) : null}
+							<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
+								{isGenerating ? (
+									copy.generating
+								) : (
+									<>
+										{copy.generateLink}
+										<ArrowRightIcon className="a-icon" aria-hidden />
+									</>
+								)}
+							</button>
+						</div>
 					</div>
 				</section>
 

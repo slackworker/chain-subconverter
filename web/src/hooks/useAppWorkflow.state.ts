@@ -427,6 +427,37 @@ export function applyShortURLCreationFailureState(current: AppState, options: Sh
 	);
 }
 
+export function applyGlobalChainProxyGroupProfileState(
+	current: AppState,
+	enabled: boolean,
+	isEligible: (row: Stage2Row) => boolean,
+): AppState {
+	let changed = false;
+	const rows = current.stage2Snapshot.rows.map((row) => {
+		if (!isEligible(row)) {
+			return row;
+		}
+		const nextProfile = enabled ? "aggressive_fallback" as const : undefined;
+		if (row.chainProxyGroupProfile === nextProfile) {
+			return row;
+		}
+		changed = true;
+		return {
+			...row,
+			chainProxyGroupProfile: nextProfile,
+		};
+	});
+	if (!changed) {
+		return current;
+	}
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: { rows },
+	};
+}
+
 export function updateStage2RowState(
 	current: AppState,
 	landingNodeName: string,

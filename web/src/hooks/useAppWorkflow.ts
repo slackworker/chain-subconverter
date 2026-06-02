@@ -58,6 +58,7 @@ import {
 	startShortURLCreationState,
 	startWorkflowRequestState,
 	updateStage1InputState,
+	applyGlobalChainProxyGroupProfileState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
 
@@ -116,6 +117,7 @@ export interface AppWorkflowViewModel {
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
 	handleChainProxyGroupProfileChange: (landingNodeName: string, profile: ChainProxyGroupProfile | "") => void;
+	handleGlobalChainProxyGroupProfileChange: (enabled: boolean) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -577,6 +579,14 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}));
 	}
 
+	function handleGlobalChainProxyGroupProfileChange(enabled: boolean) {
+		setState((current) => applyGlobalChainProxyGroupProfileState(
+			current,
+			enabled,
+			(row) => isChainProxyGroupProfileEligible(current.stage2Init, row),
+		));
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
@@ -746,6 +756,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleModeChange,
 		handleTargetChange,
 		handleChainProxyGroupProfileChange,
+		handleGlobalChainProxyGroupProfileChange,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

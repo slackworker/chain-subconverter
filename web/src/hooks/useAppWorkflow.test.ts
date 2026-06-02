@@ -992,6 +992,63 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("applies chainProxyGroupProfile to all eligible chain proxy-group rows via global toggle", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [
+				{ name: "HK Relay Group", kind: "proxy-groups" },
+				{ name: "US Relay Group", kind: "proxy-groups" },
+			],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					landingNodeName: "landing-us",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "US Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		act(() => {
+			workflow.current.handleGlobalChainProxyGroupProfileChange(true);
+		});
+
+		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
+			"aggressive_fallback",
+			"aggressive_fallback",
+		]);
+
+		act(() => {
+			workflow.current.handleGlobalChainProxyGroupProfileChange(false);
+		});
+
+		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
+			undefined,
+			undefined,
+		]);
+	});
+
 	it("clears chainProxyGroupProfile when chain target switches from proxy-groups to fixed proxies", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
