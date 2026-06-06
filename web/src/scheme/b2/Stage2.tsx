@@ -151,6 +151,8 @@ function Stage2RowItem({
 	const sourceLandingName = getStage2RowSourceLandingName(row);
 	const sourceRow = isStage2SourceRow(row);
 	const canDeleteRow = !sourceRow && workflow.canDeleteStage2Row(rowKey);
+	const canConfigureAggressiveChainGroup = workflow.canConfigureAggressiveChainGroup(rowKey);
+	const aggressiveChainStrategy = workflow.getAggressiveChainStrategy(rowKey) ?? "";
 	const meta = workflow.getStage2RowMeta(rowKey);
 	const errors = workflow.getStage2RowErrors(rowKey);
 	const isSnapshotOnly = workflow.state.stage2Init === null;
@@ -269,6 +271,21 @@ function Stage2RowItem({
 						<div className={`text-xs truncate ${mutedText(colorMode)}`} title={sourceLandingName}>
 							来源: {sourceLandingName}
 						</div>
+						{sourceRow ? (
+							<label className={`flex flex-col gap-1 text-xs ${mutedText(colorMode)}`}>
+								<span>故障转移组</span>
+								<select
+									className={selectField(colorMode)}
+									value={aggressiveChainStrategy}
+									disabled={disabled || !canConfigureAggressiveChainGroup}
+									onChange={(event) => workflow.handleAggressiveChainStrategyChange(rowKey, event.target.value === "" ? null : event.target.value as "fallback" | "url-test")}
+								>
+									<option value="">关闭</option>
+									<option value="fallback">fallback</option>
+									<option value="url-test">url-test</option>
+								</select>
+							</label>
+						) : null}
 					</div>
 				</td>
 				<td className={`py-4 px-4 text-sm font-semibold ${dark ? "text-zinc-400" : "text-slate-500"}`}>

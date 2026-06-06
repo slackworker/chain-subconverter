@@ -173,6 +173,107 @@ func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *test
 	}
 }
 
+func TestValidateGenerateSnapshot_AllowsAggressiveChainGroupForSameSourceRows(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	resolved, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing 2",
+					Mode:                  "none",
+				},
+			},
+			AggressiveChainGroups: []AggressiveChainGroup{{
+				SourceLandingNodeName: "HK Landing",
+				Strategy:              "fallback",
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+		t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsAggressiveChainGroupWithoutMatchingSource(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			AggressiveChainGroups: []AggressiveChainGroup{{
+				SourceLandingNodeName: "Missing Landing",
+				Strategy:              "fallback",
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want aggressive chain group source rejection")
+	}
+	if !strings.Contains(err.Error(), `unknown source landing node "Missing Landing"`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "AGGRESSIVE_CHAIN_GROUP_NOT_FOUND" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "AGGRESSIVE_CHAIN_GROUP_NOT_FOUND")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsAggressiveChainGroupWithOnlyOneRow(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			AggressiveChainGroups: []AggressiveChainGroup{{
+				SourceLandingNodeName: "HK Landing",
+				Strategy:              "fallback",
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want aggressive chain group size rejection")
+	}
+	if !strings.Contains(err.Error(), `requires at least 2 rows`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "AGGRESSIVE_CHAIN_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "AGGRESSIVE_CHAIN_GROUP_TOO_SMALL")
+	}
+}
+
 func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")

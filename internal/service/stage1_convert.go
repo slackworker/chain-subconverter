@@ -101,7 +101,13 @@ type Stage2SnapshotFixture struct {
 }
 
 type Stage2Snapshot struct {
-	Rows []Stage2Row `json:"rows"`
+	Rows                  []Stage2Row              `json:"rows"`
+	AggressiveChainGroups []AggressiveChainGroup   `json:"aggressiveChainGroups,omitempty"`
+}
+
+type AggressiveChainGroup struct {
+	SourceLandingNodeName string `json:"sourceLandingNodeName"`
+	Strategy              string `json:"strategy"`
 }
 
 type Stage2Init struct {

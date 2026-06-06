@@ -17,10 +17,12 @@ import {
 } from "../lib/notices";
 import {
 	findStage2RowByKey,
+	getAggressiveChainStrategy,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
+	getStage2SourceGroupSize,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -56,6 +58,7 @@ import {
 	setCurrentLinkInputState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
+	updateAggressiveChainGroupState,
 	updateStage1InputState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
@@ -106,6 +109,8 @@ export interface AppWorkflowViewModel {
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
 	getChainTargetChoiceGroups: () => ChainTargetChoiceGroup[];
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
+	getAggressiveChainStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
+	canConfigureAggressiveChainGroup: (landingNodeName: string) => boolean;
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
 	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
@@ -114,6 +119,7 @@ export interface AppWorkflowViewModel {
 	canDeleteStage2Row: (landingNodeName: string) => boolean;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
+	handleAggressiveChainStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -538,6 +544,30 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}));
 	}
 
+	function getAggressiveChainStrategyForRow(landingNodeName: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return null;
+		}
+		return getAggressiveChainStrategy(state.stage2Snapshot, getStage2RowSourceLandingName(matchedRow));
+	}
+
+	function canConfigureAggressiveChainGroup(landingNodeName: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return false;
+		}
+		return getStage2SourceGroupSize(state.stage2Snapshot.rows, getStage2RowSourceLandingName(matchedRow)) > 1;
+	}
+
+	function handleAggressiveChainStrategyChange(landingNodeName: string, strategy: "fallback" | "url-test" | null) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return;
+		}
+		setState((current) => updateAggressiveChainGroupState(current, getStage2RowSourceLandingName(matchedRow), strategy));
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
@@ -698,6 +728,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getStageMessages,
 		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Init),
 		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),
+		getAggressiveChainStrategy: getAggressiveChainStrategyForRow,
+		canConfigureAggressiveChainGroup,
 		handleStage1Convert,
 		handleRestore,
 		handleProxyNameChange,
@@ -706,6 +738,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
+		handleAggressiveChainStrategyChange,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

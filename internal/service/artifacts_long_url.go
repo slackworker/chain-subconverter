@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultLongURLMaxLength = 8192
-	longURLSchemaVersion    = 2
+	longURLSchemaVersion    = 3
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -65,7 +65,8 @@ type longURLAdvancedOptions struct {
 }
 
 type longURLStage2Snapshot struct {
-	Rows []longURLStage2Row `json:"rows"`
+	Rows                  []longURLStage2Row             `json:"rows"`
+	AggressiveChainGroups []longURLAggressiveChainGroup  `json:"aggressiveChainGroups,omitempty"`
 }
 
 type longURLStage2Row struct {
@@ -74,6 +75,11 @@ type longURLStage2Row struct {
 	ProxyName             string  `json:"proxyName"`
 	Mode                  string  `json:"mode"`
 	TargetName            *string `json:"targetName"`
+}
+
+type longURLAggressiveChainGroup struct {
+	SourceLandingNodeName string `json:"sourceLandingNodeName"`
+	Strategy              string `json:"strategy"`
 }
 
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
@@ -292,6 +298,16 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			TargetName:            row.TargetName,
 		}
 	}
+	var aggressiveChainGroups []AggressiveChainGroup
+	if len(schema.Stage2Snapshot.AggressiveChainGroups) > 0 {
+		aggressiveChainGroups = make([]AggressiveChainGroup, len(schema.Stage2Snapshot.AggressiveChainGroups))
+		for index, group := range schema.Stage2Snapshot.AggressiveChainGroups {
+			aggressiveChainGroups[index] = AggressiveChainGroup{
+				SourceLandingNodeName: group.SourceLandingNodeName,
+				Strategy:              group.Strategy,
+			}
+		}
+	}
 
 	return LongURLPayload{
 		V: schema.V,
@@ -308,7 +324,10 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 				Exclude:        schema.Stage1Input.AdvancedOptions.Exclude,
 			},
 		},
-		Stage2Snapshot: Stage2Snapshot{Rows: rows},
+		Stage2Snapshot: Stage2Snapshot{
+			Rows:                  rows,
+			AggressiveChainGroups: aggressiveChainGroups,
+		},
 	}
 }
 
@@ -366,6 +385,24 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			}
 		default:
 			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
+		}
+	}
+
+	seenAggressiveChainGroups := make(map[string]struct{}, len(payload.Stage2Snapshot.AggressiveChainGroups))
+	for _, group := range payload.Stage2Snapshot.AggressiveChainGroups {
+		sourceLandingNodeName := strings.TrimSpace(group.SourceLandingNodeName)
+		if sourceLandingNodeName == "" {
+			return fmt.Errorf("aggressiveChainGroups.sourceLandingNodeName must not be empty")
+		}
+		if _, exists := seenAggressiveChainGroups[sourceLandingNodeName]; exists {
+			return fmt.Errorf("duplicate aggressive chain group for source landing node %q", sourceLandingNodeName)
+		}
+		seenAggressiveChainGroups[sourceLandingNodeName] = struct{}{}
+
+		switch strings.TrimSpace(group.Strategy) {
+		case "fallback", "url-test":
+		default:
+			return fmt.Errorf("unsupported aggressive chain strategy %q for source landing node %q", group.Strategy, sourceLandingNodeName)
 		}
 	}
 
@@ -513,6 +550,13 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			TargetName:            row.TargetName,
 		}
 	}
+	aggressiveChainGroups := make([]longURLAggressiveChainGroup, len(payload.Stage2Snapshot.AggressiveChainGroups))
+	for index, group := range payload.Stage2Snapshot.AggressiveChainGroups {
+		aggressiveChainGroups[index] = longURLAggressiveChainGroup{
+			SourceLandingNodeName: group.SourceLandingNodeName,
+			Strategy:              group.Strategy,
+		}
+	}
 
 	return longURLPayloadSchema{
 		Stage1Input: longURLStage1Input{
@@ -528,7 +572,10 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			LandingRawText:    payload.Stage1Input.LandingRawText,
 			TransitRawText:    payload.Stage1Input.TransitRawText,
 		},
-		Stage2Snapshot: longURLStage2Snapshot{Rows: rows},
+		Stage2Snapshot: longURLStage2Snapshot{
+			Rows:                  rows,
+			AggressiveChainGroups: aggressiveChainGroups,
+		},
 		V:              payload.V,
 	}
 }

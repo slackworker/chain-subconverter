@@ -82,6 +82,7 @@ export const initialAppState: AppState = {
 	stage2Init: null,
 	stage2Snapshot: {
 		rows: [],
+		aggressiveChainGroups: [],
 	},
 	generatedUrls: null,
 	stage3Expired: false,

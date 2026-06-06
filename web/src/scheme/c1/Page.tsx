@@ -636,6 +636,20 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}
 											/>
 											<p className="c-row-source">来源：{sourceLandingName}</p>
+											{sourceRow ? (
+												<label className="c-field" style={{ marginTop: "0.5rem" }}>
+													<span>故障转移组</span>
+													<select
+														value={workflow.getAggressiveChainStrategy(rowKey) ?? ""}
+														disabled={!workflow.isStage2Editable || !workflow.canConfigureAggressiveChainGroup(rowKey)}
+														onChange={(event) => workflow.handleAggressiveChainStrategyChange(rowKey, event.target.value === "" ? null : event.target.value as "fallback" | "url-test")}
+													>
+														<option value="">关闭</option>
+														<option value="fallback">fallback</option>
+														<option value="url-test">url-test</option>
+													</select>
+												</label>
+											) : null}
 										</div>
 										<div className="c-row-head-side">
 											<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>

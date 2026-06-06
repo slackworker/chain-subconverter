@@ -1,7 +1,7 @@
 import { getChainTargetGroups } from "./chainTargets";
 
 import type { ChainTargetGroup } from "./chainTargets";
-import type { Stage2Init, Stage2Row } from "../types/api";
+import type { AggressiveChainGroup, Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
 
 export interface TargetChoice {
 	value: string;
@@ -14,6 +14,7 @@ export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"
 }
 
 export type Stage2SnapshotRows = Stage2Row[];
+export type AggressiveChainStrategy = AggressiveChainGroup["strategy"];
 
 const STAGE2_ROW_KEY_PREFIXES = {
 	rowId: "rowId:",
@@ -42,6 +43,25 @@ export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandin
 		return sourceLandingNodeName;
 	}
 	return row.landingNodeName.trim();
+}
+
+export function getStage2SourceGroupSize(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
+	const trimmedSourceLandingNodeName = sourceLandingNodeName.trim();
+	if (trimmedSourceLandingNodeName === "") {
+		return 0;
+	}
+	return rows.filter((row) => getStage2RowSourceLandingName(row) === trimmedSourceLandingNodeName).length;
+}
+
+export function getAggressiveChainStrategy(
+	snapshot: Pick<Stage2Snapshot, "aggressiveChainGroups">,
+	sourceLandingNodeName: string,
+) {
+	const trimmedSourceLandingNodeName = sourceLandingNodeName.trim();
+	if (trimmedSourceLandingNodeName === "") {
+		return null;
+	}
+	return snapshot.aggressiveChainGroups.find((group) => group.sourceLandingNodeName.trim() === trimmedSourceLandingNodeName)?.strategy ?? null;
 }
 
 function getTrimmedStage2RowFieldValue(

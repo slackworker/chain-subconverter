@@ -16,6 +16,8 @@ import {
 	completeWorkflowRequestState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
+	updateAggressiveChainGroupState,
+	deleteStage2RowState,
 } from "./useAppWorkflow.state";
 
 describe("useAppWorkflow.state", () => {
@@ -104,6 +106,7 @@ describe("useAppWorkflow.state", () => {
 
 		expect(next.stage2Init).toEqual(stage2Init);
 		expect(next.stage2Snapshot.rows).toEqual([{ landingNodeName: "landing-hk", mode: "none", targetName: null }]);
+		expect(next.stage2Snapshot.aggressiveChainGroups).toEqual([]);
 		expect(next.stage2Stale).toBe(false);
 		expect(next.restoreStatus).toBe("idle");
 		expect(next.responseOriginStage).toBe("stage1");
@@ -240,6 +243,37 @@ describe("useAppWorkflow.state", () => {
 			longUrl: "https://public.example.com/sub?data=restore-only",
 			shortUrl: null,
 		});
+	});
+
+	it("updates aggressive chain groups by source landing name", () => {
+		const next = updateAggressiveChainGroupState({
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+				],
+				aggressiveChainGroups: [],
+			},
+		}, "HK", "fallback");
+
+		expect(next.stage2Snapshot.aggressiveChainGroups).toEqual([{ sourceLandingNodeName: "HK", strategy: "fallback" }]);
+	});
+
+	it("clears aggressive chain groups when deleting back to a single row", () => {
+		const next = deleteStage2RowState({
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+				],
+				aggressiveChainGroups: [{ sourceLandingNodeName: "HK", strategy: "fallback" }],
+			},
+		}, "rowId:hk-2");
+
+		expect(next.stage2Snapshot.rows).toHaveLength(1);
+		expect(next.stage2Snapshot.aggressiveChainGroups).toEqual([]);
 	});
 
 	it("keeps short URL preference locked when long URL exceeds the public budget", () => {

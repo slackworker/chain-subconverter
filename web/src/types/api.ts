@@ -58,6 +58,11 @@ export interface Stage2Row {
 	targetName: string | null;
 }
 
+export interface AggressiveChainGroup {
+	sourceLandingNodeName: string;
+	strategy: "fallback" | "url-test";
+}
+
 export interface Stage2InitRow extends Stage2Row {
 	landingNodeType: string;
 	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
@@ -83,6 +88,7 @@ export interface Stage2Init {
 
 export interface Stage2Snapshot {
 	rows: Stage2Row[];
+	aggressiveChainGroups: AggressiveChainGroup[];
 }
 
 export interface Stage1ConvertRequest {

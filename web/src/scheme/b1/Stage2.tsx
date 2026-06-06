@@ -6,6 +6,7 @@ import {
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
+	isStage2SourceRow,
 } from "../../lib/stage2";
 import { NoticeRenderer } from "./Notice";
 import { AlertTriangleIcon } from "./Icons";
@@ -118,7 +119,10 @@ function Stage2RowItem({
 	const rowKey = getStage2RowKey(row);
 	const displayName = getStage2RowDisplayName(row);
 	const sourceLandingName = getStage2RowSourceLandingName(row);
+	const sourceRow = isStage2SourceRow(row);
 	const canDeleteRow = workflow.canDeleteStage2Row(rowKey);
+	const canConfigureAggressiveChainGroup = workflow.canConfigureAggressiveChainGroup(rowKey);
+	const aggressiveChainStrategy = workflow.getAggressiveChainStrategy(rowKey) ?? "";
 	const meta = workflow.getStage2RowMeta(rowKey);
 	const errors = workflow.getStage2RowErrors(rowKey);
 	const isSnapshotOnly = workflow.state.stage2Init === null;
@@ -296,6 +300,21 @@ function Stage2RowItem({
 						<div className={`text-xs truncate ${isDark ? "text-zinc-500" : "text-slate-400"}`} title={sourceLandingName}>
 							{translate(copy.rowSourceLabel, { name: sourceLandingName })}
 						</div>
+						{sourceRow ? (
+							<label className={`flex flex-col gap-1 text-xs ${isDark ? "text-zinc-400" : "text-slate-500"}`}>
+								<span>{locale === "zh" ? "故障转移组" : "Failover Group"}</span>
+								<select
+									className={`w-full border rounded-lg px-2.5 py-2 text-sm ${isDark ? "bg-zinc-950 border-zinc-800 text-zinc-200" : "bg-white border-slate-200 text-slate-800"}`}
+									value={aggressiveChainStrategy}
+									disabled={disabled || !canConfigureAggressiveChainGroup}
+									onChange={(event) => workflow.handleAggressiveChainStrategyChange(rowKey, event.target.value === "" ? null : event.target.value as "fallback" | "url-test")}
+								>
+									<option value="">{locale === "zh" ? "关闭" : "Off"}</option>
+									<option value="fallback">fallback</option>
+									<option value="url-test">url-test</option>
+								</select>
+							</label>
+						) : null}
 					</div>
 				</td>
 				<td className={`py-4 px-4 text-center text-sm font-semibold ${isDark ? "text-zinc-400" : "text-slate-500"}`}>

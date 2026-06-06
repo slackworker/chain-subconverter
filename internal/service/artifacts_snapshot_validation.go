@@ -137,8 +137,50 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowErrorRef, "", cause)
 		}
 	}
+	if err := validateAggressiveChainGroups(stage2Snapshot.AggressiveChainGroups, rowsBySourceLanding, landingByName); err != nil {
+		return nil, err
+	}
 
 	return resolvedLandingProxies, nil
+}
+
+func validateAggressiveChainGroups(
+	aggressiveChainGroups []AggressiveChainGroup,
+	rowsBySourceLanding map[string][]Stage2Row,
+	landingByName map[string]resolvedLandingProxy,
+) error {
+	seenBySourceLanding := make(map[string]struct{}, len(aggressiveChainGroups))
+	for _, group := range aggressiveChainGroups {
+		sourceLandingName := strings.TrimSpace(group.SourceLandingNodeName)
+		if sourceLandingName == "" {
+			cause := fmt.Errorf("aggressiveChainGroups.sourceLandingNodeName must not be empty")
+			return newGlobalValidationError("INVALID_AGGRESSIVE_CHAIN_GROUP", "invalid aggressive chain group", cause)
+		}
+		if _, exists := seenBySourceLanding[sourceLandingName]; exists {
+			cause := fmt.Errorf("duplicate aggressive chain group for source landing node %q", sourceLandingName)
+			return newGlobalValidationError("DUPLICATE_AGGRESSIVE_CHAIN_GROUP", "duplicate aggressive chain group", cause)
+		}
+		seenBySourceLanding[sourceLandingName] = struct{}{}
+
+		strategy := strings.TrimSpace(group.Strategy)
+		switch strategy {
+		case "fallback", "url-test":
+		default:
+			cause := fmt.Errorf("unsupported aggressive chain strategy %q for source landing node %q", group.Strategy, sourceLandingName)
+			return newGlobalValidationError("INVALID_AGGRESSIVE_CHAIN_GROUP", "invalid aggressive chain group", cause)
+		}
+
+		if _, exists := landingByName[sourceLandingName]; !exists {
+			cause := fmt.Errorf("aggressive chain group references unknown source landing node %q", sourceLandingName)
+			return newGlobalValidationError("AGGRESSIVE_CHAIN_GROUP_NOT_FOUND", "aggressive chain group not found", cause)
+		}
+		if len(rowsBySourceLanding[sourceLandingName]) < 2 {
+			cause := fmt.Errorf("aggressive chain group for source landing node %q requires at least 2 rows", sourceLandingName)
+			return newGlobalValidationError("AGGRESSIVE_CHAIN_GROUP_TOO_SMALL", "aggressive chain group requires at least 2 rows", cause)
+		}
+	}
+
+	return nil
 }
 
 func requireTargetName(row Stage2Row) (string, error) {

@@ -736,6 +736,21 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												})}
 											</div>
 											<div className="c-row-target">{renderTargetSelect(row, rowKey, meta)}</div>
+											{sourceRow ? (
+												<label className={`flex flex-col gap-1 text-xs ${mutedText(colorMode)}`}>
+													<span>故障转移组</span>
+													<select
+														className={selectField(colorMode)}
+														value={workflow.getAggressiveChainStrategy(rowKey) ?? ""}
+														disabled={!workflow.isStage2Editable || !workflow.canConfigureAggressiveChainGroup(rowKey)}
+														onChange={(event) => workflow.handleAggressiveChainStrategyChange(rowKey, event.target.value === "" ? null : event.target.value as "fallback" | "url-test")}
+													>
+														<option value="">关闭</option>
+														<option value="fallback">fallback</option>
+														<option value="url-test">url-test</option>
+													</select>
+												</label>
+											) : null}
 										</div>
 										{meta?.modeWarnings?.[row.mode]?.reasonText ? (
 											<p className="c-row-hint">⚠ {meta.modeWarnings[row.mode]?.reasonText}</p>

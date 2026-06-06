@@ -8,11 +8,13 @@ import type { AppState, ResponseOriginStage, WorkflowLogEntry } from "../lib/sta
 import { appendWorkflowLogEntries } from "../lib/workflow-log";
 import {
 	findStage2RowByKey,
+	getAggressiveChainStrategy,
 	getStage2RowSourceLandingName,
+	getStage2SourceGroupSize,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 } from "../lib/stage2";
-import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { AggressiveChainGroup, BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 
 function expireGeneratedOutput(current: AppState) {
 	return {
@@ -68,6 +70,36 @@ export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 		mode: row.mode,
 		targetName: row.targetName,
 	}));
+}
+
+function normalizeAggressiveChainGroups(rows: Stage2Row[], aggressiveChainGroups: AggressiveChainGroup[]) {
+	const normalized: AggressiveChainGroup[] = [];
+	const seen = new Set<string>();
+	for (const group of aggressiveChainGroups) {
+		const sourceLandingNodeName = group.sourceLandingNodeName.trim();
+		if (sourceLandingNodeName === "" || seen.has(sourceLandingNodeName)) {
+			continue;
+		}
+		if (group.strategy !== "fallback" && group.strategy !== "url-test") {
+			continue;
+		}
+		if (getStage2SourceGroupSize(rows, sourceLandingNodeName) < 2) {
+			continue;
+		}
+		seen.add(sourceLandingNodeName);
+		normalized.push({
+			sourceLandingNodeName,
+			strategy: group.strategy,
+		});
+	}
+	return normalized;
+}
+
+function normalizeStage2SnapshotRowsAndGroups(rows: Stage2Row[], aggressiveChainGroups: AggressiveChainGroup[]) {
+	return {
+		rows,
+		aggressiveChainGroups: normalizeAggressiveChainGroups(rows, aggressiveChainGroups),
+	};
 }
 
 function getDisplayedGeneratedURL(generatedUrls: AppState["generatedUrls"], preferShortURL: boolean) {
@@ -220,7 +252,7 @@ export function applyStage2InitState(current: AppState, stage2Init: Stage2Init):
 	return {
 		...current,
 		stage2Init,
-		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init) },
+		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init), aggressiveChainGroups: [] },
 		generatedUrls: null,
 		stage3Expired: false,
 		stage2Stale: false,
@@ -260,7 +292,10 @@ function buildRestorePatch(options: RestoreStateOptions) {
 		currentLinkInput: options.resolvedShortUrl ?? options.resolvedLongUrl,
 		preferShortUrl: Boolean(options.resolvedShortUrl),
 		stage1Input: options.restoredStage1Input,
-		stage2Snapshot: options.stage2Snapshot,
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			options.stage2Snapshot.rows,
+			options.stage2Snapshot.aggressiveChainGroups ?? [],
+		),
 		generatedUrls: {
 			longUrl: options.resolvedLongUrl,
 			shortUrl: options.resolvedShortUrl ?? null,
@@ -441,9 +476,10 @@ export function updateStage2RowState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
-		},
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
+			current.stage2Snapshot.aggressiveChainGroups,
+		),
 	};
 }
 
@@ -474,9 +510,7 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string, 
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: nextRows,
-		},
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(nextRows, current.stage2Snapshot.aggressiveChainGroups),
 	};
 }
 
@@ -494,8 +528,40 @@ export function deleteStage2RowState(current: AppState, landingNodeName: string)
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
-		},
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
+			current.stage2Snapshot.aggressiveChainGroups,
+		),
+	};
+}
+
+export function updateAggressiveChainGroupState(
+	current: AppState,
+	sourceLandingNodeName: string,
+	strategy: AggressiveChainGroup["strategy"] | null,
+): AppState {
+	const trimmedSourceLandingNodeName = sourceLandingNodeName.trim();
+	if (trimmedSourceLandingNodeName === "") {
+		return current;
+	}
+	const nextAggressiveChainGroups = current.stage2Snapshot.aggressiveChainGroups.filter(
+		(group) => group.sourceLandingNodeName.trim() !== trimmedSourceLandingNodeName,
+	);
+	if (strategy !== null) {
+		nextAggressiveChainGroups.push({
+			sourceLandingNodeName: trimmedSourceLandingNodeName,
+			strategy,
+		});
+	}
+	const currentStrategy = getAggressiveChainStrategy(current.stage2Snapshot, trimmedSourceLandingNodeName);
+	if (currentStrategy === strategy) {
+		return current;
+	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextAggressiveChainGroups),
 	};
 }

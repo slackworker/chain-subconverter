@@ -163,7 +163,7 @@ func isRestoreConflictError(err error) bool {
 	}
 
 	switch responseErr.BlockingError().Code {
-	case "STAGE2_ROWSET_MISMATCH", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND":
+	case "STAGE2_ROWSET_MISMATCH", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND", "AGGRESSIVE_CHAIN_GROUP_NOT_FOUND", "AGGRESSIVE_CHAIN_GROUP_TOO_SMALL":
 		return true
 	default:
 		return false

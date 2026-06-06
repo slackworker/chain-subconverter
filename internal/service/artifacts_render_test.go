@@ -136,3 +136,83 @@ func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
 		t.Fatalf("managed landing is missing port-forward clone:\n%s", rendered)
 	}
 }
+
+func TestRenderCompleteConfig_AppendsAggressiveChainGroup(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
+		TransitDiscoveryYAML: "proxies:\n",
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",
+			"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - HK Landing",
+			"      - HK Landing Copy",
+			"  - name: 🇺🇸 美国节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇯🇵 日本节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇼🇸 台湾节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇰🇷 韩国节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"",
+		}, "\n"),
+		TemplateConfig: defaultRegionConfig,
+	}
+
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+				{
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing Copy",
+					LandingNodeName:       "HK Landing Copy",
+					Mode:                  "none",
+				},
+			},
+			AggressiveChainGroups: []AggressiveChainGroup{{
+				SourceLandingNodeName: "HK Landing",
+				Strategy:              "fallback",
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "  - name: HK Landing Aggressive\n    type: fallback") {
+		t.Fatalf("rendered config is missing aggressive chain group:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "      - HK Landing\n      - HK Landing Copy") {
+		t.Fatalf("rendered config is missing aggressive chain group members:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "    lazy: false\n    max-failed-times: 1") {
+		t.Fatalf("rendered config is missing aggressive chain profile:\n%s", rendered)
+	}
+}

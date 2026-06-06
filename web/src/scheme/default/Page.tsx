@@ -1393,6 +1393,21 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 																	</button>
 																)}
 														</div>
+														{sourceRow ? (
+															<label className="a-stage2-row-group-field">
+																<span className="a-stage2-row-group-field__label">{locale === "zh" ? "故障转移组" : "Failover Group"}</span>
+																<select
+																	className="a-select"
+																	value={workflow.getAggressiveChainStrategy(rowKey) ?? ""}
+																	disabled={!editable || !workflow.canConfigureAggressiveChainGroup(rowKey)}
+																	onChange={(event) => workflow.handleAggressiveChainStrategyChange(rowKey, event.target.value === "" ? null : event.target.value as "fallback" | "url-test")}
+																>
+																	<option value="">{locale === "zh" ? "关闭" : "Off"}</option>
+																	<option value="fallback">fallback</option>
+																	<option value="url-test">url-test</option>
+																</select>
+															</label>
+														) : null}
 													</div>
 												</td>
 												<td>

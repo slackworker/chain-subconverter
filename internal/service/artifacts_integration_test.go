@@ -265,6 +265,10 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 				Mode:            "chain",
 				TargetName:      &targetName,
 			}},
+			AggressiveChainGroups: []AggressiveChainGroup{{
+				SourceLandingNodeName: "HK 01",
+				Strategy:              "fallback",
+			}},
 		},
 	}
 
@@ -273,9 +277,32 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":2}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}],"aggressiveChainGroups":[{"sourceLandingNodeName":"HK 01","strategy":"fallback"}]},"v":3}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+}
+
+func TestDecodeLongURLPayload_V2PayloadDefaultsAggressiveChainGroupsToEmpty(t *testing.T) {
+	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null},"forwardRelayItems":[],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":2}`)
+	encodedData, err := encodeCompressedData(payloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	longURL, err := joinSubURL("http://localhost:11200", encodedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+
+	decoded, err := DecodeLongURLPayload(longURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("DecodeLongURLPayload() error = %v", err)
+	}
+	if decoded.V != 2 {
+		t.Fatalf("version mismatch: got %d want %d", decoded.V, 2)
+	}
+	if decoded.Stage2Snapshot.AggressiveChainGroups != nil {
+		t.Fatalf("expected aggressiveChainGroups to default to nil, got %+v", decoded.Stage2Snapshot.AggressiveChainGroups)
 	}
 }
 

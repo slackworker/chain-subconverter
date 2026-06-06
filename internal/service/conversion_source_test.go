@@ -372,6 +372,93 @@ func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t 
 	}
 }
 
+func TestRenderCompleteConfigFromSource_AppendsAggressiveChainGroup(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	forwardRelay := "relay.example.com:7443"
+
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request: subconverter.Request{},
+				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: HK Landing Copy, type: ss, server: relay.example.com, port: 7443}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing",
+			"      - HK Landing Copy",
+			"      - transit-a",
+			"",
+		}, "\n"),
+	}
+
+	renderedConfig, err := RenderCompleteConfigFromSource(
+		context.Background(),
+		source,
+		Stage1Input{ForwardRelayItems: []string{forwardRelay}},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing Copy",
+					LandingNodeName:       "HK Landing Copy",
+					Mode:                  "port_forward",
+					TargetName:            &forwardRelay,
+				},
+			},
+			AggressiveChainGroups: []AggressiveChainGroup{{
+				SourceLandingNodeName: "HK Landing",
+				Strategy:              "url-test",
+			}},
+		},
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
+	}
+
+	if !strings.Contains(renderedConfig, "  - name: HK Landing Aggressive\n    type: url-test") {
+		t.Fatalf("rendered config is missing aggressive chain group:\n%s", renderedConfig)
+	}
+	if !strings.Contains(renderedConfig, "      - HK Landing\n      - HK Landing Copy") {
+		t.Fatalf("rendered config is missing aggressive chain group members:\n%s", renderedConfig)
+	}
+}
+
 func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *testing.T) {
 	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
