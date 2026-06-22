@@ -608,6 +608,74 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("keeps stage2 aggregation blocking messages in server display order", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-11",
+					sourceLandingNodeName: "landing-11",
+					proxyName: "landing-11",
+					landingNodeName: "landing-11",
+					landingNodeType: "ss",
+					server: "198.51.100.11",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "landing-10",
+					sourceLandingNodeName: "landing-10",
+					proxyName: "landing-10",
+					landingNodeName: "landing-10",
+					landingNodeType: "ss",
+					server: "198.51.100.10",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const rowKey11 = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const rowKey10 = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+		act(() => {
+			workflow.current.handleServerAggregationChange(rowKey11, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+			workflow.current.handleServerAggregationChange(rowKey10, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+		});
+
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		const stage2Errors = workflow.current.getPrimaryBlockingErrorsForStage("stage2");
+		expect(stage2Errors).toHaveLength(2);
+		expect(stage2Errors.map((error) => error.message)).toEqual([
+			"聚合/策略组（198.51.100.10）至少需要入组 2 个成员，当前为 1 个。",
+			"聚合/策略组（198.51.100.11）至少需要入组 2 个成员，当前为 1 个。",
+		]);
+	});
+
 	it("surfaces Stage 2 blocking errors when generate fails", async () => {
 		const workflow = renderWorkflow();
 		await initializeStage2ReadyState(workflow);

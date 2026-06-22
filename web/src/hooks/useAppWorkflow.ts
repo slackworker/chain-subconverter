@@ -196,8 +196,11 @@ function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialApp
 		stage2Snapshot.rows.map((row) => [(row.rowId ?? "").trim(), row] as const).filter(([rowID]) => rowID !== ""),
 	);
 	const errors: BlockingError[] = [];
+	const orderedAggregationGroups = [...stage2Snapshot.serverAggregationGroups].sort((left, right) =>
+		left.server.trim().localeCompare(right.server.trim()),
+	);
 
-	for (const group of stage2Snapshot.serverAggregationGroups) {
+	for (const group of orderedAggregationGroups) {
 		if (!group.enabled) {
 			continue;
 		}
