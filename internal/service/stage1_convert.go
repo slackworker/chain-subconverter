@@ -101,13 +101,15 @@ type Stage2SnapshotFixture struct {
 }
 
 type Stage2Snapshot struct {
-	Rows                  []Stage2Row            `json:"rows"`
-	AggressiveChainGroups []AggressiveChainGroup `json:"aggressiveChainGroups,omitempty"`
+	Rows                    []Stage2Row              `json:"rows"`
+	ServerAggregationGroups []ServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
 }
 
-type AggressiveChainGroup struct {
-	SourceLandingNodeName string `json:"sourceLandingNodeName"`
-	Strategy              string `json:"strategy"`
+type ServerAggregationGroup struct {
+	Server       string   `json:"server"`
+	Enabled      bool     `json:"enabled"`
+	Strategy     string   `json:"strategy"`
+	MemberRowIDs []string `json:"memberRowIds,omitempty"`
 }
 
 type Stage2Init struct {
@@ -133,6 +135,7 @@ type Stage2InitRow struct {
 	ProxyName             string                     `json:"proxyName,omitempty"`
 	LandingNodeName       string                     `json:"landingNodeName"`
 	LandingNodeType       string                     `json:"landingNodeType"`
+	Server                string                     `json:"server,omitempty"`
 	Mode                  string                     `json:"mode"`
 	TargetName            *string                    `json:"targetName"`
 	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
@@ -176,6 +179,7 @@ type resolvedLandingProxy struct {
 	TypeLabel    string
 	ProtocolType string
 	Port         int
+	Server       string
 }
 
 type proxyGroup struct {
@@ -293,6 +297,7 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 			ProxyName:             landing.Name,
 			LandingNodeName:       landing.Name,
 			LandingNodeType:       landing.TypeLabel,
+			Server:                landing.Server,
 			Mode:                  "none",
 			TargetName:            nil,
 		}
@@ -582,7 +587,7 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 
 	resolved := make([]resolvedLandingProxy, 0, len(landingProxies))
 	for _, proxy := range landingProxies {
-		resolvedName, typeLabel, port, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts, fullBaseProxyByName)
+		resolvedName, typeLabel, port, server, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts, fullBaseProxyByName)
 		if err != nil {
 			return nil, err
 		}
@@ -591,6 +596,7 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 			TypeLabel:    typeLabel,
 			ProtocolType: proxy.Type,
 			Port:         port,
+			Server:       server,
 		})
 	}
 
@@ -615,27 +621,29 @@ func resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies []inlineProxy)
 			TypeLabel:    formatLandingNodeTypeLabel(proxy.Type),
 			ProtocolType: proxy.Type,
 			Port:         extractInlineProxyPort(proxy),
+			Server:       extractInlineProxyServer(proxy),
 		})
 	}
 	return resolved, nil
 }
 
-func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int, fullBaseProxyByName map[string]inlineProxy) (string, string, int, error) {
+func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int, fullBaseProxyByName map[string]inlineProxy) (string, string, int, string, error) {
 	resolvedName := proxy.Name
 	count := fullBaseNameCounts[resolvedName]
 	if count == 1 {
-		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), extractInlineProxyPort(fullBaseProxyByName[resolvedName]), nil
+		fullBaseProxy := fullBaseProxyByName[resolvedName]
+		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), extractInlineProxyPort(fullBaseProxy), extractInlineProxyServer(fullBaseProxy), nil
 	}
 	if count > 1 {
 		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", resolvedName, count)
-		return "", "", 0, subconverter.NewUnavailableError(
+		return "", "", 0, "", subconverter.NewUnavailableError(
 			"validate landing-discovery names",
 			cause,
 			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
 		)
 	}
 	cause := fmt.Errorf("landing discovery proxy %q is missing from full-base result", resolvedName)
-	return "", "", 0, subconverter.NewUnavailableError(
+	return "", "", 0, "", subconverter.NewUnavailableError(
 		"validate landing-discovery names",
 		cause,
 		subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
@@ -652,6 +660,14 @@ func extractInlineProxyPort(proxy inlineProxy) int {
 		return 0
 	}
 	return port
+}
+
+func extractInlineProxyServer(proxy inlineProxy) string {
+	serverText, err := extractInlineField(proxy.Raw, "server")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(serverText)
 }
 
 func formatLandingNodeTypeLabel(protocolType string) string {

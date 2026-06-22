@@ -17,12 +17,12 @@ import {
 } from "../lib/notices";
 import {
 	findStage2RowByKey,
-	getAggressiveChainStrategy,
+	getServerAggregationGroup,
+	getServerAggregationStrategy,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
-	getStage2SourceGroupSize,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -58,7 +58,8 @@ import {
 	setCurrentLinkInputState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
-	updateAggressiveChainGroupState,
+	updateServerAggregationGroupState,
+	updateServerAggregationStrategyState,
 	updateStage1InputState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
@@ -111,6 +112,7 @@ export interface AppWorkflowViewModel {
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
 	getAggressiveChainStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
 	canConfigureAggressiveChainGroup: (landingNodeName: string) => boolean;
+	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean } | null;
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
 	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
@@ -120,6 +122,7 @@ export interface AppWorkflowViewModel {
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
 	handleAggressiveChainStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
+	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean }) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -544,12 +547,39 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}));
 	}
 
-	function getAggressiveChainStrategyForRow(landingNodeName: string) {
+	function getServerAggregationGroupForRow(landingNodeName: string) {
 		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
 		if (matchedRow === null) {
 			return null;
 		}
-		return getAggressiveChainStrategy(state.stage2Snapshot, getStage2RowSourceLandingName(matchedRow));
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		if (server === "") {
+			return null;
+		}
+		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
+		const group = getServerAggregationGroup(state.stage2Snapshot, server);
+		return {
+			server,
+			enabled: group?.enabled ?? false,
+			strategy: getServerAggregationStrategy(state.stage2Snapshot, server) ?? "fallback",
+			memberChecked: rowID !== "" && (group?.memberRowIds ?? []).includes(rowID),
+		};
+	}
+
+	function getAggressiveChainStrategyForRow(landingNodeName: string) {
+		if (!canConfigureAggressiveChainGroup(landingNodeName)) {
+			return null;
+		}
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return null;
+		}
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		return getServerAggregationStrategy(state.stage2Snapshot, server);
 	}
 
 	function canConfigureAggressiveChainGroup(landingNodeName: string) {
@@ -557,7 +587,23 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (matchedRow === null) {
 			return false;
 		}
-		return getStage2SourceGroupSize(state.stage2Snapshot.rows, getStage2RowSourceLandingName(matchedRow)) > 1;
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = rowMeta?.server?.trim() ?? "";
+		let count = 0;
+		for (const row of state.stage2Snapshot.rows) {
+			if (server === "") {
+				if (getStage2RowSourceLandingName(row) === sourceLandingNodeName) {
+					count += 1;
+				}
+				continue;
+			}
+			const rowKey = getStage2RowKey(row);
+			if ((getStage2RowMeta(rowKey)?.server?.trim() ?? "") === server) {
+				count += 1;
+			}
+		}
+		return count > 1;
 	}
 
 	function handleAggressiveChainStrategyChange(landingNodeName: string, strategy: "fallback" | "url-test" | null) {
@@ -565,7 +611,57 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (matchedRow === null) {
 			return;
 		}
-		setState((current) => updateAggressiveChainGroupState(current, getStage2RowSourceLandingName(matchedRow), strategy));
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		if (strategy === null) {
+			setState((current) => updateServerAggregationStrategyState(current, server, null));
+			return;
+		}
+		const memberRowIDs = state.stage2Snapshot.rows
+			.filter((row) => {
+				if ((rowMeta?.server?.trim() ?? "") === "") {
+					return getStage2RowSourceLandingName(row) === sourceLandingNodeName;
+				}
+				const rowKey = getStage2RowKey(row);
+				return (getStage2RowMeta(rowKey)?.server?.trim() ?? "") === rowMeta?.server?.trim();
+			})
+			.map((row) => (row.rowId?.trim() ?? "") || getStage2RowKey(row))
+			.filter((rowID) => rowID !== "");
+		setState((current) => {
+			let next = current;
+			for (const rowID of memberRowIDs) {
+				next = updateServerAggregationGroupState(next, server, true, strategy, rowID, true);
+			}
+			return updateServerAggregationStrategyState(next, server, strategy);
+		});
+	}
+
+	function handleServerAggregationChange(
+		landingNodeName: string,
+		payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean },
+	) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		if (matchedRow === null || rowMeta === null) {
+			return;
+		}
+		const server = rowMeta.server?.trim() ?? "";
+		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
+		if (server === "" || rowID === "") {
+			return;
+		}
+		setState((current) => {
+			const withMember = updateServerAggregationGroupState(
+				current,
+				server,
+				payload.enabled,
+				payload.strategy,
+				rowID,
+				payload.memberChecked,
+			);
+			return updateServerAggregationStrategyState(withMember, server, payload.enabled ? payload.strategy : null);
+		});
 	}
 
 	async function handleGenerate() {
@@ -730,6 +826,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),
 		getAggressiveChainStrategy: getAggressiveChainStrategyForRow,
 		canConfigureAggressiveChainGroup,
+		getServerAggregationGroup: getServerAggregationGroupForRow,
 		handleStage1Convert,
 		handleRestore,
 		handleProxyNameChange,
@@ -739,6 +836,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleModeChange,
 		handleTargetChange,
 		handleAggressiveChainStrategyChange,
+		handleServerAggregationChange,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

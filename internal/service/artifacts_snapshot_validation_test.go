@@ -173,7 +173,7 @@ func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *test
 	}
 }
 
-func TestValidateGenerateSnapshot_AllowsAggressiveChainGroupForSameSourceRows(t *testing.T) {
+func TestValidateGenerateSnapshot_AllowsServerAggregationGroupForSameServerRows(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
 
@@ -182,20 +182,24 @@ func TestValidateGenerateSnapshot_AllowsAggressiveChainGroupForSameSourceRows(t 
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &targetName,
 				},
 				{
+					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing 2",
 					Mode:                  "none",
 				},
 			},
-			AggressiveChainGroups: []AggressiveChainGroup{{
-				SourceLandingNodeName: "HK Landing",
-				Strategy:              "fallback",
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
 			}},
 		},
 		fixtures,
@@ -208,69 +212,75 @@ func TestValidateGenerateSnapshot_AllowsAggressiveChainGroupForSameSourceRows(t 
 	}
 }
 
-func TestValidateGenerateSnapshot_RejectsAggressiveChainGroupWithoutMatchingSource(t *testing.T) {
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithUnknownMember(t *testing.T) {
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
 
 	_, err := validateGenerateSnapshot(
 		Stage1Input{},
 		Stage2Snapshot{
 			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
 				Mode:                  "none",
 			}},
-			AggressiveChainGroups: []AggressiveChainGroup{{
-				SourceLandingNodeName: "Missing Landing",
-				Strategy:              "fallback",
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "missing-row"},
 			}},
 		},
 		fixtures,
 	)
 	if err == nil {
-		t.Fatal("validateGenerateSnapshot() error = nil, want aggressive chain group source rejection")
+		t.Fatal("validateGenerateSnapshot() error = nil, want server aggregation member rejection")
 	}
-	if !strings.Contains(err.Error(), `unknown source landing node "Missing Landing"`) {
+	if !strings.Contains(err.Error(), `unknown rowId "missing-row"`) {
 		t.Fatalf("validateGenerateSnapshot() error = %v", err)
 	}
 	responseErr, ok := AsResponseError(err)
 	if !ok {
 		t.Fatalf("expected response error, got %T", err)
 	}
-	if responseErr.BlockingError().Code != "AGGRESSIVE_CHAIN_GROUP_NOT_FOUND" {
-		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "AGGRESSIVE_CHAIN_GROUP_NOT_FOUND")
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_MEMBER_NOT_FOUND" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_MEMBER_NOT_FOUND")
 	}
 }
 
-func TestValidateGenerateSnapshot_RejectsAggressiveChainGroupWithOnlyOneRow(t *testing.T) {
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithOnlyOneMember(t *testing.T) {
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
 
 	_, err := validateGenerateSnapshot(
 		Stage1Input{},
 		Stage2Snapshot{
 			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
 				Mode:                  "none",
 			}},
-			AggressiveChainGroups: []AggressiveChainGroup{{
-				SourceLandingNodeName: "HK Landing",
-				Strategy:              "fallback",
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1"},
 			}},
 		},
 		fixtures,
 	)
 	if err == nil {
-		t.Fatal("validateGenerateSnapshot() error = nil, want aggressive chain group size rejection")
+		t.Fatal("validateGenerateSnapshot() error = nil, want server aggregation group size rejection")
 	}
-	if !strings.Contains(err.Error(), `requires at least 2 rows`) {
+	if !strings.Contains(err.Error(), `requires at least 2 members`) {
 		t.Fatalf("validateGenerateSnapshot() error = %v", err)
 	}
 	responseErr, ok := AsResponseError(err)
 	if !ok {
 		t.Fatalf("expected response error, got %T", err)
 	}
-	if responseErr.BlockingError().Code != "AGGRESSIVE_CHAIN_GROUP_TOO_SMALL" {
-		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "AGGRESSIVE_CHAIN_GROUP_TOO_SMALL")
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_GROUP_TOO_SMALL")
 	}
 }
 

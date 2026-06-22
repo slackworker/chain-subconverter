@@ -137,7 +137,7 @@ func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
 	}
 }
 
-func TestRenderCompleteConfig_AppendsAggressiveChainGroup(t *testing.T) {
+func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
 	chainTarget := "🇭🇰 香港节点"
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
@@ -182,6 +182,7 @@ func TestRenderCompleteConfig_AppendsAggressiveChainGroup(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					LandingNodeName:       "HK Landing",
@@ -189,15 +190,18 @@ func TestRenderCompleteConfig_AppendsAggressiveChainGroup(t *testing.T) {
 					TargetName:            &chainTarget,
 				},
 				{
+					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing Copy",
 					LandingNodeName:       "HK Landing Copy",
 					Mode:                  "none",
 				},
 			},
-			AggressiveChainGroups: []AggressiveChainGroup{{
-				SourceLandingNodeName: "HK Landing",
-				Strategy:              "fallback",
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
 			}},
 		},
 		fixtures,
@@ -206,13 +210,13 @@ func TestRenderCompleteConfig_AppendsAggressiveChainGroup(t *testing.T) {
 		t.Fatalf("RenderCompleteConfig() error = %v", err)
 	}
 
-	if !strings.Contains(rendered, "  - name: HK Landing Aggressive\n    type: fallback") {
-		t.Fatalf("rendered config is missing aggressive chain group:\n%s", rendered)
+	if !strings.Contains(rendered, "  - name: srv:landing.example.com\n    type: fallback") {
+		t.Fatalf("rendered config is missing server aggregation group:\n%s", rendered)
 	}
 	if !strings.Contains(rendered, "      - HK Landing\n      - HK Landing Copy") {
-		t.Fatalf("rendered config is missing aggressive chain group members:\n%s", rendered)
+		t.Fatalf("rendered config is missing server aggregation group members:\n%s", rendered)
 	}
 	if !strings.Contains(rendered, "    lazy: false\n    max-failed-times: 1") {
-		t.Fatalf("rendered config is missing aggressive chain profile:\n%s", rendered)
+		t.Fatalf("rendered config is missing server aggregation profile:\n%s", rendered)
 	}
 }

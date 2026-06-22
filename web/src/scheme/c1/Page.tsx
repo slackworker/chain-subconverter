@@ -17,7 +17,6 @@ import {
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
-	isStage2SourceRow,
 } from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
 import type { WorkflowLogEntry } from "../../lib/state";
@@ -621,8 +620,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							const rowKey = getStage2RowKey(row);
 							const displayName = getStage2RowDisplayName(row);
 							const sourceLandingName = getStage2RowSourceLandingName(row);
-							const sourceRow = isStage2SourceRow(row);
-							const canDeleteRow = !sourceRow && workflow.canDeleteStage2Row(rowKey);
+							const canDeleteRow = workflow.canDeleteStage2Row(rowKey);
 							const meta = workflow.getStage2RowMeta(rowKey);
 							const rowErrors = workflow.getStage2RowErrors(rowKey);
 							return (
@@ -638,29 +636,12 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}
 											/>
 											<p className="c-row-source">来源：{sourceLandingName}</p>
-											{sourceRow ? (
-												<label className="c-field" style={{ marginTop: "0.5rem" }}>
-													<span>故障转移组</span>
-													<select
-														value={workflow.getAggressiveChainStrategy(rowKey) ?? ""}
-														disabled={!workflow.isStage2Editable || !workflow.canConfigureAggressiveChainGroup(rowKey)}
-														onChange={(event) => workflow.handleAggressiveChainStrategyChange(rowKey, event.target.value === "" ? null : event.target.value as "fallback" | "url-test")}
-													>
-														<option value="">关闭</option>
-														<option value="fallback">fallback</option>
-														<option value="url-test">url-test</option>
-													</select>
-												</label>
-											) : null}
 										</div>
 										<div className="c-row-head-side">
 											<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>
 											<div className="c-row-actions">
-												{sourceRow ? (
-													<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable} onClick={() => workflow.handleCloneStage2Row(rowKey)}>复制</button>
-												) : (
-													<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable || !canDeleteRow} title={canDeleteRow ? undefined : "至少保留一行"} onClick={() => workflow.handleDeleteStage2Row(rowKey)}>删除</button>
-												)}
+												<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable} onClick={() => workflow.handleCloneStage2Row(rowKey)}>复制</button>
+												<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable || !canDeleteRow} title={canDeleteRow ? undefined : "至少保留一行"} onClick={() => workflow.handleDeleteStage2Row(rowKey)}>删除</button>
 											</div>
 										</div>
 									</div>

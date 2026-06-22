@@ -137,46 +137,83 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowErrorRef, "", cause)
 		}
 	}
-	if err := validateAggressiveChainGroups(stage2Snapshot.AggressiveChainGroups, rowsBySourceLanding, landingByName); err != nil {
+	rowsByID := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
+	for _, row := range stage2Snapshot.Rows {
+		rowsByID[row.rowIDOrFallback()] = row
+	}
+	if err := validateServerAggregationGroups(stage2Snapshot.ServerAggregationGroups, rowsByID, landingByName); err != nil {
 		return nil, err
 	}
 
 	return resolvedLandingProxies, nil
 }
 
-func validateAggressiveChainGroups(
-	aggressiveChainGroups []AggressiveChainGroup,
-	rowsBySourceLanding map[string][]Stage2Row,
+func validateServerAggregationGroups(
+	serverAggregationGroups []ServerAggregationGroup,
+	rowsByID map[string]Stage2Row,
 	landingByName map[string]resolvedLandingProxy,
 ) error {
-	seenBySourceLanding := make(map[string]struct{}, len(aggressiveChainGroups))
-	for _, group := range aggressiveChainGroups {
-		sourceLandingName := strings.TrimSpace(group.SourceLandingNodeName)
-		if sourceLandingName == "" {
-			cause := fmt.Errorf("aggressiveChainGroups.sourceLandingNodeName must not be empty")
-			return newGlobalValidationError("INVALID_AGGRESSIVE_CHAIN_GROUP", "invalid aggressive chain group", cause)
+	seenByServer := make(map[string]struct{}, len(serverAggregationGroups))
+	for _, group := range serverAggregationGroups {
+		server := strings.TrimSpace(group.Server)
+		if server == "" {
+			cause := fmt.Errorf("serverAggregationGroups.server must not be empty")
+			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
 		}
-		if _, exists := seenBySourceLanding[sourceLandingName]; exists {
-			cause := fmt.Errorf("duplicate aggressive chain group for source landing node %q", sourceLandingName)
-			return newGlobalValidationError("DUPLICATE_AGGRESSIVE_CHAIN_GROUP", "duplicate aggressive chain group", cause)
+		if _, exists := seenByServer[server]; exists {
+			cause := fmt.Errorf("duplicate server aggregation group for server %q", server)
+			return newGlobalValidationError("DUPLICATE_SERVER_AGGREGATION_GROUP", "duplicate server aggregation group", cause)
 		}
-		seenBySourceLanding[sourceLandingName] = struct{}{}
+		seenByServer[server] = struct{}{}
 
-		strategy := strings.TrimSpace(group.Strategy)
-		switch strategy {
+		if !group.Enabled {
+			continue
+		}
+
+		switch strings.TrimSpace(group.Strategy) {
 		case "fallback", "url-test":
 		default:
-			cause := fmt.Errorf("unsupported aggressive chain strategy %q for source landing node %q", group.Strategy, sourceLandingName)
-			return newGlobalValidationError("INVALID_AGGRESSIVE_CHAIN_GROUP", "invalid aggressive chain group", cause)
+			cause := fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
+			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
 		}
 
-		if _, exists := landingByName[sourceLandingName]; !exists {
-			cause := fmt.Errorf("aggressive chain group references unknown source landing node %q", sourceLandingName)
-			return newGlobalValidationError("AGGRESSIVE_CHAIN_GROUP_NOT_FOUND", "aggressive chain group not found", cause)
+		if len(group.MemberRowIDs) < 2 {
+			cause := fmt.Errorf("server aggregation group for server %q requires at least 2 members", server)
+			return newGlobalValidationError("SERVER_AGGREGATION_GROUP_TOO_SMALL", "server aggregation group requires at least 2 members", cause)
 		}
-		if len(rowsBySourceLanding[sourceLandingName]) < 2 {
-			cause := fmt.Errorf("aggressive chain group for source landing node %q requires at least 2 rows", sourceLandingName)
-			return newGlobalValidationError("AGGRESSIVE_CHAIN_GROUP_TOO_SMALL", "aggressive chain group requires at least 2 rows", cause)
+
+		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
+		for _, rawRowID := range group.MemberRowIDs {
+			rowID := strings.TrimSpace(rawRowID)
+			if rowID == "" {
+				cause := fmt.Errorf("server aggregation group for server %q has empty member rowId", server)
+				return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+			}
+			if _, exists := memberSeen[rowID]; exists {
+				continue
+			}
+			memberSeen[rowID] = struct{}{}
+
+			memberRow, exists := rowsByID[rowID]
+			if !exists {
+				cause := fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
+				return newGlobalValidationError("SERVER_AGGREGATION_MEMBER_NOT_FOUND", "server aggregation member not found", cause)
+			}
+			sourceLandingName := memberRow.sourceLandingNodeNameOrFallback()
+			landing, exists := landingByName[sourceLandingName]
+			if !exists {
+				cause := fmt.Errorf("server aggregation member rowId %q references unknown source landing node %q", rowID, sourceLandingName)
+				return newGlobalValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", cause)
+			}
+			if strings.TrimSpace(landing.Server) != server {
+				cause := fmt.Errorf(
+					"server aggregation member rowId %q server mismatch: group=%q row=%q",
+					rowID,
+					server,
+					strings.TrimSpace(landing.Server),
+				)
+				return newGlobalValidationError("SERVER_AGGREGATION_SERVER_MISMATCH", "server aggregation member server mismatch", cause)
+			}
 		}
 	}
 

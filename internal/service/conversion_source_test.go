@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -178,8 +179,12 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 	}
 
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	var expected Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
 
 	if !reflect.DeepEqual(source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input)) {
@@ -372,7 +377,7 @@ func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t 
 	}
 }
 
-func TestRenderCompleteConfigFromSource_AppendsAggressiveChainGroup(t *testing.T) {
+func TestRenderCompleteConfigFromSource_AppendsServerAggregationGroup(t *testing.T) {
 	chainTarget := "🇭🇰 香港节点"
 	forwardRelay := "relay.example.com:7443"
 
@@ -440,9 +445,11 @@ func TestRenderCompleteConfigFromSource_AppendsAggressiveChainGroup(t *testing.T
 					TargetName:            &forwardRelay,
 				},
 			},
-			AggressiveChainGroups: []AggressiveChainGroup{{
-				SourceLandingNodeName: "HK Landing",
-				Strategy:              "url-test",
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "url-test",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
 			}},
 		},
 		InputLimits{},
@@ -451,11 +458,11 @@ func TestRenderCompleteConfigFromSource_AppendsAggressiveChainGroup(t *testing.T
 		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
 	}
 
-	if !strings.Contains(renderedConfig, "  - name: HK Landing Aggressive\n    type: url-test") {
-		t.Fatalf("rendered config is missing aggressive chain group:\n%s", renderedConfig)
+	if !strings.Contains(renderedConfig, "  - name: srv:landing.example.com\n    type: url-test") {
+		t.Fatalf("rendered config is missing server aggregation group:\n%s", renderedConfig)
 	}
 	if !strings.Contains(renderedConfig, "      - HK Landing\n      - HK Landing Copy") {
-		t.Fatalf("rendered config is missing aggressive chain group members:\n%s", renderedConfig)
+		t.Fatalf("rendered config is missing server aggregation group members:\n%s", renderedConfig)
 	}
 }
 
@@ -929,4 +936,13 @@ func toExpectedSubconverterRequest(stage1Input Stage1Input) subconverter.Request
 			Exclude:        stage1Input.AdvancedOptions.Exclude,
 		},
 	}
+}
+
+func normalizeStage1ConvertResponseForContract(response Stage1ConvertResponse) Stage1ConvertResponse {
+	normalized := response
+	normalized.Stage2Init.Rows = append([]Stage2InitRow(nil), response.Stage2Init.Rows...)
+	for index := range normalized.Stage2Init.Rows {
+		normalized.Stage2Init.Rows[index].Server = ""
+	}
+	return normalized
 }

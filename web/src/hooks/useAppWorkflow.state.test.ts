@@ -16,7 +16,7 @@ import {
 	completeWorkflowRequestState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
-	updateAggressiveChainGroupState,
+	updateServerAggregationStrategyState,
 	deleteStage2RowState,
 } from "./useAppWorkflow.state";
 
@@ -106,7 +106,7 @@ describe("useAppWorkflow.state", () => {
 
 		expect(next.stage2Init).toEqual(stage2Init);
 		expect(next.stage2Snapshot.rows).toEqual([{ landingNodeName: "landing-hk", mode: "none", targetName: null }]);
-		expect(next.stage2Snapshot.aggressiveChainGroups).toEqual([]);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([]);
 		expect(next.stage2Stale).toBe(false);
 		expect(next.restoreStatus).toBe("idle");
 		expect(next.responseOriginStage).toBe("stage1");
@@ -171,7 +171,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "conflicted",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-conflicted",
 			resolvedShortUrl: "https://public.example.com/s/conflicted-short",
-			stage2Snapshot: { aggressiveChainGroups: [], rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.restoreStatus).toBe("conflicted");
@@ -208,7 +208,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restored-long",
 			resolvedShortUrl: "https://public.example.com/s/restored-short",
-			stage2Snapshot: { aggressiveChainGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.restoreStatus).toBe("replayable");
@@ -234,7 +234,7 @@ describe("useAppWorkflow.state", () => {
 			restoredStage1Input,
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-only",
-			stage2Snapshot: { aggressiveChainGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.stage2Init).toBeNull();
@@ -245,19 +245,19 @@ describe("useAppWorkflow.state", () => {
 		});
 	});
 
-	it("updates aggressive chain groups by source landing name", () => {
-		const next = updateAggressiveChainGroupState({
+	it("updates server aggregation groups by server name", () => {
+		const next = updateServerAggregationStrategyState({
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
 					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
 					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
 				],
-				aggressiveChainGroups: [],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "url-test", memberRowIds: ["hk-1", "hk-2"] }],
 			},
-		}, "HK", "fallback");
+		}, "hk.example.com", "fallback");
 
-		expect(next.stage2Snapshot.aggressiveChainGroups).toEqual([{ sourceLandingNodeName: "HK", strategy: "fallback" }]);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }]);
 	});
 
 	it("clears aggressive chain groups when deleting back to a single row", () => {
@@ -268,12 +268,12 @@ describe("useAppWorkflow.state", () => {
 					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
 					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
 				],
-				aggressiveChainGroups: [{ sourceLandingNodeName: "HK", strategy: "fallback" }],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
 			},
 		}, "rowId:hk-2");
 
 		expect(next.stage2Snapshot.rows).toHaveLength(1);
-		expect(next.stage2Snapshot.aggressiveChainGroups).toEqual([]);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1"] }]);
 	});
 
 	it("keeps short URL preference locked when long URL exceeds the public budget", () => {

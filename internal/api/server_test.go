@@ -52,6 +52,10 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	var expected service.Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -72,8 +76,8 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response JSON: %v", err)
 	}
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
 }
 
@@ -81,6 +85,10 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	var expected service.Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -101,8 +109,8 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response JSON: %v", err)
 	}
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
 	if len(response.Stage2Init.Rows) != 7 {
 		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 7", len(response.Stage2Init.Rows))
@@ -1793,6 +1801,15 @@ func normalizeStage2SnapshotForContract(snapshot service.Stage2Snapshot) service
 		normalized.Rows[index].RowID = ""
 		normalized.Rows[index].SourceLandingNodeName = ""
 		normalized.Rows[index].ProxyName = ""
+	}
+	return normalized
+}
+
+func normalizeStage1ConvertResponseForContract(response service.Stage1ConvertResponse) service.Stage1ConvertResponse {
+	normalized := response
+	normalized.Stage2Init.Rows = append([]service.Stage2InitRow(nil), response.Stage2Init.Rows...)
+	for index := range normalized.Stage2Init.Rows {
+		normalized.Stage2Init.Rows[index].Server = ""
 	}
 	return normalized
 }

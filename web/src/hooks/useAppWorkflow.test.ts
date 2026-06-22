@@ -220,7 +220,7 @@ describe("useAppWorkflow", () => {
 		});
 		expect(workflow.current.state.stage2Init).toEqual(stage2Init);
 		expect(workflow.current.state.stage2Snapshot).toMatchObject({
-			aggressiveChainGroups: [],
+			serverAggregationGroups: [],
 			rows: [
 				{
 					landingNodeName: "landing-hk",
@@ -299,7 +299,7 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
-				aggressiveChainGroups: [],
+				serverAggregationGroups: [],
 				rows: [
 					{
 						landingNodeName: "landing-hk",
@@ -340,7 +340,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.stage2Init).toEqual(stage2Init);
 		expect(workflow.current.state.stage2Snapshot).toMatchObject({
 			...restoreResponse.stage2Snapshot,
-			aggressiveChainGroups: [],
+			serverAggregationGroups: [],
 		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
@@ -379,7 +379,7 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
-				aggressiveChainGroups: [],
+				serverAggregationGroups: [],
 				rows: [
 					{
 						landingNodeName: "landing-hk",
@@ -411,7 +411,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.stage2Init).toBeNull();
 		expect(workflow.current.state.stage2Snapshot).toMatchObject({
 			...restoreResponse.stage2Snapshot,
-			aggressiveChainGroups: [],
+			serverAggregationGroups: [],
 		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
@@ -449,7 +449,7 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
-				aggressiveChainGroups: [],
+				serverAggregationGroups: [],
 				rows: [
 					{
 						landingNodeName: "landing-hk",
@@ -492,7 +492,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.stage2Init).toBeNull();
 		expect(workflow.current.state.stage2Snapshot).toMatchObject({
 			...restoreResponse.stage2Snapshot,
-			aggressiveChainGroups: [],
+			serverAggregationGroups: [],
 		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
@@ -525,7 +525,7 @@ describe("useAppWorkflow", () => {
 		expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
 			stage1Input: toStage1InputPayload(stage1Input),
 			stage2Snapshot: expect.objectContaining({
-				aggressiveChainGroups: [],
+				serverAggregationGroups: [],
 				rows: expect.arrayContaining([
 					expect.objectContaining({
 						landingNodeName: "landing-hk",
@@ -777,9 +777,13 @@ describe("useAppWorkflow", () => {
 			workflow.current.handleAggressiveChainStrategyChange(sourceRowKey, "fallback");
 		});
 
-		expect(workflow.current.state.stage2Snapshot.aggressiveChainGroups).toEqual([
-			{ sourceLandingNodeName: "landing-hk", strategy: "fallback" },
-		]);
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toHaveLength(1);
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "source:landing-hk",
+			enabled: true,
+			strategy: "fallback",
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toHaveLength(2);
 		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBe("fallback");
 		expect(workflow.current.getAggressiveChainStrategy(derivedRowKey)).toBe("fallback");
 	});
@@ -836,7 +840,9 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.stage2Rows).toHaveLength(1);
 		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(false);
 		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBeNull();
-		expect(workflow.current.state.stage2Snapshot.aggressiveChainGroups).toEqual([]);
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "source:landing-hk", enabled: true, strategy: "url-test", memberRowIds: ["landing-hk"] },
+		]);
 	});
 
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {

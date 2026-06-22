@@ -58,13 +58,16 @@ export interface Stage2Row {
 	targetName: string | null;
 }
 
-export interface AggressiveChainGroup {
-	sourceLandingNodeName: string;
+export interface ServerAggregationGroup {
+	server: string;
+	enabled: boolean;
 	strategy: "fallback" | "url-test";
+	memberRowIds: string[];
 }
 
 export interface Stage2InitRow extends Stage2Row {
 	landingNodeType: string;
+	server?: string;
 	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
 	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
 }
@@ -88,7 +91,7 @@ export interface Stage2Init {
 
 export interface Stage2Snapshot {
 	rows: Stage2Row[];
-	aggressiveChainGroups: AggressiveChainGroup[];
+	serverAggregationGroups: ServerAggregationGroup[];
 }
 
 export interface Stage1ConvertRequest {

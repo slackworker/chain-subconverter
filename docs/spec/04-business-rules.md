@@ -192,9 +192,10 @@
 - `landingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
 - `stage2Init` 阶段仅依赖 Pass 1 身份；Pass 3 前按 `sourceLandingNodeName` 从 Pass 1 取连接参数（见 `2.1.2`）
 - `landingNodeType` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.type`，并允许结合该节点内的附加字段做展示分类
+- `server` 固定来源于当前落地节点解析结果中的 `server` 字段（优先以 Pass 3 可唯一匹配身份的节点端点为准）
 - 当前展示分类补充规则为：`type = vless` 且存在 `reality-opts` 时，展示类型记为 `Reality`；`type = ss` 且存在 `plugin=shadow-tls`、`plugin: shadow-tls`、`shadow-tls` 或等价 `plugin-opts` 标记时，展示类型记为 `ShadowTLS`
 - 按“每个落地节点一行”生成 `stage2Init.rows[]`
-- 阶段 2 第一列展示 `proxyName`，第二列展示 `landingNodeType`
+- 阶段 2 第一列展示 `proxyName`，第二列展示 `landingNodeType`，并提供 `server` 元信息用于分组展示
 
 ### 2.1.1 落地节点命名与身份边界（`stage2Init`）
 
@@ -276,7 +277,16 @@
 
 ### 2.5 自动填写 `mode` 与第四列
 
-阶段 2 初始化时，后端必须直接为每行产出 `landingNodeType`、默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
+阶段 2 初始化时，后端必须直接为每行产出 `landingNodeType`、`server`、默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
+
+### 2.7 按 server 聚合配置（`stage2Snapshot.serverAggregationGroups[]`）
+
+- `serverAggregationGroups[]` 表达“按 server 分组的显式聚合策略组配置”
+- `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
+- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback|url-test`
+- `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`
+- `enabled = true` 时成员数至少为 2；否则生成前校验必须阻断
+- 成员行的落地 `server` 必须与组 `server` 一致；跨 server 入组必须阻断
 
 #### 初始化决策顺序
 
@@ -341,6 +351,7 @@
 - `mode = chain`：第四列写入 `dialer-proxy`
 - `mode = port_forward`：第四列写入端口转发 `server:port`
 - `rows` 数组顺序不参与生成语义；校验与恢复以 `rowId` 为行定位主键，`sourceLandingNodeName` 仅用于连接参数绑定
+- `serverAggregationGroups[]` 只新增聚合策略组产物，不得覆盖任何行的 `mode/targetName` 语义
 
 ### 3.2 生成前校验
 
@@ -351,6 +362,7 @@
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
 - 若多个落地节点同时选择同一个 `forwardRelays[].name` 作为 `port_forward` 目标，必须以 `DUPLICATE_FORWARD_RELAY_TARGET` 阻断生成
 - 若某行选择的 `chain` 目标在当前 `chainTargets[]` 中 `isEmpty = true`，必须以 `EMPTY_CHAIN_TARGET` 阻断生成
+- 若 `serverAggregationGroups[]` 启用组存在非法 `strategy`、未知成员 `rowId`、跨 server 入组、或成员数不足 2，必须阻断生成
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 - `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 

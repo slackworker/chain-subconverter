@@ -1,7 +1,7 @@
 import { getChainTargetGroups } from "./chainTargets";
 
 import type { ChainTargetGroup } from "./chainTargets";
-import type { AggressiveChainGroup, Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
+import type { ServerAggregationGroup, Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
 
 export interface TargetChoice {
 	value: string;
@@ -14,7 +14,7 @@ export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"
 }
 
 export type Stage2SnapshotRows = Stage2Row[];
-export type AggressiveChainStrategy = AggressiveChainGroup["strategy"];
+export type ServerAggregationStrategy = ServerAggregationGroup["strategy"];
 
 const STAGE2_ROW_KEY_PREFIXES = {
 	rowId: "rowId:",
@@ -53,15 +53,22 @@ export function getStage2SourceGroupSize(rows: Stage2SnapshotRows, sourceLanding
 	return rows.filter((row) => getStage2RowSourceLandingName(row) === trimmedSourceLandingNodeName).length;
 }
 
-export function getAggressiveChainStrategy(
-	snapshot: Pick<Stage2Snapshot, "aggressiveChainGroups">,
-	sourceLandingNodeName: string,
+export function getServerAggregationGroup(
+	snapshot: Pick<Stage2Snapshot, "serverAggregationGroups">,
+	server: string,
 ) {
-	const trimmedSourceLandingNodeName = sourceLandingNodeName.trim();
-	if (trimmedSourceLandingNodeName === "") {
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
 		return null;
 	}
-	return snapshot.aggressiveChainGroups.find((group) => group.sourceLandingNodeName.trim() === trimmedSourceLandingNodeName)?.strategy ?? null;
+	return snapshot.serverAggregationGroups.find((group) => group.server.trim() === trimmedServer) ?? null;
+}
+
+export function getServerAggregationStrategy(
+	snapshot: Pick<Stage2Snapshot, "serverAggregationGroups">,
+	server: string,
+) {
+	return getServerAggregationGroup(snapshot, server)?.strategy ?? null;
 }
 
 function getTrimmedStage2RowFieldValue(

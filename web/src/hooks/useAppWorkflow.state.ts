@@ -8,13 +8,13 @@ import type { AppState, ResponseOriginStage, WorkflowLogEntry } from "../lib/sta
 import { appendWorkflowLogEntries } from "../lib/workflow-log";
 import {
 	findStage2RowByKey,
-	getAggressiveChainStrategy,
+	getServerAggregationGroup,
+	getServerAggregationStrategy,
 	getStage2RowSourceLandingName,
-	getStage2SourceGroupSize,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 } from "../lib/stage2";
-import type { AggressiveChainGroup, BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, Message, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 
 function expireGeneratedOutput(current: AppState) {
 	return {
@@ -72,33 +72,36 @@ export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 	}));
 }
 
-function normalizeAggressiveChainGroups(rows: Stage2Row[], aggressiveChainGroups: AggressiveChainGroup[]) {
-	const normalized: AggressiveChainGroup[] = [];
+function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
+	const rowIds = new Set(rows.map((row) => row.rowId?.trim()).filter((rowId): rowId is string => Boolean(rowId)));
+	const normalized: ServerAggregationGroup[] = [];
 	const seen = new Set<string>();
-	for (const group of aggressiveChainGroups) {
-		const sourceLandingNodeName = group.sourceLandingNodeName.trim();
-		if (sourceLandingNodeName === "" || seen.has(sourceLandingNodeName)) {
+	for (const group of serverAggregationGroups) {
+		const server = group.server.trim();
+		if (server === "" || seen.has(server)) {
 			continue;
 		}
 		if (group.strategy !== "fallback" && group.strategy !== "url-test") {
 			continue;
 		}
-		if (getStage2SourceGroupSize(rows, sourceLandingNodeName) < 2) {
-			continue;
-		}
-		seen.add(sourceLandingNodeName);
+		const memberRowIds = Array.from(
+			new Set((group.memberRowIds ?? []).map((rowId) => rowId.trim()).filter((rowId) => rowId !== "" && rowIds.has(rowId))),
+		);
+		seen.add(server);
 		normalized.push({
-			sourceLandingNodeName,
+			server,
+			enabled: group.enabled,
 			strategy: group.strategy,
+			memberRowIds,
 		});
 	}
 	return normalized;
 }
 
-function normalizeStage2SnapshotRowsAndGroups(rows: Stage2Row[], aggressiveChainGroups: AggressiveChainGroup[]) {
+function normalizeStage2SnapshotRowsAndGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
 	return {
 		rows,
-		aggressiveChainGroups: normalizeAggressiveChainGroups(rows, aggressiveChainGroups),
+		serverAggregationGroups: normalizeServerAggregationGroups(rows, serverAggregationGroups),
 	};
 }
 
@@ -252,7 +255,7 @@ export function applyStage2InitState(current: AppState, stage2Init: Stage2Init):
 	return {
 		...current,
 		stage2Init,
-		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init), aggressiveChainGroups: [] },
+		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init), serverAggregationGroups: [] },
 		generatedUrls: null,
 		stage3Expired: false,
 		stage2Stale: false,
@@ -294,7 +297,7 @@ function buildRestorePatch(options: RestoreStateOptions) {
 		stage1Input: options.restoredStage1Input,
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
 			options.stage2Snapshot.rows,
-			options.stage2Snapshot.aggressiveChainGroups ?? [],
+			options.stage2Snapshot.serverAggregationGroups ?? [],
 		),
 		generatedUrls: {
 			longUrl: options.resolvedLongUrl,
@@ -478,7 +481,7 @@ export function updateStage2RowState(
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
 			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
-			current.stage2Snapshot.aggressiveChainGroups,
+			current.stage2Snapshot.serverAggregationGroups,
 		),
 	};
 }
@@ -510,7 +513,7 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string, 
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(nextRows, current.stage2Snapshot.aggressiveChainGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(nextRows, current.stage2Snapshot.serverAggregationGroups),
 	};
 }
 
@@ -530,31 +533,32 @@ export function deleteStage2RowState(current: AppState, landingNodeName: string)
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
 			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
-			current.stage2Snapshot.aggressiveChainGroups,
+			current.stage2Snapshot.serverAggregationGroups,
 		),
 	};
 }
 
-export function updateAggressiveChainGroupState(
+export function updateServerAggregationStrategyState(
 	current: AppState,
-	sourceLandingNodeName: string,
-	strategy: AggressiveChainGroup["strategy"] | null,
+	server: string,
+	strategy: ServerAggregationGroup["strategy"] | null,
 ): AppState {
-	const trimmedSourceLandingNodeName = sourceLandingNodeName.trim();
-	if (trimmedSourceLandingNodeName === "") {
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
 		return current;
 	}
-	const nextAggressiveChainGroups = current.stage2Snapshot.aggressiveChainGroups.filter(
-		(group) => group.sourceLandingNodeName.trim() !== trimmedSourceLandingNodeName,
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
 	);
-	if (strategy !== null) {
-		nextAggressiveChainGroups.push({
-			sourceLandingNodeName: trimmedSourceLandingNodeName,
+	if (strategy !== null && existingGroup !== null) {
+		nextServerAggregationGroups.push({
+			...existingGroup,
 			strategy,
 		});
 	}
-	const currentStrategy = getAggressiveChainStrategy(current.stage2Snapshot, trimmedSourceLandingNodeName);
-	if (currentStrategy === strategy) {
+	const currentStrategy = getServerAggregationStrategy(current.stage2Snapshot, trimmedServer);
+	if (currentStrategy === strategy || (strategy !== null && existingGroup === null)) {
 		return current;
 	}
 
@@ -562,6 +566,51 @@ export function updateAggressiveChainGroupState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextAggressiveChainGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+	};
+}
+
+export function updateServerAggregationGroupState(
+	current: AppState,
+	server: string,
+	enabled: boolean,
+	strategy: ServerAggregationGroup["strategy"],
+	memberRowID: string,
+	checked: boolean,
+): AppState {
+	const trimmedServer = server.trim();
+	const trimmedMemberRowID = memberRowID.trim();
+	if (trimmedServer === "" || trimmedMemberRowID === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	const memberSet = new Set((existingGroup?.memberRowIds ?? []).map((rowID) => rowID.trim()).filter(Boolean));
+	if (checked) {
+		memberSet.add(trimmedMemberRowID);
+	} else {
+		memberSet.delete(trimmedMemberRowID);
+	}
+	const nextGroup: ServerAggregationGroup = {
+		server: trimmedServer,
+		enabled,
+		strategy,
+		memberRowIds: Array.from(memberSet),
+	};
+	if (!enabled && nextGroup.memberRowIds.length === 0) {
+		if (existingGroup === null) {
+			return current;
+		}
+	} else {
+		nextServerAggregationGroups.push(nextGroup);
+	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
 	};
 }

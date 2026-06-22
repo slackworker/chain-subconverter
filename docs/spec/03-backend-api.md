@@ -61,6 +61,14 @@
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
+    ],
+    "serverAggregationGroups": [
+      {
+        "server": "landing.example.com",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": ["HK 01", "HK 01 2"]
+      }
     ]
   }
 }
@@ -76,6 +84,9 @@
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
+- `serverAggregationGroups[]` 为按 `server` 分组的显式聚合配置；仅当 `enabled = true` 时参与 YAML 聚合组产物渲染
+- `serverAggregationGroups[].strategy` 仅允许 `fallback` 或 `url-test`
+- `serverAggregationGroups[].memberRowIds[]` 必须引用当前 `rows[]` 内存在的 `rowId`
 
 ### 3. 阶段 2 初始化数据
 
@@ -97,6 +108,7 @@
         "proxyName": "HK 01",
         "landingNodeName": "HK 01",
         "landingNodeType": "SS",
+        "server": "landing.example.com",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
@@ -106,6 +118,7 @@
         "proxyName": "Reality 01",
         "landingNodeName": "Reality 01",
         "landingNodeType": "Reality",
+        "server": "edge.reality.example",
         "modeWarnings": {
           "chain": {
             "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
@@ -131,6 +144,7 @@
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
 - `rows[].landingNodeType`：落地节点类型展示值
+- `rows[].server`：落地节点 server 展示值（用于按 server 分组与聚合配置）
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
 - `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案

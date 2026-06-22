@@ -14,14 +14,14 @@ const (
 	aggressiveChainGroupMaxFailedTimes = "1"
 )
 
-type managedAggressiveChainGroup struct {
+type managedServerAggregationGroup struct {
 	Name    string
 	Type    string
 	Members []string
 }
 
 func appendAggressiveChainGroupsToCompleteConfigYAML(fullYAML string, snapshot Stage2Snapshot) (string, error) {
-	managedGroups, err := buildManagedAggressiveChainGroups(fullYAML, snapshot)
+	managedGroups, err := buildManagedServerAggregationGroups(fullYAML, snapshot)
 	if err != nil {
 		return "", err
 	}
@@ -44,7 +44,7 @@ func appendAggressiveChainGroupsToCompleteConfigYAML(fullYAML string, snapshot S
 	}
 
 	lines, preserveTrailingNewline := splitConfigLines(fullYAML)
-	groupLines := renderManagedAggressiveChainGroupLines(managedGroups)
+	groupLines := renderManagedServerAggregationGroupLines(managedGroups)
 	if insertIndex < 0 || insertIndex > len(lines) {
 		return "", fmt.Errorf("proxy-groups insertion line %d is out of range", insertIndex)
 	}
@@ -61,8 +61,8 @@ func appendAggressiveChainGroupsToCompleteConfigYAML(fullYAML string, snapshot S
 	return result, nil
 }
 
-func buildManagedAggressiveChainGroups(fullYAML string, snapshot Stage2Snapshot) ([]managedAggressiveChainGroup, error) {
-	if len(snapshot.AggressiveChainGroups) == 0 {
+func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapshot) ([]managedServerAggregationGroup, error) {
+	if len(snapshot.ServerAggregationGroups) == 0 {
 		return nil, nil
 	}
 
@@ -79,7 +79,7 @@ func buildManagedAggressiveChainGroups(fullYAML string, snapshot Stage2Snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("parse complete config proxy-groups: %w", err)
 	}
-	usedNames := make(map[string]struct{}, len(proxyNames)+len(proxyGroups)+len(snapshot.AggressiveChainGroups))
+	usedNames := make(map[string]struct{}, len(proxyNames)+len(proxyGroups)+len(snapshot.ServerAggregationGroups))
 	for name := range proxyNames {
 		usedNames[name] = struct{}{}
 	}
@@ -87,26 +87,31 @@ func buildManagedAggressiveChainGroups(fullYAML string, snapshot Stage2Snapshot)
 		usedNames[name] = struct{}{}
 	}
 
-	rowsBySourceLanding := make(map[string][]Stage2Row, len(snapshot.Rows))
+	rowsByID := make(map[string]Stage2Row, len(snapshot.Rows))
 	for _, row := range snapshot.Rows {
-		sourceLandingName := row.sourceLandingNodeNameOrFallback()
-		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
+		rowsByID[row.rowIDOrFallback()] = row
 	}
 
-	managedGroups := make([]managedAggressiveChainGroup, 0, len(snapshot.AggressiveChainGroups))
-	for _, group := range snapshot.AggressiveChainGroups {
-		rows := rowsBySourceLanding[group.SourceLandingNodeName]
-		members := make([]string, 0, len(rows))
-		for _, row := range rows {
+	managedGroups := make([]managedServerAggregationGroup, 0, len(snapshot.ServerAggregationGroups))
+	for _, group := range snapshot.ServerAggregationGroups {
+		if !group.Enabled {
+			continue
+		}
+		members := make([]string, 0, len(group.MemberRowIDs))
+		for _, memberRowID := range group.MemberRowIDs {
+			row, exists := rowsByID[strings.TrimSpace(memberRowID)]
+			if !exists {
+				return nil, fmt.Errorf("server aggregation group member rowId %q is missing from stage2Snapshot.rows", memberRowID)
+			}
 			memberName := row.proxyNameOrFallback()
 			if _, exists := proxyNames[memberName]; !exists {
-				return nil, fmt.Errorf("aggressive chain group member proxy %q is missing from complete config", memberName)
+				return nil, fmt.Errorf("server aggregation group member proxy %q is missing from complete config", memberName)
 			}
 			members = append(members, memberName)
 		}
-		managedName := nextManagedAggressiveChainGroupName(group.SourceLandingNodeName, usedNames)
+		managedName := nextManagedServerAggregationGroupName(group.Server, usedNames)
 		usedNames[managedName] = struct{}{}
-		managedGroups = append(managedGroups, managedAggressiveChainGroup{
+		managedGroups = append(managedGroups, managedServerAggregationGroup{
 			Name:    managedName,
 			Type:    group.Strategy,
 			Members: members,
@@ -116,12 +121,12 @@ func buildManagedAggressiveChainGroups(fullYAML string, snapshot Stage2Snapshot)
 	return managedGroups, nil
 }
 
-func nextManagedAggressiveChainGroupName(sourceLandingName string, usedNames map[string]struct{}) string {
-	baseName := strings.TrimSpace(sourceLandingName)
+func nextManagedServerAggregationGroupName(server string, usedNames map[string]struct{}) string {
+	baseName := strings.TrimSpace(server)
 	if baseName == "" {
-		baseName = "Landing"
+		baseName = "server"
 	}
-	baseName += " Aggressive"
+	baseName = "srv:" + baseName
 	if _, exists := usedNames[baseName]; !exists {
 		return baseName
 	}
@@ -134,7 +139,7 @@ func nextManagedAggressiveChainGroupName(sourceLandingName string, usedNames map
 	}
 }
 
-func renderManagedAggressiveChainGroupLines(groups []managedAggressiveChainGroup) []string {
+func renderManagedServerAggregationGroupLines(groups []managedServerAggregationGroup) []string {
 	lines := make([]string, 0, len(groups)*8)
 	for _, group := range groups {
 		lines = append(lines,
