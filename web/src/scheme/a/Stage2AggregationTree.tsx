@@ -42,10 +42,19 @@ interface Stage2AggregationTreeProps {
 	setSupplementOpen: (rowKey: string, open: boolean) => void;
 }
 
-function getServerGroupEditableName(row: Stage2Row, displayServer: string): string {
+function getServerGroupDisplayName(displayServer: string, sourceFlagEmoji: string | null): string {
+	const serverName = formatServerGroupLabel(displayServer);
+	return sourceFlagEmoji ? `${sourceFlagEmoji} ${serverName}` : serverName;
+}
+
+function getServerGroupEditableName(
+	row: Stage2Row,
+	displayServer: string,
+	sourceFlagEmoji: string | null,
+): string {
 	const proxyName = row.proxyName?.trim() ?? "";
 	const sourceLandingName = (row.sourceLandingNodeName?.trim() ?? "") || row.landingNodeName.trim();
-	const serverName = formatServerGroupLabel(displayServer);
+	const serverName = getServerGroupDisplayName(displayServer, sourceFlagEmoji);
 	if (proxyName === "" || proxyName === sourceLandingName || /^srv\s*[:：]/i.test(proxyName)) {
 		return serverName;
 	}
@@ -98,7 +107,7 @@ export function Stage2AggregationTree({
 		const rows = treeNodes.map((node) => {
 			if (node.kind === "server") {
 				return {
-					nodeLabel: formatServerGroupLabel(node.displayServer),
+					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji),
 					aggregationLabel: copy.aggregationEnable,
 					landingNodeType: "--",
 					modeOptionLabels: ["fallback", "url-test"],
@@ -264,7 +273,7 @@ function Stage2AggregationTreeRow({
 						row={anchorRow}
 						rowKey={node.anchorRowKey}
 						editable={editable}
-						nameValueOverride={getServerGroupEditableName(anchorRow, node.displayServer)}
+						nameValueOverride={getServerGroupEditableName(anchorRow, node.displayServer, node.sourceFlagEmoji)}
 						rowErrors={[]}
 						copy={copy}
 						wrapperClassName={rowInlineClassName}

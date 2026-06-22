@@ -1808,6 +1808,10 @@
 .a-stage2-row-icon-actions--placeholder {
 	visibility: hidden;
 	pointer-events: none;
+	/* 与 .a-stage2-row-icon-actions--toolbar .a-btn--icon 同宽，使铅笔与下方节点行右缘对齐 */
+	flex: 0 0 1.56rem;
+	width: 1.56rem;
+	min-height: 1.46rem;
 }
 
 .a-table--stage2-adaptive {

@@ -186,6 +186,94 @@ describe("buildStage2AggregationTree", () => {
 		const nodes = buildStage2AggregationTree(rows, buildMetaLookup(specs));
 		expect(nodes[0]).toMatchObject({ kind: "server", server: "source:solo", displayServer: "solo" });
 	});
+
+	it("captures shared source flag emoji for each server group", () => {
+		const specs: RowSpec[] = [
+			{
+				row: {
+					rowId: "🇭🇰 A",
+					landingNodeName: "🇭🇰 A",
+					sourceLandingNodeName: "🇭🇰 A",
+					mode: "none",
+					targetName: null,
+				},
+				server: "shared.example.com",
+			},
+			{
+				row: {
+					rowId: "🇭🇰 B",
+					landingNodeName: "🇭🇰 B",
+					sourceLandingNodeName: "🇭🇰 B",
+					mode: "none",
+					targetName: null,
+				},
+				server: "shared.example.com",
+			},
+			{
+				row: {
+					rowId: "No Emoji",
+					landingNodeName: "No Emoji",
+					sourceLandingNodeName: "No Emoji",
+					mode: "none",
+					targetName: null,
+				},
+				server: "plain.example.com",
+			},
+		];
+
+		const nodes = buildStage2AggregationTree(
+			specs.map((spec) => spec.row),
+			buildMetaLookup(specs),
+		);
+		const serverNodes = nodes.filter((node) => node.kind === "server");
+		expect(serverNodes).toMatchObject([
+			{
+				kind: "server",
+				server: "plain.example.com",
+				sourceFlagEmoji: null,
+			},
+			{
+				kind: "server",
+				server: "shared.example.com",
+				sourceFlagEmoji: "🇭🇰",
+			},
+		]);
+	});
+
+	it("drops source flag emoji when source rows have different flags", () => {
+		const specs: RowSpec[] = [
+			{
+				row: {
+					rowId: "🇭🇰 A",
+					landingNodeName: "🇭🇰 A",
+					sourceLandingNodeName: "🇭🇰 A",
+					mode: "none",
+					targetName: null,
+				},
+				server: "mixed.example.com",
+			},
+			{
+				row: {
+					rowId: "🇯🇵 B",
+					landingNodeName: "🇯🇵 B",
+					sourceLandingNodeName: "🇯🇵 B",
+					mode: "none",
+					targetName: null,
+				},
+				server: "mixed.example.com",
+			},
+		];
+
+		const nodes = buildStage2AggregationTree(
+			specs.map((spec) => spec.row),
+			buildMetaLookup(specs),
+		);
+		const mixedServerNode = nodes.find((node) => node.kind === "server" && node.server === "mixed.example.com");
+		expect(mixedServerNode).toMatchObject({
+			kind: "server",
+			sourceFlagEmoji: null,
+		});
+	});
 });
 
 describe("formatServerGroupLabel", () => {

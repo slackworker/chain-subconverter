@@ -29,6 +29,7 @@ export type Stage2TreeServerNode = {
 	server: string;
 	displayServer: string;
 	anchorRowKey: string;
+	sourceFlagEmoji: string | null;
 };
 
 export type Stage2TreeRowNode = {
@@ -130,6 +131,34 @@ function orderSourceGroupRows(rows: Stage2Row[]): Stage2Row[] {
 	return [orderedSource, ...orderedDerived];
 }
 
+function getLeadingFlagEmoji(name: string): string | null {
+	const match = name.trim().match(/^(\p{Regional_Indicator}{2})(?:\s|$)/u);
+	return match?.[1] ?? null;
+}
+
+function getServerGroupSourceFlagEmoji(rows: Stage2Row[]): string | null {
+	const sourceRows = rows.filter((row) => isStage2SourceRow(row));
+	if (sourceRows.length === 0) {
+		return null;
+	}
+
+	let emoji: string | null = null;
+	for (const row of sourceRows) {
+		const currentEmoji = getLeadingFlagEmoji(getStage2RowDisplayName(row));
+		if (!currentEmoji) {
+			return null;
+		}
+		if (emoji === null) {
+			emoji = currentEmoji;
+			continue;
+		}
+		if (emoji !== currentEmoji) {
+			return null;
+		}
+	}
+	return emoji;
+}
+
 export function buildStage2AggregationTree(
 	rows: Stage2Row[],
 	getRowMeta: Stage2RowMetaLookup,
@@ -164,6 +193,7 @@ export function buildStage2AggregationTree(
 			server: serverKey,
 			displayServer,
 			anchorRowKey,
+			sourceFlagEmoji: getServerGroupSourceFlagEmoji(serverRows),
 		});
 
 		const sourceGroups = [...partitionSourceGroups(serverRows).entries()].sort(([left], [right]) =>
