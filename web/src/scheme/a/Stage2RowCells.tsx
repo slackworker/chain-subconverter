@@ -40,6 +40,7 @@ interface Stage2RowNameCellProps {
 	row: Stage2Row;
 	rowKey: string;
 	editable: boolean;
+	nameValueOverride?: string;
 	rowErrors: { code: string; message: string }[];
 	copy: Stage2Copy;
 	glyphParts?: Stage2TreeGlyphParts;
@@ -180,6 +181,7 @@ export function Stage2RowNameCell({
 	row,
 	rowKey,
 	editable,
+	nameValueOverride,
 	rowErrors,
 	copy,
 	glyphParts,
@@ -214,7 +216,7 @@ export function Stage2RowNameCell({
 						<input
 							id={rowNameInputId}
 							className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
-							value={getStage2RowEditableName(row)}
+							value={nameValueOverride ?? getStage2RowEditableName(row)}
 							disabled={!editable}
 							aria-label={copy.proxyNameLabel}
 							onChange={(event) => onProxyNameChange(rowKey, event.target.value)}

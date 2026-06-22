@@ -211,11 +211,8 @@ export function buildStage2AggregationTree(
 }
 
 export function formatServerGroupLabel(server: string): string {
-	const trimmed = server.trim();
-	if (trimmed === "") {
-		return "srv: --";
-	}
-	return `srv: ${trimmed}`;
+	void server;
+	return "server";
 }
 
 function getServerBlockBounds(

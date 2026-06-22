@@ -189,9 +189,9 @@ describe("buildStage2AggregationTree", () => {
 });
 
 describe("formatServerGroupLabel", () => {
-	it("prefixes server with srv:", () => {
-		expect(formatServerGroupLabel("a.b.c")).toBe("srv: a.b.c");
-		expect(formatServerGroupLabel("")).toBe("srv: --");
+	it("uses server as the default group name", () => {
+		expect(formatServerGroupLabel("a.b.c")).toBe("server");
+		expect(formatServerGroupLabel("")).toBe("server");
 	});
 });
 

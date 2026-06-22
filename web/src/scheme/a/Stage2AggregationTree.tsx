@@ -1,6 +1,7 @@
 import { useMemo, type RefObject } from "react";
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
+import type { Stage2Row } from "../../types/api";
 import {
 	getStage2DisplayModeOptions,
 	getStage2RowDisplayName,
@@ -39,6 +40,15 @@ interface Stage2AggregationTreeProps {
 	supplementOpenByRow: Record<string, boolean>;
 	setPrimaryOpen: (rowKey: string, open: boolean) => void;
 	setSupplementOpen: (rowKey: string, open: boolean) => void;
+}
+
+function getServerGroupEditableName(row: Stage2Row): string {
+	const proxyName = row.proxyName?.trim() ?? "";
+	const sourceLandingName = (row.sourceLandingNodeName?.trim() ?? "") || row.landingNodeName.trim();
+	if (proxyName === "" || proxyName === sourceLandingName || /^srv\s*:/i.test(proxyName)) {
+		return "server";
+	}
+	return row.proxyName ?? "server";
 }
 
 export function Stage2AggregationTree({
@@ -253,6 +263,7 @@ function Stage2AggregationTreeRow({
 						row={anchorRow}
 						rowKey={node.anchorRowKey}
 						editable={editable}
+						nameValueOverride={getServerGroupEditableName(anchorRow)}
 						rowErrors={[]}
 						copy={copy}
 						wrapperClassName={rowInlineClassName}
@@ -262,7 +273,6 @@ function Stage2AggregationTreeRow({
 						onProxyNameChange={handleProxyNameChange}
 						onCloneRow={handleCloneStage2Row}
 						onDeleteRow={handleDeleteStage2Row}
-						readOnlyLabel={formatServerGroupLabel(node.displayServer)}
 						toolbarPlaceholder={true}
 					/>
 				</td>
