@@ -70,10 +70,12 @@ func restoreConflictMessage(err error) string {
 		return "恢复的配置引用了当前模板中不存在的目标策略组，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	case "LANDING_NODE_NOT_FOUND":
 		return "恢复的配置引用了当前环境中已不存在的落地节点，页面已进入只读冲突态。请重新执行转换并自动填充。"
-	case "AGGRESSIVE_CHAIN_GROUP_NOT_FOUND":
-		return "恢复的配置引用了当前环境中已不存在的同源故障转移组来源，页面已进入只读冲突态。请重新执行转换并自动填充。"
-	case "AGGRESSIVE_CHAIN_GROUP_TOO_SMALL":
-		return "恢复的配置引用的同源故障转移组已不满足最小副本数量，页面已进入只读冲突态。请重新执行转换并自动填充。"
+	case "SERVER_AGGREGATION_MEMBER_NOT_FOUND":
+		return "恢复的配置引用了当前环境中不存在的聚合成员行，页面已进入只读冲突态。请重新执行转换并自动填充。"
+	case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
+		return "恢复的配置引用的聚合组已不满足最小成员数量，页面已进入只读冲突态。请重新执行转换并自动填充。"
+	case "SERVER_AGGREGATION_SERVER_MISMATCH":
+		return "恢复的配置存在跨 server 聚合成员不一致，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	case "EMPTY_CHAIN_TARGET":
 		return "恢复的配置引用了当前不可用的链式目标，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	case "STAGE2_ROWSET_MISMATCH":
