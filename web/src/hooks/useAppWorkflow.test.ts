@@ -550,6 +550,64 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("blocks generate when an enabled aggregation group has only one member", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleServerAggregationChange(rowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+		});
+
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		expect(mockPostGenerate).not.toHaveBeenCalled();
+		expect(workflow.current.responseOriginStage).toBe("stage2");
+		expect(workflow.current.state.blockingErrors).toEqual([
+			expect.objectContaining({
+				code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+				scope: "stage2_row",
+			}),
+		]);
+		expect(workflow.current.state.blockingErrors[0]?.message).toContain("至少需要入组 2 个成员");
+		expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual(workflow.current.state.blockingErrors);
+		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-2)).toEqual([
+			"ACTION_GENERATE",
+			"GENERATE_FAILED",
+		]);
+	});
+
 	it("surfaces Stage 2 blocking errors when generate fails", async () => {
 		const workflow = renderWorkflow();
 		await initializeStage2ReadyState(workflow);

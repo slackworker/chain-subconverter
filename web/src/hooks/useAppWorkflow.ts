@@ -191,6 +191,41 @@ function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2S
 	return [];
 }
 
+function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialAppState.stage2Snapshot): BlockingError[] {
+	const rowsByID = new Map(
+		stage2Snapshot.rows.map((row) => [(row.rowId ?? "").trim(), row] as const).filter(([rowID]) => rowID !== ""),
+	);
+	const errors: BlockingError[] = [];
+
+	for (const group of stage2Snapshot.serverAggregationGroups) {
+		if (!group.enabled) {
+			continue;
+		}
+		const server = group.server.trim();
+		const memberRowIDs = Array.from(new Set((group.memberRowIds ?? []).map((rowID) => rowID.trim()).filter(Boolean)));
+		if (memberRowIDs.length >= 2) {
+			continue;
+		}
+
+		const singleMember = memberRowIDs[0];
+		const singleMemberRow = singleMember ? rowsByID.get(singleMember) : undefined;
+		const serverLabel = server === "" ? "--" : server;
+		errors.push({
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+			message: `聚合/策略组（${serverLabel}）至少需要入组 2 个成员，当前为 ${memberRowIDs.length} 个。`,
+			scope: "stage2_row",
+			context: {
+				server,
+				rowId: singleMember ?? "",
+				landingNodeName: singleMemberRow?.landingNodeName ?? "",
+				sourceLandingNodeName: singleMemberRow?.sourceLandingNodeName ?? "",
+			},
+		});
+	}
+
+	return errors;
+}
+
 function sameStringArray(current: string[] | null | undefined, next: string[] | null | undefined) {
 	if (current === next) {
 		return true;
@@ -710,6 +745,20 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
 		const preferShortUrl = state.preferShortUrl;
+		const precheckBlockingErrors = collectGeneratePrecheckBlockingErrors(stage2Snapshot);
+		if (precheckBlockingErrors.length > 0) {
+			setState((current) => completeWorkflowRequestState(
+				current,
+				"stage2",
+				[],
+				precheckBlockingErrors,
+				[
+					workflowActionSeparator("ACTION_GENERATE"),
+					frontendWorkflowFailureEvent("GENERATE_FAILED", summarizeBlockingErrors(precheckBlockingErrors, "生成链接前校验未通过。")),
+				],
+			));
+			return;
+		}
 
 		setIsGenerating(true);
 		setState((current) => startWorkflowRequestState(current, "stage2", workflowActionSeparator("ACTION_GENERATE")));
