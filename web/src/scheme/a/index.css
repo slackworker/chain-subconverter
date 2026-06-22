@@ -1579,11 +1579,9 @@
 }
 
 .a-stage2-row-inline.is-derived::after {
-	/* 副本行：小实心灰点，与策略组空心环、源节点实心 accent 区分 */
-	width: 0.5rem;
-	height: 0.5rem;
+	/* 副本行：与原节点同尺寸的单色实心灰点 */
 	background: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
-	border: none;
+	border-color: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
 	box-shadow: none;
 }
 

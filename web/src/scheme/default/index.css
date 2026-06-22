@@ -1564,9 +1564,11 @@
 	display: none;
 }
 
-.a-stage2-row-inline.is-solo.is-derived::after {
-	background: var(--color-muted-fill);
-	border-color: color-mix(in srgb, var(--color-muted) 32%, var(--color-line));
+.a-stage2-row-inline.is-derived::after {
+	/* 副本行：与原节点同尺寸的单色实心灰点 */
+	background: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
+	border-color: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
+	box-shadow: none;
 }
 
 .a-stage2-row-inline.is-group-start::before {
