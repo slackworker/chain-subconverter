@@ -83,6 +83,7 @@ describe("useAppWorkflow.state", () => {
 			rows: [{
 				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
+				server: "hk.example.com",
 				mode: "none" as const,
 				targetName: null,
 			}],
@@ -195,6 +196,7 @@ describe("useAppWorkflow.state", () => {
 			rows: [{
 				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
+				server: "hk.example.com",
 				mode: "chain" as const,
 				targetName: "HK Relay Group",
 			}],
