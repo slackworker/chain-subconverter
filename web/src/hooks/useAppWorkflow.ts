@@ -23,6 +23,7 @@ import {
 	getForwardRelayChoices,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
+	isStage2SourceRow,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -728,6 +729,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			}
 			return getServerAggregationGroupForRow(rowKey)?.server === targetServer;
 		});
+		const sourceMemberCount = memberRows.filter((row) => isStage2SourceRow(row)).length;
+		const shouldAutoSelectByMode = sourceMemberCount >= 2;
 
 		for (const row of memberRows) {
 			const rowKey = getStage2RowKey(row);
@@ -735,7 +738,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				continue;
 			}
 			const currentChecked = getServerAggregationGroupForRow(rowKey)?.memberChecked ?? false;
-			const defaultChecked = row.mode !== "none";
+			const defaultChecked = shouldAutoSelectByMode && row.mode !== "none";
 			handleServerAggregationChange(rowKey, {
 				enabled: true,
 				strategy: payload.strategy,

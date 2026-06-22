@@ -971,7 +971,7 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
-	it("enables server aggregation with default members and excludes none rows", async () => {
+	it("does not auto-select defaults when a server group has only one source member", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -1040,12 +1040,12 @@ describe("useAppWorkflow", () => {
 				server: "hk.example.com",
 				enabled: true,
 				strategy: "fallback",
-				memberRowIds: ["hk-1", "hk-3"],
+				memberRowIds: [],
 			},
 		]);
-		expect(workflow.current.getServerAggregationGroup(sourceRowKey)?.memberChecked).toBe(true);
+		expect(workflow.current.getServerAggregationGroup(sourceRowKey)?.memberChecked).toBe(false);
 		expect(workflow.current.getServerAggregationGroup(noneRowKey)?.memberChecked).toBe(false);
-		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(true);
+		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(false);
 	});
 
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {
