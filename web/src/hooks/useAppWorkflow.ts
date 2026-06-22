@@ -111,8 +111,8 @@ export interface AppWorkflowViewModel {
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
 	getChainTargetChoiceGroups: () => ChainTargetChoiceGroup[];
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
-	getAggressiveChainStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
-	canConfigureAggressiveChainGroup: (landingNodeName: string) => boolean;
+	getServerAggregationStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
+	canConfigureServerAggregationGroup: (landingNodeName: string) => boolean;
 	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean } | null;
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
@@ -122,7 +122,7 @@ export interface AppWorkflowViewModel {
 	canDeleteStage2Row: (landingNodeName: string) => boolean;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
-	handleAggressiveChainStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
+	handleServerAggregationStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
 	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean }) => void;
 	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test" }) => void;
 	handleGenerate: () => Promise<void>;
@@ -608,8 +608,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		};
 	}
 
-	function getAggressiveChainStrategyForRow(landingNodeName: string) {
-		if (!canConfigureAggressiveChainGroup(landingNodeName)) {
+	function getServerAggregationStrategyForRow(landingNodeName: string) {
+		if (!canConfigureServerAggregationGroup(landingNodeName)) {
 			return null;
 		}
 		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
@@ -622,7 +622,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		return getServerAggregationStrategy(state.stage2Snapshot, server);
 	}
 
-	function canConfigureAggressiveChainGroup(landingNodeName: string) {
+	function canConfigureServerAggregationGroup(landingNodeName: string) {
 		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
 		if (matchedRow === null) {
 			return false;
@@ -646,7 +646,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		return count > 1;
 	}
 
-	function handleAggressiveChainStrategyChange(landingNodeName: string, strategy: "fallback" | "url-test" | null) {
+	function handleServerAggregationStrategyChange(landingNodeName: string, strategy: "fallback" | "url-test" | null) {
 		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
 		if (matchedRow === null) {
 			return;
@@ -921,8 +921,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getStageMessages,
 		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Init),
 		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),
-		getAggressiveChainStrategy: getAggressiveChainStrategyForRow,
-		canConfigureAggressiveChainGroup,
+		getServerAggregationStrategy: getServerAggregationStrategyForRow,
+		canConfigureServerAggregationGroup,
 		getServerAggregationGroup: getServerAggregationGroupForRow,
 		handleStage1Convert,
 		handleRestore,
@@ -932,7 +932,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
-		handleAggressiveChainStrategyChange,
+		handleServerAggregationStrategyChange,
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
 		handleGenerate,

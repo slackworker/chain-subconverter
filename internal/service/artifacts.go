@@ -120,7 +120,7 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	if err != nil {
 		return "", err
 	}
-	rendered, err = appendAggressiveChainGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
+	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
 	if err != nil {
 		return "", err
 	}

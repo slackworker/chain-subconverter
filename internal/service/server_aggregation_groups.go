@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	aggressiveChainGroupURL            = "https://cp.cloudflare.com/generate_204"
-	aggressiveChainGroupInterval       = "60"
-	aggressiveChainGroupTimeout        = "1000"
-	aggressiveChainGroupMaxFailedTimes = "1"
+	serverAggregationGroupURL            = "https://cp.cloudflare.com/generate_204"
+	serverAggregationGroupInterval       = "60"
+	serverAggregationGroupTimeout        = "1000"
+	serverAggregationGroupMaxFailedTimes = "1"
 )
 
 type managedServerAggregationGroup struct {
@@ -20,7 +20,7 @@ type managedServerAggregationGroup struct {
 	Members []string
 }
 
-func appendAggressiveChainGroupsToCompleteConfigYAML(fullYAML string, snapshot Stage2Snapshot) (string, error) {
+func appendServerAggregationGroupsToCompleteConfigYAML(fullYAML string, snapshot Stage2Snapshot) (string, error) {
 	managedGroups, err := buildManagedServerAggregationGroups(fullYAML, snapshot)
 	if err != nil {
 		return "", err
@@ -145,11 +145,11 @@ func renderManagedServerAggregationGroupLines(groups []managedServerAggregationG
 		lines = append(lines,
 			"  - name: "+group.Name,
 			"    type: "+group.Type,
-			"    url: "+aggressiveChainGroupURL,
-			"    interval: "+aggressiveChainGroupInterval,
-			"    timeout: "+aggressiveChainGroupTimeout,
+			"    url: "+serverAggregationGroupURL,
+			"    interval: "+serverAggregationGroupInterval,
+			"    timeout: "+serverAggregationGroupTimeout,
 			"    lazy: false",
-			"    max-failed-times: "+aggressiveChainGroupMaxFailedTimes,
+			"    max-failed-times: "+serverAggregationGroupMaxFailedTimes,
 			"    proxies:",
 		)
 		for _, member := range group.Members {

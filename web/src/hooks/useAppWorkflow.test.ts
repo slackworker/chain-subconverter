@@ -854,7 +854,7 @@ describe("useAppWorkflow", () => {
 		});
 	});
 
-	it("configures aggressive chain strategy by source group across source and derived rows", async () => {
+	it("configures server aggregation strategy by source group across source and derived rows", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -887,8 +887,8 @@ describe("useAppWorkflow", () => {
 		await runWorkflowAction(() => workflow.current.handleStage1Convert());
 		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
 
-		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(false);
-		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBeNull();
+		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(false);
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBeNull();
 
 		act(() => {
 			workflow.current.handleCloneStage2Row(sourceRowKey);
@@ -896,11 +896,11 @@ describe("useAppWorkflow", () => {
 
 		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
 
-		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(true);
-		expect(workflow.current.canConfigureAggressiveChainGroup(derivedRowKey)).toBe(true);
+		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(true);
+		expect(workflow.current.canConfigureServerAggregationGroup(derivedRowKey)).toBe(true);
 
 		act(() => {
-			workflow.current.handleAggressiveChainStrategyChange(sourceRowKey, "fallback");
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "fallback");
 		});
 
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toHaveLength(1);
@@ -910,11 +910,11 @@ describe("useAppWorkflow", () => {
 			strategy: "fallback",
 		});
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toHaveLength(2);
-		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBe("fallback");
-		expect(workflow.current.getAggressiveChainStrategy(derivedRowKey)).toBe("fallback");
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("fallback");
+		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("fallback");
 	});
 
-	it("clears aggressive chain strategy when the source group shrinks back to one row", async () => {
+	it("clears server aggregation strategy when the source group shrinks back to one row", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -954,18 +954,18 @@ describe("useAppWorkflow", () => {
 		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
 
 		act(() => {
-			workflow.current.handleAggressiveChainStrategyChange(derivedRowKey, "url-test");
+			workflow.current.handleServerAggregationStrategyChange(derivedRowKey, "url-test");
 		});
 
-		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBe("url-test");
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("url-test");
 
 		act(() => {
 			workflow.current.handleDeleteStage2Row(derivedRowKey);
 		});
 
 		expect(workflow.current.stage2Rows).toHaveLength(1);
-		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(false);
-		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBeNull();
+		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(false);
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBeNull();
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
 			{ server: "source:landing-hk", enabled: true, strategy: "url-test", memberRowIds: ["landing-hk"] },
 		]);

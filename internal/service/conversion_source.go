@@ -125,7 +125,7 @@ func renderCompleteConfigViaManagedPass3(
 	if err != nil {
 		return "", err
 	}
-	return appendAggressiveChainGroupsToCompleteConfigYAML(renderedConfig, stage2Snapshot)
+	return appendServerAggregationGroupsToCompleteConfigYAML(renderedConfig, stage2Snapshot)
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {

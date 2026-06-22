@@ -260,7 +260,7 @@ describe("useAppWorkflow.state", () => {
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }]);
 	});
 
-	it("clears aggressive chain groups when deleting back to a single row", () => {
+it("clears server aggregation groups when deleting back to a single row", () => {
 		const next = deleteStage2RowState({
 			...initialAppState,
 			stage2Snapshot: {
