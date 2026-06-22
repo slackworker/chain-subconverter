@@ -550,7 +550,7 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
-	it("blocks generate when an enabled aggregation group has only one member", async () => {
+it("auto-disables undersized aggregation group before generate", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -580,6 +580,8 @@ describe("useAppWorkflow", () => {
 
 		await updateStage1Input(workflow, stage1Input);
 		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+	const generateResponse = buildGenerateResponse("https://public.example.com/sub?data=single-member");
+	mockPostGenerate.mockResolvedValueOnce(generateResponse);
 
 		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
 		act(() => {
@@ -592,23 +594,21 @@ describe("useAppWorkflow", () => {
 
 		await runWorkflowAction(() => workflow.current.handleGenerate());
 
-		expect(mockPostGenerate).not.toHaveBeenCalled();
+	expect(mockPostGenerate).toHaveBeenCalledTimes(1);
+	expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
+		stage2Snapshot: expect.objectContaining({
+			serverAggregationGroups: [
+				{ server: "hk.example.com", enabled: false, strategy: "fallback", memberRowIds: ["landing-hk"] },
+			],
+		}),
+	}));
 		expect(workflow.current.responseOriginStage).toBe("stage2");
-		expect(workflow.current.state.blockingErrors).toEqual([
-			expect.objectContaining({
-				code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
-				scope: "stage2_row",
-			}),
-		]);
-		expect(workflow.current.state.blockingErrors[0]?.message).toContain("至少需要入组 2 个成员");
-		expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual(workflow.current.state.blockingErrors);
-		expect(workflow.current.workflowLog.map((entry) => entry.code).slice(-2)).toEqual([
-			"ACTION_GENERATE",
-			"GENERATE_FAILED",
-		]);
+	expect(workflow.current.state.blockingErrors).toEqual([]);
+	expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual([]);
+		expect(workflow.current.workflowLog.at(-1)?.code).toBe("ACTION_GENERATE");
 	});
 
-	it("keeps stage2 aggregation blocking messages in server display order", async () => {
+it("auto-disables undersized aggregation groups before generate", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -650,6 +650,8 @@ describe("useAppWorkflow", () => {
 
 		await updateStage1Input(workflow, stage1Input);
 		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+	const generateResponse = buildGenerateResponse("https://public.example.com/sub?data=ordered-disabled-groups");
+	mockPostGenerate.mockResolvedValueOnce(generateResponse);
 
 		const rowKey11 = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
 		const rowKey10 = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
@@ -669,11 +671,16 @@ describe("useAppWorkflow", () => {
 		await runWorkflowAction(() => workflow.current.handleGenerate());
 
 		const stage2Errors = workflow.current.getPrimaryBlockingErrorsForStage("stage2");
-		expect(stage2Errors).toHaveLength(2);
-		expect(stage2Errors.map((error) => error.message)).toEqual([
-			"聚合/策略组（198.51.100.10）至少需要入组 2 个成员，当前为 1 个。",
-			"聚合/策略组（198.51.100.11）至少需要入组 2 个成员，当前为 1 个。",
-		]);
+	expect(stage2Errors).toHaveLength(0);
+	expect(mockPostGenerate).toHaveBeenCalledTimes(1);
+	expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
+		stage2Snapshot: expect.objectContaining({
+			serverAggregationGroups: expect.arrayContaining([
+				{ server: "198.51.100.10", enabled: false, strategy: "fallback", memberRowIds: ["landing-10"] },
+				{ server: "198.51.100.11", enabled: false, strategy: "fallback", memberRowIds: ["landing-11"] },
+			]),
+		}),
+	}));
 	});
 
 	it("surfaces Stage 2 blocking errors when generate fails", async () => {
@@ -967,7 +974,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(false);
 		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBeNull();
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
-			{ server: "source:landing-hk", enabled: true, strategy: "url-test", memberRowIds: ["landing-hk"] },
+			{ server: "source:landing-hk", enabled: false, strategy: "url-test", memberRowIds: ["landing-hk"] },
 		]);
 	});
 
@@ -1038,7 +1045,7 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
 			{
 				server: "hk.example.com",
-				enabled: true,
+			enabled: false,
 				strategy: "fallback",
 				memberRowIds: [],
 			},
