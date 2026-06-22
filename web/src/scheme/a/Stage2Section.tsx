@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
+import { getStage2RowKey } from "../../lib/stage2";
 import { ArrowRightIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
@@ -103,6 +104,7 @@ export function Stage2Section({
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
+	const previousAggregationModeRef = useRef(stage2AggregationMode);
 	const chainTargetMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const chainTargetMenuPanelRef = useRef<HTMLDivElement | null>(null);
 	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
@@ -113,6 +115,34 @@ export function Stage2Section({
 			setStage2AggregationMode(true);
 		}
 	}, [state.stage2Snapshot.serverAggregationGroups, setStage2AggregationMode]);
+
+	useEffect(() => {
+		const wasAggregationMode = previousAggregationModeRef.current;
+		previousAggregationModeRef.current = stage2AggregationMode;
+		if (wasAggregationMode || !stage2AggregationMode) {
+			return;
+		}
+		if (state.stage2Snapshot.serverAggregationGroups.length > 0) {
+			return;
+		}
+
+		const seenServers = new Set<string>();
+		for (const row of stage2Rows) {
+			const rowKey = getStage2RowKey(row);
+			if (rowKey === "") {
+				continue;
+			}
+			const server = workflow.getStage2RowMeta(rowKey)?.server?.trim() ?? "";
+			if (server === "" || seenServers.has(server)) {
+				continue;
+			}
+			seenServers.add(server);
+			workflow.handleServerAggregationEnableWithDefaults(rowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+		}
+	}, [stage2AggregationMode, state.stage2Snapshot.serverAggregationGroups.length, stage2Rows, workflow]);
 
 	useEffect(() => {
 		if (openTargetMenuRow === null) {
