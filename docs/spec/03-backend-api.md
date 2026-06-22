@@ -144,7 +144,7 @@
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
 - `rows[].landingNodeType`：落地节点类型展示值
-- `rows[].server`：落地节点 server 展示值（用于按 server 分组与聚合配置）
+- `rows[].server`：落地节点 server 展示值（用于按 server 分组与聚合配置）；必填且不能为空字符串
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
 - `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案

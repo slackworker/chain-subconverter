@@ -80,11 +80,11 @@ func TestConversionFixturesFromResult_RejectsUnresolvableDiscoveryNames(t *testi
 
 func TestConversionFixturesFromResult_AcceptsStructuredLandingDiscoveryNames(t *testing.T) {
 	_, err := ConversionFixturesFromResult(subconverter.ThreePassResult{
-		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: landing-a, type: ss}\n"},
+		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: landing-a, type: ss, server: landing.example.com, port: 443}\n"},
 		TransitDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: transit-a, type: ss}\n"},
 		FullBase: subconverter.PassResult{YAML: strings.Join([]string{
 			"proxies:",
-			"- {name: landing-a, type: ss}",
+			"- {name: landing-a, type: ss, server: landing.example.com, port: 443}",
 			"- {name: transit-a, type: ss}",
 			"proxy-groups:",
 			"  - name: 🇭🇰 香港节点",
@@ -186,6 +186,7 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
 		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
+	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
 
 	if !reflect.DeepEqual(source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input)) {
 		t.Fatalf("source request mismatch: got %#v want %#v", source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input))
@@ -502,7 +503,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 
 		if request.URL.Query().Get("list") == "true" {
 			if strings.Contains(request.URL.Query().Get("url"), "landing") {
-				_, _ = writer.Write([]byte("proxies:\n- {name: DE Landing, type: ss}\n"))
+				_, _ = writer.Write([]byte("proxies:\n- {name: DE Landing, type: ss, server: landing.example.com, port: 443}\n"))
 				return
 			}
 			_, _ = writer.Write([]byte("proxies:\n- {name: transit-de, type: ss}\n"))
@@ -945,4 +946,13 @@ func normalizeStage1ConvertResponseForContract(response Stage1ConvertResponse) S
 		normalized.Stage2Init.Rows[index].Server = ""
 	}
 	return normalized
+}
+
+func assertStage2InitRowsHaveServer(t *testing.T, rows []Stage2InitRow) {
+	t.Helper()
+	for _, row := range rows {
+		if strings.TrimSpace(row.Server) == "" {
+			t.Fatalf("stage2Init row %q has empty server", row.LandingNodeName)
+		}
+	}
 }

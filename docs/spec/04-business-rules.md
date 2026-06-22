@@ -192,7 +192,7 @@
 - `landingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
 - `stage2Init` 阶段仅依赖 Pass 1 身份；Pass 3 前按 `sourceLandingNodeName` 从 Pass 1 取连接参数（见 `2.1.2`）
 - `landingNodeType` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.type`，并允许结合该节点内的附加字段做展示分类
-- `server` 固定来源于当前落地节点解析结果中的 `server` 字段（优先以 Pass 3 可唯一匹配身份的节点端点为准）
+- `server` 固定来源于当前落地节点解析结果中的 `server` 字段（优先以 Pass 3 可唯一匹配身份的节点端点为准）；必填且不能为空
 - 当前展示分类补充规则为：`type = vless` 且存在 `reality-opts` 时，展示类型记为 `Reality`；`type = ss` 且存在 `plugin=shadow-tls`、`plugin: shadow-tls`、`shadow-tls` 或等价 `plugin-opts` 标记时，展示类型记为 `ShadowTLS`
 - 按“每个落地节点一行”生成 `stage2Init.rows[]`
 - 阶段 2 第一列展示 `proxyName`，第二列展示 `landingNodeType`，并提供 `server` 元信息用于分组展示

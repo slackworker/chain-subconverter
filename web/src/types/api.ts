@@ -67,7 +67,7 @@ export interface ServerAggregationGroup {
 
 export interface Stage2InitRow extends Stage2Row {
 	landingNodeType: string;
-	server?: string;
+	server: string;
 	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
 	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
 }

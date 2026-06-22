@@ -135,7 +135,7 @@ type Stage2InitRow struct {
 	ProxyName             string                     `json:"proxyName,omitempty"`
 	LandingNodeName       string                     `json:"landingNodeName"`
 	LandingNodeType       string                     `json:"landingNodeType"`
-	Server                string                     `json:"server,omitempty"`
+	Server                string                     `json:"server"`
 	Mode                  string                     `json:"mode"`
 	TargetName            *string                    `json:"targetName"`
 	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
@@ -616,12 +616,16 @@ func resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies []inlineProxy)
 			)
 		}
 		seenNames[proxy.Name] = struct{}{}
+		port, server, err := extractInlineProxyEndpointStrict(proxy)
+		if err != nil {
+			return nil, err
+		}
 		resolved = append(resolved, resolvedLandingProxy{
 			Name:         proxy.Name,
 			TypeLabel:    formatLandingNodeTypeLabel(proxy.Type),
 			ProtocolType: proxy.Type,
-			Port:         extractInlineProxyPort(proxy),
-			Server:       extractInlineProxyServer(proxy),
+			Port:         port,
+			Server:       server,
 		})
 	}
 	return resolved, nil
@@ -632,7 +636,11 @@ func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[strin
 	count := fullBaseNameCounts[resolvedName]
 	if count == 1 {
 		fullBaseProxy := fullBaseProxyByName[resolvedName]
-		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), extractInlineProxyPort(fullBaseProxy), extractInlineProxyServer(fullBaseProxy), nil
+		port, server, err := extractInlineProxyEndpointStrict(fullBaseProxy)
+		if err != nil {
+			return "", "", 0, "", err
+		}
+		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), port, server, nil
 	}
 	if count > 1 {
 		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", resolvedName, count)
@@ -650,24 +658,45 @@ func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[strin
 	)
 }
 
-func extractInlineProxyPort(proxy inlineProxy) int {
+func extractInlineProxyEndpointStrict(proxy inlineProxy) (int, string, error) {
 	portText, err := extractInlineField(proxy.Raw, "port")
 	if err != nil {
-		return 0
+		cause := fmt.Errorf("landing discovery proxy %q missing port field: %w", proxy.Name, err)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
 	port, err := strconv.Atoi(portText)
 	if err != nil || port < 1 || port > 65535 {
-		return 0
+		cause := fmt.Errorf("landing discovery proxy %q has invalid port %q", proxy.Name, portText)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
-	return port
-}
-
-func extractInlineProxyServer(proxy inlineProxy) string {
 	serverText, err := extractInlineField(proxy.Raw, "server")
 	if err != nil {
-		return ""
+		cause := fmt.Errorf("landing discovery proxy %q missing server field: %w", proxy.Name, err)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
-	return strings.TrimSpace(serverText)
+	server := strings.TrimSpace(serverText)
+	if server == "" {
+		cause := fmt.Errorf("landing discovery proxy %q has empty server field", proxy.Name)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
+	}
+
+	return port, server, nil
 }
 
 func formatLandingNodeTypeLabel(protocolType string) string {
