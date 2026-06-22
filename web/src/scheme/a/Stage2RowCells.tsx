@@ -314,6 +314,7 @@ export function Stage2RowModeCell({
 					<option value="fallback">fallback</option>
 					<option value="url-test">url-test</option>
 				</select>
+				<span className="a-mode-warning-slot" aria-hidden="true" />
 			</div>
 		);
 	}

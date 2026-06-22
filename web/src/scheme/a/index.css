@@ -1578,21 +1578,32 @@
 	border-color: var(--color-accent);
 }
 
+.a-stage2-row-inline.is-derived::after {
+	/* 副本行：小实心灰点，与策略组空心环、源节点实心 accent 区分 */
+	width: 0.5rem;
+	height: 0.5rem;
+	background: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
+	border: none;
+	box-shadow: none;
+}
+
 .a-stage2-row-inline.is-server::after {
-	width: 0.72rem;
-	height: 0.72rem;
-	background: var(--color-accent);
-	border-color: color-mix(in srgb, var(--color-accent) 72%, var(--color-line));
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 6%, transparent);
+	/* Git 图轨迹式：空心环 + 竖线贯穿圆心，与节点实心圆点区分 */
+	width: 0.78rem;
+	height: 0.78rem;
+	background: transparent;
+	border: 2.5px solid var(--color-accent);
+	box-shadow: none;
+	z-index: 1;
+}
+
+.a-stage2-tree-server .a-stage2-row-inline.is-server::after {
+	/* server 行有淡色底：环内透出底色，仍保留轨迹穿心感 */
+	background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
 .a-stage2-row-inline.is-solo::before {
 	display: none;
-}
-
-.a-stage2-row-inline.is-solo.is-derived::after {
-	background: var(--color-muted-fill);
-	border-color: color-mix(in srgb, var(--color-muted) 32%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-group-start::before {
@@ -1807,21 +1818,25 @@
 }
 
 /* 列宽不足时优先横向滚动，避免目标/落地文本在列内换行或叠压 */
-.a-table--stage2-adaptive td:nth-child(3) .a-mode-cell .a-select,
+.a-table--stage2-adaptive .a-mode-cell .a-select,
 .a-table--stage2-adaptive td:nth-child(4) .a-target-picker,
 .a-table--stage2-adaptive td:nth-child(4) .a-select,
-.a-table--stage2-adaptive td:nth-child(4) .a-target-menu__trigger {
+.a-table--stage2-adaptive td:nth-child(4) .a-target-menu__trigger,
+.a-table--stage2-adaptive td:nth-child(5) .a-target-picker,
+.a-table--stage2-adaptive td:nth-child(5) .a-select,
+.a-table--stage2-adaptive td:nth-child(5) .a-target-menu__trigger {
 	white-space: nowrap;
 }
 
-/* 配置方式列：列宽由测量驱动，禁止 flex 把 select 压窄导致选项文字被裁切 */
-.a-table--stage2-adaptive td:nth-child(3) .a-mode-cell {
+/* 配置方式列：列宽由测量驱动，禁止 flex 把 select 压窄导致选项文字被裁切（平铺/树形表列序不同，按 .a-mode-cell 定位） */
+.a-table--stage2-adaptive .a-mode-cell {
 	min-width: min-content;
+	width: 100%;
 }
 
-.a-table--stage2-adaptive td:nth-child(3) .a-mode-cell .a-select {
-	flex: 0 1 auto;
-	min-width: max-content;
+.a-table--stage2-adaptive .a-mode-cell .a-select {
+	flex: 1 1 0;
+	min-width: 0;
 	max-width: none;
 	width: 100%;
 }
