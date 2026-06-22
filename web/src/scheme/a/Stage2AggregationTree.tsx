@@ -42,13 +42,14 @@ interface Stage2AggregationTreeProps {
 	setSupplementOpen: (rowKey: string, open: boolean) => void;
 }
 
-function getServerGroupEditableName(row: Stage2Row): string {
+function getServerGroupEditableName(row: Stage2Row, displayServer: string): string {
 	const proxyName = row.proxyName?.trim() ?? "";
 	const sourceLandingName = (row.sourceLandingNodeName?.trim() ?? "") || row.landingNodeName.trim();
-	if (proxyName === "" || proxyName === sourceLandingName || /^srv\s*:/i.test(proxyName)) {
-		return "server";
+	const serverName = formatServerGroupLabel(displayServer);
+	if (proxyName === "" || proxyName === sourceLandingName || /^srv\s*[:：]/i.test(proxyName)) {
+		return serverName;
 	}
-	return row.proxyName ?? "server";
+	return row.proxyName ?? serverName;
 }
 
 export function Stage2AggregationTree({
@@ -263,7 +264,7 @@ function Stage2AggregationTreeRow({
 						row={anchorRow}
 						rowKey={node.anchorRowKey}
 						editable={editable}
-						nameValueOverride={getServerGroupEditableName(anchorRow)}
+						nameValueOverride={getServerGroupEditableName(anchorRow, node.displayServer)}
 						rowErrors={[]}
 						copy={copy}
 						wrapperClassName={rowInlineClassName}
