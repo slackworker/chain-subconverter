@@ -845,6 +845,83 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("enables server aggregation with default members and excludes none rows", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "hk-1",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 1",
+					landingNodeName: "HK 1",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "hk-2",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 2",
+					landingNodeName: "HK 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "hk-3",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 3",
+					landingNodeName: "HK 3",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const noneRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+		const thirdRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[2]);
+
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
+			{
+				server: "hk.example.com",
+				enabled: true,
+				strategy: "fallback",
+				memberRowIds: ["hk-1", "hk-3"],
+			},
+		]);
+		expect(workflow.current.getServerAggregationGroup(sourceRowKey)?.memberChecked).toBe(true);
+		expect(workflow.current.getServerAggregationGroup(noneRowKey)?.memberChecked).toBe(false);
+		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(true);
+	});
+
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {
 		const workflow = renderWorkflow(24);
 		await initializeStage2ReadyState(workflow);

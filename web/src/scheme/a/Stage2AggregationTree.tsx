@@ -92,6 +92,7 @@ export function Stage2AggregationTree({
 		handleModeChange,
 		handleTargetChange,
 		handleServerAggregationChange,
+		handleServerAggregationEnableWithDefaults,
 	} = workflow;
 
 	const treeNodes = useMemo(
@@ -251,6 +252,7 @@ function Stage2AggregationTreeRow({
 		handleModeChange,
 		handleTargetChange,
 		handleServerAggregationChange,
+		handleServerAggregationEnableWithDefaults,
 	} = workflow;
 
 	const editable = isStage2Editable;
@@ -272,7 +274,7 @@ function Stage2AggregationTreeRow({
 					<Stage2RowNameCell
 						row={anchorRow}
 						rowKey={node.anchorRowKey}
-						editable={editable}
+						editable={editable && enabled}
 						nameValueOverride={getServerGroupEditableName(anchorRow, node.displayServer, node.sourceFlagEmoji)}
 						rowErrors={[]}
 						copy={copy}
@@ -292,10 +294,9 @@ function Stage2AggregationTreeRow({
 						checked={enabled}
 						disabled={!editable}
 						onChange={(checked) =>
-							handleServerAggregationChange(node.anchorRowKey, {
+							handleServerAggregationEnableWithDefaults(node.anchorRowKey, {
 								enabled: checked,
 								strategy,
-								memberChecked: memberChecked || checked,
 							})
 						}
 					/>

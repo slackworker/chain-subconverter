@@ -123,6 +123,7 @@ export interface AppWorkflowViewModel {
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
 	handleAggressiveChainStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
 	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean }) => void;
+	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test" }) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -664,6 +665,47 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		});
 	}
 
+	function handleServerAggregationEnableWithDefaults(
+		landingNodeName: string,
+		payload: { enabled: boolean; strategy: "fallback" | "url-test" },
+	) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return;
+		}
+		if (!payload.enabled) {
+			handleServerAggregationChange(landingNodeName, {
+				enabled: false,
+				strategy: payload.strategy,
+				memberChecked: anchorGroup.memberChecked,
+			});
+			return;
+		}
+
+		const targetServer = anchorGroup.server;
+		const memberRows = state.stage2Snapshot.rows.filter((row) => {
+			const rowKey = getStage2RowKey(row);
+			if (rowKey === "") {
+				return false;
+			}
+			return getServerAggregationGroupForRow(rowKey)?.server === targetServer;
+		});
+
+		for (const row of memberRows) {
+			const rowKey = getStage2RowKey(row);
+			if (rowKey === "") {
+				continue;
+			}
+			const currentChecked = getServerAggregationGroupForRow(rowKey)?.memberChecked ?? false;
+			const defaultChecked = row.mode !== "none";
+			handleServerAggregationChange(rowKey, {
+				enabled: true,
+				strategy: payload.strategy,
+				memberChecked: currentChecked || defaultChecked,
+			});
+		}
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
@@ -837,6 +879,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleTargetChange,
 		handleAggressiveChainStrategyChange,
 		handleServerAggregationChange,
+		handleServerAggregationEnableWithDefaults,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,
