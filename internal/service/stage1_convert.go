@@ -101,8 +101,8 @@ type Stage2SnapshotFixture struct {
 }
 
 type Stage2Snapshot struct {
-	Rows                  []Stage2Row              `json:"rows"`
-	AggressiveChainGroups []AggressiveChainGroup   `json:"aggressiveChainGroups,omitempty"`
+	Rows                  []Stage2Row            `json:"rows"`
+	AggressiveChainGroups []AggressiveChainGroup `json:"aggressiveChainGroups,omitempty"`
 }
 
 type AggressiveChainGroup struct {

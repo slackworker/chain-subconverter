@@ -380,7 +380,7 @@ func TestRenderCompleteConfigFromSource_AppendsAggressiveChainGroup(t *testing.T
 		fakeConversionSource: fakeConversionSource{
 			usePrepared: true,
 			prepared: PreparedConversion{
-				Request: subconverter.Request{},
+				Request:        subconverter.Request{},
 				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
 			},
 			plannedResult: subconverter.ThreePassResult{

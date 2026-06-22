@@ -219,7 +219,8 @@ describe("useAppWorkflow", () => {
 			stage1Input: toStage1InputPayload(stage1Input),
 		});
 		expect(workflow.current.state.stage2Init).toEqual(stage2Init);
-		expect(workflow.current.state.stage2Snapshot).toEqual({
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			aggressiveChainGroups: [],
 			rows: [
 				{
 					landingNodeName: "landing-hk",
@@ -298,6 +299,7 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
+				aggressiveChainGroups: [],
 				rows: [
 					{
 						landingNodeName: "landing-hk",
@@ -336,7 +338,10 @@ describe("useAppWorkflow", () => {
 			},
 		});
 		expect(workflow.current.state.stage2Init).toEqual(stage2Init);
-		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			...restoreResponse.stage2Snapshot,
+			aggressiveChainGroups: [],
+		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
 			shortUrl,
@@ -374,6 +379,7 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
+				aggressiveChainGroups: [],
 				rows: [
 					{
 						landingNodeName: "landing-hk",
@@ -403,7 +409,10 @@ describe("useAppWorkflow", () => {
 			},
 		});
 		expect(workflow.current.state.stage2Init).toBeNull();
-		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			...restoreResponse.stage2Snapshot,
+			aggressiveChainGroups: [],
+		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
 			shortUrl,
@@ -440,6 +449,7 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
+				aggressiveChainGroups: [],
 				rows: [
 					{
 						landingNodeName: "landing-hk",
@@ -480,7 +490,10 @@ describe("useAppWorkflow", () => {
 			},
 		});
 		expect(workflow.current.state.stage2Init).toBeNull();
-		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			...restoreResponse.stage2Snapshot,
+			aggressiveChainGroups: [],
+		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
 			shortUrl: null,
@@ -509,18 +522,19 @@ describe("useAppWorkflow", () => {
 
 		await runWorkflowAction(() => workflow.current.handleGenerate());
 
-		expect(mockPostGenerate).toHaveBeenCalledWith({
+		expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
 			stage1Input: toStage1InputPayload(stage1Input),
-			stage2Snapshot: {
-				rows: [
-					{
+			stage2Snapshot: expect.objectContaining({
+				aggressiveChainGroups: [],
+				rows: expect.arrayContaining([
+					expect.objectContaining({
 						landingNodeName: "landing-hk",
 						mode: "none",
 						targetName: null,
-					},
-				],
-			},
-		});
+					}),
+				]),
+			}),
+		}));
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: generateResponse.longUrl,
 			shortUrl: null,
@@ -712,6 +726,117 @@ describe("useAppWorkflow", () => {
 			mode: "chain",
 			targetName: "HK Relay Group",
 		});
+	});
+
+	it("configures aggressive chain strategy by source group across source and derived rows", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(false);
+		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBeNull();
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(true);
+		expect(workflow.current.canConfigureAggressiveChainGroup(derivedRowKey)).toBe(true);
+
+		act(() => {
+			workflow.current.handleAggressiveChainStrategyChange(sourceRowKey, "fallback");
+		});
+
+		expect(workflow.current.state.stage2Snapshot.aggressiveChainGroups).toEqual([
+			{ sourceLandingNodeName: "landing-hk", strategy: "fallback" },
+		]);
+		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBe("fallback");
+		expect(workflow.current.getAggressiveChainStrategy(derivedRowKey)).toBe("fallback");
+	});
+
+	it("clears aggressive chain strategy when the source group shrinks back to one row", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		act(() => {
+			workflow.current.handleAggressiveChainStrategyChange(derivedRowKey, "url-test");
+		});
+
+		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBe("url-test");
+
+		act(() => {
+			workflow.current.handleDeleteStage2Row(derivedRowKey);
+		});
+
+		expect(workflow.current.stage2Rows).toHaveLength(1);
+		expect(workflow.current.canConfigureAggressiveChainGroup(sourceRowKey)).toBe(false);
+		expect(workflow.current.getAggressiveChainStrategy(sourceRowKey)).toBeNull();
+		expect(workflow.current.state.stage2Snapshot.aggressiveChainGroups).toEqual([]);
 	});
 
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {

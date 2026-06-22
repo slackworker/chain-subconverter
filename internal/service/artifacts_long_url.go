@@ -65,8 +65,8 @@ type longURLAdvancedOptions struct {
 }
 
 type longURLStage2Snapshot struct {
-	Rows                  []longURLStage2Row             `json:"rows"`
-	AggressiveChainGroups []longURLAggressiveChainGroup  `json:"aggressiveChainGroups,omitempty"`
+	Rows                  []longURLStage2Row            `json:"rows"`
+	AggressiveChainGroups []longURLAggressiveChainGroup `json:"aggressiveChainGroups,omitempty"`
 }
 
 type longURLStage2Row struct {
@@ -576,6 +576,6 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			Rows:                  rows,
 			AggressiveChainGroups: aggressiveChainGroups,
 		},
-		V:              payload.V,
+		V: payload.V,
 	}
 }

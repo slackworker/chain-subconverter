@@ -171,7 +171,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "conflicted",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-conflicted",
 			resolvedShortUrl: "https://public.example.com/s/conflicted-short",
-			stage2Snapshot: { rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { aggressiveChainGroups: [], rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.restoreStatus).toBe("conflicted");
@@ -208,7 +208,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restored-long",
 			resolvedShortUrl: "https://public.example.com/s/restored-short",
-			stage2Snapshot: { rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { aggressiveChainGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.restoreStatus).toBe("replayable");
@@ -234,7 +234,7 @@ describe("useAppWorkflow.state", () => {
 			restoredStage1Input,
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-only",
-			stage2Snapshot: { rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { aggressiveChainGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.stage2Init).toBeNull();
