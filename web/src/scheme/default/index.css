@@ -1886,9 +1886,7 @@
 	justify-content: center;
 }
 
-.a-table--stage2-adaptive thead th:nth-child(1),
-.a-table--stage2-adaptive thead th:nth-child(3),
-.a-table--stage2-adaptive thead th:nth-child(4) {
+.a-table--stage2-adaptive thead th {
 	text-align: center;
 }
 
