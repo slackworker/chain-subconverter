@@ -8,6 +8,7 @@ import { Stage2FlatTable } from "./Stage2FlatTable";
 import {
 	computeChainTargetMenuPanelLayout,
 	MEMBER_ORDER_PANEL_MIN_WIDTH,
+	measureMemberOrderPanelContentWidth,
 } from "./stage2ChainTargetMenu";
 import type { Stage2Copy, Stage2Locale } from "./Stage2RowCells";
 
@@ -163,15 +164,17 @@ export function Stage2Section({
 			if (!trigger || !panel) {
 				return;
 			}
-			const { top, left, width, maxHeight } = computeChainTargetMenuPanelLayout(trigger, {
-				minWidth: openTargetMenuRow?.startsWith("server-order:")
-					? MEMBER_ORDER_PANEL_MIN_WIDTH
-					: undefined,
+			const isMemberOrder = openTargetMenuRow?.startsWith("server-order:");
+			const contentWidth = isMemberOrder ? measureMemberOrderPanelContentWidth(panel) : 0;
+			const { top, left, width, maxHeight, contentOverflows } = computeChainTargetMenuPanelLayout(trigger, {
+				minWidth: isMemberOrder ? MEMBER_ORDER_PANEL_MIN_WIDTH : undefined,
+				contentWidth,
 			});
 			panel.style.top = `${top}px`;
 			panel.style.left = `${left}px`;
 			panel.style.width = `${width}px`;
 			panel.style.maxHeight = `${maxHeight}px`;
+			panel.style.overflowX = isMemberOrder && contentOverflows ? "auto" : "";
 		};
 		syncPanelToTrigger();
 		const wrap = tableWrapRef.current;

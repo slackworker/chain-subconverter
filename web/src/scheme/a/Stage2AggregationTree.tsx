@@ -12,6 +12,7 @@ import {
 import {
 	buildStage2AggregationTree,
 	formatServerGroupLabel,
+	formatStage2TreeGlyphMeasureSpacer,
 	getStage2AggregationTreeRowInlineClassName,
 	type Stage2TreeNode,
 } from "./stage2AggregationTree";
@@ -132,7 +133,7 @@ export function Stage2AggregationTree({
 				(node.row.mode === "none" ? "--" : copy.selectTarget);
 
 			return {
-				nodeLabel: getStage2RowDisplayName(node.row),
+				nodeLabel: `${formatStage2TreeGlyphMeasureSpacer(node.glyphParts)}${getStage2RowDisplayName(node.row)}`,
 				aggregationLabel: copy.aggregationInclude,
 				landingNodeType: meta?.landingNodeType ?? "--",
 				modeOptionLabels,

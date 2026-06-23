@@ -2179,6 +2179,7 @@
 
 .a-target-menu__panel.a-target-menu__panel--member-order {
 	min-width: 15rem;
+	overflow-x: auto;
 }
 
 .a-member-order__list {
@@ -2188,6 +2189,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.35rem;
+	width: max-content;
+	min-width: 100%;
 }
 
 .a-member-order__item {
@@ -2199,6 +2202,8 @@
 	border: 1px solid transparent;
 	border-radius: 8px;
 	background: var(--color-surface);
+	width: max-content;
+	min-width: 100%;
 }
 
 .a-member-order__summary {
@@ -2214,10 +2219,8 @@
 }
 
 .a-member-order__name {
-	min-width: 0;
-	flex: 1 1 auto;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	flex: 0 0 auto;
+	overflow: visible;
 	white-space: nowrap;
 	font-family: var(--font-ui-emoji);
 	font-size: 0.82rem;
