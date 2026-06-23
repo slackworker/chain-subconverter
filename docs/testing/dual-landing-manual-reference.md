@@ -52,7 +52,7 @@ relay-b.example.com:8443
 
 ### 高级选项
 
-- 模板 URL：`https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
+- 模板 URL：`https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
 - emoji：开启
 - UDP：开启
 

@@ -25,7 +25,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": null
     }
@@ -252,7 +252,7 @@
 
 ```json
 {
-  "defaultTemplateURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+  "defaultTemplateURL": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
   "maxPublicLongURLLength": 8192
 }
 ```
@@ -329,7 +329,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": ["TagX"]
     }
@@ -643,7 +643,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": null
     }

@@ -32,7 +32,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": false,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
     }
   },
   "transitFixtures": [
@@ -48,8 +48,8 @@
     }
   ],
   "templateFixture": {
-    "inputURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
-    "recommendedDefaultURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+    "inputURL": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+    "recommendedDefaultURL": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
     "contentFile": "dual-landing-chain-port-forward/template-config.ini"
   }
 }

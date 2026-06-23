@@ -959,7 +959,7 @@ func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 func TestBuildTemplateConfigUnavailableMessage(t *testing.T) {
 	t.Run("surfaces timeout for default template", func(t *testing.T) {
 		message := buildTemplateConfigUnavailableMessage(
-			"https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+			"https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
 			true,
 			timeoutErr{},
 		)

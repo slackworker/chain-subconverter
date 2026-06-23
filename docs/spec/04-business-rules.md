@@ -64,7 +64,7 @@
 补充规则：
 
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
-- `config` 必须是阶段 1 快照中显式保存的远程 HTTP(S) 模板 URL；前端初始值来自部署默认模板 URL，部署默认模板 URL 必须可配置，默认值为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
+- `config` 必须是阶段 1 快照中显式保存的远程 HTTP(S) 模板 URL；前端初始值来自部署默认模板 URL，部署默认模板 URL 必须可配置，默认值为 `https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
 - `chain-subconverter` 必须先拉取 `config` 指向的模板，再把后端托管的内部模板 URL 传给 `subconverter`
 - `chain-subconverter` 不得把用户提供的远程模板 URL 直接透传给 `subconverter`
 - 当 `config` 等于部署默认模板 URL 时，其成功拉取结果必须先通过模板解析校验，只有校验通过的内容才允许写入默认模板缓存
