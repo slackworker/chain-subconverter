@@ -198,7 +198,7 @@
 | `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
-| `rows[].chainProxyGroupProfile` | `aggressive_url_test \| 空` | 可选；仅 `mode = chain` 且 `targetName` 指向 `kind = proxy-groups` 时有语义；前端本阶段只写入 `aggressive_url_test` 或空，见 [04 §3.1](04-business-rules.md) |
+| `rows[].chainProxyGroupProfile` | 见 §2.6.1 | 可选；完整枚举与语义见 [04 §3.1](04-business-rules.md)；前端本阶段写入子集见 §2.6.1 |
 
 ### 2.2 共享业务槽位
 

@@ -380,7 +380,7 @@
 
 - 上游订阅内容变化导致引用仍有效时，恢复结果保持可重放；导致任一引用失效时，恢复结果为不可重放
 - 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
-- 若某行保存了 `chainProxyGroupProfile`，恢复时必须按生成阶段同一规则校验其值、适用模式与同 target 一致性；只要当前 `proxy-groups` 候选仍存在且该 profile 仍受支持，就不因组成员变化而判为冲突
+- 若某行保存了 `chainProxyGroupProfile`，只要当前 `proxy-groups` 候选仍存在且该 profile 仍受支持，就不因组成员变化而判为冲突
 - 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
@@ -401,6 +401,7 @@
 
 覆写规则：
 
+- 覆写优先于模板原组的 `type` 与健康检查相关参数
 - 只允许覆写当前快照引用到的既有 `proxy-groups`；不得为该能力新增新的策略组名
 - 覆写对象按 `targetName` 定位；最终该行的 `dialer-proxy` 仍保持 `dialer-proxy: <targetName>`
 - 组成员列表沿用 `full-base pass` 与 `1.3` 出组后的结果，不因 profile 选择而重新展开成员

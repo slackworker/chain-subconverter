@@ -77,9 +77,7 @@
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
-- `chainProxyGroupProfile` 为可选字符串；当前只允许空值、`aggressive_fallback` 或 `aggressive_url_test`
-- `chainProxyGroupProfile` 只在 `mode = chain` 且 `targetName` 指向 `kind = proxy-groups` 的候选时有语义；其余场景必须为空或省略
-- 同一份 `stage2Snapshot` 中，若多个 `rows[]` 选择同一个 `proxy-groups` 类型的 `targetName`，其 `chainProxyGroupProfile` 必须保持一致
+- `chainProxyGroupProfile` 为可选字符串；允许值、适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
 
 ### 3. 阶段 2 初始化数据
 
@@ -439,7 +437,7 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
-- 若 `stage2Snapshot` 含有不受支持的 `mode`、不受支持的 `chainProxyGroupProfile`，或 `chainProxyGroupProfile` 与 `mode` / `targetName` 组合不合法，后端必须返回 `400 INVALID_REQUEST`，并使用 `scope = stage2_row`
+- 若 `stage2Snapshot` 含有不受支持的 `mode`，或违反 [04 §3.2](04-business-rules.md) 中 `chainProxyGroupProfile` 相关校验，后端必须返回 `400 INVALID_REQUEST`，并使用 `scope = stage2_row`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
@@ -639,7 +637,7 @@
 
 - `v` 是长链接编码版本字段；后端编码端当前写出 `v = 3`，解码端按兼容策略接受受支持版本（用于恢复与短链解析）
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
-- `stage2Snapshot.rows[].chainProxyGroupProfile` 属于规范长链接状态的一部分；若存在，必须按本文“2. 阶段 2 配置快照”的约束编码
+- `stage2Snapshot.rows[].chainProxyGroupProfile` 属于规范长链接状态的一部分；若存在，必须满足 [04 §3.2](04-business-rules.md) 的校验约束
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
 - 解码时若 `v` 缺失、不是整数、或超出当前实现支持范围，必须视为无效长链接
 
