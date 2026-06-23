@@ -72,3 +72,66 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_ProxyGroupsAtEnd(t *t
 		t.Fatalf("managed group should be appended after existing proxy-groups:\n%s", rendered)
 	}
 }
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_DeduplicatesMembersByRowID(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: Existing Group",
+		"    type: fallback",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"",
+	}, "\n")
+
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:           "hk-1",
+				ProxyName:       "HK Landing",
+				LandingNodeName: "HK Landing",
+			},
+			{
+				RowID:           "hk-2",
+				ProxyName:       "HK Landing Copy",
+				LandingNodeName: "HK Landing Copy",
+			},
+		},
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-2", "hk-1"},
+			},
+		},
+	}
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedManagedGroupMembers := strings.Join([]string{
+		"  - name: srv:landing.example.com",
+		"    type: fallback",
+		"    url: https://cp.cloudflare.com/generate_204",
+		"    interval: 60",
+		"    timeout: 1000",
+		"    lazy: false",
+		"    max-failed-times: 1",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedManagedGroupMembers) {
+		t.Fatalf("managed group members should be deduplicated while preserving first-seen order:\n%s", rendered)
+	}
+	if strings.Count(rendered, "      - HK Landing\n") != 2 {
+		t.Fatalf("expected HK Landing to appear once in existing group and once in managed group:\n%s", rendered)
+	}
+}

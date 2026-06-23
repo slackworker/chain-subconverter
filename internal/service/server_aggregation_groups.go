@@ -96,9 +96,16 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 		if !group.Enabled {
 			continue
 		}
+		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
 		members := make([]string, 0, len(group.MemberRowIDs))
 		for _, memberRowID := range group.MemberRowIDs {
-			row, exists := rowsByID[strings.TrimSpace(memberRowID)]
+			trimmedMemberRowID := strings.TrimSpace(memberRowID)
+			if _, exists := memberSeen[trimmedMemberRowID]; exists {
+				continue
+			}
+			memberSeen[trimmedMemberRowID] = struct{}{}
+
+			row, exists := rowsByID[trimmedMemberRowID]
 			if !exists {
 				return nil, fmt.Errorf("server aggregation group member rowId %q is missing from stage2Snapshot.rows", memberRowID)
 			}
