@@ -308,7 +308,17 @@ export function Stage2Section({
 												onChange={(event) => handleAggregationModeToggle(event.target.checked)}
 											/>
 											<span className="a-switch" aria-hidden />
-											<span className="a-advanced__switch-label">{copy.stage2AggregationMode}</span>
+											<span className="a-advanced__switch-label">
+												{copy.stage2AggregationMode}{" "}
+												<Tooltip content={copy.stage2AggregationModeHint}>
+													<span
+														className="a-hint"
+														aria-label={copy.stage2AggregationModeHintAria}
+													>
+														?
+													</span>
+												</Tooltip>
+											</span>
 										</label>
 									</div>
 									<div className="a-check-row">

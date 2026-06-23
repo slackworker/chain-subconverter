@@ -91,6 +91,9 @@ const COPY = {
 		colMode: "配置方式",
 		colTarget: "目标",
 		stage2AggregationMode: "开启多线路聚合模式",
+		stage2AggregationModeHint:
+			"进阶方案：为同一服务器配置多条中转目标（建议选固定节点或端口转发，而非策略组），各自完成链式代理后聚合成策略组，在中转节点不稳定时提高整体可用性。可与「目标策略组节点切换优化」同时开启。",
+		stage2AggregationModeHintAria: "多线路聚合模式说明",
 		aggregationEnable: "聚合",
 		aggregationInclude: "入组",
 		typePolicyGroup: "策略组",
@@ -235,6 +238,9 @@ const COPY = {
 		colMode: "Mode",
 		colTarget: "Target",
 		stage2AggregationMode: "Enable multi-path aggregation mode",
+		stage2AggregationModeHint:
+			"Advanced option: configure multiple transit targets per server (prefer fixed nodes or port forwarding over policy groups). Each path completes its chain proxy independently, then results are aggregated into a policy group for better resilience when transit nodes are unstable. Can be used together with switching optimization.",
+		stage2AggregationModeHintAria: "Multi-path aggregation mode help",
 		aggregationEnable: "Aggregate",
 		aggregationInclude: "Include",
 		typePolicyGroup: "Policy group",
