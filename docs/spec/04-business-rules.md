@@ -279,15 +279,6 @@
 
 阶段 2 初始化时，后端必须直接为每行产出 `landingNodeType`、`server`、默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
 
-### 2.7 按 server 聚合配置（`stage2Snapshot.serverAggregationGroups[]`）
-
-- `serverAggregationGroups[]` 表达“按 server 分组的显式聚合策略组配置”
-- `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
-- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback|url-test`
-- `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`
-- `enabled = true` 时成员数至少为 2；否则生成前校验必须阻断
-- 成员行的落地 `server` 必须与组 `server` 一致；跨 server 入组必须阻断
-
 #### 初始化决策顺序
 
 1. 先按 `2.2` 确定 `stage2Init.availableModes`
@@ -338,6 +329,15 @@
 - 候选顺序以模板中出现顺序为准
 
 命中 **0** 条或 **多于 1** 条时，链式自动识别失败（见 2.5）；**恰好 1** 条时，只有当该策略组在当次 `chainTargets[]` 中存在且 `isEmpty` 留空，才允许自动填写。
+
+### 2.7 按 server 聚合配置（`stage2Snapshot.serverAggregationGroups[]`）
+
+- `serverAggregationGroups[]` 表达“按 server 分组的显式聚合策略组配置”
+- `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
+- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback|url-test`
+- `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`
+- `enabled = true` 时成员数至少为 2；否则生成前校验必须阻断
+- 成员行的落地 `server` 必须与组 `server` 一致；跨 server 入组必须阻断
 
 ---
 

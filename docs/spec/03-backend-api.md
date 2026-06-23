@@ -68,6 +68,12 @@
         "enabled": true,
         "strategy": "fallback",
         "memberRowIds": ["HK 01", "HK 01 2"]
+      },
+      {
+        "server": "edge.reality.example",
+        "enabled": false,
+        "strategy": "",
+        "memberRowIds": []
       }
     ]
   }
@@ -85,8 +91,13 @@
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
 - `serverAggregationGroups[]` 为按 `server` 分组的显式聚合配置；仅当 `enabled = true` 时参与 YAML 聚合组产物渲染
-- `serverAggregationGroups[].strategy` 仅允许 `fallback` 或 `url-test`
-- `serverAggregationGroups[].memberRowIds[]` 必须引用当前 `rows[]` 内存在的 `rowId`
+- `serverAggregationGroups[]` 允许为空或缺失；缺失等价于无聚合组配置
+- `serverAggregationGroups[].server` 必须是非空字符串，且同一份 `stage2Snapshot` 内必须唯一（不区分 `enabled`）
+- `serverAggregationGroups[].enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
+- `serverAggregationGroups[].enabled = true` 时，`strategy` 仅允许 `fallback` 或 `url-test`
+- `serverAggregationGroups[].enabled = true` 时，`memberRowIds[]` 的成员去空白后必须非空且可解析到当前 `rows[]` 的 `rowId`
+- `serverAggregationGroups[].enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
+- `serverAggregationGroups[].enabled = true` 时，每个 `memberRowIds[]` 引用行对应的落地 `server` 必须与组 `server` 一致
 
 ### 3. 阶段 2 初始化数据
 
@@ -397,6 +408,14 @@
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
+    ],
+    "serverAggregationGroups": [
+      {
+        "server": "landing.example.com",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": ["HK 01", "HK 02"]
+      }
     ]
   }
 }
@@ -447,12 +466,14 @@
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
-- `DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_row`，`context.rowId` 必填；建议同时返回 `context.proxyName`；列级错误加 `context.field`
+- `DUPLICATE_PROXY_NAME`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_row`，`context.rowId` 必填；建议同时返回 `context.proxyName`；列级错误加 `context.field`
+- `LANDING_NODE_NOT_FOUND`：当错误来源是行快照引用缺失时，须 `scope = stage2_row`（`context.rowId` 必填，建议同时返回 `context.proxyName`）；当错误来源是 server 聚合成员引用到当前环境缺失的落地节点时，须 `scope = global`
+- `INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`：都必须返回 `scope = global`，且不要求返回 `context`
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -612,7 +633,7 @@
 
 ```json
 {
-  "v": 2,
+  "v": 3,
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -635,6 +656,14 @@
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
+    ],
+    "serverAggregationGroups": [
+      {
+        "server": "landing.example.com",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": ["HK 01", "HK 02"]
+      }
     ]
   }
 }
@@ -642,8 +671,10 @@
 
 规则：
 
-- `v` 是长链接编码版本字段，当前固定为 `2`（`v = 1` 视为无效）
-- 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
+- `v` 是长链接编码版本字段；当前编码版本固定为 `3`
+- 当前编码版本（`v = 3`）的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
+- 解码端必须兼容历史 `v = 2` 载荷；`v = 2` 恢复时 `stage2Snapshot.serverAggregationGroups` 视为缺省（`nil`/空）
+- 兼容 `v = 2` 仅用于解码与恢复，不得作为新生成长链接的编码版本
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
 - 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
 
@@ -694,7 +725,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
 - 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
-- 当前 `v = 2` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- 当前 `v = 3` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
@@ -704,7 +735,8 @@ gzip 规则：
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
-- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 2`
+- 长链接编码版本必须显式包含在 `data` 载荷中；当前编码版本固定为 `v = 3`
+- 历史 `v = 2` 仅保留向后兼容解码语义，不再作为当前编码版本
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接公开路径固定为 `/sub?...`
