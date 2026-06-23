@@ -114,7 +114,7 @@ export function Stage2AggregationTree({
 				return {
 					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji),
 					aggregationLabel: copy.aggregationEnable,
-					landingNodeType: "--",
+					landingNodeType: copy.typePolicyGroup,
 					modeOptionLabels: ["fallback", "url-test"],
 					targetLabel: copy.memberOrderManage,
 				};
@@ -308,7 +308,7 @@ function Stage2AggregationTreeRow({
 					/>
 				</td>
 				<td>
-					<div className="a-cell-type">--</div>
+					<div className="a-cell-type">{copy.typePolicyGroup}</div>
 				</td>
 				<td>
 					<Stage2RowModeCell
