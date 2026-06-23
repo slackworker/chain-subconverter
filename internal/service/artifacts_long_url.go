@@ -315,6 +315,10 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
+	if payload.V != longURLSchemaVersion {
+		return fmt.Errorf("unsupported long URL payload version %d", payload.V)
+	}
+
 	if payload.Stage1Input.AdvancedOptions.Config == nil {
 		return fmt.Errorf("advancedOptions.config must not be empty")
 	}
@@ -375,9 +379,6 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		case "chain":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
-			}
-			if profile == "" {
-				break
 			}
 			if existingProfile, exists := chainProxyGroupProfilesByTarget[targetName]; exists && existingProfile != profile {
 				return fmt.Errorf(

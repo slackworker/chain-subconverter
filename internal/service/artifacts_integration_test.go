@@ -219,6 +219,47 @@ func TestDecodeLongURLPayload_RejectsConflictingChainProxyGroupProfilesForSameTa
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsMixedEmptyAndNonEmptyChainProxyGroupProfilesForSameTarget(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{Rows: []Stage2Row{
+				{
+					RowID:                  "hk-1",
+					SourceLandingNodeName:  "HK 01",
+					ProxyName:              "HK 01",
+					LandingNodeName:        "HK 01",
+					Mode:                   "chain",
+					TargetName:             &chainTarget,
+					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK 02",
+					ProxyName:             "HK 02",
+					LandingNodeName:       "HK 02",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+			}},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: chainProxyGroupProfile for target") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
 func TestDecodeLongURLPayload_RejectsChainProxyGroupProfileForNoneMode(t *testing.T) {
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
@@ -263,6 +304,56 @@ func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) 
 		t.Fatal("expected error, got nil")
 	}
 	if !strings.Contains(err.Error(), "unmarshal long URL payload: json: unknown field \"enablePortForward\"") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
+func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	parsedURL, err := url.Parse(longURL)
+	if err != nil {
+		t.Fatalf("url.Parse() error = %v", err)
+	}
+	payloadJSON, err := decodeCompressedData(parsedURL.Query().Get(longURLParamData))
+	if err != nil {
+		t.Fatalf("decodeCompressedData() error = %v", err)
+	}
+
+	var schema longURLPayloadSchema
+	if err := json.Unmarshal(payloadJSON, &schema); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	schema.V = 2
+
+	mutatedPayloadJSON, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	mutatedData, err := encodeCompressedData(mutatedPayloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	mutatedLongURL, err := joinSubURL("http://localhost:11200", mutatedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(mutatedLongURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 2") {
 		t.Fatalf("error mismatch: got %v", err)
 	}
 }
