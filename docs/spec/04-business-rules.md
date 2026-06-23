@@ -333,14 +333,26 @@
 
 ### 2.7 按 server 聚合配置（`stage2Snapshot.serverAggregationGroups[]`）
 
+按落地 `server` 分组；多个 `sourceLandingNodeName` 可共享同一 `server` 端点并入同一组，成员以 `rowId` 显式引用。
+
 - `serverAggregationGroups[]` 表达“按 server 分组的显式聚合策略组配置”
 - `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
-- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback|url-test`
-- `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`
-- `enabled = true` 时，聚合组产物名以该 server 分组在前端 Stage 2 聚合树中的名称为准：优先使用用户编辑后的组名；未编辑时使用默认展示名（`国旗 emoji + server`，若无法确定单一国旗则仅 `server`）
-- `enabled = true` 时成员数至少为 2；否则生成前校验必须阻断
-- 成员行的落地 `server` 必须与组 `server` 一致；跨 server 入组必须阻断
+- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback` 或 `url-test`
+- `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`；数组顺序承载组内成员顺序，去重时保留首次出现的位置
+- `enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
+- `enabled = true` 时，每个成员行对应的 `rows[].server` 必须与组 `server` 一致；跨 server 入组必须阻断
+- `enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
 - 该聚合配置只影响最终 YAML 产物，不回写阶段 2 链式候选；`rows[].targetName` 在 `mode = chain` 下仍只允许引用 `chainTargets[].name`
+
+#### 聚合组 YAML 名称推导
+
+聚合组无独立 `groupName` 字段；最终 YAML 策略组名由 **`memberRowIds[]` 去重后第一个成员**（锚点行）的 `proxyName` 推导：
+
+1. 若锚点行 `proxyName` 非空、不等于其 `sourceLandingNodeName`、且不以 `srv` + 空白 + `:` / `：` 前缀开头，则聚合组名 = 该 `proxyName`
+2. 否则使用默认展示名：`国旗 emoji + server`（组内源行行名前缀国旗一致时取该 emoji；无法确定单一国旗时仅 `server`）
+3. 若推导名与既有 `proxy-groups` 或同批待写入聚合组重名，按 `基名 2`、`基名 3`…递增直至唯一
+
+前端 Stage 2 聚合树中 server 分组节点的可编辑名称与上述锚点行 `proxyName` 保持同步；用户编辑组名即编辑锚点行 `proxyName`。
 
 ---
 
@@ -365,7 +377,7 @@
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
 - 若多个落地节点同时选择同一个 `forwardRelays[].name` 作为 `port_forward` 目标，必须以 `DUPLICATE_FORWARD_RELAY_TARGET` 阻断生成
 - 若某行选择的 `chain` 目标在当前 `chainTargets[]` 中 `isEmpty = true`，必须以 `EMPTY_CHAIN_TARGET` 阻断生成
-- 若 `serverAggregationGroups[]` 启用组存在非法 `strategy`、未知成员 `rowId`、跨 server 入组、或成员数不足 2，必须阻断生成
+- 若 `serverAggregationGroups[]` 违反 `2.7` 校验规则，必须阻断生成
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 - `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 
@@ -388,6 +400,8 @@
 - 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
+- 若 `serverAggregationGroups[]` 中某启用组违反 `2.7` 校验规则（未知成员 `rowId`、跨 server 入组、成员数不足 2 等），则视为不可重放
+- 启用组成员仅因 `proxyName` 变化导致聚合组 YAML 名变化，不单独判为不可重放；只要成员 `rowId` 与 `server` 引用仍有效即可
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
 
 ### 3.3 快照应用（Pass 3 前）
@@ -397,7 +411,25 @@
 - 按 `sourceLandingNodeName` 从 Pass 1 取连接参数，按 `proxyName` 展开托管 landing 的 `proxies[]`
 - `mode = chain`：写入 `dialer-proxy: <targetName>`
 - `mode = port_forward`：将 `targetName` 解析为 `server` 与 `port` 并替换
-- Pass 3 后**不再**对 full-base 正文做上述 YAML 补丁（仅保留 `1.3` 出组）
+- Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing 行语义只通过 Pass 3 前的托管 landing 输入生效
+
+### 3.3.1 server 聚合组追加（Pass 3 后）
+
+`serverAggregationGroups[]` 中 `enabled = true` 的组，在 `full-base pass` 完成且执行 `1.3` 出组后，向最终 YAML 的 `proxy-groups` 追加新策略组（不修改既有 `proxies[]` 与行级 `dialer-proxy` 语义）。
+
+每条追加组固定写入以下健康检查参数：
+
+- `url = https://cp.cloudflare.com/generate_204`
+- `interval = 60`
+- `lazy = false`
+- `timeout = 1000`
+- `max-failed-times = 1`
+
+组 `type` 取快照中的 `strategy`（`fallback` 或 `url-test`）；当前不写入 `tolerance` 等额外字段。
+
+组 `proxies` 成员列表按 `memberRowIds[]` 去重后顺序，引用各行渲染结果的 `proxyName`；成员 proxy 必须已存在于最终 `proxies[]`。
+
+组名按 `2.7` 聚合组 YAML 名称推导规则生成。
 
 ### 3.4 协议与端口限制
 
@@ -406,7 +438,7 @@
 ### 3.5 最终配置交付时机
 
 - 订阅打开/下载时即时生成 `completeConfig`
-- 流程：重跑 Pass 1+2 → `3.3` 合并托管 landing → Pass 3 full-base → `1.3` 出组 → 返回
+- 流程：重跑 Pass 1+2 → `3.3` 合并托管 landing → Pass 3 full-base → `1.3` 出组 → `3.3.1` server 聚合组追加 → 返回
 - 任一必需 pass 失败则订阅渲染失败
 
 ## 4. 共享通知生命周期

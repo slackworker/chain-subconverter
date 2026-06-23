@@ -90,16 +90,8 @@
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
-- `serverAggregationGroups[]` 为按 `server` 分组的显式聚合配置；仅当 `enabled = true` 时参与 YAML 聚合组产物渲染
-- `serverAggregationGroups[]` 渲染出的聚合组是“最终 YAML 产物对象”，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
-- `serverAggregationGroups[]` 允许为空或缺失；缺失等价于无聚合组配置
-- `serverAggregationGroups[].server` 必须是非空字符串，且同一份 `stage2Snapshot` 内必须唯一（不区分 `enabled`）
-- `serverAggregationGroups[].enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
-- `serverAggregationGroups[].enabled = true` 时，`strategy` 仅允许 `fallback` 或 `url-test`
-- `serverAggregationGroups[].enabled = true` 时，`memberRowIds[]` 的成员去空白后必须非空且可解析到当前 `rows[]` 的 `rowId`
-- `serverAggregationGroups[].enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
-- `serverAggregationGroups[].enabled = true` 时，每个 `memberRowIds[]` 引用行对应的落地 `server` 必须与组 `server` 一致
-- `serverAggregationGroups[].enabled = true` 时，渲染到最终 YAML 的聚合组名必须与前端 Stage 2 聚合树名称一致：优先使用前端编辑后的组名；未编辑时使用默认展示名（`国旗 emoji + server`，无法确定单一国旗时仅 `server`）
+- `serverAggregationGroups[]` 可选；字段形状见上文示例；业务语义、校验、命名与渲染规则见 [04 §2.7](04-business-rules.md) 与 [04 §3.3.1](04-business-rules.md)
+- 渲染出的聚合组是最终 YAML 产物，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
 
 ### 3. 阶段 2 初始化数据
 
@@ -676,6 +668,7 @@
 
 - `v` 是长链接编码版本字段；当前编码版本固定为 `3`
 - 当前编码版本（`v = 3`）的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
+- `v = 3` 为当前统一编码版本；新增 `stage2Snapshot` 字段时应扩展同一版本载荷，不得分裂多个「当前」编码版本
 - 解码端必须兼容历史 `v = 2` 载荷；`v = 2` 恢复时 `stage2Snapshot.serverAggregationGroups` 视为缺省（`nil`/空）
 - 兼容 `v = 2` 仅用于解码与恢复，不得作为新生成长链接的编码版本
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接

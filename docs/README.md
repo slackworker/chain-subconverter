@@ -32,12 +32,6 @@
 5. 固定 fixture：[3pass-ss2022-test-subscription](testing/3pass-ss2022-test-subscription.md)、[dual-landing-chain-port-forward](testing/dual-landing-chain-port-forward.md)
 其余 `spec/`、`testing/` 文件按任务打开。
 
-## 提案
-
-| 文档 | 用途 |
-|------|------|
-| [proposals/2026-06-aggressive-chain-failover.md](proposals/2026-06-aggressive-chain-failover.md) | 链式代理激进故障转移双方案设计与 worktree 并行拆分 |
-
 ## 临时区
 
 `docs/temp/` 本地草稿（gitignore）；规则 [temp/README.md](temp/README.md)。不参与裁决。
