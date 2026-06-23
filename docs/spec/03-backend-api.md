@@ -99,6 +99,7 @@
 - `serverAggregationGroups[].enabled = true` 时，`memberRowIds[]` 的成员去空白后必须非空且可解析到当前 `rows[]` 的 `rowId`
 - `serverAggregationGroups[].enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
 - `serverAggregationGroups[].enabled = true` 时，每个 `memberRowIds[]` 引用行对应的落地 `server` 必须与组 `server` 一致
+- `serverAggregationGroups[].enabled = true` 时，渲染到最终 YAML 的聚合组名必须与前端 Stage 2 聚合树名称一致：优先使用前端编辑后的组名；未编辑时使用默认展示名（`国旗 emoji + server`，无法确定单一国旗时仅 `server`）
 
 ### 3. 阶段 2 初始化数据
 

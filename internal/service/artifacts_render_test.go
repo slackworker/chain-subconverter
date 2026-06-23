@@ -210,7 +210,7 @@ func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
 		t.Fatalf("RenderCompleteConfig() error = %v", err)
 	}
 
-	if !strings.Contains(rendered, "  - name: srv:landing.example.com\n    type: fallback") {
+	if !strings.Contains(rendered, "  - name: landing.example.com\n    type: fallback") {
 		t.Fatalf("rendered config is missing server aggregation group:\n%s", rendered)
 	}
 	if !strings.Contains(rendered, "      - HK Landing\n      - HK Landing Copy") {

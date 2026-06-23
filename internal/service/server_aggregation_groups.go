@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
 )
@@ -78,10 +79,7 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 	if err != nil {
 		return nil, fmt.Errorf("parse complete config proxy-groups: %w", err)
 	}
-	usedNames := make(map[string]struct{}, len(proxyNames)+len(proxyGroups)+len(snapshot.ServerAggregationGroups))
-	for name := range proxyNames {
-		usedNames[name] = struct{}{}
-	}
+	usedNames := make(map[string]struct{}, len(proxyGroups)+len(snapshot.ServerAggregationGroups))
 	for name := range proxyGroups {
 		usedNames[name] = struct{}{}
 	}
@@ -98,6 +96,7 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 		}
 		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
 		members := make([]string, 0, len(group.MemberRowIDs))
+		memberRows := make([]Stage2Row, 0, len(group.MemberRowIDs))
 		for _, memberRowID := range group.MemberRowIDs {
 			trimmedMemberRowID := strings.TrimSpace(memberRowID)
 			if _, exists := memberSeen[trimmedMemberRowID]; exists {
@@ -113,9 +112,13 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 			if _, exists := proxyNames[memberName]; !exists {
 				return nil, fmt.Errorf("server aggregation group member proxy %q is missing from complete config", memberName)
 			}
+			memberRows = append(memberRows, row)
 			members = append(members, memberName)
 		}
-		managedName := nextManagedServerAggregationGroupName(group.Server, usedNames)
+		managedName := nextManagedServerAggregationGroupName(
+			deriveManagedServerAggregationGroupBaseName(group.Server, memberRows),
+			usedNames,
+		)
 		usedNames[managedName] = struct{}{}
 		managedGroups = append(managedGroups, managedServerAggregationGroup{
 			Name:    managedName,
@@ -127,12 +130,51 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 	return managedGroups, nil
 }
 
-func nextManagedServerAggregationGroupName(server string, usedNames map[string]struct{}) string {
+func deriveManagedServerAggregationGroupBaseName(server string, memberRows []Stage2Row) string {
 	baseName := strings.TrimSpace(server)
 	if baseName == "" {
 		baseName = "server"
 	}
-	baseName = "srv:" + baseName
+	defaultDisplayName := baseName
+	if sourceFlagEmoji := detectServerGroupSourceFlagEmoji(memberRows); sourceFlagEmoji != "" {
+		defaultDisplayName = sourceFlagEmoji + " " + baseName
+	}
+	if len(memberRows) == 0 {
+		return defaultDisplayName
+	}
+
+	anchorRow := memberRows[0]
+	anchorProxyName := strings.TrimSpace(anchorRow.ProxyName)
+	if anchorProxyName == "" ||
+		anchorProxyName == anchorRow.sourceLandingNodeNameOrFallback() ||
+		hasLegacySrvPrefix(anchorProxyName) {
+		return defaultDisplayName
+	}
+	return anchorProxyName
+}
+
+func hasLegacySrvPrefix(name string) bool {
+	trimmedName := strings.TrimSpace(name)
+	if len(trimmedName) < 4 {
+		return false
+	}
+	lower := strings.ToLower(trimmedName)
+	if !strings.HasPrefix(lower, "srv") {
+		return false
+	}
+	remainder := []rune(trimmedName[len("srv"):])
+	index := 0
+	for index < len(remainder) && unicode.IsSpace(remainder[index]) {
+		index++
+	}
+	return index < len(remainder) && (remainder[index] == ':' || remainder[index] == '：')
+}
+
+func nextManagedServerAggregationGroupName(baseName string, usedNames map[string]struct{}) string {
+	baseName = strings.TrimSpace(baseName)
+	if baseName == "" {
+		baseName = "server"
+	}
 	if _, exists := usedNames[baseName]; !exists {
 		return baseName
 	}
@@ -143,6 +185,65 @@ func nextManagedServerAggregationGroupName(server string, usedNames map[string]s
 			return candidate
 		}
 	}
+}
+
+func detectServerGroupSourceFlagEmoji(rows []Stage2Row) string {
+	var sourceFlagEmoji string
+	foundSourceRow := false
+	for _, row := range rows {
+		if !isServerGroupSourceRow(row) {
+			continue
+		}
+		foundSourceRow = true
+		currentFlagEmoji := leadingFlagEmoji(row.proxyNameOrFallback())
+		if currentFlagEmoji == "" {
+			return ""
+		}
+		if sourceFlagEmoji == "" {
+			sourceFlagEmoji = currentFlagEmoji
+			continue
+		}
+		if sourceFlagEmoji != currentFlagEmoji {
+			return ""
+		}
+	}
+	if !foundSourceRow {
+		return ""
+	}
+	return sourceFlagEmoji
+}
+
+func isServerGroupSourceRow(row Stage2Row) bool {
+	sourceLandingName := row.sourceLandingNodeNameOrFallback()
+	if sourceLandingName == "" {
+		return false
+	}
+	if rowID := strings.TrimSpace(row.RowID); rowID != "" {
+		return rowID == sourceLandingName
+	}
+	if proxyName := strings.TrimSpace(row.ProxyName); proxyName != "" {
+		return proxyName == sourceLandingName
+	}
+	return strings.TrimSpace(row.LandingNodeName) == sourceLandingName
+}
+
+func leadingFlagEmoji(name string) string {
+	trimmedName := strings.TrimSpace(name)
+	runes := []rune(trimmedName)
+	if len(runes) < 2 {
+		return ""
+	}
+	if !isRegionalIndicatorRune(runes[0]) || !isRegionalIndicatorRune(runes[1]) {
+		return ""
+	}
+	if len(runes) > 2 && !unicode.IsSpace(runes[2]) {
+		return ""
+	}
+	return string(runes[:2])
+}
+
+func isRegionalIndicatorRune(value rune) bool {
+	return value >= 0x1F1E6 && value <= 0x1F1FF
 }
 
 func renderManagedServerAggregationGroupLines(groups []managedServerAggregationGroup) []string {

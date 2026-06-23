@@ -277,7 +277,7 @@ describe("buildStage2AggregationTree", () => {
 });
 
 describe("formatServerGroupLabel", () => {
-	it("removes srv prefix and keeps server value", () => {
+	it("returns trimmed server label or fallback placeholder", () => {
 		expect(formatServerGroupLabel("a.b.c")).toBe("a.b.c");
 		expect(formatServerGroupLabel("")).toBe("--");
 	});

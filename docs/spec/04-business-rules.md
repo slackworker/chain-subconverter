@@ -337,6 +337,7 @@
 - `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
 - `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback|url-test`
 - `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`
+- `enabled = true` 时，聚合组产物名以该 server 分组在前端 Stage 2 聚合树中的名称为准：优先使用用户编辑后的组名；未编辑时使用默认展示名（`国旗 emoji + server`，若无法确定单一国旗则仅 `server`）
 - `enabled = true` 时成员数至少为 2；否则生成前校验必须阻断
 - 成员行的落地 `server` 必须与组 `server` 一致；跨 server 入组必须阻断
 - 该聚合配置只影响最终 YAML 产物，不回写阶段 2 链式候选；`rows[].targetName` 在 `mode = chain` 下仍只允许引用 `chainTargets[].name`
