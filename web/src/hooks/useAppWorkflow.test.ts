@@ -1193,6 +1193,73 @@ it("auto-disables undersized aggregation groups before generate", async () => {
 		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(false);
 	});
 
+	it("clears aggregation groups before generate when aggregation mode is turned off", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "hk-1",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 1",
+					landingNodeName: "HK 1",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "hk-2",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 2",
+					landingNodeName: "HK 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups.length).toBeGreaterThan(0);
+
+		act(() => {
+			workflow.current.handleClearServerAggregationGroups();
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([]);
+
+		mockPostGenerate.mockResolvedValueOnce(buildGenerateResponse("https://public.example.com/sub?data=no-aggregation"));
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
+			stage2Snapshot: expect.objectContaining({
+				serverAggregationGroups: [],
+			}),
+		}));
+	});
+
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {
 		const workflow = renderWorkflow(24);
 		await initializeStage2ReadyState(workflow);

@@ -698,3 +698,18 @@ export function reorderServerAggregationMemberState(
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
 	};
 }
+
+export function clearServerAggregationGroupsState(current: AppState): AppState {
+	if (current.stage2Snapshot.serverAggregationGroups.length === 0) {
+		return current;
+	}
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: {
+			rows: current.stage2Snapshot.rows,
+			serverAggregationGroups: [],
+		},
+	};
+}

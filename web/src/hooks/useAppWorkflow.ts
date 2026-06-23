@@ -55,6 +55,7 @@ import {
 	applyShortURLPreferenceToggleState,
 	applyStage1ConvertSuccessState,
 	cloneStage2RowState,
+	clearServerAggregationGroupsState,
 	completeWorkflowRequestState,
 	deleteStage2RowState,
 	reportCurrentLinkInputErrorState,
@@ -139,6 +140,7 @@ export interface AppWorkflowViewModel {
 	) => void;
 	handleChainProxyGroupProfileChange: (landingNodeName: string, profile: ChainProxyGroupProfile | "") => void;
 	handleGlobalChainProxyGroupProfileChange: (enabled: boolean) => void;
+	handleClearServerAggregationGroups: () => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -852,6 +854,10 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		));
 	}
 
+	function handleClearServerAggregationGroups() {
+		setState((current) => clearServerAggregationGroupsState(current));
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
@@ -1044,6 +1050,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleServerAggregationMemberReorder,
 		handleChainProxyGroupProfileChange,
 		handleGlobalChainProxyGroupProfileChange,
+		handleClearServerAggregationGroups,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

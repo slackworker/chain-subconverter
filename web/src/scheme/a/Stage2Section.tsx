@@ -254,6 +254,13 @@ export function Stage2Section({
 		setSupplementOpen,
 	};
 
+	function handleAggregationModeToggle(checked: boolean) {
+		setStage2AggregationMode(checked);
+		if (!checked) {
+			workflow.handleClearServerAggregationGroups();
+		}
+	}
+
 	return (
 		<section className="a-stage" aria-labelledby="a-stage2-h">
 			<div ref={chainTargetMenuPortalRef} className="a-scheme-a-portal-mount" aria-hidden="true" />
@@ -298,7 +305,7 @@ export function Stage2Section({
 												checked={stage2AggregationMode}
 												disabled={!isStage2Editable}
 												aria-label={copy.stage2AggregationMode}
-												onChange={(event) => setStage2AggregationMode(event.target.checked)}
+												onChange={(event) => handleAggregationModeToggle(event.target.checked)}
 											/>
 											<span className="a-switch" aria-hidden />
 											<span className="a-advanced__switch-label">{copy.stage2AggregationMode}</span>

@@ -13,6 +13,7 @@ import {
 	applyShortURLCreationSuccessState,
 	applyShortURLPreferenceToggleState,
 	applyStage1ConvertSuccessState,
+	clearServerAggregationGroupsState,
 	completeWorkflowRequestState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
@@ -553,5 +554,30 @@ it("clears server aggregation groups when deleting back to a single row", () => 
 		expect(fallback.stage2Snapshot.serverAggregationGroups).toEqual([
 			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-2", "hk-1"] },
 		]);
+	});
+
+	it("clears all server aggregation groups in one state transition", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [
+					{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] },
+				],
+			},
+			generatedUrls: {
+				longUrl: "https://public.example.com/sub?data=generated-long-url",
+				shortUrl: null,
+			},
+		};
+
+		const next = clearServerAggregationGroupsState(current);
+
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([]);
+		expect(next.generatedUrls).toBeNull();
+		expect(next.stage3Expired).toBe(true);
 	});
 });
