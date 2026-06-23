@@ -1035,8 +1035,8 @@ describe("useAppWorkflow", () => {
 		});
 
 		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
-			"aggressive_fallback",
-			"aggressive_fallback",
+			"aggressive_url_test",
+			"aggressive_url_test",
 		]);
 
 		act(() => {
@@ -1084,10 +1084,10 @@ describe("useAppWorkflow", () => {
 		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
 
 		act(() => {
-			workflow.current.handleChainProxyGroupProfileChange(rowKey, "aggressive_fallback");
+			workflow.current.handleChainProxyGroupProfileChange(rowKey, "aggressive_url_test");
 		});
 
-		expect(workflow.current.stage2Rows[0].chainProxyGroupProfile).toBe("aggressive_fallback");
+		expect(workflow.current.stage2Rows[0].chainProxyGroupProfile).toBe("aggressive_url_test");
 
 		act(() => {
 			workflow.current.handleTargetChange(rowKey, "Transit Node A");

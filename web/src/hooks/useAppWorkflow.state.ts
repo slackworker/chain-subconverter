@@ -437,7 +437,7 @@ export function applyGlobalChainProxyGroupProfileState(
 		if (!isEligible(row)) {
 			return row;
 		}
-		const nextProfile = enabled ? "aggressive_fallback" as const : undefined;
+		const nextProfile = enabled ? "aggressive_url_test" as const : undefined;
 		if (row.chainProxyGroupProfile === nextProfile) {
 			return row;
 		}

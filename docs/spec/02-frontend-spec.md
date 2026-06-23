@@ -198,7 +198,7 @@
 | `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
-| `rows[].chainProxyGroupProfile` | `aggressive_fallback \| aggressive_url_test \| 空` | 可选；仅 `mode = chain` 且 `targetName` 指向 `kind = proxy-groups` 时有语义；见 [04 §3.1](04-business-rules.md) |
+| `rows[].chainProxyGroupProfile` | `aggressive_url_test \| 空` | 可选；仅 `mode = chain` 且 `targetName` 指向 `kind = proxy-groups` 时有语义；前端本阶段只写入 `aggressive_url_test` 或空，见 [04 §3.1](04-business-rules.md) |
 
 ### 2.2 共享业务槽位
 
@@ -243,8 +243,9 @@
 
 ### 2.6.1 链式地域组故障转移 profile（基线路由）
 
-- 受管 profile 选择器属于阶段 2 的**基线路由**能力：当前只在 `/`（`default`）与 `/ui/a` 暴露；探索性路由 `/ui/b*`、`/ui/c*` 本轮不复制该控件，但共享 workflow 仍须在目标切换时维护 `stage2Snapshot.rows[].chainProxyGroupProfile` 合法性
-- 仅当 `mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups` 时展示并可编辑；允许值为空（模板默认）、`aggressive_fallback`、`aggressive_url_test`
+- 本阶段只提供**全局开关**，不提供每行 profile 选择器；受管 profile 控件属于阶段 2 的**基线路由**能力：当前只在 `/`（`default`）与 `/ui/a` 暴露；探索性路由 `/ui/b*`、`/ui/c*` 本轮不复制该控件，但共享 workflow 仍须在目标切换时维护 `stage2Snapshot.rows[].chainProxyGroupProfile` 合法性
+- 全局开关开启时，前端必须为所有符合条件的行统一写入 `aggressive_url_test`；关闭时统一清空（沿用模板默认）。前端本阶段不暴露 `aggressive_fallback` 选择
+- 符合条件的行指：`mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups`
 - 当用户把链式目标从 `proxy-groups` 切到 `proxies`（固定节点）、切换到 `none` / `port_forward`，或第四列被清空时，前端必须立即从当前行快照中移除 `chainProxyGroupProfile`（写入 `undefined`/省略），不得把无效 profile 留到下一次 `POST /api/generate`
 
 ### 2.7 生成动作
