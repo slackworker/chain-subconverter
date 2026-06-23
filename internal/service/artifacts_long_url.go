@@ -70,11 +70,12 @@ type longURLStage2Snapshot struct {
 }
 
 type longURLStage2Row struct {
-	RowID                 string  `json:"rowId"`
-	SourceLandingNodeName string  `json:"sourceLandingNodeName"`
-	ProxyName             string  `json:"proxyName"`
-	Mode                  string  `json:"mode"`
-	TargetName            *string `json:"targetName"`
+	RowID                  string  `json:"rowId"`
+	SourceLandingNodeName  string  `json:"sourceLandingNodeName"`
+	ProxyName              string  `json:"proxyName"`
+	Mode                   string  `json:"mode"`
+	TargetName             *string `json:"targetName"`
+	ChainProxyGroupProfile string  `json:"chainProxyGroupProfile,omitempty"`
 }
 
 type longURLServerAggregationGroup struct {
@@ -292,12 +293,13 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
 	for index, row := range schema.Stage2Snapshot.Rows {
 		rows[index] = Stage2Row{
-			RowID:                 row.RowID,
-			SourceLandingNodeName: row.SourceLandingNodeName,
-			ProxyName:             row.ProxyName,
-			LandingNodeName:       row.ProxyName,
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
+			RowID:                  row.RowID,
+			SourceLandingNodeName:  row.SourceLandingNodeName,
+			ProxyName:              row.ProxyName,
+			LandingNodeName:        row.ProxyName,
+			Mode:                   row.Mode,
+			TargetName:             row.TargetName,
+			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
 		}
 	}
 	var serverAggregationGroups []ServerAggregationGroup
@@ -336,6 +338,10 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
+	if payload.V != longURLSchemaVersion {
+		return fmt.Errorf("unsupported long URL payload version %d", payload.V)
+	}
+
 	if payload.Stage1Input.AdvancedOptions.Config == nil {
 		return fmt.Errorf("advancedOptions.config must not be empty")
 	}
@@ -355,6 +361,8 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	}
 
 	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
+	chainProxyGroupProfilesByTarget := make(map[string]string)
+	chainProxyGroupProfileOwners := make(map[string]string)
 	for _, row := range payload.Stage2Snapshot.Rows {
 		rowID := strings.TrimSpace(row.rowIDOrFallback())
 		if rowID == "" {
@@ -373,6 +381,11 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		}
 		rowsByProxyName[proxyName] = struct{}{}
 
+		profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
+		if !isSupportedChainProxyGroupProfile(profile) {
+			return fmt.Errorf("unsupported chainProxyGroupProfile %q for proxy %q", row.ChainProxyGroupProfile, proxyName)
+		}
+
 		targetName := ""
 		if row.TargetName != nil {
 			targetName = strings.TrimSpace(*row.TargetName)
@@ -383,9 +396,29 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			if targetName != "" {
 				return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
 			}
-		case "chain", "port_forward":
+			if profile != "" {
+				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is none", proxyName)
+			}
+		case "chain":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			}
+			if existingProfile, exists := chainProxyGroupProfilesByTarget[targetName]; exists && existingProfile != profile {
+				return fmt.Errorf(
+					"chainProxyGroupProfile for target %q conflicts between proxy %q and proxy %q",
+					targetName,
+					chainProxyGroupProfileOwners[targetName],
+					proxyName,
+				)
+			}
+			chainProxyGroupProfilesByTarget[targetName] = profile
+			chainProxyGroupProfileOwners[targetName] = proxyName
+		case "port_forward":
+			if targetName == "" {
+				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			}
+			if profile != "" {
+				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is port_forward", proxyName)
 			}
 		default:
 			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
@@ -569,11 +602,12 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {
 		rows[index] = longURLStage2Row{
-			RowID:                 row.rowIDOrFallback(),
-			SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
-			ProxyName:             row.proxyNameOrFallback(),
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
+			RowID:                  row.rowIDOrFallback(),
+			SourceLandingNodeName:  row.sourceLandingNodeNameOrFallback(),
+			ProxyName:              row.proxyNameOrFallback(),
+			Mode:                   row.Mode,
+			TargetName:             row.TargetName,
+			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
 		}
 	}
 	serverAggregationGroups := make([]longURLServerAggregationGroup, len(payload.Stage2Snapshot.ServerAggregationGroups))

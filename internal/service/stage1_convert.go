@@ -120,26 +120,28 @@ type Stage2Init struct {
 }
 
 type Stage2Row struct {
-	RowID                 string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName             string                     `json:"proxyName,omitempty"`
-	LandingNodeName       string                     `json:"landingNodeName"`
-	Mode                  string                     `json:"mode"`
-	TargetName            *string                    `json:"targetName"`
-	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	RowID                  string                     `json:"rowId,omitempty"`
+	SourceLandingNodeName  string                     `json:"sourceLandingNodeName,omitempty"`
+	ProxyName              string                     `json:"proxyName,omitempty"`
+	LandingNodeName        string                     `json:"landingNodeName"`
+	Mode                   string                     `json:"mode"`
+	TargetName             *string                    `json:"targetName"`
+	ChainProxyGroupProfile string                     `json:"chainProxyGroupProfile,omitempty"`
+	RestrictedModes        map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 }
 
 type Stage2InitRow struct {
-	RowID                 string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName             string                     `json:"proxyName,omitempty"`
-	LandingNodeName       string                     `json:"landingNodeName"`
-	LandingNodeType       string                     `json:"landingNodeType"`
-	Server                string                     `json:"server"`
-	Mode                  string                     `json:"mode"`
-	TargetName            *string                    `json:"targetName"`
-	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
-	ModeWarnings          map[string]ModeRestriction `json:"modeWarnings,omitempty"`
+	RowID                  string                     `json:"rowId,omitempty"`
+	SourceLandingNodeName  string                     `json:"sourceLandingNodeName,omitempty"`
+	ProxyName              string                     `json:"proxyName,omitempty"`
+	LandingNodeName        string                     `json:"landingNodeName"`
+	LandingNodeType        string                     `json:"landingNodeType"`
+	Server                 string                     `json:"server"`
+	Mode                   string                     `json:"mode"`
+	TargetName             *string                    `json:"targetName"`
+	ChainProxyGroupProfile string                     `json:"chainProxyGroupProfile,omitempty"`
+	RestrictedModes        map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	ModeWarnings           map[string]ModeRestriction `json:"modeWarnings,omitempty"`
 }
 
 type ModeRestriction struct {
@@ -194,6 +196,24 @@ type regionMatcher struct {
 }
 
 const recommendedChainLandingPortMax = 10000
+
+const (
+	ChainProxyGroupProfileAggressiveFallback = "aggressive_fallback"
+	ChainProxyGroupProfileAggressiveURLTest  = "aggressive_url_test"
+)
+
+func normalizeChainProxyGroupProfile(profile string) string {
+	return strings.TrimSpace(profile)
+}
+
+func isSupportedChainProxyGroupProfile(profile string) bool {
+	switch normalizeChainProxyGroupProfile(profile) {
+	case "", ChainProxyGroupProfileAggressiveFallback, ChainProxyGroupProfileAggressiveURLTest:
+		return true
+	default:
+		return false
+	}
+}
 
 func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)

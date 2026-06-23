@@ -573,6 +573,93 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 	}
 }
 
+func TestRenderCompleteConfigFromSource_OverridesChainProxyGroupProfileOnManagedPass3Path(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request:              toSubconverterRequest(Stage1Input{}),
+				TemplateConfig:       "custom_proxy_group=🇭🇰 香港节点`url-test`HK\n",
+				EffectiveTemplateURL: "https://templates.example.com/hk-only.ini",
+				ManagedTemplateURL:   "http://managed-template.invalid/internal/templates/hk-only.ini",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}\n"},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: url-test",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+				FullBase: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: url-test",
+					"    url: https://example.com/original",
+					"    interval: 300",
+					"    tolerance: 50",
+					"    proxies:",
+					"      - HK Landing",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: url-test",
+			"    url: https://example.com/original",
+			"    interval: 300",
+			"    tolerance: 50",
+			"    proxies:",
+			"      - HK Landing",
+			"      - transit-a",
+			"",
+		}, "\n"),
+	}
+
+	renderedConfig, err := RenderCompleteConfigFromSource(
+		context.Background(),
+		source,
+		Stage1Input{},
+		Stage2Snapshot{Rows: []Stage2Row{{
+			RowID:                  "hk-1",
+			SourceLandingNodeName:  "HK Landing",
+			ProxyName:              "HK Landing",
+			LandingNodeName:        "HK Landing",
+			Mode:                   "chain",
+			TargetName:             &chainTarget,
+			ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
+		}}},
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
+	}
+
+	if !strings.Contains(renderedConfig, "    type: fallback") {
+		t.Fatalf("rendered config should override proxy-group type on managed pass3 path:\n%s", renderedConfig)
+	}
+	if !strings.Contains(renderedConfig, "    max-failed-times: 1") || !strings.Contains(renderedConfig, "    lazy: false") {
+		t.Fatalf("rendered config should include aggressive fallback fields on managed pass3 path:\n%s", renderedConfig)
+	}
+	if strings.Contains(renderedConfig, "      - HK Landing\n") {
+		t.Fatalf("rendered config should still strip landing node from the target region group:\n%s", renderedConfig)
+	}
+}
+
 func TestManagedConversionSource_TemplateFetchCache(t *testing.T) {
 	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 

@@ -7,6 +7,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const aggressiveChainProxyGroupHealthCheckURL = "https://cp.cloudflare.com/generate_204"
+
 func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
 		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
@@ -15,13 +17,19 @@ func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingName
 		if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
 			return err
 		}
+		if err := applyChainProxyGroupProfiles(root, rows, lines, deletedLines, replacedLines); err != nil {
+			return err
+		}
 		return nil
 	})
 }
 
-func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
-	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, _ []string, deletedLines map[int]struct{}, _ map[int]string) error {
-		return stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines)
+func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
+			return err
+		}
+		return applyChainProxyGroupProfiles(root, rows, lines, deletedLines, replacedLines)
 	})
 }
 
@@ -153,6 +161,228 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 	}
 
 	return nil
+}
+
+func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+	profilesByTarget := collectChainProxyGroupProfiles(rows)
+	if len(profilesByTarget) == 0 {
+		return nil
+	}
+
+	proxyGroupsNode := yamlMappingValue(root, "proxy-groups")
+	if proxyGroupsNode == nil {
+		return fmt.Errorf("full-base YAML is missing proxy-groups")
+	}
+	if proxyGroupsNode.Kind != yaml.SequenceNode {
+		return fmt.Errorf("full-base YAML field %q must be a sequence", "proxy-groups")
+	}
+
+	for index, groupNode := range proxyGroupsNode.Content {
+		if groupNode.Kind != yaml.MappingNode {
+			return fmt.Errorf("proxy-group entry must be a mapping")
+		}
+
+		nameNode := yamlMappingValue(groupNode, "name")
+		if nameNode == nil {
+			return fmt.Errorf("proxy-group entry is missing name")
+		}
+
+		profile, ok := profilesByTarget[nameNode.Value]
+		if !ok {
+			continue
+		}
+
+		startIndex := groupNode.Line - 1
+		if startIndex < 0 || startIndex >= len(lines) {
+			return fmt.Errorf("proxy-group line %d is out of range", groupNode.Line)
+		}
+
+		endIndex := len(lines)
+		if index+1 < len(proxyGroupsNode.Content) {
+			nextIndex := proxyGroupsNode.Content[index+1].Line - 1
+			if nextIndex > startIndex {
+				endIndex = nextIndex
+			}
+		}
+
+		if err := applyChainProxyGroupProfileLines(groupNode, profile, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
+			return fmt.Errorf("apply chain proxy-group profile for %q: %w", nameNode.Value, err)
+		}
+	}
+
+	return nil
+}
+
+func collectChainProxyGroupProfiles(rows []Stage2Row) map[string]string {
+	profilesByTarget := make(map[string]string)
+	for _, row := range rows {
+		if row.Mode != "chain" || row.TargetName == nil {
+			continue
+		}
+		profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
+		if profile == "" {
+			continue
+		}
+		profilesByTarget[strings.TrimSpace(*row.TargetName)] = profile
+	}
+	return profilesByTarget
+}
+
+var chainProxyGroupProfileFieldOrder = []string{
+	"type",
+	"url",
+	"interval",
+	"lazy",
+	"timeout",
+	"max-failed-times",
+	"tolerance",
+}
+
+type chainProxyGroupProfilePatch struct {
+	set             map[string]string
+	deleteTolerance bool
+}
+
+func chainProxyGroupProfilePatchFor(profile string) (chainProxyGroupProfilePatch, error) {
+	patch := chainProxyGroupProfilePatch{
+		set: map[string]string{
+			"url":              aggressiveChainProxyGroupHealthCheckURL,
+			"interval":         "60",
+			"lazy":             "false",
+			"timeout":          "2000",
+			"max-failed-times": "1",
+		},
+	}
+
+	switch normalizeChainProxyGroupProfile(profile) {
+	case ChainProxyGroupProfileAggressiveFallback:
+		patch.set["type"] = "fallback"
+		patch.deleteTolerance = true
+	case ChainProxyGroupProfileAggressiveURLTest:
+		patch.set["type"] = "url-test"
+		patch.set["tolerance"] = "1"
+	default:
+		return chainProxyGroupProfilePatch{}, fmt.Errorf("unsupported chain proxy-group profile %q", profile)
+	}
+
+	return patch, nil
+}
+
+func applyChainProxyGroupProfileLines(
+	groupNode *yaml.Node,
+	profile string,
+	lines []string,
+	startIndex int,
+	endIndex int,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
+	membersNode := yamlMappingValue(groupNode, "proxies")
+	if membersNode == nil {
+		nameNode := yamlMappingValue(groupNode, "name")
+		groupName := ""
+		if nameNode != nil {
+			groupName = nameNode.Value
+		}
+		return fmt.Errorf("proxy-group %q is missing proxies", groupName)
+	}
+
+	patch, err := chainProxyGroupProfilePatchFor(profile)
+	if err != nil {
+		return err
+	}
+
+	fieldIndent := proxyGroupFieldIndent(lines, startIndex, endIndex)
+	pending := make(map[string]string, len(patch.set))
+	for key, value := range patch.set {
+		pending[key] = value
+	}
+
+	proxiesLineIndex := -1
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		indent, key, value, ok := parseMappingFieldLine(lines[lineIndex])
+		if !ok {
+			continue
+		}
+		if fieldIndent == "" {
+			fieldIndent = indent
+		}
+		if key == "proxies" && value == "" {
+			proxiesLineIndex = lineIndex
+			continue
+		}
+		if patchValue, shouldSet := pending[key]; shouldSet {
+			replacedLines[lineIndex] = fieldIndent + key + ": " + patchValue
+			delete(pending, key)
+			continue
+		}
+		if key == "tolerance" && patch.deleteTolerance {
+			deletedLines[lineIndex] = struct{}{}
+		}
+	}
+
+	if len(pending) == 0 {
+		return nil
+	}
+
+	insertLines := make([]string, 0, len(pending))
+	for _, key := range chainProxyGroupProfileFieldOrder {
+		value, ok := pending[key]
+		if !ok {
+			continue
+		}
+		insertLines = append(insertLines, fieldIndent+key+": "+value)
+	}
+
+	if proxiesLineIndex >= 0 {
+		replacedLines[proxiesLineIndex] = strings.Join(insertLines, "\n") + "\n" + lines[proxiesLineIndex]
+		return nil
+	}
+
+	insertIndex := endIndex - 1
+	for insertIndex > startIndex {
+		if _, deleted := deletedLines[insertIndex]; !deleted {
+			break
+		}
+		insertIndex--
+	}
+	if insertIndex <= startIndex {
+		return fmt.Errorf("proxy-group block has no insertion point for profile fields")
+	}
+
+	replacedLines[insertIndex] = lines[insertIndex] + "\n" + strings.Join(insertLines, "\n")
+	return nil
+}
+
+func proxyGroupFieldIndent(lines []string, startIndex int, endIndex int) string {
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		indent, _, _, ok := parseMappingFieldLine(lines[lineIndex])
+		if ok {
+			return indent
+		}
+	}
+	return "    "
+}
+
+func parseMappingFieldLine(line string) (indent string, key string, value string, ok bool) {
+	trimmed := strings.TrimLeft(line, " \t")
+	if trimmed == "" || strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "#") {
+		return "", "", "", false
+	}
+
+	colonIndex := strings.Index(trimmed, ":")
+	if colonIndex < 0 {
+		return "", "", "", false
+	}
+
+	key = strings.TrimSpace(trimmed[:colonIndex])
+	if key == "" {
+		return "", "", "", false
+	}
+
+	indent = line[:len(line)-len(trimmed)]
+	value = strings.TrimSpace(trimmed[colonIndex+1:])
+	return indent, key, value, true
 }
 
 func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {

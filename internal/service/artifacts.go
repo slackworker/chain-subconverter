@@ -125,7 +125,7 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 		return "", err
 	}
 
-	return rendered, nil
+	return unescapeYAMLUnicodeEscapes(rendered), nil
 }
 
 func BuildTemplateDiagnostics(fixtures ConversionFixtures) (TemplateDiagnostics, error) {

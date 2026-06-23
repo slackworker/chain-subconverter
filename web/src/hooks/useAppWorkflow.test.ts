@@ -1471,6 +1471,118 @@ it("auto-disables undersized aggregation groups before generate", async () => {
 		]);
 	});
 
+	it("applies chainProxyGroupProfile to all eligible chain proxy-group rows via global toggle", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [
+				{ name: "HK Relay Group", kind: "proxy-groups" },
+				{ name: "US Relay Group", kind: "proxy-groups" },
+			],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					server: "landing-hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					landingNodeName: "landing-us",
+					landingNodeType: "ss",
+					server: "landing-us.example.com",
+					mode: "chain",
+					targetName: "US Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		act(() => {
+			workflow.current.handleGlobalChainProxyGroupProfileChange(true);
+		});
+
+		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
+			"aggressive_url_test",
+			"aggressive_url_test",
+		]);
+
+		act(() => {
+			workflow.current.handleGlobalChainProxyGroupProfileChange(false);
+		});
+
+		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
+			undefined,
+			undefined,
+		]);
+	});
+
+	it("clears chainProxyGroupProfile when chain target switches from proxy-groups to fixed proxies", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [
+				{ name: "HK Relay Group", kind: "proxy-groups" },
+				{ name: "Transit Node A", kind: "proxies" },
+			],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					server: "landing-hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleChainProxyGroupProfileChange(rowKey, "aggressive_url_test");
+		});
+
+		expect(workflow.current.stage2Rows[0].chainProxyGroupProfile).toBe("aggressive_url_test");
+
+		act(() => {
+			workflow.current.handleTargetChange(rowKey, "Transit Node A");
+		});
+
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			mode: "chain",
+			targetName: "Transit Node A",
+		});
+		expect(workflow.current.stage2Rows[0].chainProxyGroupProfile).toBeUndefined();
+		expect(workflow.current.state.stage2Snapshot.rows[0].chainProxyGroupProfile).toBeUndefined();
+	});
+
 	it("does not allow switching back to the long URL when it exceeds the public budget", async () => {
 		const workflow = renderWorkflow(24);
 		await initializeStage2ReadyState(workflow);

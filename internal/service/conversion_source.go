@@ -121,11 +121,20 @@ func renderCompleteConfigViaManagedPass3(
 		return "", err
 	}
 
-	renderedConfig, err := stripLandingNodesFromCompleteConfigYAML(fullBaseYAML, stage2StripLandingNames(landingProxies, stage2Snapshot.Rows), regionGroupNames)
+	rendered, err := stripLandingNodesFromCompleteConfigYAML(
+		fullBaseYAML,
+		stage2Snapshot.Rows,
+		stage2StripLandingNames(landingProxies, stage2Snapshot.Rows),
+		regionGroupNames,
+	)
 	if err != nil {
 		return "", err
 	}
-	return appendServerAggregationGroupsToCompleteConfigYAML(renderedConfig, stage2Snapshot)
+	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
+	if err != nil {
+		return "", err
+	}
+	return unescapeYAMLUnicodeEscapes(rendered), nil
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {

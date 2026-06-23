@@ -1,7 +1,7 @@
 import { getChainTargetGroups } from "./chainTargets";
 
 import type { ChainTargetGroup } from "./chainTargets";
-import type { ServerAggregationGroup, Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
+import type { ChainTarget, ServerAggregationGroup, Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
 
 export interface TargetChoice {
 	value: string;
@@ -223,6 +223,21 @@ export function getChainTargetChoiceGroups(stage2Init: Stage2Init | null) {
 	}
 
 	return getChainTargetGroups(stage2Init.chainTargets).map(toChainTargetChoiceGroup);
+}
+
+export function findChainTarget(stage2Init: Stage2Init | null, targetName: string | null) {
+	if (stage2Init === null || targetName === null) {
+		return null;
+	}
+	return stage2Init.chainTargets.find((target) => target.name === targetName) ?? null;
+}
+
+export function isChainProxyGroupProfileEligible(stage2Init: Stage2Init | null, row: Stage2Row) {
+	if (row.mode !== "chain" || row.targetName === null) {
+		return false;
+	}
+	const target = findChainTarget(stage2Init, row.targetName);
+	return target?.kind === "proxy-groups";
 }
 
 export function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, rowKey: string) {

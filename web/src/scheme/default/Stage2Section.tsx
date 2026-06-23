@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
-import { getStage2RowKey } from "../../lib/stage2";
+import { Tooltip } from "../../lib/Tooltip";
+import { getStage2RowKey, isChainProxyGroupProfileEligible } from "../../lib/stage2";
 import { ArrowRightIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
@@ -105,6 +106,14 @@ export function Stage2Section({
 	tableWrapRef,
 }: Stage2SectionProps) {
 	const { stage2Rows, state } = workflow;
+	const hasChainProxyGroupProfileEligibleRows = stage2Rows.some((row) =>
+		isChainProxyGroupProfileEligible(state.stage2Init, row),
+	);
+	const chainProxyGroupProfileGlobalEnabled = stage2Rows.some(
+		(row) =>
+			isChainProxyGroupProfileEligible(state.stage2Init, row)
+			&& Boolean(row.chainProxyGroupProfile),
+	);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
@@ -293,6 +302,28 @@ export function Stage2Section({
 											/>
 											<span className="a-switch" aria-hidden />
 											<span className="a-advanced__switch-label">{copy.stage2AggregationMode}</span>
+										</label>
+									</div>
+									<div className="a-check-row">
+										<label className="a-check a-check--switch">
+											<input
+												className="a-switch__input"
+												type="checkbox"
+												checked={chainProxyGroupProfileGlobalEnabled}
+												disabled={!isStage2Editable || !hasChainProxyGroupProfileEligibleRows}
+												aria-label={copy.chainProxyGroupProfileLabel}
+												onChange={(event) =>
+													workflow.handleGlobalChainProxyGroupProfileChange(event.target.checked)}
+											/>
+											<span className="a-switch" aria-hidden />
+											<Tooltip content={copy.chainProxyGroupProfileHint}>
+												<span
+													className="a-advanced__switch-label"
+													aria-label={copy.chainProxyGroupProfileHintAria}
+												>
+													{copy.chainProxyGroupProfileLabel}
+												</span>
+											</Tooltip>
 										</label>
 									</div>
 								</div>

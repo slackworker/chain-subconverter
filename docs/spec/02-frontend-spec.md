@@ -200,6 +200,7 @@
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 | `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
+| `rows[].chainProxyGroupProfile` | 见 §2.6.1 | 可选；完整枚举与语义见 [04 §3.1](04-business-rules.md)；前端本阶段写入子集见 §2.6.1 |
 
 ### 2.2 共享业务槽位
 
@@ -241,6 +242,13 @@
 - `chainTargets[].isEmpty = true` 的 `proxy-groups` 候选保留展示、禁止选择，并提示“策略组为空，不允许作为中转策略组”
 - 当 `mode = port_forward` 时，第四列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`；提示用户端口转发服务必须在中转机上完成与落地节点一一对应的配置；不可多个落地节点选择同一个端口转化服务，当一个端口转发服务已被其他落地节点选择时保留展示、禁止选择
 - 前端直接使用后端返回的候选列表与默认值
+
+### 2.6.1 链式地域组故障转移 profile（基线路由）
+
+- 本阶段只提供**全局开关**，不提供每行 profile 选择器；受管 profile 控件属于阶段 2 的**基线路由**能力：当前只在 `/`（`default`）与 `/ui/a` 暴露；探索性路由 `/ui/b*`、`/ui/c*` 本轮不复制该控件，但共享 workflow 仍须在目标切换时维护 `stage2Snapshot.rows[].chainProxyGroupProfile` 合法性
+- 全局开关开启时，前端必须为所有符合条件的行统一写入 `aggressive_url_test`；关闭时统一清空（沿用模板默认）。前端本阶段不暴露 `aggressive_fallback` 选择
+- 符合条件的行指：`mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups`
+- 当用户把链式目标从 `proxy-groups` 切到 `proxies`（固定节点）、切换到 `none` / `port_forward`，或第四列被清空时，前端必须立即从当前行快照中移除 `chainProxyGroupProfile`（写入 `undefined`/省略），不得把无效 profile 留到下一次 `POST /api/generate`
 
 ### 2.7 生成动作
 

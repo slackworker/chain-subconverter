@@ -69,6 +69,8 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		forwardRelayNames[relay.Name] = struct{}{}
 	}
 	forwardRelayUsers := make(map[string]string, len(stage2Init.ForwardRelays))
+	chainProxyGroupProfiles := make(map[string]string)
+	chainProxyGroupProfileOwners := make(map[string]string)
 
 	for _, landing := range resolvedLandingProxies {
 		rows := rowsBySourceLanding[landing.Name]
@@ -80,11 +82,20 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		for _, row := range rows {
 			rowErrorRef := stage2RowValidationErrorRef(row)
 			rowProxyName := row.proxyNameOrFallback()
+			profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
+			if !isSupportedChainProxyGroupProfile(profile) {
+				cause := fmt.Errorf("unsupported chainProxyGroupProfile %q for proxy %q", row.ChainProxyGroupProfile, rowProxyName)
+				return nil, newStage2RowInvalidRequestError("unsupported chainProxyGroupProfile", rowErrorRef, "chainProxyGroupProfile", cause)
+			}
 			switch row.Mode {
 			case "none":
 				if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
 					cause := fmt.Errorf("targetName must be empty for proxy %q when mode is none", rowProxyName)
 					return nil, newStage2RowInvalidRequestError("targetName must be empty when mode is none", rowErrorRef, "targetName", cause)
+				}
+				if profile != "" {
+					cause := fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is none", rowProxyName)
+					return nil, newStage2RowInvalidRequestError("chainProxyGroupProfile must be empty when mode is none", rowErrorRef, "chainProxyGroupProfile", cause)
 				}
 				continue
 			case "chain":
@@ -101,10 +112,31 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 					cause := fmt.Errorf("chain target %q for proxy %q is empty", targetName, rowProxyName)
 					return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", rowErrorRef, "targetName", cause)
 				}
+				if profile != "" && target.Kind != "proxy-groups" {
+					cause := fmt.Errorf("chainProxyGroupProfile requires proxy-groups target for proxy %q, got %q", rowProxyName, target.Kind)
+					return nil, newStage2RowInvalidRequestError("chainProxyGroupProfile requires proxy-groups target", rowErrorRef, "chainProxyGroupProfile", cause)
+				}
+				if target.Kind == "proxy-groups" {
+					if existingProfile, exists := chainProxyGroupProfiles[targetName]; exists && existingProfile != profile {
+						cause := fmt.Errorf(
+							"chainProxyGroupProfile for target %q conflicts between proxy %q and proxy %q",
+							targetName,
+							chainProxyGroupProfileOwners[targetName],
+							rowProxyName,
+						)
+						return nil, newStage2RowInvalidRequestError("chainProxyGroupProfile must be consistent for the same target", rowErrorRef, "chainProxyGroupProfile", cause)
+					}
+					chainProxyGroupProfiles[targetName] = profile
+					chainProxyGroupProfileOwners[targetName] = rowProxyName
+				}
 			case "port_forward":
 				targetName, err := requireTargetName(row)
 				if err != nil {
 					return nil, err
+				}
+				if profile != "" {
+					cause := fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is port_forward", rowProxyName)
+					return nil, newStage2RowInvalidRequestError("chainProxyGroupProfile must be empty when mode is port_forward", rowErrorRef, "chainProxyGroupProfile", cause)
 				}
 				if _, exists := forwardRelayNames[targetName]; !exists {
 					cause := fmt.Errorf("unknown forward relay %q for proxy %q", targetName, rowProxyName)
