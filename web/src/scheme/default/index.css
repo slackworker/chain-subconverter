@@ -1890,7 +1890,15 @@
 	text-align: center;
 }
 
-.a-table--stage2-adaptive td:nth-child(2) .a-cell-type {
+/* Stage2 树形表第 3 列（节点类型）：表头与单元格统一居中 */
+.a-table-wrap--stage2-tree .a-table--stage2-adaptive th:nth-child(3),
+.a-table-wrap--stage2-tree .a-table--stage2-adaptive td:nth-child(3) {
+	text-align: center;
+}
+
+.a-table--stage2-adaptive td:nth-child(2) .a-cell-type,
+.a-table-wrap--stage2-tree .a-table--stage2-adaptive td:nth-child(3) .a-cell-type {
+	width: 100%;
 	justify-content: center;
 }
 
