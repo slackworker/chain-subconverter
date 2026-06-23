@@ -284,6 +284,42 @@ func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithOnlyOneMember
 	}
 }
 
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithDuplicateMembers(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-1"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want duplicated server aggregation group members rejection")
+	}
+	if !strings.Contains(err.Error(), `requires at least 2`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_GROUP_TOO_SMALL")
+	}
+}
+
 func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")

@@ -181,6 +181,42 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsServerAggregationGroupWithDuplicateMembers(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{
+				Rows: []Stage2Row{{
+					RowID:                 "HK 01",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					Mode:                  "none",
+				}},
+				ServerAggregationGroups: []ServerAggregationGroup{{
+					Server:       "landing.example.com",
+					Enabled:      true,
+					Strategy:     "fallback",
+					MemberRowIDs: []string{"HK 01", "HK 01"},
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: server aggregation group for server") ||
+		!strings.Contains(err.Error(), "must include at least 2 memberRowIds") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
 func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) {
 	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"rows":[]},"v":1}`)
 	encodedData, err := encodeCompressedData(payloadJSON)

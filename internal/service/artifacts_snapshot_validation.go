@@ -177,11 +177,6 @@ func validateServerAggregationGroups(
 			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
 		}
 
-		if len(group.MemberRowIDs) < 2 {
-			cause := fmt.Errorf("server aggregation group for server %q requires at least 2 members", server)
-			return newGlobalValidationError("SERVER_AGGREGATION_GROUP_TOO_SMALL", "server aggregation group requires at least 2 members", cause)
-		}
-
 		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
 		for _, rawRowID := range group.MemberRowIDs {
 			rowID := strings.TrimSpace(rawRowID)
@@ -214,6 +209,10 @@ func validateServerAggregationGroups(
 				)
 				return newGlobalValidationError("SERVER_AGGREGATION_SERVER_MISMATCH", "server aggregation member server mismatch", cause)
 			}
+		}
+		if len(memberSeen) < 2 {
+			cause := fmt.Errorf("server aggregation group for server %q requires at least 2 members", server)
+			return newGlobalValidationError("SERVER_AGGREGATION_GROUP_TOO_SMALL", "server aggregation group requires at least 2 members", cause)
 		}
 	}
 

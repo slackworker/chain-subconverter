@@ -416,17 +416,19 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		default:
 			return fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
 		}
-		if len(group.MemberRowIDs) < 2 {
-			return fmt.Errorf("server aggregation group for server %q must include at least 2 memberRowIds", server)
-		}
+		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
 		for _, memberRowID := range group.MemberRowIDs {
 			rowID := strings.TrimSpace(memberRowID)
 			if rowID == "" {
 				return fmt.Errorf("server aggregation group for server %q contains empty memberRowId", server)
 			}
+			memberSeen[rowID] = struct{}{}
 			if _, exists := rowsByID[rowID]; !exists {
 				return fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
 			}
+		}
+		if len(memberSeen) < 2 {
+			return fmt.Errorf("server aggregation group for server %q must include at least 2 memberRowIds", server)
 		}
 	}
 
