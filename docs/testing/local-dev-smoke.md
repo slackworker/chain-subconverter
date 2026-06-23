@@ -7,18 +7,18 @@
 优先使用仓库根目录脚本：
 
 ```bash
-./scripts/dev-up.sh a
+./scripts/dev-up.sh default
 ```
 
 或运行 VS Code 任务：`dev: up`
 
-支持的 `scheme`：`default`、`a`、`b1`、`b2`、`c1`、`c2`
+支持的 `scheme`：`default`、`b1`、`b2`、`c1`、`c2`
 
 固定端口：
 
 - `subconverter`: `25500`
 - `backend`: `11200`
-- `frontend`: 脚本默认 `5173`；VS Code `dev: up` 固定为 scheme `a` → `5173`（其他 scheme 请用 `./scripts/dev-up.sh <scheme>` 或 `dev-up-vscode-task.sh`）
+- `frontend`: 脚本默认 `5173`；VS Code `dev: up` 固定为 scheme `default` → `5173`（其他 scheme 请用 `./scripts/dev-up.sh <scheme>` 或 `dev-up-vscode-task.sh`）
 - 默认端口组固定为 offset `0`；多 worktree 并行预览请设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=<n>` 或 `auto`（按 `git worktree list` 稳定顺序分配 `0,10,20,...`）
 - 新切出的 worktree 若还没有自己的 `web/node_modules`，`dev: up` 会先自动执行一次 `npm ci`（`web/` 仅支持 npm，见 [spec 05 §5](../spec/05-tech-stack.md#5-前端实现约束)）
 
@@ -32,7 +32,7 @@
 go test ./...
 cd web && npm run test
 cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts
-cd web && npm run build:default && npm run build:a && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2
+cd web && npm run build:default && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2
 docker compose -f deploy/docker-compose.yml config
 ```
 
@@ -63,14 +63,14 @@ cd web && npm run build && npm run build:b1 && npm run build:b2 && npm run build
 ### 2. 启动本地 UI
 
 ```bash
-./scripts/dev-up.sh a
+./scripts/dev-up.sh default
 ```
 
 浏览器只看脚本输出的 `SCHEME_URL`：
 
 ```text
 http://localhost:<frontend-port>/            （scheme = default 时）
-http://localhost:<frontend-port>/ui/<scheme> （scheme = a|b1|b2|c1|c2 时）
+http://localhost:<frontend-port>/ui/<scheme> （scheme = b1|b2|c1|c2 时）
 ```
 
 除本次启动写入 `runtime.env` 的端口（或你显式设置的 offset 端口组）外，若只能通过其他端口访问，优先判断为旧开发实例残留，不视为正常行为。
@@ -103,7 +103,7 @@ Worker 同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy
 - backend 启动失败：先看 `.tmp/dev-up/backend.log`
 - 报 `backend-from-subconverter did not become ready`：优先确认 backend 以 IPv4 暴露，且 `SUBCONVERTER_FACING_BASE_URL` 仍是 `http://host.docker.internal:<backend-port>`
 - 固定端口冲突：同一 worktree 内脚本会尝试复用或停止本工作区残留 dev 进程；无法处理时直接报错。不同 worktree 并行预览须自行设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（或 `auto`），避免与默认 `25500/11200/5173` 抢端口
-- A 方案主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
+- 默认方案主流程输入失败但固定测试通过：优先判断为外部模板、外部订阅源或运行镜像漂移
 - 若出现 `SUBCONVERTER_UNAVAILABLE` 且提示 `missing recognized region proxy-group`：先检查当前 frontend 代理到哪一份 backend，以及该 backend 是否向容器注入了可回连的模板地址
 
 ## Compose 预览

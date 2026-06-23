@@ -22,7 +22,7 @@ Usage: ./scripts/promote-ui-scheme-to-default.sh <scheme> [--dry-run] [--skip-bu
 Promote one experimental UI scheme to web/src/scheme/default.
 
 Arguments:
-  <scheme>      One of: a, b1, b2, c1, c2
+  <scheme>      One of: b1, b2, c1, c2
   --dry-run     Print the planned actions without modifying files
   --skip-build  Skip the post-copy npm run build:default validation
 EOF
@@ -53,14 +53,14 @@ for arg in "$@"; do
 done
 
 case "$scheme" in
-	a|b1|b2|c1|c2)
+	b1|b2|c1|c2)
 		;;
 	''|-h|--help)
 		usage
 		exit 1
 		;;
 	*)
-		fail "unsupported scheme: $scheme (expected: a, b1, b2, c1, or c2)"
+		fail "unsupported scheme: $scheme (expected: b1, b2, c1, or c2)"
 		;;
 esac
 
