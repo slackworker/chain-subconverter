@@ -302,30 +302,6 @@ export function Stage2Section({
 											<input
 												className="a-switch__input"
 												type="checkbox"
-												checked={stage2AggregationMode}
-												disabled={!isStage2Editable}
-												aria-label={copy.stage2AggregationMode}
-												onChange={(event) => handleAggregationModeToggle(event.target.checked)}
-											/>
-											<span className="a-switch" aria-hidden />
-											<span className="a-advanced__switch-label">
-												{copy.stage2AggregationMode}{" "}
-												<Tooltip content={copy.stage2AggregationModeHint}>
-													<span
-														className="a-hint"
-														aria-label={copy.stage2AggregationModeHintAria}
-													>
-														?
-													</span>
-												</Tooltip>
-											</span>
-										</label>
-									</div>
-									<div className="a-check-row">
-										<label className="a-check a-check--switch">
-											<input
-												className="a-switch__input"
-												type="checkbox"
 												checked={chainProxyGroupProfileGlobalEnabled}
 												disabled={!isStage2Editable || !hasChainProxyGroupProfileEligibleRows}
 												aria-label={copy.chainProxyGroupProfileLabel}
@@ -339,6 +315,30 @@ export function Stage2Section({
 													<span
 														className="a-hint"
 														aria-label={copy.chainProxyGroupProfileHintAria}
+													>
+														?
+													</span>
+												</Tooltip>
+											</span>
+										</label>
+									</div>
+									<div className="a-check-row">
+										<label className="a-check a-check--switch">
+											<input
+												className="a-switch__input"
+												type="checkbox"
+												checked={stage2AggregationMode}
+												disabled={!isStage2Editable}
+												aria-label={copy.stage2AggregationMode}
+												onChange={(event) => handleAggregationModeToggle(event.target.checked)}
+											/>
+											<span className="a-switch" aria-hidden />
+											<span className="a-advanced__switch-label">
+												{copy.stage2AggregationMode}{" "}
+												<Tooltip content={copy.stage2AggregationModeHint}>
+													<span
+														className="a-hint"
+														aria-label={copy.stage2AggregationModeHintAria}
 													>
 														?
 													</span>
