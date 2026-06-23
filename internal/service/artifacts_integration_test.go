@@ -349,7 +349,7 @@ func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) 
 	}
 }
 
-func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
+func TestDecodeLongURLPayload_AcceptsCompatiblePayloadVersionAndCanonicalizes(t *testing.T) {
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
@@ -390,11 +390,61 @@ func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
 		t.Fatalf("joinSubURL() error = %v", err)
 	}
 
+	payload, err := DecodeLongURLPayload(mutatedLongURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("DecodeLongURLPayload() error = %v", err)
+	}
+	if payload.V != longURLSchemaVersion {
+		t.Fatalf("expected payload version to be canonicalized to %d, got %d", longURLSchemaVersion, payload.V)
+	}
+}
+
+func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	parsedURL, err := url.Parse(longURL)
+	if err != nil {
+		t.Fatalf("url.Parse() error = %v", err)
+	}
+	payloadJSON, err := decodeCompressedData(parsedURL.Query().Get(longURLParamData))
+	if err != nil {
+		t.Fatalf("decodeCompressedData() error = %v", err)
+	}
+
+	var schema longURLPayloadSchema
+	if err := json.Unmarshal(payloadJSON, &schema); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	schema.V = longURLSchemaVersion + 1
+
+	mutatedPayloadJSON, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	mutatedData, err := encodeCompressedData(mutatedPayloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	mutatedLongURL, err := joinSubURL("http://localhost:11200", mutatedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+
 	_, err = DecodeLongURLPayload(mutatedLongURL, InputLimits{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 2") {
+	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 4") {
 		t.Fatalf("error mismatch: got %v", err)
 	}
 }

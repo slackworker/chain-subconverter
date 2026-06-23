@@ -16,6 +16,7 @@ import (
 const (
 	defaultLongURLMaxLength = 8192
 	longURLSchemaVersion    = 3
+	longURLSchemaMinVersion = 2
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -148,6 +149,10 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 	if err := validateLongURLPayloadSchema(payload); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate long URL payload schema: %w", err)
 	}
+
+	// Canonicalize decoded payload to the latest in-memory schema version.
+	payload.V = longURLSchemaVersion
+
 	if err := ValidateStage1InputLimits(payload.Stage1Input, limits); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate stage1 input limits: %w", err)
 	}
@@ -338,7 +343,7 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
-	if payload.V != longURLSchemaVersion {
+	if !isSupportedLongURLPayloadVersion(payload.V) {
 		return fmt.Errorf("unsupported long URL payload version %d", payload.V)
 	}
 
@@ -466,6 +471,10 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	}
 
 	return nil
+}
+
+func isSupportedLongURLPayloadVersion(version int) bool {
+	return version >= longURLSchemaMinVersion && version <= longURLSchemaVersion
 }
 
 func joinSubURL(publicBaseURL string, encodedData string) (string, error) {
