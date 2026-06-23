@@ -91,6 +91,7 @@
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
 - `serverAggregationGroups[]` 为按 `server` 分组的显式聚合配置；仅当 `enabled = true` 时参与 YAML 聚合组产物渲染
+- `serverAggregationGroups[]` 渲染出的聚合组是“最终 YAML 产物对象”，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
 - `serverAggregationGroups[]` 允许为空或缺失；缺失等价于无聚合组配置
 - `serverAggregationGroups[].server` 必须是非空字符串，且同一份 `stage2Snapshot` 内必须唯一（不区分 `enabled`）
 - `serverAggregationGroups[].enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
@@ -151,6 +152,7 @@
 - `chainTargets[].name`：链式候选名称；同时作为 `stage2Snapshot.rows[].targetName` 的可选值
 - `chainTargets[].kind`：链式候选类别；当前只允许 `proxy-groups` 或 `proxies`
 - `chainTargets[].isEmpty`：可选布尔值；仅 `kind = proxy-groups` 时有语义。空策略组写 `true`；非空策略组留空
+- `chainTargets[]` 仅包含阶段 2 可直接选择的链式候选；任何由 `serverAggregationGroups[]` 派生的聚合组都不应出现在该列表中
 - `forwardRelays[]`：阶段 2 第四列在 `mode = port_forward` 时的候选列表
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染

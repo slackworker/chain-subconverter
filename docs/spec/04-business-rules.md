@@ -267,6 +267,7 @@
 5. `stage1/convert` 阶段允许省略 `isEmpty`（未知即留空）；`EMPTY_CHAIN_TARGET` 的最终裁决在生成/订阅校验链路完成 Pass 3 后执行
 6. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
 7. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+8. 按 `2.7` 渲染出的 `serverAggregationGroups` 聚合组属于最终 YAML 衍生产物，不参与 `chainTargets[]` 收集
 
 ### 2.4 收集端口转发候选
 
@@ -338,6 +339,7 @@
 - `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`
 - `enabled = true` 时成员数至少为 2；否则生成前校验必须阻断
 - 成员行的落地 `server` 必须与组 `server` 一致；跨 server 入组必须阻断
+- 该聚合配置只影响最终 YAML 产物，不回写阶段 2 链式候选；`rows[].targetName` 在 `mode = chain` 下仍只允许引用 `chainTargets[].name`
 
 ---
 
