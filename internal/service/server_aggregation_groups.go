@@ -38,12 +38,11 @@ func appendServerAggregationGroupsToCompleteConfigYAML(fullYAML string, snapshot
 		return "", err
 	}
 
-	insertIndex, err := proxyGroupsInsertionLine(root)
+	lines, preserveTrailingNewline := splitConfigLines(fullYAML)
+	insertIndex, err := proxyGroupsInsertionLine(root, len(lines))
 	if err != nil {
 		return "", err
 	}
-
-	lines, preserveTrailingNewline := splitConfigLines(fullYAML)
 	groupLines := renderManagedServerAggregationGroupLines(managedGroups)
 	if insertIndex < 0 || insertIndex > len(lines) {
 		return "", fmt.Errorf("proxy-groups insertion line %d is out of range", insertIndex)
@@ -159,9 +158,12 @@ func renderManagedServerAggregationGroupLines(groups []managedServerAggregationG
 	return lines
 }
 
-func proxyGroupsInsertionLine(root *yaml.Node) (int, error) {
+func proxyGroupsInsertionLine(root *yaml.Node, totalLines int) (int, error) {
 	if root == nil || root.Kind != yaml.MappingNode {
 		return 0, fmt.Errorf("complete config root must be a mapping")
+	}
+	if totalLines < 0 {
+		return 0, fmt.Errorf("complete config total lines %d is invalid", totalLines)
 	}
 
 	for index := 0; index+1 < len(root.Content); index += 2 {
@@ -171,7 +173,7 @@ func proxyGroupsInsertionLine(root *yaml.Node) (int, error) {
 		}
 		nextKeyIndex := index + 2
 		if nextKeyIndex >= len(root.Content) {
-			return len(root.Content), nil
+			return totalLines, nil
 		}
 		nextKeyLine := root.Content[nextKeyIndex].Line - 1
 		if nextKeyLine < 0 {
