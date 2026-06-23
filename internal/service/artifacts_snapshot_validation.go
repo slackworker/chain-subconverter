@@ -137,8 +137,86 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowErrorRef, "", cause)
 		}
 	}
+	rowsByID := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
+	for _, row := range stage2Snapshot.Rows {
+		rowsByID[row.rowIDOrFallback()] = row
+	}
+	if err := validateServerAggregationGroups(stage2Snapshot.ServerAggregationGroups, rowsByID, landingByName); err != nil {
+		return nil, err
+	}
 
 	return resolvedLandingProxies, nil
+}
+
+func validateServerAggregationGroups(
+	serverAggregationGroups []ServerAggregationGroup,
+	rowsByID map[string]Stage2Row,
+	landingByName map[string]resolvedLandingProxy,
+) error {
+	seenByServer := make(map[string]struct{}, len(serverAggregationGroups))
+	for _, group := range serverAggregationGroups {
+		server := strings.TrimSpace(group.Server)
+		if server == "" {
+			cause := fmt.Errorf("serverAggregationGroups.server must not be empty")
+			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+		}
+		if _, exists := seenByServer[server]; exists {
+			cause := fmt.Errorf("duplicate server aggregation group for server %q", server)
+			return newGlobalValidationError("DUPLICATE_SERVER_AGGREGATION_GROUP", "duplicate server aggregation group", cause)
+		}
+		seenByServer[server] = struct{}{}
+
+		if !group.Enabled {
+			continue
+		}
+
+		switch strings.TrimSpace(group.Strategy) {
+		case "fallback", "url-test":
+		default:
+			cause := fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
+			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+		}
+
+		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
+		for _, rawRowID := range group.MemberRowIDs {
+			rowID := strings.TrimSpace(rawRowID)
+			if rowID == "" {
+				cause := fmt.Errorf("server aggregation group for server %q has empty member rowId", server)
+				return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+			}
+			if _, exists := memberSeen[rowID]; exists {
+				continue
+			}
+			memberSeen[rowID] = struct{}{}
+
+			memberRow, exists := rowsByID[rowID]
+			if !exists {
+				cause := fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
+				return newGlobalValidationError("SERVER_AGGREGATION_MEMBER_NOT_FOUND", "server aggregation member not found", cause)
+			}
+			sourceLandingName := memberRow.sourceLandingNodeNameOrFallback()
+			landing, exists := landingByName[sourceLandingName]
+			if !exists {
+				cause := fmt.Errorf("server aggregation member rowId %q references unknown source landing node %q", rowID, sourceLandingName)
+				return newGlobalValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", cause)
+			}
+			if strings.TrimSpace(landing.Server) != server {
+				cause := fmt.Errorf(
+					"server aggregation member rowId %q server mismatch: group=%q row=%q",
+					rowID,
+					server,
+					strings.TrimSpace(landing.Server),
+				)
+				return newGlobalValidationError("SERVER_AGGREGATION_SERVER_MISMATCH", "server aggregation member server mismatch", cause)
+			}
+		}
+		if len(memberSeen) < 2 {
+			cause := fmt.Errorf("server aggregation group for server %q requires at least 2 members", server)
+			return newGlobalValidationError("SERVER_AGGREGATION_GROUP_TOO_SMALL", "server aggregation group requires at least 2 members", cause)
+		}
+	}
+
+	return nil
 }
 
 func requireTargetName(row Stage2Row) (string, error) {

@@ -120,6 +120,10 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	if err != nil {
 		return "", err
 	}
+	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
+	if err != nil {
+		return "", err
+	}
 
 	return rendered, nil
 }

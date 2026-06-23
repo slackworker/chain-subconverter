@@ -17,10 +17,14 @@ import {
 } from "../lib/notices";
 import {
 	findStage2RowByKey,
+	getServerAggregationGroup,
+	getServerAggregationStrategy,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
+	getStage2RowDisplayName,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
+	isStage2SourceRow,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -53,9 +57,12 @@ import {
 	completeWorkflowRequestState,
 	deleteStage2RowState,
 	reportCurrentLinkInputErrorState,
+	reorderServerAggregationMemberState,
 	setCurrentLinkInputState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
+	updateServerAggregationGroupState,
+	updateServerAggregationStrategyState,
 	updateStage1InputState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
@@ -106,6 +113,12 @@ export interface AppWorkflowViewModel {
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
 	getChainTargetChoiceGroups: () => ChainTargetChoiceGroup[];
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
+	getServerAggregationStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
+	canConfigureServerAggregationGroup: (landingNodeName: string) => boolean;
+	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean } | null;
+	getServerAggregationOrderedMembers: (
+		landingNodeName: string,
+	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
 	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
@@ -114,6 +127,14 @@ export interface AppWorkflowViewModel {
 	canDeleteStage2Row: (landingNodeName: string) => boolean;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
+	handleServerAggregationStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
+	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean }) => void;
+	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test" }) => void;
+	handleServerAggregationMemberReorder: (
+		landingNodeName: string,
+		memberRowId: string,
+		direction: "up" | "down",
+	) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -179,6 +200,44 @@ function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2S
 		return getForwardRelayChoices(stage2Init, stage2Rows, landingNodeName).filter((choice) => !choice.disabled);
 	}
 	return [];
+}
+
+function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialAppState.stage2Snapshot): BlockingError[] {
+	const rowsByID = new Map(
+		stage2Snapshot.rows.map((row) => [(row.rowId ?? "").trim(), row] as const).filter(([rowID]) => rowID !== ""),
+	);
+	const errors: BlockingError[] = [];
+	const orderedAggregationGroups = [...stage2Snapshot.serverAggregationGroups].sort((left, right) =>
+		left.server.trim().localeCompare(right.server.trim()),
+	);
+
+	for (const group of orderedAggregationGroups) {
+		if (!group.enabled) {
+			continue;
+		}
+		const server = group.server.trim();
+		const memberRowIDs = Array.from(new Set((group.memberRowIds ?? []).map((rowID) => rowID.trim()).filter(Boolean)));
+		if (memberRowIDs.length >= 2) {
+			continue;
+		}
+
+		const singleMember = memberRowIDs[0];
+		const singleMemberRow = singleMember ? rowsByID.get(singleMember) : undefined;
+		const serverLabel = server === "" ? "--" : server;
+		errors.push({
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+			message: `聚合/策略组（${serverLabel}）至少需要入组 2 个成员，当前为 ${memberRowIDs.length} 个。`,
+			scope: "stage2_row",
+			context: {
+				server,
+				rowId: singleMember ?? "",
+				landingNodeName: singleMemberRow?.landingNodeName ?? "",
+				sourceLandingNodeName: singleMemberRow?.sourceLandingNodeName ?? "",
+			},
+		});
+	}
+
+	return errors;
 }
 
 function sameStringArray(current: string[] | null | undefined, next: string[] | null | undefined) {
@@ -538,10 +597,230 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}));
 	}
 
+	function getServerAggregationGroupForRow(landingNodeName: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return null;
+		}
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		if (server === "") {
+			return null;
+		}
+		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
+		const group = getServerAggregationGroup(state.stage2Snapshot, server);
+		return {
+			server,
+			enabled: group?.enabled ?? false,
+			strategy: getServerAggregationStrategy(state.stage2Snapshot, server) ?? "fallback",
+			memberChecked: rowID !== "" && (group?.memberRowIds ?? []).includes(rowID),
+		};
+	}
+
+	function getServerAggregationStrategyForRow(landingNodeName: string) {
+		if (!canConfigureServerAggregationGroup(landingNodeName)) {
+			return null;
+		}
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return null;
+		}
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		return getServerAggregationStrategy(state.stage2Snapshot, server);
+	}
+
+	function canConfigureServerAggregationGroup(landingNodeName: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return false;
+		}
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = rowMeta?.server?.trim() ?? "";
+		let count = 0;
+		for (const row of state.stage2Snapshot.rows) {
+			if (server === "") {
+				if (getStage2RowSourceLandingName(row) === sourceLandingNodeName) {
+					count += 1;
+				}
+				continue;
+			}
+			const rowKey = getStage2RowKey(row);
+			if ((getStage2RowMeta(rowKey)?.server?.trim() ?? "") === server) {
+				count += 1;
+			}
+		}
+		return count > 1;
+	}
+
+	function handleServerAggregationStrategyChange(landingNodeName: string, strategy: "fallback" | "url-test" | null) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		if (matchedRow === null) {
+			return;
+		}
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
+		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		if (strategy === null) {
+			setState((current) => updateServerAggregationStrategyState(current, server, null));
+			return;
+		}
+		const memberRowIDs = state.stage2Snapshot.rows
+			.filter((row) => {
+				if ((rowMeta?.server?.trim() ?? "") === "") {
+					return getStage2RowSourceLandingName(row) === sourceLandingNodeName;
+				}
+				const rowKey = getStage2RowKey(row);
+				return (getStage2RowMeta(rowKey)?.server?.trim() ?? "") === rowMeta?.server?.trim();
+			})
+			.map((row) => (row.rowId?.trim() ?? "") || getStage2RowKey(row))
+			.filter((rowID) => rowID !== "");
+		setState((current) => {
+			let next = current;
+			for (const rowID of memberRowIDs) {
+				next = updateServerAggregationGroupState(next, server, true, strategy, rowID, true);
+			}
+			return updateServerAggregationStrategyState(next, server, strategy);
+		});
+	}
+
+	function handleServerAggregationChange(
+		landingNodeName: string,
+		payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean },
+	) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		const rowMeta = getStage2RowMeta(landingNodeName);
+		if (matchedRow === null || rowMeta === null) {
+			return;
+		}
+		const server = rowMeta.server?.trim() ?? "";
+		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
+		if (server === "" || rowID === "") {
+			return;
+		}
+		setState((current) => {
+			const withMember = updateServerAggregationGroupState(
+				current,
+				server,
+				payload.enabled,
+				payload.strategy,
+				rowID,
+				payload.memberChecked,
+			);
+			return updateServerAggregationStrategyState(withMember, server, payload.enabled ? payload.strategy : null);
+		});
+	}
+
+	function handleServerAggregationEnableWithDefaults(
+		landingNodeName: string,
+		payload: { enabled: boolean; strategy: "fallback" | "url-test" },
+	) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return;
+		}
+		if (!payload.enabled) {
+			handleServerAggregationChange(landingNodeName, {
+				enabled: false,
+				strategy: payload.strategy,
+				memberChecked: anchorGroup.memberChecked,
+			});
+			return;
+		}
+
+		const targetServer = anchorGroup.server;
+		const memberRows = state.stage2Snapshot.rows.filter((row) => {
+			const rowKey = getStage2RowKey(row);
+			if (rowKey === "") {
+				return false;
+			}
+			return getServerAggregationGroupForRow(rowKey)?.server === targetServer;
+		});
+		const sourceMemberCount = memberRows.filter((row) => isStage2SourceRow(row)).length;
+		const shouldAutoSelectByMode = sourceMemberCount >= 2;
+
+		for (const row of memberRows) {
+			const rowKey = getStage2RowKey(row);
+			if (rowKey === "") {
+				continue;
+			}
+			const currentChecked = getServerAggregationGroupForRow(rowKey)?.memberChecked ?? false;
+			const defaultChecked = shouldAutoSelectByMode && row.mode !== "none";
+			handleServerAggregationChange(rowKey, {
+				enabled: true,
+				strategy: payload.strategy,
+				memberChecked: currentChecked || defaultChecked,
+			});
+		}
+	}
+
+	function getServerAggregationOrderedMembersForRow(landingNodeName: string) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return [];
+		}
+		const group = getServerAggregationGroup(state.stage2Snapshot, anchorGroup.server);
+		if (group === null) {
+			return [];
+		}
+		const rowsByID = new Map(
+			state.stage2Snapshot.rows
+				.map((row) => {
+					const rowID = (row.rowId?.trim() ?? "") || getStage2RowKey(row);
+					return rowID === "" ? null : ([rowID, row] as const);
+				})
+				.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
+		);
+		return group.memberRowIds
+			.map((rowID) => {
+				const row = rowsByID.get(rowID.trim());
+				if (row === undefined) {
+					return null;
+				}
+				return {
+					rowId: rowID.trim(),
+					displayName: getStage2RowDisplayName(row),
+					isSource: isStage2SourceRow(row),
+				};
+			})
+			.filter((member): member is { rowId: string; displayName: string; isSource: boolean } => member !== null);
+	}
+
+	function handleServerAggregationMemberReorder(
+		landingNodeName: string,
+		memberRowId: string,
+		direction: "up" | "down",
+	) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return;
+		}
+		setState((current) =>
+			reorderServerAggregationMemberState(current, anchorGroup.server, memberRowId, direction),
+		);
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
 		const preferShortUrl = state.preferShortUrl;
+		const precheckBlockingErrors = collectGeneratePrecheckBlockingErrors(stage2Snapshot);
+		if (precheckBlockingErrors.length > 0) {
+			setState((current) => completeWorkflowRequestState(
+				current,
+				"stage2",
+				[],
+				precheckBlockingErrors,
+				[
+					workflowActionSeparator("ACTION_GENERATE"),
+					frontendWorkflowFailureEvent("GENERATE_FAILED", summarizeBlockingErrors(precheckBlockingErrors, "生成链接前校验未通过。")),
+				],
+			));
+			return;
+		}
 
 		setIsGenerating(true);
 		setState((current) => startWorkflowRequestState(current, "stage2", workflowActionSeparator("ACTION_GENERATE")));
@@ -698,6 +977,10 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getStageMessages,
 		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Init),
 		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),
+		getServerAggregationStrategy: getServerAggregationStrategyForRow,
+		canConfigureServerAggregationGroup,
+		getServerAggregationGroup: getServerAggregationGroupForRow,
+		getServerAggregationOrderedMembers: getServerAggregationOrderedMembersForRow,
 		handleStage1Convert,
 		handleRestore,
 		handleProxyNameChange,
@@ -706,6 +989,10 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		canDeleteStage2Row,
 		handleModeChange,
 		handleTargetChange,
+		handleServerAggregationStrategyChange,
+		handleServerAggregationChange,
+		handleServerAggregationEnableWithDefaults,
+		handleServerAggregationMemberReorder,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

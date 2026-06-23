@@ -136,3 +136,87 @@ func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
 		t.Fatalf("managed landing is missing port-forward clone:\n%s", rendered)
 	}
 }
+
+func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
+		TransitDiscoveryYAML: "proxies:\n",
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",
+			"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - HK Landing",
+			"      - HK Landing Copy",
+			"  - name: 🇺🇸 美国节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇯🇵 日本节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇼🇸 台湾节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"  - name: 🇰🇷 韩国节点",
+			"    type: url-test",
+			"    proxies:",
+			"      - DIRECT",
+			"",
+		}, "\n"),
+		TemplateConfig: defaultRegionConfig,
+	}
+
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing Copy",
+					LandingNodeName:       "HK Landing Copy",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "  - name: landing.example.com\n    type: fallback") {
+		t.Fatalf("rendered config is missing server aggregation group:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "      - HK Landing\n      - HK Landing Copy") {
+		t.Fatalf("rendered config is missing server aggregation group members:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "    lazy: false\n    max-failed-times: 1") {
+		t.Fatalf("rendered config is missing server aggregation profile:\n%s", rendered)
+	}
+}

@@ -8,11 +8,13 @@ import type { AppState, ResponseOriginStage, WorkflowLogEntry } from "../lib/sta
 import { appendWorkflowLogEntries } from "../lib/workflow-log";
 import {
 	findStage2RowByKey,
+	getServerAggregationGroup,
+	getServerAggregationStrategy,
 	getStage2RowSourceLandingName,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 } from "../lib/stage2";
-import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, Message, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 
 function expireGeneratedOutput(current: AppState) {
 	return {
@@ -68,6 +70,39 @@ export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 		mode: row.mode,
 		targetName: row.targetName,
 	}));
+}
+
+function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
+	const rowIds = new Set(rows.map((row) => row.rowId?.trim()).filter((rowId): rowId is string => Boolean(rowId)));
+	const normalized: ServerAggregationGroup[] = [];
+	const seen = new Set<string>();
+	for (const group of serverAggregationGroups) {
+		const server = group.server.trim();
+		if (server === "" || seen.has(server)) {
+			continue;
+		}
+		if (group.strategy !== "fallback" && group.strategy !== "url-test") {
+			continue;
+		}
+		const memberRowIds = Array.from(
+			new Set((group.memberRowIds ?? []).map((rowId) => rowId.trim()).filter((rowId) => rowId !== "" && rowIds.has(rowId))),
+		);
+		seen.add(server);
+		normalized.push({
+			server,
+			enabled: group.enabled && memberRowIds.length >= 2,
+			strategy: group.strategy,
+			memberRowIds,
+		});
+	}
+	return normalized;
+}
+
+function normalizeStage2SnapshotRowsAndGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
+	return {
+		rows,
+		serverAggregationGroups: normalizeServerAggregationGroups(rows, serverAggregationGroups),
+	};
 }
 
 function getDisplayedGeneratedURL(generatedUrls: AppState["generatedUrls"], preferShortURL: boolean) {
@@ -220,7 +255,7 @@ export function applyStage2InitState(current: AppState, stage2Init: Stage2Init):
 	return {
 		...current,
 		stage2Init,
-		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init) },
+		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init), serverAggregationGroups: [] },
 		generatedUrls: null,
 		stage3Expired: false,
 		stage2Stale: false,
@@ -260,7 +295,10 @@ function buildRestorePatch(options: RestoreStateOptions) {
 		currentLinkInput: options.resolvedShortUrl ?? options.resolvedLongUrl,
 		preferShortUrl: Boolean(options.resolvedShortUrl),
 		stage1Input: options.restoredStage1Input,
-		stage2Snapshot: options.stage2Snapshot,
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			options.stage2Snapshot.rows,
+			options.stage2Snapshot.serverAggregationGroups ?? [],
+		),
 		generatedUrls: {
 			longUrl: options.resolvedLongUrl,
 			shortUrl: options.resolvedShortUrl ?? null,
@@ -441,9 +479,10 @@ export function updateStage2RowState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
-		},
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
+			current.stage2Snapshot.serverAggregationGroups,
+		),
 	};
 }
 
@@ -474,9 +513,7 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string, 
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: nextRows,
-		},
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(nextRows, current.stage2Snapshot.serverAggregationGroups),
 	};
 }
 
@@ -494,8 +531,136 @@ export function deleteStage2RowState(current: AppState, landingNodeName: string)
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
-		},
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
+			current.stage2Snapshot.serverAggregationGroups,
+		),
+	};
+}
+
+export function updateServerAggregationStrategyState(
+	current: AppState,
+	server: string,
+	strategy: ServerAggregationGroup["strategy"] | null,
+): AppState {
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	if (strategy !== null && existingGroup !== null) {
+		nextServerAggregationGroups.push({
+			...existingGroup,
+			strategy,
+		});
+	}
+	const currentStrategy = getServerAggregationStrategy(current.stage2Snapshot, trimmedServer);
+	if (currentStrategy === strategy || (strategy !== null && existingGroup === null)) {
+		return current;
+	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+	};
+}
+
+export function updateServerAggregationGroupState(
+	current: AppState,
+	server: string,
+	enabled: boolean,
+	strategy: ServerAggregationGroup["strategy"],
+	memberRowID: string,
+	checked: boolean,
+): AppState {
+	const trimmedServer = server.trim();
+	const trimmedMemberRowID = memberRowID.trim();
+	if (trimmedServer === "" || trimmedMemberRowID === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	const existingMemberRowIds = (existingGroup?.memberRowIds ?? [])
+		.map((rowID) => rowID.trim())
+		.filter(Boolean);
+	let memberRowIds: string[];
+	if (checked) {
+		memberRowIds = existingMemberRowIds.includes(trimmedMemberRowID)
+			? existingMemberRowIds
+			: [...existingMemberRowIds, trimmedMemberRowID];
+	} else {
+		memberRowIds = existingMemberRowIds.filter((rowID) => rowID !== trimmedMemberRowID);
+	}
+	const nextGroup: ServerAggregationGroup = {
+		server: trimmedServer,
+		enabled,
+		strategy,
+		memberRowIds,
+	};
+	if (!enabled && nextGroup.memberRowIds.length === 0) {
+		if (existingGroup === null) {
+			return current;
+		}
+	} else {
+		nextServerAggregationGroups.push(nextGroup);
+	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+	};
+}
+
+export function reorderServerAggregationMemberState(
+	current: AppState,
+	server: string,
+	memberRowID: string,
+	direction: "up" | "down",
+): AppState {
+	const trimmedServer = server.trim();
+	const trimmedMemberRowID = memberRowID.trim();
+	if (trimmedServer === "" || trimmedMemberRowID === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	if (existingGroup === null || !existingGroup.enabled) {
+		return current;
+	}
+	const memberRowIds = existingGroup.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean);
+	const currentIndex = memberRowIds.indexOf(trimmedMemberRowID);
+	if (currentIndex < 0) {
+		return current;
+	}
+	const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+	if (swapIndex < 0 || swapIndex >= memberRowIds.length) {
+		return current;
+	}
+	const nextMemberRowIds = [...memberRowIds];
+	[nextMemberRowIds[currentIndex], nextMemberRowIds[swapIndex]] = [
+		nextMemberRowIds[swapIndex],
+		nextMemberRowIds[currentIndex],
+	];
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	nextServerAggregationGroups.push({
+		...existingGroup,
+		memberRowIds: nextMemberRowIds,
+	});
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
 	};
 }

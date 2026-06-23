@@ -18,6 +18,7 @@
 
 - **阶段 1 落地副本**：同一落地可显式创建多份；重复 URI 不去重；后端稳定重命名，供阶段 2 展示（见 [spec 02 §1.1.2](docs/spec/02-frontend-spec.md)）。
 - **阶段 2 节点行管理**：`stage2Init` / `stage2Snapshot` 以 `rowId` 为行主键；支持复制行、删除行（每 `sourceLandingNodeName` 至少保留一行）；`proxyName` 可编辑，复制行默认 `原名 2`、`原名 3`…（见 [spec 04 §2.1.2](docs/spec/04-business-rules.md)）。
+- **聚合组消费口径（行为说明）**：按 `serverAggregationGroups[]` 生成的聚合组只写入最终 YAML，组名与前端 Stage 2 聚合树显示/编辑名一致（默认 `国旗 emoji + server`）；设计上不进入 Stage 2 的 `chainTargets` 下拉；链式目标仍以 `stage2Init.chainTargets[]` 为唯一候选来源。
 - **文档与测试**：spec、金样与回归记录与上述行为一致；默认 `/` 与 scheme `a` 已覆盖主流程。
 
 ### 自部署

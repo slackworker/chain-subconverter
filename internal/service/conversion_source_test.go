@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,11 +80,11 @@ func TestConversionFixturesFromResult_RejectsUnresolvableDiscoveryNames(t *testi
 
 func TestConversionFixturesFromResult_AcceptsStructuredLandingDiscoveryNames(t *testing.T) {
 	_, err := ConversionFixturesFromResult(subconverter.ThreePassResult{
-		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: landing-a, type: ss}\n"},
+		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: landing-a, type: ss, server: landing.example.com, port: 443}\n"},
 		TransitDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: transit-a, type: ss}\n"},
 		FullBase: subconverter.PassResult{YAML: strings.Join([]string{
 			"proxies:",
-			"- {name: landing-a, type: ss}",
+			"- {name: landing-a, type: ss, server: landing.example.com, port: 443}",
 			"- {name: transit-a, type: ss}",
 			"proxy-groups:",
 			"  - name: 🇭🇰 香港节点",
@@ -178,9 +179,14 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 	}
 
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	var expected Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
 	}
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
+	}
+	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
 
 	if !reflect.DeepEqual(source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input)) {
 		t.Fatalf("source request mismatch: got %#v want %#v", source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input))
@@ -372,6 +378,95 @@ func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t 
 	}
 }
 
+func TestRenderCompleteConfigFromSource_AppendsServerAggregationGroup(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	forwardRelay := "relay.example.com:7443"
+
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request:        subconverter.Request{},
+				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: HK Landing Copy, type: ss, server: relay.example.com, port: 7443}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing",
+			"      - HK Landing Copy",
+			"      - transit-a",
+			"",
+		}, "\n"),
+	}
+
+	renderedConfig, err := RenderCompleteConfigFromSource(
+		context.Background(),
+		source,
+		Stage1Input{ForwardRelayItems: []string{forwardRelay}},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing Copy",
+					LandingNodeName:       "HK Landing Copy",
+					Mode:                  "port_forward",
+					TargetName:            &forwardRelay,
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "url-test",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
+			}},
+		},
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
+	}
+
+	if !strings.Contains(renderedConfig, "  - name: landing.example.com\n    type: url-test") {
+		t.Fatalf("rendered config is missing server aggregation group:\n%s", renderedConfig)
+	}
+	if !strings.Contains(renderedConfig, "      - HK Landing\n      - HK Landing Copy") {
+		t.Fatalf("rendered config is missing server aggregation group members:\n%s", renderedConfig)
+	}
+}
+
 func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *testing.T) {
 	templateConfig := "custom_proxy_group=🇩🇪 德国节点`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
 	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -408,7 +503,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 
 		if request.URL.Query().Get("list") == "true" {
 			if strings.Contains(request.URL.Query().Get("url"), "landing") {
-				_, _ = writer.Write([]byte("proxies:\n- {name: DE Landing, type: ss}\n"))
+				_, _ = writer.Write([]byte("proxies:\n- {name: DE Landing, type: ss, server: landing.example.com, port: 443}\n"))
 				return
 			}
 			_, _ = writer.Write([]byte("proxies:\n- {name: transit-de, type: ss}\n"))
@@ -841,5 +936,23 @@ func toExpectedSubconverterRequest(stage1Input Stage1Input) subconverter.Request
 			Include:        stage1Input.AdvancedOptions.Include,
 			Exclude:        stage1Input.AdvancedOptions.Exclude,
 		},
+	}
+}
+
+func normalizeStage1ConvertResponseForContract(response Stage1ConvertResponse) Stage1ConvertResponse {
+	normalized := response
+	normalized.Stage2Init.Rows = append([]Stage2InitRow(nil), response.Stage2Init.Rows...)
+	for index := range normalized.Stage2Init.Rows {
+		normalized.Stage2Init.Rows[index].Server = ""
+	}
+	return normalized
+}
+
+func assertStage2InitRowsHaveServer(t *testing.T, rows []Stage2InitRow) {
+	t.Helper()
+	for _, row := range rows {
+		if strings.TrimSpace(row.Server) == "" {
+			t.Fatalf("stage2Init row %q has empty server", row.LandingNodeName)
+		}
 	}
 }

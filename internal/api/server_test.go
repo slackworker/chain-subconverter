@@ -52,6 +52,10 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	var expected service.Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -72,15 +76,20 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response JSON: %v", err)
 	}
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
+	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
 }
 
 func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	var expected service.Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -101,9 +110,10 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response JSON: %v", err)
 	}
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
+	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
 	if len(response.Stage2Init.Rows) != 7 {
 		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 7", len(response.Stage2Init.Rows))
 	}
@@ -1301,6 +1311,33 @@ func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 	})
 }
 
+func TestStage1ConvertHandler_RejectsLandingWithoutServerField(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: singleLandingResult("HK Landing", "ss", true),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}}}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusServiceUnavailable, recorder.Body.String())
+	}
+	var response struct {
+		Messages       []service.Message       `json:"messages"`
+		BlockingErrors []service.BlockingError `json:"blockingErrors"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode error response JSON: %v", err)
+	}
+	if len(response.BlockingErrors) != 1 {
+		t.Fatalf("expected 1 blocking error, got %v", response.BlockingErrors)
+	}
+	if response.BlockingErrors[0].Code != "SUBCONVERTER_UNAVAILABLE" || response.BlockingErrors[0].Scope != "global" {
+		t.Fatalf("blocking error mismatch: got %+v", response.BlockingErrors[0])
+	}
+}
+
 func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	handler := mustNewTestHandler(t, &fakeConversionSource{
@@ -1397,7 +1434,7 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 	})
 }
 
-func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
+func TestSubscriptionHandler_RejectsLandingWithoutServerField(t *testing.T) {
 	targetName := "relay.example.com:80"
 	longURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
@@ -1430,10 +1467,15 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	assertBlockingError(t, recorder, http.StatusInternalServerError, service.BlockingError{
-		Code:    "RENDER_FAILED",
-		Message: internalErrorUserMessage,
-		Scope:   "global",
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:      "SUBCONVERTER_UNAVAILABLE",
+		Message:   "转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查阶段 1 输入和模板设置后重试。",
+		Scope:     "global",
+		Context: map[string]any{"diagnostic": map[string]any{
+			"problemClass":    unavailableProblemConversionResultInvalid,
+			"userInputSource": unavailableInputSourceLanding,
+		}},
+		Retryable: boolPtr(true),
 	})
 }
 
@@ -1795,6 +1837,24 @@ func normalizeStage2SnapshotForContract(snapshot service.Stage2Snapshot) service
 		normalized.Rows[index].ProxyName = ""
 	}
 	return normalized
+}
+
+func normalizeStage1ConvertResponseForContract(response service.Stage1ConvertResponse) service.Stage1ConvertResponse {
+	normalized := response
+	normalized.Stage2Init.Rows = append([]service.Stage2InitRow(nil), response.Stage2Init.Rows...)
+	for index := range normalized.Stage2Init.Rows {
+		normalized.Stage2Init.Rows[index].Server = ""
+	}
+	return normalized
+}
+
+func assertStage2InitRowsHaveServer(t *testing.T, rows []service.Stage2InitRow) {
+	t.Helper()
+	for _, row := range rows {
+		if strings.TrimSpace(row.Server) == "" {
+			t.Fatalf("stage2Init row %q has empty server", row.LandingNodeName)
+		}
+	}
 }
 
 func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, wantStatus int, want service.BlockingError) {

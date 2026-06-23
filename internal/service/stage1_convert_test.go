@@ -794,6 +794,7 @@ func normalizeStage2InitRowsForContract(rows []Stage2InitRow) []Stage2InitRow {
 		normalized[index].RowID = ""
 		normalized[index].SourceLandingNodeName = ""
 		normalized[index].ProxyName = ""
+		normalized[index].Server = ""
 	}
 	return normalized
 }

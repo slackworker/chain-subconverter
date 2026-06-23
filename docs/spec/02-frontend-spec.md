@@ -194,10 +194,12 @@
 | `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享） |
 | `rows[].landingNodeName` | string | 兼容字段，等同 `proxyName` |
 | `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
+| `rows[].server` | string | 落地 server；只读，用于按 server 分组；见 [03](03-backend-api.md) / [04 §2.1](04-business-rules.md) |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
 | `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
+| `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
 
 ### 2.2 共享业务槽位
 
