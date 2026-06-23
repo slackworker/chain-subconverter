@@ -23,9 +23,24 @@ export type Stage2Copy = {
 	noCommonChoices: string;
 	localErrorAriaHint: string;
 	aggregationStrategyLabel: string;
+	memberOrderManage: string;
+	memberOrderFallbackHint: string;
+	memberOrderUrlTestHint: string;
+	memberOrderEmpty: string;
+	memberOrderPrimaryBadge: string;
+	memberOrderSourceBadge: string;
+	memberOrderDerivedBadge: string;
+	memberOrderMoveUp: string;
+	memberOrderMoveDown: string;
+	memberOrderMoveUpAria: string;
+	memberOrderMoveDownAria: string;
 };
 
 export type Stage2Locale = "zh" | "en";
+
+export function getServerMemberOrderMenuKey(anchorRowKey: string) {
+	return `server-order:${anchorRowKey}`;
+}
 
 export function getModeLabel(mode: string, locale: Stage2Locale, copy: Stage2Copy & Record<string, string>) {
 	const labels: Record<string, string> = {
@@ -590,6 +605,136 @@ export function Stage2RowTargetCell({
 					{copy.localErrorAriaHint}
 				</p>
 			) : null}
+		</div>
+	);
+}
+
+interface Stage2ServerMemberOrderCellProps {
+	anchorRowKey: string;
+	editable: boolean;
+	enabled: boolean;
+	strategy: "fallback" | "url-test";
+	copy: Stage2Copy;
+	members: Array<{ rowId: string; displayName: string; isSource: boolean }>;
+	onMemberReorder: (memberRowId: string, direction: "up" | "down") => void;
+	openTargetMenuRow: string | null;
+	setOpenTargetMenuRow: (rowKey: string | null) => void;
+	chainTargetMenuTriggerRef: React.MutableRefObject<HTMLButtonElement | null>;
+	chainTargetMenuPanelRef: React.MutableRefObject<HTMLDivElement | null>;
+	chainTargetMenuPortalEl: HTMLDivElement | null;
+}
+
+export function Stage2ServerMemberOrderCell({
+	anchorRowKey,
+	editable,
+	enabled,
+	strategy,
+	copy,
+	members,
+	onMemberReorder,
+	openTargetMenuRow,
+	setOpenTargetMenuRow,
+	chainTargetMenuTriggerRef,
+	chainTargetMenuPanelRef,
+	chainTargetMenuPortalEl,
+}: Stage2ServerMemberOrderCellProps) {
+	const menuKey = getServerMemberOrderMenuKey(anchorRowKey);
+	const canManageOrder = editable && enabled && strategy === "fallback";
+	const triggerLabel = copy.memberOrderManage;
+	const triggerTitle = !enabled
+		? undefined
+		: strategy === "url-test"
+			? copy.memberOrderUrlTestHint
+			: undefined;
+
+	if (!enabled) {
+		return <div className="a-cell-type">--</div>;
+	}
+
+	return (
+		<div className="a-target-picker">
+			<div className="a-target-menu">
+				<button
+					type="button"
+					className={`a-select a-target-menu__trigger ${canManageOrder ? "" : "a-target-menu__summary--disabled"}`}
+					disabled={!canManageOrder}
+					title={triggerTitle}
+					aria-expanded={openTargetMenuRow === menuKey}
+					onClick={(event) => {
+						if (!canManageOrder) {
+							return;
+						}
+						const trigger = event.currentTarget;
+						if (openTargetMenuRow === menuKey) {
+							chainTargetMenuTriggerRef.current = null;
+							setOpenTargetMenuRow(null);
+							return;
+						}
+						chainTargetMenuTriggerRef.current = trigger;
+						setOpenTargetMenuRow(menuKey);
+					}}
+				>
+					{triggerLabel}
+				</button>
+				{openTargetMenuRow === menuKey && chainTargetMenuPortalEl
+					? createPortal(
+							<div className="a-target-menu a-target-menu--portal">
+								<div
+									ref={chainTargetMenuPanelRef}
+									className="a-target-menu__panel a-target-menu__panel--anchored a-target-menu__panel--member-order"
+								>
+									<div className="a-target-menu__section">
+										<p className="a-target-menu__section-title">{copy.memberOrderFallbackHint}</p>
+										{members.length > 0 ? (
+											<ul className="a-member-order__list">
+												{members.map((member, index) => (
+													<li key={member.rowId} className="a-member-order__item">
+														<div
+															className={`a-member-order__summary${index === 0 ? " a-member-order__summary--primary" : ""}`}
+														>
+															<span className="a-member-order__name">{member.displayName}</span>
+														</div>
+														<div className="a-member-order__actions">
+															<button
+																type="button"
+																className="a-btn a-btn--secondary a-btn--compact a-member-order__move"
+																disabled={!canManageOrder || index === 0}
+																aria-label={copy.memberOrderMoveUpAria.replace("{name}", member.displayName).replace(
+																	"{position}",
+																	String(index),
+																)}
+																title={copy.memberOrderMoveUp}
+																onClick={() => onMemberReorder(member.rowId, "up")}
+															>
+																↑
+															</button>
+															<button
+																type="button"
+																className="a-btn a-btn--secondary a-btn--compact a-member-order__move"
+																disabled={!canManageOrder || index === members.length - 1}
+																aria-label={copy.memberOrderMoveDownAria.replace("{name}", member.displayName).replace(
+																	"{position}",
+																	String(index + 2),
+																)}
+																title={copy.memberOrderMoveDown}
+																onClick={() => onMemberReorder(member.rowId, "down")}
+															>
+																↓
+															</button>
+														</div>
+													</li>
+												))}
+											</ul>
+										) : (
+											<p className="a-picker-help">{copy.memberOrderEmpty}</p>
+										)}
+									</div>
+								</div>
+							</div>,
+							chainTargetMenuPortalEl,
+						)
+					: null}
+			</div>
 		</div>
 	);
 }

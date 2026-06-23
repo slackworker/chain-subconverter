@@ -587,17 +587,22 @@ export function updateServerAggregationGroupState(
 	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
 		(group) => group.server.trim() !== trimmedServer,
 	);
-	const memberSet = new Set((existingGroup?.memberRowIds ?? []).map((rowID) => rowID.trim()).filter(Boolean));
+	const existingMemberRowIds = (existingGroup?.memberRowIds ?? [])
+		.map((rowID) => rowID.trim())
+		.filter(Boolean);
+	let memberRowIds: string[];
 	if (checked) {
-		memberSet.add(trimmedMemberRowID);
+		memberRowIds = existingMemberRowIds.includes(trimmedMemberRowID)
+			? existingMemberRowIds
+			: [...existingMemberRowIds, trimmedMemberRowID];
 	} else {
-		memberSet.delete(trimmedMemberRowID);
+		memberRowIds = existingMemberRowIds.filter((rowID) => rowID !== trimmedMemberRowID);
 	}
 	const nextGroup: ServerAggregationGroup = {
 		server: trimmedServer,
 		enabled,
 		strategy,
-		memberRowIds: Array.from(memberSet),
+		memberRowIds,
 	};
 	if (!enabled && nextGroup.memberRowIds.length === 0) {
 		if (existingGroup === null) {
@@ -606,6 +611,51 @@ export function updateServerAggregationGroupState(
 	} else {
 		nextServerAggregationGroups.push(nextGroup);
 	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+	};
+}
+
+export function reorderServerAggregationMemberState(
+	current: AppState,
+	server: string,
+	memberRowID: string,
+	direction: "up" | "down",
+): AppState {
+	const trimmedServer = server.trim();
+	const trimmedMemberRowID = memberRowID.trim();
+	if (trimmedServer === "" || trimmedMemberRowID === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	if (existingGroup === null || !existingGroup.enabled) {
+		return current;
+	}
+	const memberRowIds = existingGroup.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean);
+	const currentIndex = memberRowIds.indexOf(trimmedMemberRowID);
+	if (currentIndex < 0) {
+		return current;
+	}
+	const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+	if (swapIndex < 0 || swapIndex >= memberRowIds.length) {
+		return current;
+	}
+	const nextMemberRowIds = [...memberRowIds];
+	[nextMemberRowIds[currentIndex], nextMemberRowIds[swapIndex]] = [
+		nextMemberRowIds[swapIndex],
+		nextMemberRowIds[currentIndex],
+	];
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	nextServerAggregationGroups.push({
+		...existingGroup,
+		memberRowIds: nextMemberRowIds,
+	});
 
 	return {
 		...current,

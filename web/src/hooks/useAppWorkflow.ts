@@ -21,6 +21,7 @@ import {
 	getServerAggregationStrategy,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
+	getStage2RowDisplayName,
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	isStage2SourceRow,
@@ -56,6 +57,7 @@ import {
 	completeWorkflowRequestState,
 	deleteStage2RowState,
 	reportCurrentLinkInputErrorState,
+	reorderServerAggregationMemberState,
 	setCurrentLinkInputState,
 	startShortURLCreationState,
 	startWorkflowRequestState,
@@ -114,6 +116,9 @@ export interface AppWorkflowViewModel {
 	getServerAggregationStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
 	canConfigureServerAggregationGroup: (landingNodeName: string) => boolean;
 	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean } | null;
+	getServerAggregationOrderedMembers: (
+		landingNodeName: string,
+	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
 	handleStage1Convert: () => Promise<void>;
 	handleRestore: () => Promise<void>;
 	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
@@ -125,6 +130,11 @@ export interface AppWorkflowViewModel {
 	handleServerAggregationStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
 	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean }) => void;
 	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test" }) => void;
+	handleServerAggregationMemberReorder: (
+		landingNodeName: string,
+		memberRowId: string,
+		direction: "up" | "down",
+	) => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -747,6 +757,52 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}
 	}
 
+	function getServerAggregationOrderedMembersForRow(landingNodeName: string) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return [];
+		}
+		const group = getServerAggregationGroup(state.stage2Snapshot, anchorGroup.server);
+		if (group === null) {
+			return [];
+		}
+		const rowsByID = new Map(
+			state.stage2Snapshot.rows
+				.map((row) => {
+					const rowID = (row.rowId?.trim() ?? "") || getStage2RowKey(row);
+					return rowID === "" ? null : ([rowID, row] as const);
+				})
+				.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
+		);
+		return group.memberRowIds
+			.map((rowID) => {
+				const row = rowsByID.get(rowID.trim());
+				if (row === undefined) {
+					return null;
+				}
+				return {
+					rowId: rowID.trim(),
+					displayName: getStage2RowDisplayName(row),
+					isSource: isStage2SourceRow(row),
+				};
+			})
+			.filter((member): member is { rowId: string; displayName: string; isSource: boolean } => member !== null);
+	}
+
+	function handleServerAggregationMemberReorder(
+		landingNodeName: string,
+		memberRowId: string,
+		direction: "up" | "down",
+	) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return;
+		}
+		setState((current) =>
+			reorderServerAggregationMemberState(current, anchorGroup.server, memberRowId, direction),
+		);
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
@@ -924,6 +980,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getServerAggregationStrategy: getServerAggregationStrategyForRow,
 		canConfigureServerAggregationGroup,
 		getServerAggregationGroup: getServerAggregationGroupForRow,
+		getServerAggregationOrderedMembers: getServerAggregationOrderedMembersForRow,
 		handleStage1Convert,
 		handleRestore,
 		handleProxyNameChange,
@@ -935,6 +992,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleServerAggregationStrategyChange,
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
+		handleServerAggregationMemberReorder,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,

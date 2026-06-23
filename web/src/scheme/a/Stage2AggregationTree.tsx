@@ -21,6 +21,7 @@ import {
 	Stage2RowModeCell,
 	Stage2RowNameCell,
 	Stage2RowTargetCell,
+	Stage2ServerMemberOrderCell,
 	type Stage2Copy,
 	type Stage2Locale,
 } from "./Stage2RowCells";
@@ -93,6 +94,8 @@ export function Stage2AggregationTree({
 		handleTargetChange,
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
+		handleServerAggregationMemberReorder,
+		getServerAggregationOrderedMembers,
 	} = workflow;
 
 	const treeNodes = useMemo(
@@ -112,7 +115,7 @@ export function Stage2AggregationTree({
 					aggregationLabel: copy.aggregationEnable,
 					landingNodeType: "--",
 					modeOptionLabels: ["fallback", "url-test"],
-					targetLabel: "--",
+					targetLabel: copy.memberOrderManage,
 				};
 			}
 
@@ -253,6 +256,8 @@ function Stage2AggregationTreeRow({
 		handleTargetChange,
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
+		handleServerAggregationMemberReorder,
+		getServerAggregationOrderedMembers,
 	} = workflow;
 
 	const editable = isStage2Editable;
@@ -329,7 +334,22 @@ function Stage2AggregationTreeRow({
 					/>
 				</td>
 				<td>
-					<div className="a-cell-type">--</div>
+					<Stage2ServerMemberOrderCell
+						anchorRowKey={node.anchorRowKey}
+						editable={editable}
+						enabled={enabled}
+						strategy={strategy}
+						copy={copy}
+						members={getServerAggregationOrderedMembers(node.anchorRowKey)}
+						onMemberReorder={(memberRowId, direction) =>
+							handleServerAggregationMemberReorder(node.anchorRowKey, memberRowId, direction)
+						}
+						openTargetMenuRow={openTargetMenuRow}
+						setOpenTargetMenuRow={setOpenTargetMenuRow}
+						chainTargetMenuTriggerRef={chainTargetMenuTriggerRef}
+						chainTargetMenuPanelRef={chainTargetMenuPanelRef}
+						chainTargetMenuPortalEl={chainTargetMenuPortalEl}
+					/>
 				</td>
 			</tr>
 		);

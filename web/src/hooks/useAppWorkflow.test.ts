@@ -927,6 +927,137 @@ it("auto-disables undersized aggregation groups before generate", async () => {
 		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("fallback");
 	});
 
+	it("reorders server aggregation members and preserves order across strategy switches", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-hk-2",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 2",
+					landingNodeName: "landing-hk 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "landing-hk-3",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 3",
+					landingNodeName: "landing-hk 3",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const secondRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+		const thirdRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[2]);
+
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+			for (const rowKey of [sourceRowKey, secondRowKey, thirdRowKey]) {
+				workflow.current.handleServerAggregationChange(rowKey, {
+					enabled: true,
+					strategy: "fallback",
+					memberChecked: true,
+				});
+			}
+		});
+
+		expect(workflow.current.getServerAggregationOrderedMembers(sourceRowKey).map((member) => member.rowId)).toEqual([
+			"landing-hk",
+			"landing-hk-2",
+			"landing-hk-3",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationMemberReorder(sourceRowKey, "landing-hk-3", "up");
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "url-test");
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "fallback");
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationChange(secondRowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: false,
+			});
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationChange(secondRowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+	});
+
 	it("clears server aggregation strategy when the source group shrinks back to one row", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

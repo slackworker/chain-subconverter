@@ -5,7 +5,10 @@ import { getStage2RowKey } from "../../lib/stage2";
 import { ArrowRightIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
-import { computeChainTargetMenuPanelLayout } from "./stage2ChainTargetMenu";
+import {
+	computeChainTargetMenuPanelLayout,
+	MEMBER_ORDER_PANEL_MIN_WIDTH,
+} from "./stage2ChainTargetMenu";
 import type { Stage2Copy, Stage2Locale } from "./Stage2RowCells";
 
 function OriginAnchoredBlockingStrip({
@@ -160,7 +163,11 @@ export function Stage2Section({
 			if (!trigger || !panel) {
 				return;
 			}
-			const { top, left, width, maxHeight } = computeChainTargetMenuPanelLayout(trigger);
+			const { top, left, width, maxHeight } = computeChainTargetMenuPanelLayout(trigger, {
+				minWidth: openTargetMenuRow?.startsWith("server-order:")
+					? MEMBER_ORDER_PANEL_MIN_WIDTH
+					: undefined,
+			});
 			panel.style.top = `${top}px`;
 			panel.style.left = `${left}px`;
 			panel.style.width = `${width}px`;
