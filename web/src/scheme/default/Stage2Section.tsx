@@ -323,14 +323,17 @@ export function Stage2Section({
 													workflow.handleGlobalChainProxyGroupProfileChange(event.target.checked)}
 											/>
 											<span className="a-switch" aria-hidden />
-											<Tooltip content={copy.chainProxyGroupProfileHint}>
-												<span
-													className="a-advanced__switch-label"
-													aria-label={copy.chainProxyGroupProfileHintAria}
-												>
-													{copy.chainProxyGroupProfileLabel}
-												</span>
-											</Tooltip>
+											<span className="a-advanced__switch-label">
+												{copy.chainProxyGroupProfileLabel}{" "}
+												<Tooltip content={copy.chainProxyGroupProfileHint}>
+													<span
+														className="a-hint"
+														aria-label={copy.chainProxyGroupProfileHintAria}
+													>
+														?
+													</span>
+												</Tooltip>
+											</span>
 										</label>
 									</div>
 								</div>

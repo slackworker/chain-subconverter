@@ -981,14 +981,15 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 1.1rem;
-	height: 1.1rem;
-	margin-left: 0.15rem;
+	flex-shrink: 0;
+	width: 0.95rem;
+	height: 0.95rem;
 	border-radius: 50%;
-	background: var(--color-line);
-	color: var(--color-muted);
-	font-size: 0.72rem;
-	font-weight: 700;
+	background: color-mix(in srgb, var(--color-line) 45%, transparent);
+	color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+	font-size: 0.62rem;
+	font-weight: 600;
+	line-height: 1;
 	cursor: help;
 }
 
@@ -1268,7 +1269,9 @@
 }
 
 .a-advanced__switch-label {
-	cursor: help;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.1rem;
 	font-weight: 500;
 	font-size: 0.82rem;
 	line-height: 1.25;
