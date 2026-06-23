@@ -140,7 +140,7 @@ export function Stage2AggregationTree({
 		});
 
 		return {
-			headers: [copy.colNodeTree, copy.colAggregation, copy.colType, copy.colMode, copy.colTarget] as const,
+			headers: [copy.colNodeTree, copy.colAggregation, copy.colTypeAgg, copy.colMode, copy.colTarget] as const,
 			rows,
 		};
 	}, [treeNodes, state.stage2Init, stage2Rows, locale, copy, getStage2RowMeta]);
@@ -165,7 +165,7 @@ export function Stage2AggregationTree({
 					<tr>
 						<th scope="col">{copy.colNodeTree}</th>
 						<th scope="col">{copy.colAggregation}</th>
-						<th scope="col">{copy.colType}</th>
+						<th scope="col">{copy.colTypeAgg}</th>
 						<th scope="col">{copy.colMode}</th>
 						<th scope="col">{copy.colTarget}</th>
 					</tr>
