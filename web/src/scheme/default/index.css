@@ -1805,7 +1805,12 @@
 .a-stage2-agg-cell {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	min-height: 2rem;
+}
+
+.a-check--solo {
+	gap: 0;
 }
 
 .a-stage2-row-icon-actions--placeholder {
@@ -1879,7 +1884,7 @@
 	padding: 1.5rem 1rem;
 }
 
-/* Stage2「节点类型」列：表头与单元格统一居中 */
+/* Stage2 第 2 列（平铺表为节点类型，树形表为聚合/入组）：表头与单元格统一居中 */
 .a-table--stage2-adaptive th:nth-child(2),
 .a-table--stage2-adaptive td:nth-child(2) {
 	text-align: center;

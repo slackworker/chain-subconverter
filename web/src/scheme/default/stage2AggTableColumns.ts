@@ -21,11 +21,13 @@ export const STAGE2_AGG_COLUMN_FALLBACK_PERCENTS: readonly [string, string, stri
 	"30%",
 ];
 
+/** 聚合/入组列仅保留复选框时的最小占用（约 1rem 控件宽） */
+export const STAGE2_AGG_CHECKBOX_EXTRA_PX = 16;
+
 export type Stage2AggColumnWidthsPx = readonly [number, number, number, number, number];
 
 export type Stage2AggColumnMeasureRow = {
 	nodeLabel: string;
-	aggregationLabel: string;
 	landingNodeType: string;
 	modeOptionLabels: string[];
 	targetLabel: string;
@@ -61,7 +63,7 @@ export function measureStage2AggColumnMins(input: Stage2AggColumnMeasureInput): 
 	const { measureText, measureLandingText = measureText, headers, rows } = input;
 
 	const nodeTexts = [headers[0], ...rows.map((row) => row.nodeLabel)];
-	const aggTexts = [headers[1], ...rows.map((row) => row.aggregationLabel)];
+	const aggTexts = [headers[1]];
 	const typeTexts = [headers[2], ...rows.map((row) => row.landingNodeType)];
 	const modeTexts = [headers[3], ...rows.flatMap((row) => row.modeOptionLabels)];
 	const targetTexts = [headers[4], ...rows.map((row) => row.targetLabel)];
@@ -71,7 +73,7 @@ export function measureStage2AggColumnMins(input: Stage2AggColumnMeasureInput): 
 			+ pad
 			+ STAGE2_LANDING_EDITABLE_EXTRA_PX
 			+ STAGE2_LANDING_RENDERING_SAFETY_PX,
-		maxMeasuredWidth(aggTexts, measureText) + pad,
+		maxMeasuredWidth(aggTexts, measureText) + pad + STAGE2_AGG_CHECKBOX_EXTRA_PX,
 		maxMeasuredWidth(typeTexts, measureText) + pad,
 		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_SELECT_EXTRA_PX,
 		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_EXTRA_PX,

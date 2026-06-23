@@ -113,7 +113,6 @@ export function Stage2AggregationTree({
 			if (node.kind === "server") {
 				return {
 					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji),
-					aggregationLabel: copy.aggregationEnable,
 					landingNodeType: copy.typePolicyGroup,
 					modeOptionLabels: ["fallback", "url-test"],
 					targetLabel: copy.memberOrderManage,
@@ -134,7 +133,6 @@ export function Stage2AggregationTree({
 
 			return {
 				nodeLabel: `${formatStage2TreeGlyphMeasureSpacer(node.glyphParts)}${getStage2RowDisplayName(node.row)}`,
-				aggregationLabel: copy.aggregationInclude,
 				landingNodeType: meta?.landingNodeType ?? "--",
 				modeOptionLabels,
 				targetLabel,
@@ -296,7 +294,7 @@ function Stage2AggregationTreeRow({
 				</td>
 				<td>
 					<Stage2AggregationCell
-						label={copy.aggregationEnable}
+						hint={copy.aggregationEnable}
 						checked={enabled}
 						disabled={!editable}
 						onChange={(checked) =>
@@ -397,7 +395,7 @@ function Stage2AggregationTreeRow({
 			<td>
 				{row.rowId ? (
 					<Stage2AggregationCell
-						label={copy.aggregationInclude}
+						hint={copy.aggregationInclude}
 						checked={memberChecked}
 						disabled={!editable || !(serverAggregation?.enabled ?? false)}
 						onChange={(checked) =>

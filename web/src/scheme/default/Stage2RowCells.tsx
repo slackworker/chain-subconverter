@@ -740,18 +740,23 @@ export function Stage2ServerMemberOrderCell({
 }
 
 interface Stage2AggregationCellProps {
-	label: string;
+	hint: string;
 	checked: boolean;
 	disabled?: boolean;
 	onChange: (checked: boolean) => void;
 }
 
-export function Stage2AggregationCell({ label, checked, disabled = false, onChange }: Stage2AggregationCellProps) {
+export function Stage2AggregationCell({ hint, checked, disabled = false, onChange }: Stage2AggregationCellProps) {
 	return (
 		<div className="a-stage2-agg-cell">
-			<label className="a-check">
-				<input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
-				{label}
+			<label className="a-check a-check--solo" title={hint}>
+				<input
+					type="checkbox"
+					checked={checked}
+					disabled={disabled}
+					aria-label={hint}
+					onChange={(event) => onChange(event.target.checked)}
+				/>
 			</label>
 		</div>
 	);
