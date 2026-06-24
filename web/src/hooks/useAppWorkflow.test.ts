@@ -551,7 +551,7 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
-it("auto-disables undersized aggregation group before generate", async () => {
+it("blocks generate when aggregation group has fewer than two members", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -595,21 +595,23 @@ it("auto-disables undersized aggregation group before generate", async () => {
 
 		await runWorkflowAction(() => workflow.current.handleGenerate());
 
-	expect(mockPostGenerate).toHaveBeenCalledTimes(1);
-	expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
-		stage2Snapshot: expect.objectContaining({
-			serverAggregationGroups: [
-				{ server: "hk.example.com", enabled: false, strategy: "fallback", memberRowIds: ["landing-hk"] },
-			],
-		}),
-	}));
+	expect(mockPostGenerate).not.toHaveBeenCalled();
 		expect(workflow.current.responseOriginStage).toBe("stage2");
-	expect(workflow.current.state.blockingErrors).toEqual([]);
-	expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual([]);
-		expect(workflow.current.workflowLog.at(-1)?.code).toBe("ACTION_GENERATE");
+	expect(workflow.current.state.blockingErrors).toEqual([
+		expect.objectContaining({
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+			scope: "stage2_row",
+		}),
+	]);
+	expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual([
+		expect.objectContaining({
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+		}),
+	]);
+	expect(workflow.current.workflowLog.at(-1)?.code).toBe("GENERATE_FAILED");
 	});
 
-it("auto-disables undersized aggregation groups before generate", async () => {
+it("blocks generate when multiple undersized aggregation groups are enabled", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -672,16 +674,12 @@ it("auto-disables undersized aggregation groups before generate", async () => {
 		await runWorkflowAction(() => workflow.current.handleGenerate());
 
 		const stage2Errors = workflow.current.getPrimaryBlockingErrorsForStage("stage2");
-	expect(stage2Errors).toHaveLength(0);
-	expect(mockPostGenerate).toHaveBeenCalledTimes(1);
-	expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
-		stage2Snapshot: expect.objectContaining({
-			serverAggregationGroups: expect.arrayContaining([
-				{ server: "198.51.100.10", enabled: false, strategy: "fallback", memberRowIds: ["landing-10"] },
-				{ server: "198.51.100.11", enabled: false, strategy: "fallback", memberRowIds: ["landing-11"] },
-			]),
-		}),
-	}));
+	expect(stage2Errors).toHaveLength(2);
+	expect(stage2Errors.map((error) => error.code)).toEqual([
+		"SERVER_AGGREGATION_GROUP_TOO_SMALL",
+		"SERVER_AGGREGATION_GROUP_TOO_SMALL",
+	]);
+	expect(mockPostGenerate).not.toHaveBeenCalled();
 	});
 
 	it("surfaces Stage 2 blocking errors when generate fails", async () => {
@@ -1112,11 +1110,11 @@ it("auto-disables undersized aggregation groups before generate", async () => {
 		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(false);
 		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBeNull();
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
-			{ server: "source:landing-hk", enabled: false, strategy: "url-test", memberRowIds: ["landing-hk"] },
+			{ server: "source:landing-hk", enabled: true, strategy: "url-test", memberRowIds: ["landing-hk"] },
 		]);
 	});
 
-	it("does not auto-select defaults when a server group has only one source member", async () => {
+	it("auto-selects eligible members when a server group has multiple rows under one source", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -1183,14 +1181,14 @@ it("auto-disables undersized aggregation groups before generate", async () => {
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
 			{
 				server: "hk.example.com",
-			enabled: false,
+				enabled: true,
 				strategy: "fallback",
-				memberRowIds: [],
+				memberRowIds: ["hk-1", "hk-3"],
 			},
 		]);
-		expect(workflow.current.getServerAggregationGroup(sourceRowKey)?.memberChecked).toBe(false);
+		expect(workflow.current.getServerAggregationGroup(sourceRowKey)?.memberChecked).toBe(true);
 		expect(workflow.current.getServerAggregationGroup(noneRowKey)?.memberChecked).toBe(false);
-		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(false);
+		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(true);
 	});
 
 	it("clears aggregation groups before generate when aggregation mode is turned off", async () => {

@@ -90,7 +90,7 @@ function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGr
 		seen.add(server);
 		normalized.push({
 			server,
-			enabled: group.enabled && memberRowIds.length >= 2,
+			enabled: group.enabled,
 			strategy: group.strategy,
 			memberRowIds,
 		});

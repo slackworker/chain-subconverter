@@ -274,6 +274,17 @@ function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialApp
 	return errors;
 }
 
+function resolveServerAggregationServer(
+	row: Stage2Row,
+	rowMeta: Stage2Init["rows"][number] | null,
+): string {
+	if (rowMeta === null) {
+		return "";
+	}
+	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+	return (rowMeta.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+}
+
 function sameStringArray(current: string[] | null | undefined, next: string[] | null | undefined) {
 	if (current === next) {
 		return true;
@@ -738,7 +749,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (matchedRow === null || rowMeta === null) {
 			return;
 		}
-		const server = rowMeta.server?.trim() ?? "";
+		const server = resolveServerAggregationServer(matchedRow, rowMeta);
 		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
 		if (server === "" || rowID === "") {
 			return;
@@ -754,6 +765,12 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			);
 			return updateServerAggregationStrategyState(withMember, server, payload.enabled ? payload.strategy : null);
 		});
+	}
+
+	function getStage2RowMetaFromState(current: typeof state, landingNodeName: string) {
+		const snapshotRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : landingNodeName;
+		return current.stage2Init?.rows.find((row) => matchesStage2RowKey(row, sourceLandingNodeName)) ?? null;
 	}
 
 	function handleServerAggregationEnableWithDefaults(
@@ -781,22 +798,39 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			}
 			return getServerAggregationGroupForRow(rowKey)?.server === targetServer;
 		});
-		const sourceMemberCount = memberRows.filter((row) => isStage2SourceRow(row)).length;
-		const shouldAutoSelectByMode = sourceMemberCount >= 2;
+		const shouldAutoSelectByMode = memberRows.length >= 2;
 
-		for (const row of memberRows) {
-			const rowKey = getStage2RowKey(row);
-			if (rowKey === "") {
-				continue;
+		setState((current) => {
+			let next = current;
+			for (const row of memberRows) {
+				const rowKey = getStage2RowKey(row);
+				if (rowKey === "") {
+					continue;
+				}
+				const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
+				const rowMeta = getStage2RowMetaFromState(current, rowKey);
+				if (matchedRow === null || rowMeta === null) {
+					continue;
+				}
+				const server = resolveServerAggregationServer(matchedRow, rowMeta);
+				const rowID = (matchedRow.rowId?.trim() ?? "") || rowKey;
+				if (server === "" || rowID === "") {
+					continue;
+				}
+				const group = getServerAggregationGroup(next.stage2Snapshot, server);
+				const currentChecked = rowID !== "" && (group?.memberRowIds ?? []).includes(rowID);
+				const defaultChecked = shouldAutoSelectByMode && row.mode !== "none";
+				next = updateServerAggregationGroupState(
+					next,
+					server,
+					true,
+					payload.strategy,
+					rowID,
+					currentChecked || defaultChecked,
+				);
 			}
-			const currentChecked = getServerAggregationGroupForRow(rowKey)?.memberChecked ?? false;
-			const defaultChecked = shouldAutoSelectByMode && row.mode !== "none";
-			handleServerAggregationChange(rowKey, {
-				enabled: true,
-				strategy: payload.strategy,
-				memberChecked: currentChecked || defaultChecked,
-			});
-		}
+			return updateServerAggregationStrategyState(next, targetServer, payload.strategy);
+		});
 	}
 
 	function getServerAggregationOrderedMembersForRow(landingNodeName: string) {
