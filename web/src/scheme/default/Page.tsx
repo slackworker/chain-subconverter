@@ -93,7 +93,7 @@ const COPY = {
 		colTarget: "目标",
 		stage2AggregationMode: "线路聚合模式",
 		stage2AggregationModeHint:
-			"实验性功能。为同一服务器配置多条中转目标（建议选固定节点或端口转发，而非策略组），各自完成链式代理后聚合成策略组，在中转节点不稳定时提高整体可用性。可与「目标策略组节点切换优化」同时开启。",
+			"实验性功能。为同一服务器落地节点配置多条中转线路（建议目标为固定节点或端口转发，而非策略组），各自完成后聚合成策略组，在中转节点不稳定时提高整体可用性。可与「策略组节点切换优化」同时开启。",
 		stage2AggregationModeHintAria: "线路聚合模式说明",
 		aggregationEnable: "聚合",
 		aggregationInclude: "入组",
