@@ -2034,6 +2034,9 @@
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	/* 裁剪 .a-sr-only 内 nowrap 长文案，避免撑出页面级横向滚动条 */
+	position: relative;
+	overflow: hidden;
 }
 
 .a-mode-warning-hint {
