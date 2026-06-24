@@ -1798,18 +1798,39 @@
 
 .a-stage2-tree-server--inactive {
 	background: transparent;
+	--a-stage2-inactive-ink: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+	--a-stage2-inactive-bg: transparent;
+	--a-stage2-inactive-border: color-mix(in srgb, var(--color-line) 82%, transparent);
 }
 
 .a-stage2-tree-server--inactive .a-stage2-tree-server-name,
 .a-stage2-tree-server--inactive .a-cell-type {
-	color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+	color: var(--a-stage2-inactive-ink);
 }
 
 .a-stage2-tree-server--inactive .a-stage2-row-name-input:disabled {
-	color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
-	-webkit-text-fill-color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
-	background: transparent;
-	border-color: transparent;
+	color: var(--a-stage2-inactive-ink);
+	-webkit-text-fill-color: var(--a-stage2-inactive-ink);
+	background: var(--a-stage2-inactive-bg);
+	border-color: var(--a-stage2-inactive-bg);
+}
+
+.a-stage2-tree-server--inactive .a-mode-cell .a-select:disabled {
+	color: var(--a-stage2-inactive-ink);
+	-webkit-text-fill-color: var(--a-stage2-inactive-ink);
+	background: var(--a-stage2-inactive-bg);
+	border-color: var(--a-stage2-inactive-border);
+	opacity: 1;
+}
+
+.a-stage2-tree-server--inactive .a-target-menu__trigger--member-order:disabled {
+	color: var(--a-stage2-inactive-ink);
+	background: var(--a-stage2-inactive-bg);
+	border-color: var(--a-stage2-inactive-border);
+}
+
+.a-stage2-tree-server--inactive .a-target-menu__trigger--member-order:disabled .a-member-order-trigger__wing {
+	color: var(--a-stage2-inactive-ink);
 }
 
 .a-stage2-row-inline.is-aggregation-off::before,
