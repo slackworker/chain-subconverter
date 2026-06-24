@@ -274,11 +274,36 @@ export function Stage2Section({
 
 			{isConflictReadonly ? <p className="a-conflict-banner">{copy.conflictReadonly}</p> : null}
 
-			{stage2AggregationMode ? (
-				<Stage2AggregationTree {...sharedTableProps} />
-			) : (
-				<Stage2FlatTable {...sharedTableProps} />
-			)}
+			<div className="a-stage2-table-block">
+				{stage2Rows.length > 0 ? (
+					<div className="a-stage2-table-toolbar">
+						<label className="a-check a-check--switch a-stage2-aggregation-toggle">
+							<input
+								className="a-switch__input"
+								type="checkbox"
+								checked={stage2AggregationMode}
+								disabled={!isStage2Editable}
+								aria-label={copy.stage2AggregationMode}
+								onChange={(event) => handleAggregationModeToggle(event.target.checked)}
+							/>
+							<span className="a-switch" aria-hidden />
+							<span className="a-stage2-aggregation-toggle__label">
+								{copy.stage2AggregationMode}{" "}
+								<Tooltip content={copy.stage2AggregationModeHint}>
+									<span className="a-hint" aria-label={copy.stage2AggregationModeHintAria}>
+										?
+									</span>
+								</Tooltip>
+							</span>
+						</label>
+					</div>
+				) : null}
+				{stage2AggregationMode ? (
+					<Stage2AggregationTree {...sharedTableProps} />
+				) : (
+					<Stage2FlatTable {...sharedTableProps} />
+				)}
+			</div>
 
 			<div className="a-stage2-actions-wrap">
 				{stage2Rows.length > 0 ? (
@@ -315,30 +340,6 @@ export function Stage2Section({
 													<span
 														className="a-hint"
 														aria-label={copy.chainProxyGroupProfileHintAria}
-													>
-														?
-													</span>
-												</Tooltip>
-											</span>
-										</label>
-									</div>
-									<div className="a-check-row">
-										<label className="a-check a-check--switch">
-											<input
-												className="a-switch__input"
-												type="checkbox"
-												checked={stage2AggregationMode}
-												disabled={!isStage2Editable}
-												aria-label={copy.stage2AggregationMode}
-												onChange={(event) => handleAggregationModeToggle(event.target.checked)}
-											/>
-											<span className="a-switch" aria-hidden />
-											<span className="a-advanced__switch-label">
-												{copy.stage2AggregationMode}{" "}
-												<Tooltip content={copy.stage2AggregationModeHint}>
-													<span
-														className="a-hint"
-														aria-label={copy.stage2AggregationModeHintAria}
 													>
 														?
 													</span>

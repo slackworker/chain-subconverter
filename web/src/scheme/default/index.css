@@ -1257,6 +1257,31 @@
 	margin-top: 0;
 }
 
+.a-stage2-table-block {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.a-stage2-table-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+}
+
+.a-stage2-aggregation-toggle {
+	font-weight: 500;
+	gap: 0.5rem;
+}
+
+.a-stage2-aggregation-toggle__label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.1rem;
+	font-size: 0.82rem;
+	line-height: 1.25;
+}
+
 .a-stage2-actions-wrap {
 	display: flex;
 	flex-direction: column;
