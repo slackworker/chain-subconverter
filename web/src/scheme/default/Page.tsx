@@ -91,7 +91,7 @@ const COPY = {
 		colAggregation: "聚合/入组",
 		colMode: "配置方式",
 		colTarget: "目标",
-		stage2AggregationMode: "开启多线路聚合模式",
+		stage2AggregationMode: "开启多线路聚合模式（实验性）",
 		stage2AggregationModeHint:
 			"进阶方案：为同一服务器配置多条中转目标（建议选固定节点或端口转发，而非策略组），各自完成链式代理后聚合成策略组，在中转节点不稳定时提高整体可用性。可与「目标策略组节点切换优化」同时开启。",
 		stage2AggregationModeHintAria: "多线路聚合模式说明",
@@ -122,7 +122,7 @@ const COPY = {
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
 		selectTarget: "请选择",
-		chainProxyGroupProfileLabel: "目标策略组节点切换优化",
+		chainProxyGroupProfileLabel: "目标策略组节点切换优化（实验性）",
 		chainProxyGroupProfileHint:
 			"开启后，为链式代理所选的地域策略组启用更短的健康检查间隔与更快的节点切换；节点异常时尽快切换到可用节点。关闭时沿用订阅模板中的默认设置。",
 		chainProxyGroupProfileHintAria: "目标策略组节点切换优化说明",
