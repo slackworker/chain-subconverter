@@ -61,9 +61,11 @@ if [[ -z "$port_offset" ]] || ! [[ "$port_offset" =~ ^[0-9]+$ ]]; then
 fi
 
 case "$scheme" in
-  a) frontend_base=5173 ;;
-  b) frontend_base=5174 ;;
-  c) frontend_base=5175 ;;
+  default) frontend_base=5173 ;;
+  b1) frontend_base=5174 ;;
+  b2) frontend_base=5175 ;;
+  c1) frontend_base=5176 ;;
+  c2) frontend_base=5177 ;;
   *)
     printf 'Unsupported UI scheme: %s\n' "$scheme" >&2
     exit 1
