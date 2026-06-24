@@ -20,6 +20,7 @@
 - `backend`: `11200`
 - `frontend`: 脚本默认 `5173`；VS Code `dev: up` 固定为 scheme `default` → `5173`（其他 scheme 请用 `./scripts/dev-up.sh <scheme>` 或 `dev-up-vscode-task.sh`）
 - 默认端口组固定为 offset `0`；多 worktree 并行预览请设置 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=<n>` 或 `auto`（按 `git worktree list` 稳定顺序分配 `0,10,20,...`）
+- VS Code `dev: up` 默认启用 `CHAIN_SUBCONVERTER_DEV_UP_FORCE_RESTART=1`：重跑任务会先清理当前工作区可识别的旧实例（frontend/backend/subconverter）再重启；可手动设为 `0` 关闭
 - 新切出的 worktree 若还没有自己的 `web/node_modules`，`dev: up` 会先自动执行一次 `npm ci`（`web/` 仅支持 npm，见 [spec 05 §5](../spec/05-tech-stack.md#5-前端实现约束)）
 
 运行结果写入：`.tmp/dev-up/runtime.env`
