@@ -69,26 +69,26 @@ describe("buildStage2AggregationTree", () => {
 		expect(nodes[1]).toMatchObject({
 			kind: "row",
 			depth: 1,
-			glyphParts: { continuation: "", branch: "mid", depth: 1, childGuide: false },
-			isSource: true,
-			rowKey: "rowId:Reality",
-		});
-		expect(nodes[2]).toMatchObject({
-			kind: "row",
-			depth: 1,
-			glyphParts: { continuation: "", branch: "last", depth: 1, childGuide: true },
+			glyphParts: { continuation: "", branch: "mid", depth: 1, childGuide: true },
 			isSource: true,
 			rowKey: "rowId:ss",
 		});
-		expect(nodes[3]).toMatchObject({
+		expect(nodes[2]).toMatchObject({
 			kind: "row",
 			depth: 2,
-			glyphParts: { continuation: "", branch: "last", depth: 2 },
+			glyphParts: { continuation: "│", branch: "last", depth: 2 },
 			isSource: false,
 			rowKey: "rowId:hk-2",
 		});
+		expect(nodes[3]).toMatchObject({
+			kind: "row",
+			depth: 1,
+			glyphParts: { continuation: "", branch: "last", depth: 1, childGuide: false },
+			isSource: true,
+			rowKey: "rowId:Reality",
+		});
 		expect(formatStage2TreeGlyph(nodes[1].kind === "row" ? nodes[1].glyphParts : { continuation: "", branch: "last", depth: 1 })).toBe("├── ");
-		expect(formatStage2TreeGlyph(nodes[3].kind === "row" ? nodes[3].glyphParts : { continuation: "", branch: "last", depth: 1 })).toBe("    └── ");
+		expect(formatStage2TreeGlyph(nodes[2].kind === "row" ? nodes[2].glyphParts : { continuation: "", branch: "last", depth: 1 })).toBe("│   └── ");
 	});
 
 	it("draws continuation spine for derived rows under a non-last source group", () => {
@@ -139,7 +139,7 @@ describe("buildStage2AggregationTree", () => {
 		expect(rowNodes.map((node) => formatStage2TreeGlyph(node.glyphParts))).toEqual(["├── ", "│   └── ", "└── "]);
 	});
 
-	it("sorts servers and source groups deterministically", () => {
+	it("preserves server order from rows array", () => {
 		const specs: RowSpec[] = [
 			{
 				row: {
@@ -164,8 +164,8 @@ describe("buildStage2AggregationTree", () => {
 		const rows = specs.map((spec) => spec.row);
 		const nodes = buildStage2AggregationTree(rows, buildMetaLookup(specs));
 		expect(nodes.filter((node) => node.kind === "server").map((node) => node.displayServer)).toEqual([
-			"a.example.com",
 			"b.example.com",
+			"a.example.com",
 		]);
 	});
 
@@ -229,13 +229,13 @@ describe("buildStage2AggregationTree", () => {
 		expect(serverNodes).toMatchObject([
 			{
 				kind: "server",
-				server: "plain.example.com",
-				sourceFlagEmoji: null,
+				server: "shared.example.com",
+				sourceFlagEmoji: "🇭🇰",
 			},
 			{
 				kind: "server",
-				server: "shared.example.com",
-				sourceFlagEmoji: "🇭🇰",
+				server: "plain.example.com",
+				sourceFlagEmoji: null,
 			},
 		]);
 	});

@@ -100,12 +100,6 @@ export function formatStage2TreeGlyphMeasureSpacer(_parts?: Stage2TreeGlyphParts
 	return "\u2007".repeat(3);
 }
 
-function sortRowsByDisplayName(rows: Stage2Row[]): Stage2Row[] {
-	return [...rows].sort((left, right) =>
-		getStage2RowDisplayName(left).localeCompare(getStage2RowDisplayName(right)),
-	);
-}
-
 function partitionSourceGroups(rows: Stage2Row[]): Map<string, Stage2Row[]> {
 	const groups = new Map<string, Stage2Row[]>();
 	for (const row of rows) {
@@ -117,18 +111,38 @@ function partitionSourceGroups(rows: Stage2Row[]): Map<string, Stage2Row[]> {
 	return groups;
 }
 
-function orderSourceGroupRows(rows: Stage2Row[]): Stage2Row[] {
-	const sourceRows = rows.filter((row) => isStage2SourceRow(row));
-	const derivedRows = rows.filter((row) => !isStage2SourceRow(row));
-	const primarySource = sourceRows[0] ?? derivedRows[0];
-	if (!primarySource) {
-		return [];
+/** 源节点组按在 server 块内首次出现的顺序排列，组内行保持 rows 原始顺序。 */
+function getSourceGroupsInRowOrder(serverRows: Stage2Row[]): Stage2Row[][] {
+	const groups = partitionSourceGroups(serverRows);
+	const ordered: Stage2Row[][] = [];
+	const seen = new Set<string>();
+	for (const row of serverRows) {
+		const sourceLandingName = getStage2RowSourceLandingName(row);
+		if (seen.has(sourceLandingName)) {
+			continue;
+		}
+		seen.add(sourceLandingName);
+		const groupRows = groups.get(sourceLandingName);
+		if (groupRows !== undefined) {
+			ordered.push(groupRows);
+		}
 	}
-	const orderedSource = sourceRows.length > 0 ? sortRowsByDisplayName(sourceRows)[0] : primarySource;
-	const orderedDerived = sortRowsByDisplayName(
-		derivedRows.filter((row) => getStage2RowStrictKey(row) !== getStage2RowStrictKey(orderedSource)),
-	);
-	return [orderedSource, ...orderedDerived];
+	return ordered;
+}
+
+/** server 分组按 rows 中首次出现的顺序排列。 */
+function getServerKeysInRowOrder(rows: Stage2Row[], getRowMeta: Stage2RowMetaLookup): string[] {
+	const ordered: string[] = [];
+	const seen = new Set<string>();
+	for (const row of rows) {
+		const serverKey = getRowServerKey(row, getRowMeta);
+		if (seen.has(serverKey)) {
+			continue;
+		}
+		seen.add(serverKey);
+		ordered.push(serverKey);
+	}
+	return ordered;
 }
 
 function getLeadingFlagEmoji(name: string): string | null {
@@ -175,7 +189,7 @@ export function buildStage2AggregationTree(
 		rowsByServer.set(serverKey, bucket);
 	}
 
-	const serverKeys = [...rowsByServer.keys()].sort((left, right) => left.localeCompare(right));
+	const serverKeys = getServerKeysInRowOrder(rows, getRowMeta);
 	const nodes: Stage2TreeNode[] = [];
 
 	for (const serverKey of serverKeys) {
@@ -196,13 +210,11 @@ export function buildStage2AggregationTree(
 			sourceFlagEmoji: getServerGroupSourceFlagEmoji(serverRows),
 		});
 
-		const sourceGroups = [...partitionSourceGroups(serverRows).entries()].sort(([left], [right]) =>
-			left.localeCompare(right),
-		);
+		const sourceGroups = getSourceGroupsInRowOrder(serverRows);
 
-		sourceGroups.forEach(([, groupRows], sourceIndex) => {
+		sourceGroups.forEach((groupRows, sourceIndex) => {
 			const sourceBranch: Stage2TreeBranch = sourceIndex < sourceGroups.length - 1 ? "mid" : "last";
-			const orderedRows = orderSourceGroupRows(groupRows);
+			const orderedRows = groupRows;
 			const derivedInGroup = orderedRows.filter((candidate) => !isStage2SourceRow(candidate));
 
 			orderedRows.forEach((row) => {
