@@ -656,7 +656,7 @@ export function Stage2ServerMemberOrderCell({
 			<div className="a-target-menu">
 				<button
 					type="button"
-					className={`a-select a-target-menu__trigger ${canManageOrder ? "" : "a-target-menu__summary--disabled"}`}
+					className={`a-select a-target-menu__trigger${canManageOrder ? " a-target-menu__trigger--member-order" : ""} ${canManageOrder ? "" : "a-target-menu__summary--disabled"}`}
 					disabled={!canManageOrder}
 					title={triggerTitle}
 					aria-expanded={openTargetMenuRow === menuKey}
@@ -674,7 +674,19 @@ export function Stage2ServerMemberOrderCell({
 						setOpenTargetMenuRow(menuKey);
 					}}
 				>
-					{triggerLabel}
+					{canManageOrder ? (
+						<span className="a-member-order-trigger__body">
+							<span className="a-member-order-trigger__wing" aria-hidden="true">
+								‹‹
+							</span>
+							<span className="a-member-order-trigger__label">{triggerLabel}</span>
+							<span className="a-member-order-trigger__wing" aria-hidden="true">
+								››
+							</span>
+						</span>
+					) : (
+						triggerLabel
+					)}
 				</button>
 				{openTargetMenuRow === menuKey && chainTargetMenuPortalEl
 					? createPortal(
