@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 
 import { tryAppendTag, type AppendTagResult } from "../../lib/tags";
 
@@ -27,6 +27,7 @@ interface TagFieldProps {
 	placeholder?: string;
 	addLabel?: string;
 	removeTagAriaLabel?: (tag: string) => string;
+	autoNormalizeFullWidthColon?: boolean;
 	/** 与列表内已有项、{@link existingTags} 比较时的规范化（如端口转发 server:port）。 */
 	formatTag?: (raw: string) => string;
 	/** 已提交到表单其它处的标签（如 modal 草稿对比 stage1 已有端口转发）。 */
@@ -66,6 +67,7 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 		placeholder,
 		addLabel = "添加",
 		removeTagAriaLabel,
+		autoNormalizeFullWidthColon = false,
 		formatTag,
 		existingTags,
 		onReject,
@@ -73,6 +75,7 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 	ref,
 ) {
 	const [draft, setDraft] = useState("");
+	const isComposingRef = useRef(false);
 
 	const list = values ?? [];
 
@@ -118,7 +121,31 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 					<input
 						className="a-input a-tag-field__input"
 						value={draft}
-						onChange={(event) => setDraft(event.target.value)}
+						onChange={(event) => {
+							const nextValue = event.target.value;
+							// 中文输入法组合输入期间不要改值，避免重复字符（如 "：" 变 "::"）。
+							if (isComposingRef.current) {
+								setDraft(nextValue);
+								return;
+							}
+							setDraft(
+								autoNormalizeFullWidthColon
+									? nextValue.split("：").join(":")
+									: nextValue,
+							);
+						}}
+						onCompositionStart={() => {
+							isComposingRef.current = true;
+						}}
+						onCompositionEnd={(event) => {
+							isComposingRef.current = false;
+							const composedValue = event.currentTarget.value;
+							setDraft(
+								autoNormalizeFullWidthColon
+									? composedValue.split("：").join(":")
+									: composedValue,
+							);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") {
 								event.preventDefault();
