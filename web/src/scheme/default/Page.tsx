@@ -161,7 +161,7 @@ const COPY = {
 		stage1Label: "阶段 1",
 		stage2Label: "阶段 2",
 		stage3Label: "阶段 3",
-		mode_none: "不配置",
+		mode_none: "无/直连",
 		mode_chain: "链式代理",
 		mode_port_forward: "端口转发",
 		statusAwaitingInput: "等待输入",
