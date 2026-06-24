@@ -646,16 +646,12 @@ export function Stage2ServerMemberOrderCell({
 			? copy.memberOrderUrlTestHint
 			: undefined;
 
-	if (!enabled) {
-		return <div className="a-cell-type">--</div>;
-	}
-
 	return (
 		<div className="a-target-picker">
 			<div className="a-target-menu">
 				<button
 					type="button"
-					className={`a-select a-target-menu__trigger${canManageOrder ? " a-target-menu__trigger--member-order" : ""} ${canManageOrder ? "" : "a-target-menu__summary--disabled"}`}
+					className="a-select a-target-menu__trigger a-target-menu__trigger--member-order"
 					disabled={!canManageOrder}
 					title={triggerTitle}
 					aria-expanded={openTargetMenuRow === menuKey}
@@ -673,19 +669,15 @@ export function Stage2ServerMemberOrderCell({
 						setOpenTargetMenuRow(menuKey);
 					}}
 				>
-					{canManageOrder ? (
-						<span className="a-member-order-trigger__body">
-							<span className="a-member-order-trigger__wing" aria-hidden="true">
-								‹‹
-							</span>
-							<span className="a-member-order-trigger__label">{triggerLabel}</span>
-							<span className="a-member-order-trigger__wing" aria-hidden="true">
-								››
-							</span>
+					<span className="a-member-order-trigger__body">
+						<span className="a-member-order-trigger__wing" aria-hidden="true">
+							‹‹
 						</span>
-					) : (
-						triggerLabel
-					)}
+						<span className="a-member-order-trigger__label">{triggerLabel}</span>
+						<span className="a-member-order-trigger__wing" aria-hidden="true">
+							››
+						</span>
+					</span>
 				</button>
 				{openTargetMenuRow === menuKey && chainTargetMenuPortalEl
 					? createPortal(
