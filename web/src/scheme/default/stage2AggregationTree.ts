@@ -277,24 +277,93 @@ function getServerBlockBounds(
 	return { blockStart, blockEnd };
 }
 
-/** 与非聚合 `.a-stage2-row-inline` 一致的 dot + 竖线轨道类名；server 块内枝干从 server 行贯通至末行。 */
-export function getStage2AggregationTreeRowInlineClassName(nodes: Stage2TreeNode[], index: number): string {
+function getFlatSourceGroupInlineClassName(blockRowNodes: Stage2TreeRowNode[], rowNode: Stage2TreeRowNode): string {
+	const rowIndexInBlock = blockRowNodes.findIndex((candidate) => candidate.rowKey === rowNode.rowKey);
+	const sourceLandingName = getStage2RowSourceLandingName(rowNode.row);
+	const previousSourceLandingName =
+		rowIndexInBlock > 0 ? getStage2RowSourceLandingName(blockRowNodes[rowIndexInBlock - 1].row) : null;
+	const nextSourceLandingName =
+		rowIndexInBlock + 1 < blockRowNodes.length
+			? getStage2RowSourceLandingName(blockRowNodes[rowIndexInBlock + 1].row)
+			: null;
+	const groupedBySource =
+		previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
+	const groupStart = previousSourceLandingName !== sourceLandingName;
+	const groupEnd = nextSourceLandingName !== sourceLandingName;
+
+	return [
+		"a-stage2-row-inline",
+		groupedBySource ? "is-grouped" : "is-solo",
+		rowNode.isSource ? "is-source" : "is-derived",
+		groupStart ? "is-group-start" : "",
+		groupEnd ? "is-group-end" : "",
+	]
+		.filter(Boolean)
+		.join(" ");
+}
+
+/** 与非聚合 `.a-stage2-row-inline` 一致的 dot + 竖线轨道类名；聚合开启时 server 块内枝干贯通至末行。 */
+export function getStage2AggregationTreeRowInlineClassName(
+	nodes: Stage2TreeNode[],
+	index: number,
+	options?: { serverAggregationEnabled?: boolean },
+): string {
 	const node = nodes[index];
+	const serverAggregationEnabled = options?.serverAggregationEnabled ?? true;
+
+	if (node.kind === "server") {
+		if (!serverAggregationEnabled) {
+			return "a-stage2-row-inline is-solo is-aggregation-off";
+		}
+
+		const { blockStart, blockEnd } = getServerBlockBounds(nodes, index);
+		const hasSiblings = blockEnd > blockStart;
+		const isBlockStart = index === blockStart;
+
+		return [
+			"a-stage2-row-inline",
+			hasSiblings ? "is-grouped" : "is-solo",
+			"is-server",
+			isBlockStart ? "is-group-start" : "",
+		]
+			.filter(Boolean)
+			.join(" ");
+	}
+
+	if (!serverAggregationEnabled) {
+		const { blockStart, blockEnd } = getServerBlockBounds(nodes, index);
+		const blockRowNodes = nodes
+			.slice(blockStart + 1, blockEnd + 1)
+			.filter((candidate): candidate is Stage2TreeRowNode => candidate.kind === "row");
+		return getFlatSourceGroupInlineClassName(blockRowNodes, node);
+	}
+
 	const { blockStart, blockEnd } = getServerBlockBounds(nodes, index);
 	const hasSiblings = blockEnd > blockStart;
 	const isBlockStart = index === blockStart;
 	const isBlockEnd = index === blockEnd;
-
-	const role =
-		node.kind === "server" ? "server" : node.isSource ? "source" : "derived";
+	const role = node.isSource ? "source" : "derived";
 
 	return [
 		"a-stage2-row-inline",
 		hasSiblings ? "is-grouped" : "is-solo",
-		role === "server" ? "is-server" : role === "source" ? "is-source" : "is-derived",
+		role === "source" ? "is-source" : "is-derived",
 		isBlockStart ? "is-group-start" : "",
 		isBlockEnd ? "is-group-end" : "",
 	]
 		.filter(Boolean)
 		.join(" ");
+}
+
+export function getServerBlockAggregationEnabled(
+	nodes: Stage2TreeNode[],
+	index: number,
+	isEnabled: (anchorRowKey: string) => boolean,
+): boolean {
+	const { blockStart } = getServerBlockBounds(nodes, index);
+	const serverNode = nodes[blockStart];
+	if (serverNode.kind !== "server") {
+		return true;
+	}
+	return isEnabled(serverNode.anchorRowKey);
 }

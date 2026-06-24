@@ -13,6 +13,7 @@ import {
 	buildStage2AggregationTree,
 	formatServerGroupLabel,
 	formatStage2TreeGlyphMeasureSpacer,
+	getServerBlockAggregationEnabled,
 	getStage2AggregationTreeRowInlineClassName,
 	type Stage2TreeNode,
 } from "./stage2AggregationTree";
@@ -260,7 +261,14 @@ function Stage2AggregationTreeRow({
 	} = workflow;
 
 	const editable = isStage2Editable;
-	const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex);
+	const serverAggregationEnabled = getServerBlockAggregationEnabled(
+		treeNodes,
+		nodeIndex,
+		(anchorRowKey) => getServerAggregationGroup(anchorRowKey)?.enabled ?? false,
+	);
+	const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex, {
+		serverAggregationEnabled,
+	});
 
 	if (node.kind === "server") {
 		const anchorRow = stage2Rows.find((candidate) => getStage2RowStrictKey(candidate) === node.anchorRowKey);
@@ -273,7 +281,7 @@ function Stage2AggregationTreeRow({
 		const memberChecked = serverAggregation?.memberChecked ?? false;
 
 		return (
-			<tr className="a-stage2-tree-server">
+			<tr className={`a-stage2-tree-server${enabled ? "" : " a-stage2-tree-server--inactive"}`}>
 				<td>
 					<Stage2RowNameCell
 						row={anchorRow}

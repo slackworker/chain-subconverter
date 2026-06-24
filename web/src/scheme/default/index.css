@@ -1642,8 +1642,8 @@
 }
 
 .a-stage2-row-name-input:disabled {
-	color: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
-	-webkit-text-fill-color: color-mix(in srgb, var(--color-ink) 60%, var(--color-muted));
+	color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+	-webkit-text-fill-color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
 	background: color-mix(in srgb, var(--color-surface) 72%, var(--color-bg));
 	border-color: color-mix(in srgb, var(--color-line) 82%, transparent);
 	opacity: 1;
@@ -1794,6 +1794,27 @@
 
 .a-stage2-tree-server {
 	background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+.a-stage2-tree-server--inactive {
+	background: transparent;
+}
+
+.a-stage2-tree-server--inactive .a-stage2-tree-server-name,
+.a-stage2-tree-server--inactive .a-cell-type {
+	color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+}
+
+.a-stage2-tree-server--inactive .a-stage2-row-name-input:disabled {
+	color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+	-webkit-text-fill-color: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
+	background: transparent;
+	border-color: transparent;
+}
+
+.a-stage2-row-inline.is-aggregation-off::before,
+.a-stage2-row-inline.is-aggregation-off::after {
+	display: none;
 }
 
 .a-stage2-tree-server-name {

@@ -366,4 +366,62 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			"a-stage2-row-inline is-grouped is-source is-group-end",
 		);
 	});
+
+	it("uses flat source grouping and hides server dot when aggregation is disabled", () => {
+		const specs: RowSpec[] = [
+			{
+				row: {
+					rowId: "ss",
+					landingNodeName: "ss",
+					proxyName: "ss",
+					sourceLandingNodeName: "ss",
+					mode: "none",
+					targetName: null,
+				},
+				server: "host",
+			},
+			{
+				row: {
+					rowId: "hk-2",
+					landingNodeName: "ss 02",
+					proxyName: "ss 02",
+					sourceLandingNodeName: "ss",
+					mode: "none",
+					targetName: null,
+				},
+				server: "host",
+			},
+			{
+				row: {
+					rowId: "other",
+					landingNodeName: "other",
+					proxyName: "other",
+					sourceLandingNodeName: "other",
+					mode: "none",
+					targetName: null,
+				},
+				server: "host",
+			},
+		];
+
+		const nodes = buildStage2AggregationTree(
+			specs.map((spec) => spec.row),
+			buildMetaLookup(specs),
+		);
+
+		const disabled = { serverAggregationEnabled: false };
+
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 0, disabled)).toBe(
+			"a-stage2-row-inline is-solo is-aggregation-off",
+		);
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 1, disabled)).toBe(
+			"a-stage2-row-inline is-grouped is-source is-group-start",
+		);
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 2, disabled)).toBe(
+			"a-stage2-row-inline is-grouped is-derived is-group-end",
+		);
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 3, disabled)).toBe(
+			"a-stage2-row-inline is-solo is-source is-group-start is-group-end",
+		);
+	});
 });
