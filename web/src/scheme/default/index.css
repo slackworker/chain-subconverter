@@ -1797,7 +1797,6 @@
 }
 
 .a-stage2-tree-server--inactive {
-	background: transparent;
 	--a-stage2-inactive-ink: color-mix(in srgb, var(--color-ink) 48%, var(--color-line));
 	--a-stage2-inactive-bg: transparent;
 	--a-stage2-inactive-border: color-mix(in srgb, var(--color-line) 82%, transparent);
