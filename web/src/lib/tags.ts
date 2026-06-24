@@ -61,3 +61,18 @@ export function tryAppendTag(
 
 	return { ok: true, next: [...list, tag], tag };
 }
+
+/**
+ * 将输入拆分为候选标签；`splitByDelimiters` 开启时按空白/逗号/分号拆分。
+ * 适用于一次粘贴多条 host:port 场景。
+ */
+export function tokenizeTagInput(raw: string, splitByDelimiters = false): string[] {
+	if (!splitByDelimiters) {
+		const trimmed = raw.trim();
+		return trimmed ? [trimmed] : [];
+	}
+	return raw
+		.split(/[\s,;]+/g)
+		.map((item) => item.trim())
+		.filter((item) => item.length > 0);
+}

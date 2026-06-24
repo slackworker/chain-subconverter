@@ -1367,6 +1367,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							label={copy.forwardInfo}
 							values={portForwardDraftTags}
 							autoNormalizeFullWidthColon
+							splitByDelimiters
 							onChange={(next) => {
 								setPortForwardDraftTags(next);
 								if (portForwardError) {
