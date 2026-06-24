@@ -9,7 +9,7 @@ import { Stage2FlatTable } from "./Stage2FlatTable";
 import {
 	computeChainTargetMenuPanelLayout,
 	MEMBER_ORDER_PANEL_MIN_WIDTH,
-	measureMemberOrderPanelContentWidth,
+	measureTargetMenuPanelContentWidth,
 } from "./stage2ChainTargetMenu";
 import type { Stage2Copy, Stage2Locale } from "./Stage2RowCells";
 
@@ -145,7 +145,7 @@ export function Stage2Section({
 				return;
 			}
 			const isMemberOrder = openTargetMenuRow?.startsWith("server-order:");
-			const contentWidth = isMemberOrder ? measureMemberOrderPanelContentWidth(panel) : 0;
+			const contentWidth = measureTargetMenuPanelContentWidth(panel);
 			const { top, left, width, maxHeight, contentOverflows } = computeChainTargetMenuPanelLayout(trigger, {
 				minWidth: isMemberOrder ? MEMBER_ORDER_PANEL_MIN_WIDTH : undefined,
 				contentWidth,
@@ -173,7 +173,7 @@ export function Stage2Section({
 			vv?.removeEventListener("resize", syncPanelToTrigger);
 			vv?.removeEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
 		};
-	}, [openTargetMenuRow, tableWrapRef]);
+	}, [openTargetMenuRow, primaryOpenByRow, supplementOpenByRow, tableWrapRef]);
 
 	useEffect(() => {
 		function handlePointerDown(event: PointerEvent) {

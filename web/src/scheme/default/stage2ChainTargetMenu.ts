@@ -36,14 +36,19 @@ export function computeChainTargetMenuPanelLayout(
 	};
 }
 
-/** 在已挂载的顺序管理面板上测量内容宽度，供 {@link computeChainTargetMenuPanelLayout} 使用 */
-export function measureMemberOrderPanelContentWidth(panel: HTMLElement): number {
+/** 在已挂载的目标菜单面板上测量内容自然宽度，供 {@link computeChainTargetMenuPanelLayout} 使用 */
+export function measureTargetMenuPanelContentWidth(panel: HTMLElement): number {
 	const previousWidth = panel.style.width;
 	const previousMinWidth = panel.style.minWidth;
-	panel.style.width = "auto";
+	panel.style.width = "max-content";
 	panel.style.minWidth = "0";
 	const contentWidth = panel.scrollWidth;
 	panel.style.width = previousWidth;
 	panel.style.minWidth = previousMinWidth;
 	return contentWidth;
+}
+
+/** @deprecated 使用 {@link measureTargetMenuPanelContentWidth} */
+export function measureMemberOrderPanelContentWidth(panel: HTMLElement): number {
+	return measureTargetMenuPanelContentWidth(panel);
 }

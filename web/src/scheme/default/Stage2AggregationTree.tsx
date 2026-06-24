@@ -28,6 +28,7 @@ import {
 	type Stage2Locale,
 } from "./Stage2RowCells";
 import { useStage2AggTableColumns } from "./useStage2AggTableColumns";
+import { collectStage2TargetOptionLabels } from "./stage2TargetMeasureLabels";
 
 interface Stage2AggregationTreeProps {
 	workflow: AppWorkflowViewModel;
@@ -117,6 +118,7 @@ export function Stage2AggregationTree({
 					landingNodeType: copy.typePolicyGroup,
 					modeOptionLabels: ["fallback", "url-test"],
 					targetLabel: copy.memberOrderManage,
+					targetOptionLabels: [copy.memberOrderManage, copy.memberOrderFallbackHint],
 				};
 			}
 
@@ -131,12 +133,20 @@ export function Stage2AggregationTree({
 			const targetLabel =
 				getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, node.row) ??
 				(node.row.mode === "none" ? "--" : copy.selectTarget);
+			const targetOptionLabels = collectStage2TargetOptionLabels({
+				stage2Init: state.stage2Init,
+				stage2Rows,
+				row: node.row,
+				rowKey,
+				copy,
+			});
 
 			return {
 				nodeLabel: `${formatStage2TreeGlyphMeasureSpacer(node.glyphParts)}${getStage2RowDisplayName(node.row)}`,
 				landingNodeType: meta?.landingNodeType ?? "--",
 				modeOptionLabels,
 				targetLabel,
+				targetOptionLabels,
 			};
 		});
 

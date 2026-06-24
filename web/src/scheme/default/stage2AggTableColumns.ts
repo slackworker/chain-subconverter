@@ -4,7 +4,7 @@ import {
 	STAGE2_LANDING_EDITABLE_EXTRA_PX,
 	STAGE2_LANDING_RENDERING_SAFETY_PX,
 	STAGE2_MODE_EXTRA_PX,
-	STAGE2_SELECT_EXTRA_PX,
+	STAGE2_NATIVE_SELECT_EXTRA_PX,
 	STAGE2_TARGET_EXTRA_PX,
 	type TextMeasurer,
 } from "./stage2TableColumns";
@@ -31,6 +31,7 @@ export type Stage2AggColumnMeasureRow = {
 	landingNodeType: string;
 	modeOptionLabels: string[];
 	targetLabel: string;
+	targetOptionLabels?: readonly string[];
 };
 
 export type Stage2AggColumnMeasureInput = {
@@ -66,7 +67,10 @@ export function measureStage2AggColumnMins(input: Stage2AggColumnMeasureInput): 
 	const aggTexts = [headers[1]];
 	const typeTexts = [headers[2], ...rows.map((row) => row.landingNodeType)];
 	const modeTexts = [headers[3], ...rows.flatMap((row) => row.modeOptionLabels)];
-	const targetTexts = [headers[4], ...rows.map((row) => row.targetLabel)];
+	const targetTexts = [
+		headers[4],
+		...rows.flatMap((row) => [row.targetLabel, ...(row.targetOptionLabels ?? [])]),
+	];
 
 	return [
 		maxMeasuredWidth(nodeTexts, measureLandingText)
@@ -75,7 +79,7 @@ export function measureStage2AggColumnMins(input: Stage2AggColumnMeasureInput): 
 			+ STAGE2_LANDING_RENDERING_SAFETY_PX,
 		maxMeasuredWidth(aggTexts, measureText) + pad + STAGE2_AGG_CHECKBOX_EXTRA_PX,
 		maxMeasuredWidth(typeTexts, measureText) + pad,
-		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_SELECT_EXTRA_PX,
+		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_NATIVE_SELECT_EXTRA_PX,
 		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_EXTRA_PX,
 	];
 }

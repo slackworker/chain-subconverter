@@ -19,6 +19,7 @@ import {
 	type Stage2Locale,
 } from "./Stage2RowCells";
 import { useStage2TableColumns } from "./useStage2TableColumns";
+import { collectStage2TargetOptionLabels } from "./stage2TargetMeasureLabels";
 
 interface Stage2FlatTableProps {
 	workflow: AppWorkflowViewModel;
@@ -72,12 +73,20 @@ export function Stage2FlatTable({
 				const targetLabel =
 					getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
 					(row.mode === "none" ? "--" : copy.selectTarget);
+				const targetOptionLabels = collectStage2TargetOptionLabels({
+					stage2Init: state.stage2Init,
+					stage2Rows,
+					row,
+					rowKey,
+					copy,
+				});
 
 				return {
 					landingNodeName: getStage2RowDisplayName(row),
 					landingNodeType: meta?.landingNodeType ?? "--",
 					modeOptionLabels,
 					targetLabel,
+					targetOptionLabels,
 				};
 			}),
 		};

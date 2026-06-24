@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	computeChainTargetMenuPanelLayout,
-	measureMemberOrderPanelContentWidth,
+	measureTargetMenuPanelContentWidth,
 	MEMBER_ORDER_PANEL_MIN_WIDTH,
 } from "./stage2ChainTargetMenu";
 
@@ -48,18 +48,18 @@ describe("computeChainTargetMenuPanelLayout", () => {
 	});
 });
 
-describe("measureMemberOrderPanelContentWidth", () => {
-	it("reads scrollWidth while panel width is auto", () => {
+describe("measureTargetMenuPanelContentWidth", () => {
+	it("reads scrollWidth while panel width is max-content", () => {
 		const panel = document.createElement("div");
 		Object.defineProperty(panel, "scrollWidth", {
 			configurable: true,
 			get() {
-				return panel.style.width === "auto" ? 360 : 120;
+				return panel.style.width === "max-content" ? 360 : 120;
 			},
 		});
 		panel.style.width = "120px";
 
-		expect(measureMemberOrderPanelContentWidth(panel)).toBe(360);
+		expect(measureTargetMenuPanelContentWidth(panel)).toBe(360);
 		expect(panel.style.width).toBe("120px");
 	});
 });

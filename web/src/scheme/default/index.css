@@ -2199,6 +2199,10 @@
 	white-space: nowrap;
 }
 
+.a-target-menu__group-toggle {
+	white-space: nowrap;
+}
+
 .a-target-menu__group-icon {
 	display: inline-flex;
 	align-items: center;
@@ -2234,6 +2238,7 @@
 	font-size: 0.84rem;
 	color: var(--color-ink);
 	cursor: pointer;
+	white-space: nowrap;
 }
 
 .a-target-menu__item:hover:not(:disabled) {
