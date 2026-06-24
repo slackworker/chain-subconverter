@@ -10,6 +10,7 @@ import {
 import type { Stage2Row } from "../../types/api";
 import type { Stage2TreeGlyphParts } from "./stage2AggregationTree";
 import { MinusIcon, PencilIcon, PlusIcon } from "./Icons";
+import { Stage2MemberOrderList } from "./Stage2MemberOrderList";
 
 export type Stage2Copy = {
 	proxyNameLabel: string;
@@ -30,10 +31,8 @@ export type Stage2Copy = {
 	memberOrderPrimaryBadge: string;
 	memberOrderSourceBadge: string;
 	memberOrderDerivedBadge: string;
-	memberOrderMoveUp: string;
-	memberOrderMoveDown: string;
-	memberOrderMoveUpAria: string;
-	memberOrderMoveDownAria: string;
+	memberOrderDragHandle: string;
+	memberOrderDragHandleAria: string;
 };
 
 export type Stage2Locale = "zh" | "en";
@@ -616,7 +615,7 @@ interface Stage2ServerMemberOrderCellProps {
 	strategy: "fallback" | "url-test";
 	copy: Stage2Copy;
 	members: Array<{ rowId: string; displayName: string; isSource: boolean }>;
-	onMemberReorder: (memberRowId: string, direction: "up" | "down") => void;
+	onMemberMoveTo: (memberRowId: string, toIndex: number) => void;
 	openTargetMenuRow: string | null;
 	setOpenTargetMenuRow: (rowKey: string | null) => void;
 	chainTargetMenuTriggerRef: React.MutableRefObject<HTMLButtonElement | null>;
@@ -631,7 +630,7 @@ export function Stage2ServerMemberOrderCell({
 	strategy,
 	copy,
 	members,
-	onMemberReorder,
+	onMemberMoveTo,
 	openTargetMenuRow,
 	setOpenTargetMenuRow,
 	chainTargetMenuTriggerRef,
@@ -698,45 +697,12 @@ export function Stage2ServerMemberOrderCell({
 									<div className="a-target-menu__section">
 										<p className="a-target-menu__section-title">{copy.memberOrderFallbackHint}</p>
 										{members.length > 0 ? (
-											<ul className="a-member-order__list">
-												{members.map((member, index) => (
-													<li key={member.rowId} className="a-member-order__item">
-														<div
-															className={`a-member-order__summary${index === 0 ? " a-member-order__summary--primary" : ""}`}
-														>
-															<span className="a-member-order__name">{member.displayName}</span>
-														</div>
-														<div className="a-member-order__actions">
-															<button
-																type="button"
-																className="a-btn a-btn--secondary a-btn--compact a-member-order__move"
-																disabled={!canManageOrder || index === 0}
-																aria-label={copy.memberOrderMoveUpAria.replace("{name}", member.displayName).replace(
-																	"{position}",
-																	String(index),
-																)}
-																title={copy.memberOrderMoveUp}
-																onClick={() => onMemberReorder(member.rowId, "up")}
-															>
-																↑
-															</button>
-															<button
-																type="button"
-																className="a-btn a-btn--secondary a-btn--compact a-member-order__move"
-																disabled={!canManageOrder || index === members.length - 1}
-																aria-label={copy.memberOrderMoveDownAria.replace("{name}", member.displayName).replace(
-																	"{position}",
-																	String(index + 2),
-																)}
-																title={copy.memberOrderMoveDown}
-																onClick={() => onMemberReorder(member.rowId, "down")}
-															>
-																↓
-															</button>
-														</div>
-													</li>
-												))}
-											</ul>
+											<Stage2MemberOrderList
+												canManageOrder={canManageOrder}
+												copy={copy}
+												members={members}
+												onMemberMoveTo={onMemberMoveTo}
+											/>
 										) : (
 											<p className="a-picker-help">{copy.memberOrderEmpty}</p>
 										)}

@@ -2271,19 +2271,36 @@
 	gap: 0.35rem;
 	width: max-content;
 	min-width: 100%;
+	position: relative;
 }
 
 .a-member-order__item {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 0.25rem;
+	gap: 0.5rem;
 	padding: 0.2rem 0.3rem;
 	border: 1px solid transparent;
 	border-radius: 8px;
 	background: var(--color-surface);
 	width: max-content;
 	min-width: 100%;
+	position: relative;
+	touch-action: none;
+}
+
+.a-member-order__item--sortable-placeholder {
+	border-style: dashed;
+	border-color: color-mix(in srgb, var(--color-line) 80%, transparent);
+	background: color-mix(in srgb, var(--color-line) 18%, var(--color-surface));
+}
+
+.a-member-order__item--overlay {
+	cursor: grabbing;
+	border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-line));
+	box-shadow:
+		0 10px 24px color-mix(in srgb, var(--color-text) 16%, transparent),
+		0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .a-member-order__summary {
@@ -2299,25 +2316,52 @@
 }
 
 .a-member-order__name {
-	flex: 0 0 auto;
+	flex: 1 1 auto;
 	overflow: visible;
 	white-space: nowrap;
 	font-family: var(--font-ui-emoji);
 	font-size: 0.82rem;
 }
 
-.a-member-order__actions {
+.a-member-order__drag-handle {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.12rem;
+	justify-content: center;
 	flex: 0 0 auto;
+	width: 1.35rem;
+	height: 1.35rem;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--color-muted);
+	cursor: grab;
+	touch-action: none;
 }
 
-.a-member-order__move {
-	min-width: 1.2rem;
-	padding: 0.05rem 0.15rem;
-	font-size: 0.68rem;
-	line-height: 1;
+.a-member-order__drag-handle:hover:not(:disabled) {
+	color: var(--color-text);
+	background: color-mix(in srgb, var(--color-line) 55%, transparent);
+}
+
+.a-member-order__drag-handle:active:not(:disabled) {
+	cursor: grabbing;
+}
+
+.a-member-order__drag-handle:disabled {
+	cursor: default;
+	opacity: 0.35;
+}
+
+.a-member-order__drag-handle--visual {
+	pointer-events: none;
+	cursor: grabbing;
+}
+
+.a-member-order__drag-icon {
+	display: block;
+	width: 0.95rem;
+	height: 0.95rem;
 }
 
 .a-supplement-block {

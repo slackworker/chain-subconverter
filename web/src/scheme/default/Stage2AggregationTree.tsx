@@ -95,7 +95,7 @@ export function Stage2AggregationTree({
 		handleTargetChange,
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
-		handleServerAggregationMemberReorder,
+		handleServerAggregationMemberMoveTo,
 		getServerAggregationOrderedMembers,
 	} = workflow;
 
@@ -255,7 +255,7 @@ function Stage2AggregationTreeRow({
 		handleTargetChange,
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
-		handleServerAggregationMemberReorder,
+		handleServerAggregationMemberMoveTo,
 		getServerAggregationOrderedMembers,
 	} = workflow;
 
@@ -340,8 +340,8 @@ function Stage2AggregationTreeRow({
 						strategy={strategy}
 						copy={copy}
 						members={getServerAggregationOrderedMembers(node.anchorRowKey)}
-						onMemberReorder={(memberRowId, direction) =>
-							handleServerAggregationMemberReorder(node.anchorRowKey, memberRowId, direction)
+						onMemberMoveTo={(memberRowId, toIndex) =>
+							handleServerAggregationMemberMoveTo(node.anchorRowKey, memberRowId, toIndex)
 						}
 						openTargetMenuRow={openTargetMenuRow}
 						setOpenTargetMenuRow={setOpenTargetMenuRow}

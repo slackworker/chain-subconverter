@@ -699,6 +699,49 @@ export function reorderServerAggregationMemberState(
 	};
 }
 
+export function moveServerAggregationMemberToIndexState(
+	current: AppState,
+	server: string,
+	memberRowID: string,
+	toIndex: number,
+): AppState {
+	const trimmedServer = server.trim();
+	const trimmedMemberRowID = memberRowID.trim();
+	if (trimmedServer === "" || trimmedMemberRowID === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	if (existingGroup === null || !existingGroup.enabled) {
+		return current;
+	}
+	const memberRowIds = existingGroup.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean);
+	const currentIndex = memberRowIds.indexOf(trimmedMemberRowID);
+	if (currentIndex < 0) {
+		return current;
+	}
+	const clampedToIndex = Math.max(0, Math.min(toIndex, memberRowIds.length - 1));
+	if (currentIndex === clampedToIndex) {
+		return current;
+	}
+	const nextMemberRowIds = [...memberRowIds];
+	const [removed] = nextMemberRowIds.splice(currentIndex, 1);
+	nextMemberRowIds.splice(clampedToIndex, 0, removed);
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	nextServerAggregationGroups.push({
+		...existingGroup,
+		memberRowIds: nextMemberRowIds,
+	});
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+	};
+}
+
 export function clearServerAggregationGroupsState(current: AppState): AppState {
 	if (current.stage2Snapshot.serverAggregationGroups.length === 0) {
 		return current;

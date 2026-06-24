@@ -20,6 +20,7 @@ import {
 	updateServerAggregationStrategyState,
 	deleteStage2RowState,
 	updateServerAggregationGroupState,
+	moveServerAggregationMemberToIndexState,
 	reorderServerAggregationMemberState,
 } from "./useAppWorkflow.state";
 
@@ -531,6 +532,26 @@ it("clears server aggregation groups when deleting back to a single row", () => 
 
 		const movedUp = reorderServerAggregationMemberState(movedDown, "hk.example.com", "hk-1", "up");
 		expect(movedUp.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-1", "hk-2", "hk-3"]);
+	});
+
+	it("moves a server aggregation member to an arbitrary index", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", landingNodeName: "HK 3", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
+			},
+		};
+
+		const movedToEnd = moveServerAggregationMemberToIndexState(current, "hk.example.com", "hk-1", 2);
+		expect(movedToEnd.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-2", "hk-3", "hk-1"]);
+
+		const movedToStart = moveServerAggregationMemberToIndexState(movedToEnd, "hk.example.com", "hk-1", 0);
+		expect(movedToStart.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-1", "hk-2", "hk-3"]);
 	});
 
 	it("keeps memberRowIds order when switching aggregation strategy", () => {

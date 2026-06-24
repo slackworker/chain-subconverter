@@ -59,6 +59,7 @@ import {
 	completeWorkflowRequestState,
 	deleteStage2RowState,
 	reportCurrentLinkInputErrorState,
+	moveServerAggregationMemberToIndexState,
 	reorderServerAggregationMemberState,
 	setCurrentLinkInputState,
 	startShortURLCreationState,
@@ -137,6 +138,11 @@ export interface AppWorkflowViewModel {
 		landingNodeName: string,
 		memberRowId: string,
 		direction: "up" | "down",
+	) => void;
+	handleServerAggregationMemberMoveTo: (
+		landingNodeName: string,
+		memberRowId: string,
+		toIndex: number,
 	) => void;
 	handleChainProxyGroupProfileChange: (landingNodeName: string, profile: ChainProxyGroupProfile | "") => void;
 	handleGlobalChainProxyGroupProfileChange: (enabled: boolean) => void;
@@ -839,6 +845,20 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		);
 	}
 
+	function handleServerAggregationMemberMoveTo(
+		landingNodeName: string,
+		memberRowId: string,
+		toIndex: number,
+	) {
+		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		if (anchorGroup === null) {
+			return;
+		}
+		setState((current) =>
+			moveServerAggregationMemberToIndexState(current, anchorGroup.server, memberRowId, toIndex),
+		);
+	}
+
 	function handleChainProxyGroupProfileChange(landingNodeName: string, profile: ChainProxyGroupProfile | "") {
 		updateStage2Row(landingNodeName, (row) => ({
 			...row,
@@ -1048,6 +1068,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
 		handleServerAggregationMemberReorder,
+		handleServerAggregationMemberMoveTo,
 		handleChainProxyGroupProfileChange,
 		handleGlobalChainProxyGroupProfileChange,
 		handleClearServerAggregationGroups,
