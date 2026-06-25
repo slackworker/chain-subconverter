@@ -76,6 +76,8 @@ const COPY = {
 		includeTags: "包含节点 (include)",
 		excludeTags: "排除节点 (exclude)",
 		tagPlaceholder: "输入后按 Enter 添加",
+		emoji: "开启 Emoji",
+		udp: "开启 UDP",
 		skipCertVerify: "跳过证书校验（scv）",
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
@@ -222,6 +224,8 @@ const COPY = {
 		includeTags: "Include (include)",
 		excludeTags: "Exclude (exclude)",
 		tagPlaceholder: "Type and press Enter to add",
+		emoji: "Enable Emoji",
+		udp: "Enable UDP",
 		skipCertVerify: "Skip certificate verification (scv)",
 		converting: "Converting...",
 		convertAndFill: "Convert and autofill",
@@ -1068,7 +1072,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 								<div className="a-check-row">
 									<AdvancedCheckbox
-										label="emoji"
+										label={copy.emoji}
 										checked={state.stage1Input.advancedOptions.emoji === true}
 										onChange={(checked) =>
 											updateStage1Input((current) => ({
@@ -1081,7 +1085,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										}
 									/>
 									<AdvancedCheckbox
-										label="udp"
+										label={copy.udp}
 										checked={state.stage1Input.advancedOptions.udp === true}
 										onChange={(checked) =>
 											updateStage1Input((current) => ({
