@@ -75,6 +75,19 @@ export function extractShortID(shortUrl) {
 	return shortID;
 }
 
+/** Host-agnostic golden path for manual long URL / payload verification. */
+export function extractLongURLGoldenPath(longUrl) {
+	if (typeof longUrl !== "string" || longUrl.trim() === "") {
+		throw new Error("short-links.response.json is missing longUrl");
+	}
+	const parsed = new URL(longUrl);
+	const data = parsed.searchParams.get("data")?.trim();
+	if (!data) {
+		throw new Error(`longUrl is missing data query parameter: ${longUrl}`);
+	}
+	return `/sub?data=${data}`;
+}
+
 function renderAdvancedOptions(advancedOptions) {
 	const lines = [];
 	if (typeof advancedOptions?.config === "string" && advancedOptions.config.trim() !== "") {
@@ -203,6 +216,7 @@ export function renderDualLandingManualReference({
 	}
 
 	const shortID = extractShortID(shortLinkResponse.shortUrl);
+	const longURLGoldenPath = extractLongURLGoldenPath(shortLinkResponse.longUrl);
 	const transitURLs = buildTransitSubscriptionURLs();
 
 	const sections = [
@@ -261,6 +275,10 @@ export function renderDualLandingManualReference({
 		"## 验收",
 		"",
 		`- short ID 金样：\`${shortID}\`（Stage3 反向解析；同一份可见配置应得到一致 short ID）`,
+		"",
+		"- long URL payload 金样（`/sub?data=…`；scheme/host 随部署变化，同一份可见配置应得到一致 payload）：",
+		"",
+		codeBlockLines([longURLGoldenPath]),
 		"",
 	].join("\n");
 
