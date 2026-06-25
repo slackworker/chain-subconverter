@@ -34,6 +34,18 @@ vless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none&
 | 用户名 | `demo-user` |
 | 密码 | `demo-pass` |
 
+SOCKS5 URI 输入（与上表字段二选一）：
+
+```
+socks5://demo-user:demo-pass@manual-socks-hk.example.test:1080#Manual-SOCKS5-HK-Fallback
+```
+
+添加后应生成并追加同一条 TG URI（用于核对）：
+
+```
+tg://socks?server=manual-socks-hk.example.test&port=1080&remarks=Manual-SOCKS5-HK-Fallback&user=demo-user&pass=demo-pass
+```
+
 ### 中转信息（2 行）
 
 ```

@@ -133,6 +133,36 @@ function renderManualSocksTable(manualSocksItems) {
 	].join("\n");
 }
 
+function renderManualSocksURI(manualSocksItems) {
+	const item = manualSocksItems?.[0];
+	if (!item) {
+		throw new Error("canonical scenario is missing manualSocks5Items[0]");
+	}
+	const auth =
+		typeof item.username === "string" &&
+		item.username.trim() !== "" &&
+		typeof item.password === "string" &&
+		item.password.trim() !== ""
+			? `${encodeURIComponent(item.username)}:${encodeURIComponent(item.password)}@`
+			: "";
+	const fragment =
+		typeof item.name === "string" && item.name.trim() !== ""
+			? `#${encodeURIComponent(item.name)}`
+			: "";
+	return `socks5://${auth}${item.server}:${item.port}${fragment}`;
+}
+
+function renderManualSocksGeneratedTGURI(manualSocksItems) {
+	const item = manualSocksItems?.[0];
+	if (!item) {
+		throw new Error("canonical scenario is missing manualSocks5Items[0]");
+	}
+	if (typeof item.generatedURI !== "string" || item.generatedURI.trim() === "") {
+		throw new Error("canonical scenario is missing manualSocks5Items[0].generatedURI");
+	}
+	return item.generatedURI.trim();
+}
+
 function renderStage2OperationChecklist() {
 	return [
 		"- 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：源行设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。",
@@ -193,6 +223,14 @@ export function renderDualLandingManualReference({
 		"### + 添加 SOCKS5",
 		"",
 		renderManualSocksTable(stage1Input.manualSocks5Items),
+		"",
+		"SOCKS5 URI 输入（与上表字段二选一）：",
+		"",
+		codeBlockLines([renderManualSocksURI(stage1Input.manualSocks5Items)]),
+		"",
+		"添加后应生成并追加同一条 TG URI（用于核对）：",
+		"",
+		codeBlockLines([renderManualSocksGeneratedTGURI(stage1Input.manualSocks5Items)]),
 		"",
 		"### 中转信息（2 行）",
 		"",
