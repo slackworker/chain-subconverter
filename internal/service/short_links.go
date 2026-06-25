@@ -226,7 +226,9 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 			seen[canonicalMemberRowID] = struct{}{}
 			memberRowIDs = append(memberRowIDs, canonicalMemberRowID)
 		}
-		sort.Strings(memberRowIDs)
+		if shouldCanonicalizeServerAggregationMemberOrder(group.Strategy) {
+			sort.Strings(memberRowIDs)
+		}
 		groups[index] = ServerAggregationGroup{
 			Server:       strings.TrimSpace(group.Server),
 			Enabled:      group.Enabled,
@@ -277,6 +279,10 @@ func compareServerAggregationGroupCanonicalOrder(left ServerAggregationGroup, ri
 		strings.Join(right.MemberRowIDs, "\x00"),
 	}
 	return compareStringFields(leftFields, rightFields)
+}
+
+func shouldCanonicalizeServerAggregationMemberOrder(strategy string) bool {
+	return strings.TrimSpace(strategy) != "fallback"
 }
 
 func compareStringFields(left []string, right []string) int {

@@ -97,7 +97,7 @@ relay-b.example.com:8443
 
 ## 验收
 
-- short ID 金样：`53jjNSsNYZw`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
+- short ID 金样：`HWwNXOihYhO`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
 
 - long URL payload 金样（`/sub?data=…`；scheme/host 随部署变化，同一份可见配置应得到一致 payload）：
 
