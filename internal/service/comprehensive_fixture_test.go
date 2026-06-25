@@ -147,10 +147,10 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 		true,
 		"fallback",
 		[]string{
-			"🇸🇬 Alpha-SS-SG",
-			"🇸🇬 Alpha-SS-SG 2",
 			"🇸🇬 Alpha-Reality-SG 2",
 			"🇸🇬 Alpha-Reality-SG 3",
+			"🇸🇬 Alpha-SS-SG",
+			"🇸🇬 Alpha-SS-SG 2",
 		},
 	)
 }

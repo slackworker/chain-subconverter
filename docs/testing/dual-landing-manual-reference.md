@@ -81,7 +81,8 @@ relay-b.example.com:8443
 - 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：源行设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。
 - 为 `🇸🇬 Alpha-Reality-SG` 新建 `2` 个副本：源行设为 `无`，两个副本分别设为 `端口转发 -> relay-a.example.com:7443`、`端口转发 -> relay-b.example.com:8443`。
 - `🇯🇵 Beta-SS-JP` 保持 `链式 -> 🇯🇵 日本节点`；`🇯🇵 Beta-Reality-JP` 改为 `无`。
-- 开启“线路聚合模式”，并在 `198.51.100.10` 组中仅勾选：`🇸🇬 Alpha-SS-SG`、`🇸🇬 Alpha-SS-SG 2`、`🇸🇬 Alpha-Reality-SG 2`、`🇸🇬 Alpha-Reality-SG 3`（不要勾选 `🇸🇬 Alpha-Reality-SG`）。
+- 开启“线路聚合模式”，并在 `198.51.100.10` 组中勾选入组：`🇸🇬 Alpha-SS-SG`、`🇸🇬 Alpha-SS-SG 2`、`🇸🇬 Alpha-Reality-SG 2`、`🇸🇬 Alpha-Reality-SG 3`（不要勾选 `🇸🇬 Alpha-Reality-SG`）。
+- 在 `198.51.100.10` 组的「顺序管理」中拖拽调整 fallback 顺序为：`🇸🇬 Alpha-Reality-SG 2` → `🇸🇬 Alpha-Reality-SG 3` → `🇸🇬 Alpha-SS-SG` → `🇸🇬 Alpha-SS-SG 2`。
 - `198.51.100.11` 相关节点不入组聚合；同时开启“目标策略组节点切换优化”。
 
 **生成前金样**
@@ -97,10 +98,10 @@ relay-b.example.com:8443
 
 ## 验收
 
-- short ID 金样：`HWwNXOihYhO`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
+- short ID 金样：`53jjNSsNYZw`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
 
 - long URL payload 金样（`/sub?data=…`；scheme/host 随部署变化，同一份可见配置应得到一致 payload）：
 
 ```
-/sub?data=H4sIAAAAAAAC_7xWy27cNhd-FYP_VhzNzfkdAYLrGm3qpomDmaCb2jAo6ozEiCIFkppLg9lkYyAP0KJAC7eLdpUi2RRIHyhuu_MjFKQ0mQvmYgdtueAMeS78zifyI58jbUgCrRNRlAYFzxGJh0RQiE8Lw6TQdopKMWAJClBqTKED31dk1EiYScuo1KCoFAaEaVCZ-5oTmo2kykD5R2BSUJowLhU-LrWR-cVpAeKYE51e9EoO2lcw0H4KJNZ-Tpjw6SDxa1fn1mCCIQ9BLp8xFBhVgodgTHkZAwpEybmHmFga6owVx6DMl6DYYDKbLeOiCp96aCDViKi4B5xMTgzkGgVfIWVHmDRgTPKCgy0m-H-320FebYqWTAfWdO4hTkTMRNIjo6cwNihA2vLTbrbbOOIkgw4moHF7_x5OaB4QXqQEa411gjVQBeaj1v2Dxn6r0Wo2G61m0O12_nfknPp93H9wJoYcXMZW3bDrurY7mA1nbSWXhXgIgqqJ-5KhkALOymazfU8DLRUzk1AB4cxM6lnBQgdwsdDKVERZZcJFGXFGcQZ10KAIaapkXmcecDkKx4ZrrAo1xkOmmRSVyUwKCA0t6vp61dKuyK2cRWAcZc-KdZS1HGUfW59-H3_-ZM5Yu27YdV3bHcyGs7aS6v4HMGbhrSfMAd_B13tSXAUzTmwZJgl8X0ua6UMNaggqzIkoCcduDqfZ-0UNaFOvKpUJW82DZjVUkBOV6fBRFdg_PX7Y38efPcSfEs4jQrPKzR7hMIZcYvuvzkS0rubsP-Qho4jQzMz3-UwKaEqYwLqMqBRDUAYUtoDwgI1NqUA3FhShUf3oRgxDP7aY6uPjx3IkuCSxf8SUrQL3y0hTxdx3wK0z8V8u1z40RCVgQqdAj8AQNPUqmWz3BSl0Kp1SKjmy0uH-nMQoQDdXl29vri5f7S0cYeQhLUtF4Ytq7ccyhsckh83uhZLjyXaXXFq9Q44M-3Ec3HnIrzdXl2_2_vrlu-u3r_98-eKPF7-jqbcd5l77nwfqcu6AWgVdf_Pm3csf3_3w0260c924PeClmC2ol_xq4FYDVnDbG-VWCO9C6t0xLtJrN_FFfa-tsrzxZrtdDZ1_tYbOXWpYcwWv1PD65uryt735dbAd-xrvFdRrPHZs6Cri-tufr79_tX43L-ScC_6tgS6FbEa75HanrVyJx8Y7YzvQ3cErkHcHfIDWnXuV-xO71lMX8EDJsuiPmKGpfdjm7Gtitf4TQSIO8exlWd20R0miIHF2F1aJfGVDAVp6Zdm36UoOo4iBZIICNFioAvIIVM_S7J6bGyR1o4xuV4Ft5-t8ej710BAFnenfAQAA__8iXWxL7AsAAA
+/sub?data=H4sIAAAAAAAC_7xWy27cNhd-FYP_VhzNzfkdAYLrGm3qpomDmaCb2jAo6ozEiCIFkppLg9lkYyAP0KJAC7eLdpUi2RRIHyhuu_MjFKQ0mQvmYgdtueAMeS78zifyI58jbUgCrRNRlAYFzxGJh0RQiE8Lw6TQdopKMWAJClBqTKED31dk1EiYScuo1KCoFAaEaVCZ-5oTmo2kykD5R2BSUJowLhU-LrWR-cVpAeKYE51e9EoO2lcw0H4KJNZ-Tpjw6SDxa1fn1mCCIQ9BLp8xFBhVgodgTHkZAwpEybmHmFga6owVx6DMl6DYYDKbLeOiCp96aCDViKi4B5xMTgzkGgVfIWVHmDRgTPKCgy0m-H-320FebYqWTAfWdO4hTkTMRNIjo6cwNihA2vLTbrbbOOIkgw4moHF7_x5OaB4QXqQEa411gjVQBeaj1v2Dxn6r0Wo2G61m0O12_nfknPp93H9wJoYcXMZW3bDrurY7mA1nbSWXhXgIgqqJ-5KhkALOymazfU8DLRUzk1AB4cxM6lnBQgdwsdDKVERZZcJFGXFGcQZ10KAIaapkXmcecDkKx4ZrrAo1xkOmmRSVyUwKCA0t6vp61dKuyK2cRWAcZc-KdZS1HGUfW59-H3_-ZM5Yu27YdV3bHcyGs7aS6v4HMGbhrSfMAd_B13tSXAUzTmwZJgl8X0ua6UMNaggqzIkoCcduDqfZ-0UNaFOvKpUJW82DZjVUkBOV6fBRFdg_PX7Y38efPcSfEs4jQrPKzR7hMIZcYvuvzkS0rubsP-Qho4jQzMz3-UwKaEqYwLqMqBRDUAYUtoDwgI1NqUA3FhShUf3oRgxDP7aY6uPjx3IkuCSxf8SUrQL3y0hTxdx3wK0z8V8u1z40RCVgQqdAj8AQNPUqmWz3BSl0Kp1SKjmy0uH-nMQoQDdXl29vri5f7S0cYeQhLUtF4Ytq7ccyhsckh83uhZLjyXaXXFq9Q44M-3Ec3HnIrzdXl2_2_vrlu-u3r_98-eKPF7-jqbcd5l77nwfqcu6AWgVdf_Pm3csf3_3w0260c924PeClmC2ol_xq4FYDVnDbG-VWCO9C6t0xLtJrN_FFfa-tsrzxZrtdDZ1_tYbOXWpYcwWv1PD65uryt735dbAd-xrvFdRrPHZs6Cri-tufr79_tX43L-ScC_6tgS6FbEa75HanrVyJx8Y7YzvQ3cErkHcHfIDWnXuV-xO71lMX8EDJsuiPmKGpfdjm7Gtitf4TQSIO8exlWd20R0miIHF2F1aJfGVDAVp6Zdm36UoOo4iBZIICNFioAvIIVM_S7J6b20_19vOyQY43SPD59HzqoSEKOtO_AwAA__8alXem7AsAAA
 ```

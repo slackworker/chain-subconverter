@@ -955,7 +955,7 @@ proxy-groups:
     type: select
     proxies:
       - DIRECT
-  - name: 🇸🇬 198.51.100.10
+  - name: 🇸🇬 Alpha-Reality-SG 2
     type: fallback
     url: https://cp.cloudflare.com/generate_204
     interval: 60
@@ -963,10 +963,10 @@ proxy-groups:
     lazy: false
     max-failed-times: 1
     proxies:
-      - 🇸🇬 Alpha-SS-SG
-      - 🇸🇬 Alpha-SS-SG 2
       - 🇸🇬 Alpha-Reality-SG 2
       - 🇸🇬 Alpha-Reality-SG 3
+      - 🇸🇬 Alpha-SS-SG
+      - 🇸🇬 Alpha-SS-SG 2
 rules:
   - GEOSITE,private,🎯 全球直连
   - GEOIP,private,🎯 全球直连,no-resolve
