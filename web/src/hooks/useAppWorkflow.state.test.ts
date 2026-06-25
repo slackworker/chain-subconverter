@@ -630,7 +630,7 @@ it("clears server aggregation groups when deleting back to a single row", () => 
 		expect(next.messages.map((message) => message.code)).toEqual(["SHORT_LINK_RETRYABLE"]);
 	});
 
-	it("appends checked members to the end of memberRowIds", () => {
+it("inserts newly checked members by stage2 row order", () => {
 		const current: AppState = {
 			...initialAppState,
 			stage2Snapshot: {
@@ -639,11 +639,11 @@ it("clears server aggregation groups when deleting back to a single row", () => 
 					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
 					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", landingNodeName: "HK 3", mode: "none", targetName: null },
 				],
-				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
+			serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-3"] }],
 			},
 		};
 
-		const next = updateServerAggregationGroupState(current, "hk.example.com", true, "fallback", "hk-3", true);
+	const next = updateServerAggregationGroupState(current, "hk.example.com", true, "fallback", "hk-2", true);
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([
 			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] },
 		]);

@@ -1207,8 +1207,8 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		});
 		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
 			"landing-hk",
-			"landing-hk-3",
 			"landing-hk-2",
+			"landing-hk-3",
 		]);
 	});
 

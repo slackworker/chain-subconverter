@@ -853,9 +853,29 @@ export function updateServerAggregationGroupState(
 		.filter(Boolean);
 	let memberRowIds: string[];
 	if (checked) {
-		memberRowIds = existingMemberRowIds.includes(trimmedMemberRowID)
-			? existingMemberRowIds
-			: [...existingMemberRowIds, trimmedMemberRowID];
+		if (existingMemberRowIds.includes(trimmedMemberRowID)) {
+			memberRowIds = existingMemberRowIds;
+		} else {
+			const rowOrderById = new Map<string, number>();
+			for (let index = 0; index < current.stage2Snapshot.rows.length; index += 1) {
+				const row = current.stage2Snapshot.rows[index];
+				const rowID = (row.rowId?.trim() ?? "") || getStage2RowKey(row);
+				if (rowID !== "" && !rowOrderById.has(rowID)) {
+					rowOrderById.set(rowID, index);
+				}
+			}
+			const nextRowOrder = rowOrderById.get(trimmedMemberRowID) ?? Number.POSITIVE_INFINITY;
+			let insertAt = existingMemberRowIds.length;
+			for (let index = 0; index < existingMemberRowIds.length; index += 1) {
+				const currentRowOrder = rowOrderById.get(existingMemberRowIds[index]) ?? Number.POSITIVE_INFINITY;
+				if (currentRowOrder > nextRowOrder) {
+					insertAt = index;
+					break;
+				}
+			}
+			memberRowIds = [...existingMemberRowIds];
+			memberRowIds.splice(insertAt, 0, trimmedMemberRowID);
+		}
 	} else {
 		memberRowIds = existingMemberRowIds.filter((rowID) => rowID !== trimmedMemberRowID);
 	}
