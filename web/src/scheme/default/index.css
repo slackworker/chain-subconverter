@@ -1395,6 +1395,15 @@
 	color: var(--color-muted);
 }
 
+.a-advanced .a-input {
+	font-size: 0.82rem;
+	padding: 0.45rem 0.6rem;
+}
+
+.a-advanced .a-input::placeholder {
+	color: color-mix(in srgb, var(--color-muted) 72%, transparent);
+}
+
 .a-advanced__row-tags {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
