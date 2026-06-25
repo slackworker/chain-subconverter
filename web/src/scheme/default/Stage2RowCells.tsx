@@ -11,6 +11,12 @@ import type { Stage2Row } from "../../types/api";
 import type { Stage2TreeGlyphParts } from "./stage2AggregationTree";
 import { MinusIcon, PencilIcon, PlusIcon } from "./Icons";
 import { Stage2MemberOrderList } from "./Stage2MemberOrderList";
+import {
+	getStage2ForwardTargetMenuKey,
+	getStage2ModeMenuKey,
+	getStage2StrategyMenuKey,
+	Stage2FlatSelectMenu,
+} from "./Stage2FlatSelectMenu";
 
 export type Stage2Copy = {
 	proxyNameLabel: string;
@@ -294,6 +300,11 @@ interface Stage2RowModeCellProps {
 	strategyDisabled?: boolean;
 	onStrategyChange?: (strategy: "fallback" | "url-test") => void;
 	emptyPlaceholder?: boolean;
+	openTargetMenuRow: string | null;
+	setOpenTargetMenuRow: (rowKey: string | null) => void;
+	chainTargetMenuTriggerRef: React.MutableRefObject<HTMLButtonElement | null>;
+	chainTargetMenuPanelRef: React.MutableRefObject<HTMLDivElement | null>;
+	chainTargetMenuPortalEl: HTMLDivElement | null;
 }
 
 export function Stage2RowModeCell({
@@ -312,24 +323,40 @@ export function Stage2RowModeCell({
 	strategyDisabled = false,
 	onStrategyChange,
 	emptyPlaceholder = false,
+	openTargetMenuRow,
+	setOpenTargetMenuRow,
+	chainTargetMenuTriggerRef,
+	chainTargetMenuPanelRef,
+	chainTargetMenuPortalEl,
 }: Stage2RowModeCellProps) {
 	if (emptyPlaceholder) {
 		return <div className="a-cell-type">--</div>;
 	}
 
 	if (strategyValue !== undefined && onStrategyChange) {
+		const strategyOptions = [
+			{ value: "fallback", label: "fallback" },
+			{ value: "url-test", label: "url-test" },
+		];
+		const strategyLabel =
+			strategyOptions.find((option) => option.value === strategyValue)?.label ?? strategyValue;
+
 		return (
 			<div className="a-mode-cell">
-				<select
-					className="a-select"
+				<Stage2FlatSelectMenu
+					menuKey={getStage2StrategyMenuKey(rowKey)}
 					value={strategyValue}
+					displayLabel={strategyLabel}
+					options={strategyOptions}
 					disabled={!editable || strategyDisabled}
-					aria-label={copy.aggregationStrategyLabel}
-					onChange={(event) => onStrategyChange(event.target.value as "fallback" | "url-test")}
-				>
-					<option value="fallback">fallback</option>
-					<option value="url-test">url-test</option>
-				</select>
+					ariaLabel={copy.aggregationStrategyLabel}
+					onSelect={(value) => onStrategyChange(value as "fallback" | "url-test")}
+					openTargetMenuRow={openTargetMenuRow}
+					setOpenTargetMenuRow={setOpenTargetMenuRow}
+					menuTriggerRef={chainTargetMenuTriggerRef}
+					menuPanelRef={chainTargetMenuPanelRef}
+					menuPortalEl={chainTargetMenuPortalEl}
+				/>
 				<span className="a-mode-warning-slot" aria-hidden="true" />
 			</div>
 		);
@@ -338,37 +365,40 @@ export function Stage2RowModeCell({
 	const meta = getStage2RowMeta(rowKey);
 	const displayModeOptions = getStage2DisplayModeOptions(stage2Init, row.mode);
 	const activeModeWarning = meta?.modeWarnings?.[row.mode];
+	const modeSelectOptions = displayModeOptions.map((mode) => {
+		const restriction = meta?.restrictedModes?.[mode];
+		const modeWarn = meta?.modeWarnings?.[mode];
+		const label = getModeLabel(mode, locale, copy);
+		return {
+			value: mode,
+			label: restriction ? `${label}（${restriction.reasonText}）` : label,
+			disabled: Boolean(restriction),
+			title: modeWarn && !restriction ? modeWarn.reasonText : undefined,
+		};
+	});
+	const modeDisplayLabel = getModeLabel(row.mode, locale, copy);
 
 	return (
 		<div className="a-mode-cell">
-			<select
-				className="a-select"
+			<Stage2FlatSelectMenu
+				menuKey={getStage2ModeMenuKey(rowKey)}
 				value={row.mode}
+				displayLabel={modeDisplayLabel}
+				options={modeSelectOptions}
 				disabled={!editable}
-				aria-invalid={rowErrors.length > 0 ? true : undefined}
-				aria-describedby={
+				ariaInvalid={rowErrors.length > 0}
+				ariaDescribedBy={
 					[activeModeWarning ? modeWarnId : null, rowErrors.length > 0 ? rowErrorId : null]
 						.filter(Boolean)
 						.join(" ") || undefined
 				}
-				onChange={(event) => onModeChange(rowKey, event.target.value as typeof row.mode)}
-			>
-				{displayModeOptions.map((mode) => {
-					const restriction = meta?.restrictedModes?.[mode];
-					const modeWarn = meta?.modeWarnings?.[mode];
-					const label = getModeLabel(mode, locale, copy);
-					return (
-						<option
-							key={mode}
-							value={mode}
-							disabled={Boolean(restriction)}
-							title={modeWarn && !restriction ? modeWarn.reasonText : undefined}
-						>
-							{restriction ? `${label}（${restriction.reasonText}）` : label}
-						</option>
-					);
-				})}
-			</select>
+				onSelect={(value) => onModeChange(rowKey, value as typeof row.mode)}
+				openTargetMenuRow={openTargetMenuRow}
+				setOpenTargetMenuRow={setOpenTargetMenuRow}
+				menuTriggerRef={chainTargetMenuTriggerRef}
+				menuPanelRef={chainTargetMenuPanelRef}
+				menuPortalEl={chainTargetMenuPortalEl}
+			/>
 			<span className="a-mode-warning-slot">
 				{activeModeWarning ? (
 					<>
@@ -582,23 +612,33 @@ export function Stage2RowTargetCell({
 		);
 	}
 
+	const forwardTargetOptions = [
+		{ value: "", label: row.mode === "none" ? "--" : copy.selectTarget },
+		...displayForwardRelayChoices.map((choice) => ({
+			value: choice.value,
+			label: choice.label,
+			disabled: choice.disabled,
+		})),
+	];
+	const forwardTargetDisabled = !editable || row.mode === "none";
+
 	return (
 		<div className="a-target-picker">
-			<select
-				className="a-select"
+			<Stage2FlatSelectMenu
+				menuKey={getStage2ForwardTargetMenuKey(rowKey)}
 				value={row.targetName ?? ""}
-				disabled={!editable || row.mode === "none"}
-				aria-invalid={rowErrors.length > 0 ? true : undefined}
-				aria-describedby={rowErrors.length > 0 ? rowErrorId : undefined}
-				onChange={(event) => onTargetChange(rowKey, event.target.value === "" ? "" : event.target.value)}
-			>
-				<option value="">{row.mode === "none" ? "--" : copy.selectTarget}</option>
-				{displayForwardRelayChoices.map((choice) => (
-					<option key={choice.value} value={choice.value} disabled={choice.disabled}>
-						{choice.label}
-					</option>
-				))}
-			</select>
+				displayLabel={selectedTargetLabel}
+				options={forwardTargetOptions}
+				disabled={forwardTargetDisabled}
+				ariaInvalid={rowErrors.length > 0}
+				ariaDescribedBy={rowErrors.length > 0 ? rowErrorId : undefined}
+				onSelect={(value) => onTargetChange(rowKey, value === "" ? "" : value)}
+				openTargetMenuRow={openTargetMenuRow}
+				setOpenTargetMenuRow={setOpenTargetMenuRow}
+				menuTriggerRef={chainTargetMenuTriggerRef}
+				menuPanelRef={chainTargetMenuPanelRef}
+				menuPortalEl={chainTargetMenuPortalEl}
+			/>
 			{rowErrors.length > 0 ? (
 				<p id={rowErrorId} className="a-sr-only" role="status">
 					{copy.localErrorAriaHint}

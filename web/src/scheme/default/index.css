@@ -2078,6 +2078,29 @@
 	cursor: pointer;
 	width: 100%;
 	font-family: var(--font-ui-emoji);
+	text-align: left;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	transition:
+		border-color 160ms ease,
+		box-shadow 160ms ease,
+		background 160ms ease;
+}
+
+.a-target-menu__trigger:hover:not(:disabled) {
+	border-color: var(--color-secondary-hover-border);
+}
+
+.a-target-menu__trigger:focus-visible {
+	outline: none;
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.a-target-menu__trigger[aria-expanded="true"] {
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 .a-target-menu__trigger::after {
@@ -2093,7 +2116,7 @@
 }
 
 .a-target-menu__trigger[aria-expanded="true"]::after {
-	transform: none;
+	transform: rotate(180deg);
 }
 
 .a-select.a-target-menu__trigger {

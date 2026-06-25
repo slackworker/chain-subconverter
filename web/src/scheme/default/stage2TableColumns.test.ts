@@ -10,8 +10,7 @@ import {
 	resolveStage2ColumnWidthsPx,
 	STAGE2_CELL_PADDING_X_PX,
 	STAGE2_MODE_EXTRA_PX,
-	STAGE2_NATIVE_SELECT_EXTRA_PX,
-	STAGE2_TARGET_EXTRA_PX,
+	STAGE2_TARGET_TRIGGER_EXTRA_PX,
 	columnWidthsToFitCssVars,
 	resolveStage2ColumnCssVars,
 	stage2NeedsHorizontalScroll,
@@ -52,8 +51,8 @@ describe("measureStage2ColumnMins", () => {
 			220 + STAGE2_CELL_PADDING_X_PX + STAGE2_LANDING_EDITABLE_EXTRA_PX + STAGE2_LANDING_RENDERING_SAFETY_PX,
 		);
 		expect(mins[1]).toBe(40 + STAGE2_CELL_PADDING_X_PX);
-		expect(mins[2]).toBe(160 + STAGE2_CELL_PADDING_X_PX + STAGE2_MODE_EXTRA_PX + STAGE2_NATIVE_SELECT_EXTRA_PX);
-		expect(mins[3]).toBe(180 + STAGE2_CELL_PADDING_X_PX + STAGE2_TARGET_EXTRA_PX);
+		expect(mins[2]).toBe(160 + STAGE2_CELL_PADDING_X_PX + STAGE2_MODE_EXTRA_PX + STAGE2_TARGET_TRIGGER_EXTRA_PX);
+		expect(mins[3]).toBe(180 + STAGE2_CELL_PADDING_X_PX + STAGE2_TARGET_TRIGGER_EXTRA_PX);
 	});
 
 	it("includes target menu option labels when computing target column minimum", () => {

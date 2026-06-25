@@ -228,8 +228,8 @@ test("default UI conflicted Short ID restore keeps Stage 2 snapshot visible but 
 	await expect(currentLink).toHaveValue(shortURL);
 
 	const row = getStage2Row(page, "HK 01");
-	await expect(row.locator("select").first()).toHaveValue("chain");
-	await expect(row.locator(".a-target-menu__trigger")).toContainText("HK Relay Group");
+	await expect(row.locator(".a-target-menu__trigger").nth(0)).toContainText("链式代理");
+	await expect(row.locator(".a-target-menu__trigger").nth(1)).toContainText("HK Relay Group");
 	await expect(page.getByRole("button", { name: "生成链接" })).toBeDisabled();
 
 	expect(resolveRequests).toEqual([shortId]);

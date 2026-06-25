@@ -4,8 +4,7 @@ import {
 	STAGE2_LANDING_EDITABLE_EXTRA_PX,
 	STAGE2_LANDING_RENDERING_SAFETY_PX,
 	STAGE2_MODE_EXTRA_PX,
-	STAGE2_NATIVE_SELECT_EXTRA_PX,
-	STAGE2_TARGET_EXTRA_PX,
+	STAGE2_TARGET_TRIGGER_EXTRA_PX,
 	type TextMeasurer,
 } from "./stage2TableColumns";
 
@@ -79,8 +78,8 @@ export function measureStage2AggColumnMins(input: Stage2AggColumnMeasureInput): 
 			+ STAGE2_LANDING_RENDERING_SAFETY_PX,
 		maxMeasuredWidth(aggTexts, measureText) + pad + STAGE2_AGG_CHECKBOX_EXTRA_PX,
 		maxMeasuredWidth(typeTexts, measureText) + pad,
-		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_NATIVE_SELECT_EXTRA_PX,
-		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_EXTRA_PX,
+		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_TARGET_TRIGGER_EXTRA_PX,
+		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_TRIGGER_EXTRA_PX,
 	];
 }
 

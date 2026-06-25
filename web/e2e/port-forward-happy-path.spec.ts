@@ -12,6 +12,23 @@ function getStage2Row(page: Page, landingNodeName: string) {
 	});
 }
 
+async function pickStage2FlatSelectOption(
+	page: Page,
+	row: ReturnType<typeof getStage2Row>,
+	triggerIndex: number,
+	optionText: string,
+) {
+	const trigger = row.locator(".a-target-menu__trigger").nth(triggerIndex);
+	await trigger.click();
+	await expect(trigger).toHaveAttribute("aria-expanded", "true");
+	const panel = page.locator(".a-target-menu__panel--anchored").last();
+	const option = panel.locator(".a-target-menu__item").filter({ hasText: optionText });
+	await expect(option).toHaveCount(1);
+	await option.evaluate((element) => {
+		(element as HTMLButtonElement).click();
+	});
+}
+
 test("default UI port-forward mocked happy path keeps relay choices exclusive and replayable", async ({ page }) => {
 	const [relayA, relayB] = canonicalStage1Inputs.forwardRelayItems;
 	if (!relayA || !relayB) {
@@ -143,16 +160,22 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	const rowA = getStage2Row(page, "Alpha-Reality-HK-PortForward");
 	const rowB = getStage2Row(page, "Beta-Reality-JP-PortForward");
 
-	await rowA.locator("select").first().selectOption("port_forward");
-	const rowATargetSelect = rowA.locator("select").nth(1);
-	await expect(rowATargetSelect).toHaveValue("");
-	await rowATargetSelect.selectOption(relayA);
+	await pickStage2FlatSelectOption(page, rowA, 0, "端口转发");
+	const rowAModeTrigger = rowA.locator(".a-target-menu__trigger").nth(0);
+	const rowATargetTrigger = rowA.locator(".a-target-menu__trigger").nth(1);
+	await expect(rowATargetTrigger).toContainText("请选择");
+	await pickStage2FlatSelectOption(page, rowA, 1, relayA);
 
-	await rowB.locator("select").first().selectOption("port_forward");
-	const rowBTargetSelect = rowB.locator("select").nth(1);
-	await expect(rowBTargetSelect.locator(`option[value="${relayA}"]`)).toHaveJSProperty("disabled", true);
-	await expect(rowBTargetSelect.locator(`option[value="${relayB}"]`)).toHaveJSProperty("disabled", false);
-	await rowBTargetSelect.selectOption(relayB);
+	await pickStage2FlatSelectOption(page, rowB, 0, "端口转发");
+	const rowBTargetTrigger = rowB.locator(".a-target-menu__trigger").nth(1);
+	await rowBTargetTrigger.click();
+	await expect(rowBTargetTrigger).toHaveAttribute("aria-expanded", "true");
+	const rowBTargetPanel = page.locator(".a-target-menu__panel--anchored").last();
+	await expect(rowBTargetPanel.locator(".a-target-menu__item", { hasText: relayA })).toBeDisabled();
+	await expect(rowBTargetPanel.locator(".a-target-menu__item", { hasText: relayB })).toBeEnabled();
+	await rowBTargetPanel.locator(".a-target-menu__item", { hasText: relayB }).evaluate((element) => {
+		(element as HTMLButtonElement).click();
+	});
 
 	await page.getByRole("button", { name: "生成链接" }).click();
 
@@ -164,10 +187,10 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	await page.getByRole("button", { name: "反向解析" }).click();
 	await expect(relayTagList.getByText(relayA, { exact: true })).toBeVisible();
 	await expect(relayTagList.getByText(relayB, { exact: true })).toBeVisible();
-	await expect(rowA.locator("select").first()).toHaveValue("port_forward");
-	await expect(rowA.locator("select").nth(1)).toHaveValue(relayA);
-	await expect(rowB.locator("select").first()).toHaveValue("port_forward");
-	await expect(rowB.locator("select").nth(1)).toHaveValue(relayB);
+	await expect(rowAModeTrigger).toContainText("端口转发");
+	await expect(rowATargetTrigger).toContainText(relayA);
+	await expect(rowB.locator(".a-target-menu__trigger").nth(0)).toContainText("端口转发");
+	await expect(rowBTargetTrigger).toContainText(relayB);
 	await expect(currentLink).toHaveValue(shortURL);
 
 	const expectedRows: Stage2Row[] = [

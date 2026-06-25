@@ -272,6 +272,11 @@ function Stage2FlatTableRow({
 					onModeChange={handleModeChange}
 					modeWarnId={modeWarnId}
 					rowErrorId={rowErrorId}
+					openTargetMenuRow={openTargetMenuRow}
+					setOpenTargetMenuRow={setOpenTargetMenuRow}
+					chainTargetMenuTriggerRef={chainTargetMenuTriggerRef}
+					chainTargetMenuPanelRef={chainTargetMenuPanelRef}
+					chainTargetMenuPortalEl={chainTargetMenuPortalEl}
 				/>
 			</td>
 			<td>

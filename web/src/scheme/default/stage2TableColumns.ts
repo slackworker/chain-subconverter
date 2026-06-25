@@ -118,8 +118,8 @@ export function measureStage2ColumnMins(input: Stage2ColumnMeasureInput): Stage2
 			+ STAGE2_LANDING_EDITABLE_EXTRA_PX
 			+ STAGE2_LANDING_RENDERING_SAFETY_PX,
 		maxMeasuredWidth(typeTexts, measureText) + pad,
-		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_NATIVE_SELECT_EXTRA_PX,
-		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_EXTRA_PX,
+		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_TARGET_TRIGGER_EXTRA_PX,
+		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_TRIGGER_EXTRA_PX,
 	];
 }
 
