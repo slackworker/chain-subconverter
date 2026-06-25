@@ -133,7 +133,7 @@ const COPY = {
 		stage3Title: "输出",
 		stage3Desc: "链接输出与反向解析",
 		currentLink: "当前链接",
-		currentLinkPlaceholder: "生成或粘贴 longUrl / shortUrl / short ID",
+		currentLinkPlaceholder: "生成或输入 longUrl / shortUrl / short ID",
 		shortLink: "短链接",
 		openPreview: "打开预览",
 		copy: "复制链接",
