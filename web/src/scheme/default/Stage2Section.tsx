@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "re
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import { Tooltip } from "../../lib/Tooltip";
 import { isSwitchOptimizationEligible } from "../../lib/stage2";
-import { ArrowRightIcon } from "./Icons";
+import { ArrowRightIcon, ChevronDownIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
 import {
@@ -282,9 +282,10 @@ export function Stage2Section({
 							onClick={() => setStage2AdvancedOpen((open) => !open)}
 							aria-expanded={stage2AdvancedOpen}
 						>
-							<span className={`a-adv-arrow${stage2AdvancedOpen ? " a-adv-arrow--open" : ""}`} aria-hidden="true">
-								▶
-							</span>
+							<ChevronDownIcon
+								className={`a-adv-chevron${stage2AdvancedOpen ? " a-adv-chevron--open" : ""}`}
+								aria-hidden="true"
+							/>
 							{copy.advancedOptions}
 						</button>
 						{stage2AdvancedOpen ? (

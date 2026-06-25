@@ -49,8 +49,8 @@ test("include hk + exclude JP flow through convert, generate, and resolve", asyn
 	await page.getByLabel("中转信息").fill(canonicalStage1Inputs.transitInput);
 
 	await page.getByRole("button", { name: "高级选项" }).click();
-	await addTag(page, "include 标签", "hk");
-	await addTag(page, "exclude 标签", "JP");
+	await addTag(page, "包含节点 (include)", "hk");
+	await addTag(page, "排除节点 (exclude)", "JP");
 
 	const stage1ConvertResponsePromise = page.waitForResponse(
 		(resp) => resp.url().includes("/api/stage1/convert"),
@@ -95,6 +95,6 @@ test("include hk + exclude JP flow through convert, generate, and resolve", asyn
 	expect(generatedResolvePayload.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 
 	await page.getByRole("button", { name: "反向解析" }).click();
-	await expect(page.locator(".a-field").filter({ has: page.getByText("include 标签", { exact: true }) }).getByText("hk", { exact: true })).toBeVisible();
-	await expect(page.locator(".a-field").filter({ has: page.getByText("exclude 标签", { exact: true }) }).getByText("JP", { exact: true })).toBeVisible();
+	await expect(page.locator(".a-field").filter({ has: page.getByText("包含节点 (include)", { exact: true }) }).getByText("hk", { exact: true })).toBeVisible();
+	await expect(page.locator(".a-field").filter({ has: page.getByText("排除节点 (exclude)", { exact: true }) }).getByText("JP", { exact: true })).toBeVisible();
 });

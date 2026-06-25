@@ -19,7 +19,7 @@ import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import { Tooltip } from "../../lib/Tooltip";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField, type TagFieldHandle, type TagFieldReject } from "./TagField";
 import { Stage2Section } from "./Stage2Section";
@@ -73,8 +73,8 @@ const COPY = {
 		templateUrlHintAria: "订阅转换模板说明",
 		templatePlaceholder: "请输入带地域分组的模板 URL",
 		templateResetDefault: "恢复默认",
-		includeTags: "include 标签",
-		excludeTags: "exclude 标签",
+		includeTags: "包含节点 (include)",
+		excludeTags: "排除节点 (exclude)",
 		tagPlaceholder: "输入后按 Enter 添加",
 		skipCertVerify: "跳过证书校验（scv）",
 		converting: "转换中…",
@@ -219,8 +219,8 @@ const COPY = {
 		templateUrlHintAria: "Subscription template help",
 		templatePlaceholder: "Use a region-aware template URL",
 		templateResetDefault: "Reset default",
-		includeTags: "Include tags",
-		excludeTags: "Exclude tags",
+		includeTags: "Include (include)",
+		excludeTags: "Exclude (exclude)",
 		tagPlaceholder: "Type and press Enter to add",
 		skipCertVerify: "Skip certificate verification (scv)",
 		converting: "Converting...",
@@ -965,15 +965,16 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 					<div className="a-stage1-actions-wrap">
 						<button type="button" className="a-advanced__toggle" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
-							<span className={`a-adv-arrow${advancedOpen ? " a-adv-arrow--open" : ""}`} aria-hidden="true">
-								▶
-							</span>
+							<ChevronDownIcon
+								className={`a-adv-chevron${advancedOpen ? " a-adv-chevron--open" : ""}`}
+								aria-hidden="true"
+							/>
 							{copy.advancedOptions}
 						</button>
 						{advancedOpen ? (
 							<div className="a-advanced">
 								<div className="a-advanced__body">
-								<label className="a-field a-field--inline">
+								<div className="a-advanced__section">
 									<span className="a-field-label">
 										{copy.templateUrl}{" "}
 										<Tooltip content={copy.templateUrlHint}>
@@ -1034,7 +1035,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											{copy.localErrorAriaHint}
 										</p>
 									) : null}
-								</label>
+								</div>
 
 								<div className="a-advanced__row-tags">
 									<TagField
@@ -1066,54 +1067,45 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 								</div>
 
 								<div className="a-check-row">
-									<label className="a-check">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.emoji === true}
-											onChange={(event) =>
-												updateStage1Input((current) => ({
-													...current,
-													advancedOptions: {
-														...current.advancedOptions,
-														emoji: event.target.checked ? true : null,
-													},
-												}))
-											}
-										/>
-										emoji
-									</label>
-									<label className="a-check">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.udp === true}
-											onChange={(event) =>
-												updateStage1Input((current) => ({
-													...current,
-													advancedOptions: {
-														...current.advancedOptions,
-														udp: event.target.checked ? true : null,
-													},
-												}))
-											}
-										/>
-										udp
-									</label>
-									<label className="a-check">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.skipCertVerify === true}
-											onChange={(event) =>
-												updateStage1Input((current) => ({
-													...current,
-													advancedOptions: {
-														...current.advancedOptions,
-														skipCertVerify: event.target.checked ? true : null,
-													},
-												}))
-											}
-										/>
-										{copy.skipCertVerify}
-									</label>
+									<AdvancedCheckbox
+										label="emoji"
+										checked={state.stage1Input.advancedOptions.emoji === true}
+										onChange={(checked) =>
+											updateStage1Input((current) => ({
+												...current,
+												advancedOptions: {
+													...current.advancedOptions,
+													emoji: checked ? true : null,
+												},
+											}))
+										}
+									/>
+									<AdvancedCheckbox
+										label="udp"
+										checked={state.stage1Input.advancedOptions.udp === true}
+										onChange={(checked) =>
+											updateStage1Input((current) => ({
+												...current,
+												advancedOptions: {
+													...current.advancedOptions,
+													udp: checked ? true : null,
+												},
+											}))
+										}
+									/>
+									<AdvancedCheckbox
+										label={copy.skipCertVerify}
+										checked={state.stage1Input.advancedOptions.skipCertVerify === true}
+										onChange={(checked) =>
+											updateStage1Input((current) => ({
+												...current,
+												advancedOptions: {
+													...current.advancedOptions,
+													skipCertVerify: checked ? true : null,
+												},
+											}))
+										}
+									/>
 								</div>
 								</div>
 							</div>
@@ -1394,5 +1386,38 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 				</div>
 			) : null}
 		</div>
+	);
+}
+
+function AdvancedCheckbox({
+	label,
+	checked,
+	onChange,
+}: {
+	label: string;
+	checked: boolean;
+	onChange: (checked: boolean) => void;
+}) {
+	return (
+		<label className="a-check a-check--box">
+			<span className="a-check__box">
+				<input
+					className="a-check__input"
+					type="checkbox"
+					checked={checked}
+					onChange={(event) => onChange(event.target.checked)}
+				/>
+				<svg className="a-check__mark" viewBox="0 0 14 10" fill="none" aria-hidden="true">
+					<path
+						d="M1 5L4.5 8.5L13 1"
+						stroke="currentColor"
+						strokeWidth="2"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
+				</svg>
+			</span>
+			{label}
+		</label>
 	);
 }

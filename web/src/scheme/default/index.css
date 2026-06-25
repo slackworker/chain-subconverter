@@ -1313,14 +1313,14 @@
 .a-advanced__toggle {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.4rem;
+	gap: 0.5rem;
 	padding: 0;
 	border: none;
 	border-radius: 0;
 	background: none;
 	font: inherit;
-	font-size: 0.82rem;
-	font-weight: 500;
+	font-size: 0.875rem;
+	font-weight: 600;
 	color: var(--color-muted);
 	cursor: pointer;
 	text-align: left;
@@ -1337,27 +1337,48 @@
 	box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
-.a-adv-arrow {
-	display: inline-block;
-	font-size: 0.62rem;
-	line-height: 1;
+.a-adv-chevron {
+	width: 1rem;
+	height: 1rem;
+	flex-shrink: 0;
 	color: var(--color-muted);
 	transition: transform 0.18s ease, color 0.15s ease;
 }
 
-.a-advanced__toggle:hover .a-adv-arrow {
+.a-advanced__toggle:hover .a-adv-chevron {
 	color: var(--color-ink);
 }
 
-.a-adv-arrow--open {
-	transform: rotate(90deg);
+.a-adv-chevron--open {
+	transform: rotate(180deg);
 }
 
 .a-advanced__body {
 	margin-top: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.85rem;
+	gap: 1.25rem;
+}
+
+.a-advanced__section {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.a-advanced .a-field {
+	margin-bottom: 0;
+}
+
+.a-advanced .a-field-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--color-muted);
 }
 
 .a-advanced__row-tags {
@@ -1370,7 +1391,8 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.85rem 1.25rem;
+	gap: 1rem 1.5rem;
+	padding-top: 0.15rem;
 }
 
 .a-check-row__divider {
@@ -1398,6 +1420,62 @@
 .a-check--switch {
 	font-weight: 600;
 	gap: 0.5rem;
+}
+
+.a-check--box {
+	gap: 0.5rem;
+	font-size: 0.875rem;
+	font-weight: 500;
+	color: var(--color-ink);
+	transition: color 0.15s ease;
+}
+
+.a-check--box:hover {
+	color: var(--color-accent);
+}
+
+.a-check__box {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.a-check__input {
+	appearance: none;
+	width: 1.25rem;
+	height: 1.25rem;
+	margin: 0;
+	border: 1px solid var(--color-line);
+	border-radius: 4px;
+	background: var(--color-elevated);
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.a-check__input:checked {
+	background: var(--color-accent);
+	border-color: var(--color-accent);
+}
+
+.a-check__input:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: 2px;
+}
+
+.a-check__mark {
+	position: absolute;
+	width: 0.75rem;
+	height: 0.75rem;
+	color: var(--color-on-accent);
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+}
+
+.a-check__input:checked + .a-check__mark {
+	opacity: 1;
 }
 
 .a-switch__input {
