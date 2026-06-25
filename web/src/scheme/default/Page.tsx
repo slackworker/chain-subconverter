@@ -1181,7 +1181,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 						>
 							<input
 								id="a-current-link"
-								className={`a-input a-input--mono a-input--current-link ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
+								className={`a-input a-input--current-link ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
 								type="url"
 								value={state.currentLinkInput}
 								onChange={(event) => setCurrentLinkInput(event.target.value)}

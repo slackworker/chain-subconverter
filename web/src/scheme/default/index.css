@@ -1120,6 +1120,12 @@
 	border-radius: 0;
 	background: transparent;
 	box-shadow: none;
+	font-family: var(--font-ui);
+	font-weight: 400;
+}
+
+.a-current-link-row .a-input--current-link::placeholder {
+	color: color-mix(in srgb, var(--color-muted) 72%, transparent);
 }
 
 .a-current-link-row .a-input--current-link:focus,
