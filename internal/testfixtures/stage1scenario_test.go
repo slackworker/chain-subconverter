@@ -20,8 +20,8 @@ func TestLoadStage1Scenario_DualLandingChainPortForward(t *testing.T) {
 	if scenario.ScenarioID != "dual-landing-chain-port-forward" {
 		t.Fatalf("ScenarioID = %q", scenario.ScenarioID)
 	}
-	if len(scenario.Stage1Input.LandingItems) != 6 {
-		t.Fatalf("len(LandingItems) = %d, want 6", len(scenario.Stage1Input.LandingItems))
+	if len(scenario.Stage1Input.LandingItems) != 4 {
+		t.Fatalf("len(LandingItems) = %d, want 4", len(scenario.Stage1Input.LandingItems))
 	}
 	if len(scenario.Stage1Input.ManualSocks5Items) != 1 {
 		t.Fatalf("len(ManualSocks5Items) = %d, want 1", len(scenario.Stage1Input.ManualSocks5Items))

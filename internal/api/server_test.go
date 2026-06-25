@@ -114,8 +114,8 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
 	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
-	if len(response.Stage2Init.Rows) != 7 {
-		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 7", len(response.Stage2Init.Rows))
+	if len(response.Stage2Init.Rows) != 5 {
+		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 5", len(response.Stage2Init.Rows))
 	}
 	if len(response.Stage2Init.ForwardRelays) != 2 {
 		t.Fatalf("len(response.Stage2Init.ForwardRelays) = %d, want 2", len(response.Stage2Init.ForwardRelays))
@@ -437,8 +437,8 @@ func TestResolveURLHandler_DualLandingChainPortForwardShortURL(t *testing.T) {
 	if response.LongURL != expectedShortLinkResponse.LongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, expectedShortLinkResponse.LongURL)
 	}
-	if len(response.Stage2Snapshot.Rows) != 7 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 7", len(response.Stage2Snapshot.Rows))
+	if len(response.Stage2Snapshot.Rows) != 8 {
+		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 8", len(response.Stage2Snapshot.Rows))
 	}
 }
 

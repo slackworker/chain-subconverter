@@ -15,15 +15,13 @@ cd deploy/test-fixtures-worker && npm run sync
 
 ## Stage1
 
-### 落地节点（6 行）
+### 落地节点（4 行）
 
 ```
-ss://2022-blake3-aes-256-gcm:alpha-ss-hk-secret@198.51.100.10:443#Alpha-SS-HK
-vless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Alpha-Reality-HK-PortForward
-vless://11111111-1111-4111-8111-111111111112@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&type=tcp#Alpha-Reality-HK-Direct
+ss://2022-blake3-aes-256-gcm:alpha-ss-sg-secret@198.51.100.10:443#Alpha-SS-SG
+vless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none&security=reality&sni=alpha.example.com&pbk=alpha-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Alpha-Reality-SG
 ss://2022-blake3-aes-256-gcm:beta-ss-jp-secret@198.51.100.11:443#Beta-SS-JP
-vless://22222222-2222-4222-8222-222222222221@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&flow=xtls-rprx-vision&type=tcp#Beta-Reality-JP-PortForward
-vless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&type=tcp#Beta-Reality-JP-Direct
+vless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none&security=reality&sni=beta.example.com&pbk=beta-public-key&fp=chrome&type=tcp#Beta-Reality-JP
 ```
 
 ### + 添加 SOCKS5
@@ -58,26 +56,33 @@ relay-b.example.com:8443
 
 ## Stage2（转换后 → 按金样改 → 生成）
 
+### Stage2 操作要点（先操作，再对照金样）
+
+- 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：源行设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。
+- 为 `🇸🇬 Alpha-Reality-SG` 新建 `2` 个副本：源行设为 `无`，两个副本分别设为 `端口转发 -> relay-a.example.com:7443`、`端口转发 -> relay-b.example.com:8443`。
+- `🇯🇵 Beta-SS-JP` 保持 `链式 -> 🇯🇵 日本节点`；`🇯🇵 Beta-Reality-JP` 改为 `无`。
+- 开启“线路聚合模式”，并在 `198.51.100.10` 组中仅勾选：`🇸🇬 Alpha-SS-SG`、`🇸🇬 Alpha-SS-SG 2`、`🇸🇬 Alpha-Reality-SG 2`、`🇸🇬 Alpha-Reality-SG 3`（不要勾选 `🇸🇬 Alpha-Reality-SG`）。
+- `198.51.100.11` 相关节点不入组聚合；同时开启“目标策略组节点切换优化”。
+
 **转换后默认**
 
-- 🇭🇰 Alpha-SS-HK · 链式 · 🇭🇰 香港节点
-- 🇭🇰 Alpha-Reality-HK-PortForward · 链式 · 🇭🇰 香港节点
-- 🇭🇰 Alpha-Reality-HK-Direct · 链式 · 🇭🇰 香港节点
+- 🇸🇬 Alpha-SS-SG · 链式 · 🇸🇬 新加坡节点
+- 🇸🇬 Alpha-Reality-SG · 链式 · 🇸🇬 新加坡节点
 - 🇯🇵 Beta-SS-JP · 链式 · 🇯🇵 日本节点
-- 🇯🇵 Beta-Reality-JP-PortForward · 链式 · 🇯🇵 日本节点
-- 🇯🇵 Beta-Reality-JP-Direct · 链式 · 🇯🇵 日本节点
+- 🇯🇵 Beta-Reality-JP · 链式 · 🇯🇵 日本节点
 - 🇭🇰 Manual-SOCKS5-HK-Fallback · 链式 · 🇭🇰 香港节点
 
 **生成前金样**
 
-- 🇭🇰 Alpha-SS-HK · 链式 · 🇭🇰 香港节点
-- 🇭🇰 Alpha-Reality-HK-PortForward · 端口转发 · relay-a.example.com:7443
-- 🇭🇰 Alpha-Reality-HK-Direct · 无 · —
+- 🇸🇬 Alpha-SS-SG · 链式 · 🇭🇰 香港节点
+- 🇸🇬 Alpha-SS-SG 2 · 链式 · 🇸🇬 新加坡节点
+- 🇸🇬 Alpha-Reality-SG · 无 · —
+- 🇸🇬 Alpha-Reality-SG 2 · 端口转发 · relay-a.example.com:7443
+- 🇸🇬 Alpha-Reality-SG 3 · 端口转发 · relay-b.example.com:8443
 - 🇯🇵 Beta-SS-JP · 链式 · 🇯🇵 日本节点
-- 🇯🇵 Beta-Reality-JP-PortForward · 端口转发 · relay-b.example.com:8443
-- 🇯🇵 Beta-Reality-JP-Direct · 无 · —
+- 🇯🇵 Beta-Reality-JP · 无 · —
 - 🇭🇰 Manual-SOCKS5-HK-Fallback · 链式 · 🇭🇰 香港节点
 
 ## 验收
 
-- short ID 金样：`FPJw27S4ey`（Stage3 反向解析；预览站每次生成 ID 不同，Stage2 组合应一致）
+- short ID 金样：`1U74dCr5gH3`（Stage3 反向解析；预览站每次生成 ID 不同，Stage2 组合应一致）

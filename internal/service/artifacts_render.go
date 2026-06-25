@@ -120,9 +120,13 @@ func stripLandingNodesFromRegionGroups(root *yaml.Node, landingNames map[string]
 }
 
 func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []string, replacedLines map[int]string) error {
-	rowsByLanding := make(map[string]Stage2Row, len(rows))
+	rowsBySourceLanding := make(map[string][]Stage2Row, len(rows))
 	for _, row := range rows {
-		rowsByLanding[row.LandingNodeName] = row
+		sourceLandingName := row.sourceLandingNodeNameOrFallback()
+		if sourceLandingName == "" {
+			sourceLandingName = row.LandingNodeName
+		}
+		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
 	}
 
 	proxiesNode := yamlMappingValue(root, "proxies")
@@ -143,7 +147,7 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 			return fmt.Errorf("proxy entry is missing name")
 		}
 
-		row, exists := rowsByLanding[nameNode.Value]
+		sourceRows, exists := rowsBySourceLanding[nameNode.Value]
 		if !exists {
 			continue
 		}
@@ -153,11 +157,15 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 			return fmt.Errorf("proxy line %d is out of range", proxyNode.Line)
 		}
 
-		updatedLine, err := applyRowToInlineProxyLine(lines[lineIndex], row)
-		if err != nil {
-			return fmt.Errorf("apply stage2 row for landing node %q: %w", nameNode.Value, err)
+		updatedLines := make([]string, 0, len(sourceRows))
+		for _, row := range sourceRows {
+			updatedLine, err := applyRowToInlineProxyLine(lines[lineIndex], row)
+			if err != nil {
+				return fmt.Errorf("apply stage2 row for source landing node %q: %w", nameNode.Value, err)
+			}
+			updatedLines = append(updatedLines, updatedLine)
 		}
-		replacedLines[lineIndex] = updatedLine
+		replacedLines[lineIndex] = strings.Join(updatedLines, "\n")
 	}
 
 	return nil
@@ -390,6 +398,7 @@ func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fields = upsertInlineProxyField(fields, "name", row.proxyNameOrFallback())
 
 	switch row.Mode {
 	case "none":

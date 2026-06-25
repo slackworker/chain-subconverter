@@ -1,8 +1,6 @@
 proxies:
-  - {"name":"Alpha-SS-HK","type":"ss","server":"198.51.100.10","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"alpha-ss-hk-secret"}
-  - {"name":"Alpha-Reality-HK-PortForward","type":"vless","server":"198.51.100.10","port":8443,"uuid":"11111111-1111-4111-8111-111111111111","tls":true,"servername":"alpha.example.com","network":"tcp","flow":"xtls-rprx-vision","client-fingerprint":"chrome","reality-opts":{"public-key":"alpha-public-key"}}
-  - {"name":"Alpha-Reality-HK-Direct","type":"vless","server":"198.51.100.10","port":8443,"uuid":"11111111-1111-4111-8111-111111111112","tls":true,"servername":"alpha.example.com","network":"tcp","client-fingerprint":"chrome","reality-opts":{"public-key":"alpha-public-key"}}
+  - {"name":"Alpha-SS-SG","type":"ss","server":"198.51.100.10","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"alpha-ss-sg-secret"}
+  - {"name":"Alpha-Reality-SG","type":"vless","server":"198.51.100.10","port":8443,"uuid":"11111111-1111-4111-8111-111111111111","tls":true,"servername":"alpha.example.com","network":"tcp","flow":"xtls-rprx-vision","client-fingerprint":"chrome","reality-opts":{"public-key":"alpha-public-key"}}
   - {"name":"Beta-SS-JP","type":"ss","server":"198.51.100.11","port":443,"cipher":"2022-blake3-aes-256-gcm","password":"beta-ss-jp-secret"}
-  - {"name":"Beta-Reality-JP-PortForward","type":"vless","server":"198.51.100.11","port":9443,"uuid":"22222222-2222-4222-8222-222222222221","tls":true,"servername":"beta.example.com","network":"tcp","flow":"xtls-rprx-vision","client-fingerprint":"chrome","reality-opts":{"public-key":"beta-public-key"}}
-  - {"name":"Beta-Reality-JP-Direct","type":"vless","server":"198.51.100.11","port":9443,"uuid":"22222222-2222-4222-8222-222222222222","tls":true,"servername":"beta.example.com","network":"tcp","client-fingerprint":"chrome","reality-opts":{"public-key":"beta-public-key"}}
+  - {"name":"Beta-Reality-JP","type":"vless","server":"198.51.100.11","port":9443,"uuid":"22222222-2222-4222-8222-222222222222","tls":true,"servername":"beta.example.com","network":"tcp","client-fingerprint":"chrome","reality-opts":{"public-key":"beta-public-key"}}
   - {"name":"Manual-SOCKS5-HK-Fallback","type":"socks5","server":"manual-socks-hk.example.test","port":1080,"username":"demo-user","password":"demo-pass"}

@@ -123,11 +123,11 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 		t.Fatalf("BuildStage1Artifacts() error = %v", err)
 	}
 
-	if len(stage1Bundle.Rows) != 7 {
-		t.Fatalf("len(stage1Bundle.Rows) = %d, want 7", len(stage1Bundle.Rows))
+	if len(stage1Bundle.Rows) != 5 {
+		t.Fatalf("len(stage1Bundle.Rows) = %d, want 5", len(stage1Bundle.Rows))
 	}
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Alpha-SS-HK | SS | chain | 🇭🇰 香港节点 |")
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Alpha-Reality-HK-PortForward | Reality | chain | 🇭🇰 香港节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇸🇬 Alpha-SS-SG | SS | chain | 🇸🇬 新加坡节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇸🇬 Alpha-Reality-SG | Reality | chain | 🇸🇬 新加坡节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇯🇵 Beta-SS-JP | SS | chain | 🇯🇵 日本节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Manual-SOCKS5-HK-Fallback | SOCKS5 | chain | 🇭🇰 香港节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/forward-relays.txt", "relay-a.example.com:7443")

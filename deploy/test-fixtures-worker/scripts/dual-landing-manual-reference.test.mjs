@@ -52,6 +52,9 @@ test("manual reference maps fields in landing-then-transit order", () => {
 	}
 	assert.match(markdown, /\*\*转换后默认\*\*/);
 	assert.match(markdown, /\*\*生成前金样\*\*/);
+	assert.match(markdown, /### Stage2 操作要点/);
+	assert.match(markdown, /线路聚合模式/);
+	assert.match(markdown, /目标策略组节点切换优化/);
 	const { shortLinkResponse } = loadDualLandingManualReferenceInputs(repoRoot);
 	const shortID = extractShortID(shortLinkResponse.shortUrl);
 	assert.match(markdown, new RegExp(`short ID 金样：\`${shortID}\``));

@@ -133,6 +133,16 @@ function renderManualSocksTable(manualSocksItems) {
 	].join("\n");
 }
 
+function renderStage2OperationChecklist() {
+	return [
+		"- 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：源行设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。",
+		"- 为 `🇸🇬 Alpha-Reality-SG` 新建 `2` 个副本：源行设为 `无`，两个副本分别设为 `端口转发 -> relay-a.example.com:7443`、`端口转发 -> relay-b.example.com:8443`。",
+		"- `🇯🇵 Beta-SS-JP` 保持 `链式 -> 🇯🇵 日本节点`；`🇯🇵 Beta-Reality-JP` 改为 `无`。",
+		"- 开启“线路聚合模式”，并在 `198.51.100.10` 组中仅勾选：`🇸🇬 Alpha-SS-SG`、`🇸🇬 Alpha-SS-SG 2`、`🇸🇬 Alpha-Reality-SG 2`、`🇸🇬 Alpha-Reality-SG 3`（不要勾选 `🇸🇬 Alpha-Reality-SG`）。",
+		"- `198.51.100.11` 相关节点不入组聚合；同时开启“目标策略组节点切换优化”。",
+	].join("\n");
+}
+
 export function renderDualLandingManualReference({
 	scenario,
 	stage1ConvertResponse,
@@ -146,8 +156,8 @@ export function renderDualLandingManualReference({
 	}
 
 	const landingURILines = buildLandingURILines(stage1Input);
-	if (landingURILines.length !== 6) {
-		throw new Error(`expected 6 landing URIs, got ${landingURILines.length}`);
+	if (landingURILines.length === 0) {
+		throw new Error("expected landing URIs, got 0");
 	}
 
 	const relayLines = (stage1Input.forwardRelayItems ?? [])
@@ -176,7 +186,7 @@ export function renderDualLandingManualReference({
 		"",
 		"## Stage1",
 		"",
-		"### 落地节点（6 行）",
+		`### 落地节点（${landingURILines.length} 行）`,
 		"",
 		codeBlockLines(landingURILines),
 		"",
@@ -197,6 +207,10 @@ export function renderDualLandingManualReference({
 		renderAdvancedOptions(stage1Input.advancedOptions),
 		"",
 		"## Stage2（转换后 → 按金样改 → 生成）",
+		"",
+		"### Stage2 操作要点（先操作，再对照金样）",
+		"",
+		renderStage2OperationChecklist(),
 		"",
 		"**转换后默认**",
 		"",

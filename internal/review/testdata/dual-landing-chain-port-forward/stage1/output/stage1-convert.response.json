@@ -113,37 +113,24 @@
     ],
     "rows": [
       {
-        "rowId": "🇭🇰 Alpha-SS-HK",
-        "sourceLandingNodeName": "🇭🇰 Alpha-SS-HK",
-        "proxyName": "🇭🇰 Alpha-SS-HK",
-        "landingNodeName": "🇭🇰 Alpha-SS-HK",
+        "rowId": "🇸🇬 Alpha-SS-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "proxyName": "🇸🇬 Alpha-SS-SG",
+        "landingNodeName": "🇸🇬 Alpha-SS-SG",
         "landingNodeType": "SS",
+        "server": "198.51.100.10",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇸🇬 新加坡节点"
       },
       {
-        "rowId": "🇭🇰 Alpha-Reality-HK-PortForward",
-        "sourceLandingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
-        "proxyName": "🇭🇰 Alpha-Reality-HK-PortForward",
-        "landingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
+        "rowId": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG",
         "landingNodeType": "Reality",
+        "server": "198.51.100.10",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点",
-        "modeWarnings": {
-          "chain": {
-            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
-          }
-        }
-      },
-      {
-        "rowId": "🇭🇰 Alpha-Reality-HK-Direct",
-        "sourceLandingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
-        "proxyName": "🇭🇰 Alpha-Reality-HK-Direct",
-        "landingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
-        "landingNodeType": "Reality",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点",
+        "targetName": "🇸🇬 新加坡节点",
         "modeWarnings": {
           "chain": {
             "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
@@ -157,30 +144,17 @@
         "proxyName": "🇯🇵 Beta-SS-JP",
         "landingNodeName": "🇯🇵 Beta-SS-JP",
         "landingNodeType": "SS",
+        "server": "198.51.100.11",
         "mode": "chain",
         "targetName": "🇯🇵 日本节点"
       },
       {
-        "rowId": "🇯🇵 Beta-Reality-JP-PortForward",
-        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
-        "proxyName": "🇯🇵 Beta-Reality-JP-PortForward",
-        "landingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
+        "rowId": "🇯🇵 Beta-Reality-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
+        "proxyName": "🇯🇵 Beta-Reality-JP",
+        "landingNodeName": "🇯🇵 Beta-Reality-JP",
         "landingNodeType": "Reality",
-        "mode": "chain",
-        "targetName": "🇯🇵 日本节点",
-        "modeWarnings": {
-          "chain": {
-            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
-          }
-        }
-      },
-      {
-        "rowId": "🇯🇵 Beta-Reality-JP-Direct",
-        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
-        "proxyName": "🇯🇵 Beta-Reality-JP-Direct",
-        "landingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
-        "landingNodeType": "Reality",
+        "server": "198.51.100.11",
         "mode": "chain",
         "targetName": "🇯🇵 日本节点",
         "modeWarnings": {
@@ -196,6 +170,7 @@
         "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "landingNodeType": "SOCKS5",
+        "server": "manual-socks-hk.example.test",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
@@ -205,22 +180,17 @@
     {
       "level": "info",
       "code": "STAGE1_CONVERT_SUMMARY",
-      "message": "已识别 7 个落地节点、2 个中继，Stage 2 已初始化 7 行，其中 7 行已自动填入链式目标。"
+      "message": "已识别 5 个落地节点、2 个中继，Stage 2 已初始化 5 行，其中 5 行已自动填入链式目标。"
     },
     {
       "level": "info",
       "code": "AUTO_CHAIN_TARGET_SELECTED",
-      "message": "已为「🇭🇰 Alpha-SS-HK」自动填入 🇭🇰 香港节点"
+      "message": "已为「🇸🇬 Alpha-SS-SG」自动填入 🇸🇬 新加坡节点"
     },
     {
       "level": "info",
       "code": "AUTO_CHAIN_TARGET_SELECTED",
-      "message": "已为「🇭🇰 Alpha-Reality-HK-PortForward」自动填入 🇭🇰 香港节点"
-    },
-    {
-      "level": "info",
-      "code": "AUTO_CHAIN_TARGET_SELECTED",
-      "message": "已为「🇭🇰 Alpha-Reality-HK-Direct」自动填入 🇭🇰 香港节点"
+      "message": "已为「🇸🇬 Alpha-Reality-SG」自动填入 🇸🇬 新加坡节点"
     },
     {
       "level": "info",
@@ -230,12 +200,7 @@
     {
       "level": "info",
       "code": "AUTO_CHAIN_TARGET_SELECTED",
-      "message": "已为「🇯🇵 Beta-Reality-JP-PortForward」自动填入 🇯🇵 日本节点"
-    },
-    {
-      "level": "info",
-      "code": "AUTO_CHAIN_TARGET_SELECTED",
-      "message": "已为「🇯🇵 Beta-Reality-JP-Direct」自动填入 🇯🇵 日本节点"
+      "message": "已为「🇯🇵 Beta-Reality-JP」自动填入 🇯🇵 日本节点"
     },
     {
       "level": "info",
@@ -245,7 +210,7 @@
     {
       "level": "warning",
       "code": "CHAIN_TARGET_REVIEW",
-      "message": "有 4 行建议复核链式目标选择。"
+      "message": "有 2 行建议复核链式目标选择。"
     }
   ],
   "blockingErrors": []

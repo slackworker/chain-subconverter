@@ -1,6 +1,6 @@
 {
   "stage1Input": {
-    "landingRawText": "ss://2022-blake3-aes-256-gcm:alpha-ss-hk-secret@198.51.100.10:443#Alpha-SS-HK\nvless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none\u0026security=reality\u0026sni=alpha.example.com\u0026pbk=alpha-public-key\u0026fp=chrome\u0026flow=xtls-rprx-vision\u0026type=tcp#Alpha-Reality-HK-PortForward\nvless://11111111-1111-4111-8111-111111111112@198.51.100.10:8443?encryption=none\u0026security=reality\u0026sni=alpha.example.com\u0026pbk=alpha-public-key\u0026fp=chrome\u0026type=tcp#Alpha-Reality-HK-Direct\nss://2022-blake3-aes-256-gcm:beta-ss-jp-secret@198.51.100.11:443#Beta-SS-JP\nvless://22222222-2222-4222-8222-222222222221@198.51.100.11:9443?encryption=none\u0026security=reality\u0026sni=beta.example.com\u0026pbk=beta-public-key\u0026fp=chrome\u0026flow=xtls-rprx-vision\u0026type=tcp#Beta-Reality-JP-PortForward\nvless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none\u0026security=reality\u0026sni=beta.example.com\u0026pbk=beta-public-key\u0026fp=chrome\u0026type=tcp#Beta-Reality-JP-Direct\ntg://socks?server=manual-socks-hk.example.test\u0026port=1080\u0026remarks=Manual-SOCKS5-HK-Fallback\u0026user=demo-user\u0026pass=demo-pass",
+    "landingRawText": "ss://2022-blake3-aes-256-gcm:alpha-ss-sg-secret@198.51.100.10:443#Alpha-SS-SG\nvless://11111111-1111-4111-8111-111111111111@198.51.100.10:8443?encryption=none\u0026security=reality\u0026sni=alpha.example.com\u0026pbk=alpha-public-key\u0026fp=chrome\u0026flow=xtls-rprx-vision\u0026type=tcp#Alpha-Reality-SG\nss://2022-blake3-aes-256-gcm:beta-ss-jp-secret@198.51.100.11:443#Beta-SS-JP\nvless://22222222-2222-4222-8222-222222222222@198.51.100.11:9443?encryption=none\u0026security=reality\u0026sni=beta.example.com\u0026pbk=beta-public-key\u0026fp=chrome\u0026type=tcp#Beta-Reality-JP\ntg://socks?server=manual-socks-hk.example.test\u0026port=1080\u0026remarks=Manual-SOCKS5-HK-Fallback\u0026user=demo-user\u0026pass=demo-pass",
     "transitRawText": "https://fixtures.example.com/transit-a-subscription.txt\nhttps://fixtures.example.com/transit-b-subscription.txt",
     "forwardRelayItems": [
       "relay-a.example.com:7443",
@@ -18,39 +18,85 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "🇭🇰 Alpha-SS-HK",
+        "rowId": "🇸🇬 Alpha-SS-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "proxyName": "🇸🇬 Alpha-SS-SG",
+        "landingNodeName": "🇸🇬 Alpha-SS-SG",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇭🇰 香港节点",
+        "chainProxyGroupProfile": "aggressive_url_test"
       },
       {
-        "landingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
+        "rowId": "🇸🇬 Alpha-SS-SG 2",
+        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "proxyName": "🇸🇬 Alpha-SS-SG 2",
+        "landingNodeName": "🇸🇬 Alpha-SS-SG 2",
+        "mode": "chain",
+        "targetName": "🇸🇬 新加坡节点",
+        "chainProxyGroupProfile": "aggressive_url_test"
+      },
+      {
+        "rowId": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "mode": "none",
+        "targetName": null
+      },
+      {
+        "rowId": "🇸🇬 Alpha-Reality-SG 2",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG 2",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG 2",
         "mode": "port_forward",
         "targetName": "relay-a.example.com:7443"
       },
       {
-        "landingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
-        "mode": "none",
-        "targetName": null
-      },
-      {
-        "landingNodeName": "🇯🇵 Beta-SS-JP",
-        "mode": "chain",
-        "targetName": "🇯🇵 日本节点"
-      },
-      {
-        "landingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
+        "rowId": "🇸🇬 Alpha-Reality-SG 3",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG 3",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG 3",
         "mode": "port_forward",
         "targetName": "relay-b.example.com:8443"
       },
       {
-        "landingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
+        "rowId": "🇯🇵 Beta-SS-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
+        "proxyName": "🇯🇵 Beta-SS-JP",
+        "landingNodeName": "🇯🇵 Beta-SS-JP",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点",
+        "chainProxyGroupProfile": "aggressive_url_test"
+      },
+      {
+        "rowId": "🇯🇵 Beta-Reality-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
+        "proxyName": "🇯🇵 Beta-Reality-JP",
+        "landingNodeName": "🇯🇵 Beta-Reality-JP",
         "mode": "none",
         "targetName": null
       },
       {
+        "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
+        "targetName": "🇭🇰 香港节点",
+        "chainProxyGroupProfile": "aggressive_url_test"
+      }
+    ],
+    "serverAggregationGroups": [
+      {
+        "server": "198.51.100.10",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": [
+          "🇸🇬 Alpha-SS-SG",
+          "🇸🇬 Alpha-SS-SG 2",
+          "🇸🇬 Alpha-Reality-SG 2",
+          "🇸🇬 Alpha-Reality-SG 3"
+        ]
       }
     ]
   }
