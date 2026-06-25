@@ -9,7 +9,7 @@ import {
 } from "../../lib/stage2";
 import type { Stage2Row } from "../../types/api";
 import type { Stage2TreeGlyphParts } from "./stage2AggregationTree";
-import { MinusIcon, PencilIcon, PlusIcon } from "./Icons";
+import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
 import { Stage2MemberOrderList } from "./Stage2MemberOrderList";
 import {
 	getStage2ForwardTargetMenuKey,
@@ -265,7 +265,7 @@ export function Stage2RowNameCell({
 						title={copy.cloneRow}
 						onClick={() => onCloneRow(rowKey)}
 					>
-						<PlusIcon className="a-icon" aria-hidden />
+						<CopyIcon className="a-icon" aria-hidden />
 					</button>
 				) : (
 					<button
@@ -276,7 +276,7 @@ export function Stage2RowNameCell({
 						title={deleteRowTitle ?? copy.deleteRow}
 						onClick={() => onDeleteRow(rowKey)}
 					>
-						<MinusIcon className="a-icon" aria-hidden />
+						<TrashIcon className="a-icon" aria-hidden />
 					</button>
 				)}
 			</div>
