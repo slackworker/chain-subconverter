@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"testing"
 
@@ -214,6 +216,45 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL(t *test
 	}
 }
 
+func TestDualLandingManualReferenceShortIDMatchesGeneratedResult(t *testing.T) {
+	request := GenerateRequest{
+		Stage1Input:    dualLandingChainPortForwardStage1Input(t),
+		Stage2Snapshot: dualLandingChainPortForwardStage2Snapshot(t),
+	}
+	source := newDualLandingChainPortForwardSource(t)
+	store := NewInMemoryShortLinkStore()
+
+	generated, err := BuildGenerateResponseFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		request,
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("BuildGenerateResponseFromSource() error = %v", err)
+	}
+
+	shortLinkResponse, err := BuildShortLinkResponse(context.Background(), "http://localhost:11200", store, generated.LongURL, 0, InputLimits{})
+	if err != nil {
+		t.Fatalf("BuildShortLinkResponse() error = %v", err)
+	}
+
+	matches := dualLandingManualReferenceShortIDPattern.FindStringSubmatch(readDualLandingManualReferenceDoc(t))
+	if len(matches) != 2 {
+		t.Fatalf("failed to parse short ID from docs/testing/dual-landing-manual-reference.md")
+	}
+
+	expectedShortID := matches[1]
+	gotShortID := filepath.Base(shortLinkResponse.ShortURL)
+	if gotShortID != expectedShortID {
+		t.Fatalf("manual reference short ID drift: got %q want %q", gotShortID, expectedShortID)
+	}
+}
+
+var dualLandingManualReferenceShortIDPattern = regexp.MustCompile("short ID 金样：`([^`]+)`")
+
 func dualLandingChainPortForwardFixtureDirectory(t *testing.T) string {
 	t.Helper()
 
@@ -247,6 +288,34 @@ func dualLandingChainPortForwardCanonicalScenarioFile(t *testing.T) string {
 		"canonical-scenarios",
 		dualLandingChainPortForwardFixtureName+".stage1.json",
 	)
+}
+
+func dualLandingManualReferenceFile(t *testing.T) string {
+	t.Helper()
+
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+
+	return filepath.Join(
+		filepath.Dir(currentFile),
+		"..",
+		"..",
+		"docs",
+		"testing",
+		"dual-landing-manual-reference.md",
+	)
+}
+
+func readDualLandingManualReferenceDoc(t *testing.T) string {
+	t.Helper()
+
+	content, err := os.ReadFile(dualLandingManualReferenceFile(t))
+	if err != nil {
+		t.Fatalf("read manual reference doc: %v", err)
+	}
+	return normalizeTestFixtureNewlines(string(content))
 }
 
 type dualLandingChainPortForwardSource struct {
