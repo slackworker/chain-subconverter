@@ -56,6 +56,17 @@ export function getModeLabel(mode: string, locale: Stage2Locale, copy: Stage2Cop
 	return labels[mode] ?? mode;
 }
 
+export function getAggregationStrategyLabel(
+	strategy: "fallback" | "url-test",
+	copy: Stage2Copy & Record<string, string>,
+) {
+	const labels: Record<"fallback" | "url-test", string> = {
+		fallback: copy.strategy_fallback as string,
+		"url-test": copy.strategy_url_test as string,
+	};
+	return labels[strategy] ?? strategy;
+}
+
 interface Stage2RowNameCellProps {
 	row: Stage2Row;
 	rowKey: string;
@@ -334,12 +345,11 @@ export function Stage2RowModeCell({
 	}
 
 	if (strategyValue !== undefined && onStrategyChange) {
-		const strategyOptions = [
-			{ value: "fallback", label: "fallback" },
-			{ value: "url-test", label: "url-test" },
-		];
-		const strategyLabel =
-			strategyOptions.find((option) => option.value === strategyValue)?.label ?? strategyValue;
+		const strategyOptions = (["fallback", "url-test"] as const).map((value) => ({
+			value,
+			label: getAggregationStrategyLabel(value, copy),
+		}));
+		const strategyLabel = getAggregationStrategyLabel(strategyValue, copy);
 
 		return (
 			<div className="a-mode-cell">

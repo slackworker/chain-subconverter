@@ -18,6 +18,7 @@ import {
 	type Stage2TreeNode,
 } from "./stage2AggregationTree";
 import {
+	getAggregationStrategyLabel,
 	getModeLabel,
 	Stage2AggregationCell,
 	Stage2RowModeCell,
@@ -116,7 +117,10 @@ export function Stage2AggregationTree({
 				return {
 					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji),
 					landingNodeType: copy.typePolicyGroup,
-					modeOptionLabels: ["fallback", "url-test"],
+					modeOptionLabels: [
+						getAggregationStrategyLabel("fallback", copy),
+						getAggregationStrategyLabel("url-test", copy),
+					],
 					targetLabel: copy.memberOrderManage,
 					targetOptionLabels: [copy.memberOrderManage, copy.memberOrderFallbackHint],
 				};
