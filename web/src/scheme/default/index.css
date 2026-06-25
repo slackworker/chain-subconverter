@@ -1386,8 +1386,12 @@
 	gap: 0.35rem;
 	font-size: 0.75rem;
 	font-weight: 600;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	color: var(--color-muted);
+}
+
+.a-advanced .a-check {
+	font-size: 0.82rem;
+	font-weight: 500;
 	color: var(--color-muted);
 }
 
