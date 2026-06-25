@@ -2346,6 +2346,7 @@
 	font: inherit;
 	font-family: var(--font-ui-emoji);
 	font-size: 0.84rem;
+	font-weight: 400;
 	color: var(--color-ink);
 	cursor: pointer;
 	white-space: nowrap;
@@ -2520,6 +2521,7 @@
 	white-space: nowrap;
 	font-family: var(--font-ui-emoji);
 	font-size: 0.82rem;
+	font-weight: 400;
 }
 
 .a-member-order__drag-handle {
