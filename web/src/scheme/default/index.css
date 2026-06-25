@@ -1305,7 +1305,6 @@
 }
 
 .a-stage2-aggregation-toggle {
-	font-weight: 500;
 	gap: 0.5rem;
 }
 
@@ -1336,7 +1335,6 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 0.1rem;
-	font-weight: 500;
 	font-size: 0.82rem;
 	line-height: 1.25;
 }
@@ -1414,7 +1412,7 @@
 	align-items: center;
 	gap: 0.35rem;
 	font-size: 0.75rem;
-	font-weight: 600;
+	font-weight: 500;
 	color: var(--color-muted);
 }
 
@@ -1475,7 +1473,8 @@
 }
 
 .a-check--switch {
-	font-weight: 600;
+	font-weight: 500;
+	color: var(--color-muted);
 	gap: 0.5rem;
 }
 
