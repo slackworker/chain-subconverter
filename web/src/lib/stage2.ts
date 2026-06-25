@@ -232,7 +232,7 @@ export function findChainTarget(stage2Init: Stage2Init | null, targetName: strin
 	return stage2Init.chainTargets.find((target) => target.name === targetName) ?? null;
 }
 
-export function isChainProxyGroupProfileEligible(stage2Init: Stage2Init | null, row: Stage2Row) {
+export function isSwitchOptimizationEligible(stage2Init: Stage2Init | null, row: Stage2Row) {
 	if (row.mode !== "chain" || row.targetName === null) {
 		return false;
 	}

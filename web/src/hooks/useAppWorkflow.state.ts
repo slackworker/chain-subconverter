@@ -13,7 +13,7 @@ import {
 	getServerAggregationGroup,
 	getServerAggregationStrategy,
 	getStage2RowSourceLandingName,
-	isChainProxyGroupProfileEligible,
+	isSwitchOptimizationEligible,
 	isStage2SourceRow,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
@@ -69,7 +69,6 @@ export interface Stage2SnapshotMergeReport {
 	droppedDerivedRows: number;
 	resetModes: number;
 	clearedTargets: number;
-	clearedChainProxyProfiles: number;
 	filteredAggregationMembers: number;
 	disabledAggregationGroups: number;
 	removedAggregationGroups: number;
@@ -80,7 +79,6 @@ function createStage2SnapshotMergeReport(): Stage2SnapshotMergeReport {
 		droppedDerivedRows: 0,
 		resetModes: 0,
 		clearedTargets: 0,
-		clearedChainProxyProfiles: 0,
 		filteredAggregationMembers: 0,
 		disabledAggregationGroups: 0,
 		removedAggregationGroups: 0,
@@ -124,9 +122,14 @@ function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGr
 	return normalized;
 }
 
-function normalizeStage2SnapshotRowsAndGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
+function normalizeStage2SnapshotRowsAndGroups(
+	rows: Stage2Row[],
+	serverAggregationGroups: ServerAggregationGroup[],
+	chainProxyTargetGroupSwitchOptimizationEnabled = false,
+) {
 	return {
 		rows,
+		chainProxyTargetGroupSwitchOptimizationEnabled,
 		serverAggregationGroups: normalizeServerAggregationGroups(rows, serverAggregationGroups),
 	};
 }
@@ -174,7 +177,7 @@ export function mergeStage2SnapshotAfterConvert(
 	const baseRows = buildStage2SnapshotRows(stage2Init);
 	if (current.stage2Snapshot.rows.length === 0) {
 		return {
-			snapshot: { rows: baseRows, serverAggregationGroups: [] },
+			snapshot: { rows: baseRows, chainProxyTargetGroupSwitchOptimizationEnabled: false, serverAggregationGroups: [] },
 			report,
 		};
 	}
@@ -210,7 +213,6 @@ export function mergeStage2SnapshotAfterConvert(
 			landingNodeName: existingSourceRow.landingNodeName ?? mergedProxyName ?? baseRow.landingNodeName,
 			mode: existingSourceRow.mode,
 			targetName: existingSourceRow.targetName,
-			chainProxyGroupProfile: existingSourceRow.chainProxyGroupProfile,
 		};
 	});
 
@@ -234,7 +236,6 @@ export function mergeStage2SnapshotAfterConvert(
 		const allowedModes = getAllowedModes(stage2Init, stage2InitRowsBySource, sourceLandingNodeName);
 		let mode = row.mode;
 		let targetName = row.targetName;
-		let chainProxyGroupProfile = row.chainProxyGroupProfile;
 		if (!allowedModes.includes(mode)) {
 			const fallbackMode = allowedModes.includes("none")
 				? "none"
@@ -269,14 +270,7 @@ export function mergeStage2SnapshotAfterConvert(
 			mode,
 			targetName,
 		};
-		if (!isChainProxyGroupProfileEligible(stage2Init, nextRow) && chainProxyGroupProfile !== undefined) {
-			report.clearedChainProxyProfiles += 1;
-			chainProxyGroupProfile = undefined;
-		}
-		return {
-			...nextRow,
-			chainProxyGroupProfile,
-		};
+		return nextRow;
 	});
 
 	const rowsByID = new Map(
@@ -320,8 +314,10 @@ export function mergeStage2SnapshotAfterConvert(
 		});
 	}
 
+	const hasEligibleRows = validatedRows.some((row) => isSwitchOptimizationEligible(stage2Init, row));
+	const chainProxyTargetGroupSwitchOptimizationEnabled = hasEligibleRows && Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled);
 	return {
-		snapshot: normalizeStage2SnapshotRowsAndGroups(validatedRows, nextServerAggregationGroups),
+		snapshot: normalizeStage2SnapshotRowsAndGroups(validatedRows, nextServerAggregationGroups, chainProxyTargetGroupSwitchOptimizationEnabled),
 		report,
 	};
 }
@@ -484,8 +480,9 @@ export function applyStage2InitState(
 			? normalizeStage2SnapshotRowsAndGroups(
 				stage2SnapshotOverride.rows,
 				stage2SnapshotOverride.serverAggregationGroups,
+					Boolean(stage2SnapshotOverride.chainProxyTargetGroupSwitchOptimizationEnabled),
 			)
-			: { rows: buildStage2SnapshotRows(stage2Init), serverAggregationGroups: [] },
+				: { rows: buildStage2SnapshotRows(stage2Init), chainProxyTargetGroupSwitchOptimizationEnabled: false, serverAggregationGroups: [] },
 		generatedUrls: null,
 		stage3Expired: false,
 		stage2Stale: false,
@@ -529,6 +526,7 @@ function buildRestorePatch(options: RestoreStateOptions) {
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
 			options.stage2Snapshot.rows,
 			options.stage2Snapshot.serverAggregationGroups ?? [],
+			Boolean(options.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
 		),
 		generatedUrls: {
 			longUrl: options.resolvedLongUrl,
@@ -696,27 +694,14 @@ export function applyShortURLCreationFailureState(current: AppState, options: Sh
 	);
 }
 
-export function applyGlobalChainProxyGroupProfileState(
+export function applySwitchOptimizationState(
 	current: AppState,
 	enabled: boolean,
 	isEligible: (row: Stage2Row) => boolean,
 ): AppState {
-	let changed = false;
-	const rows = current.stage2Snapshot.rows.map((row) => {
-		if (!isEligible(row)) {
-			return row;
-		}
-		const nextProfile = enabled ? "aggressive_url_test" as const : undefined;
-		if (row.chainProxyGroupProfile === nextProfile) {
-			return row;
-		}
-		changed = true;
-		return {
-			...row,
-			chainProxyGroupProfile: nextProfile,
-		};
-	});
-	if (!changed) {
+	const hasEligibleRows = current.stage2Snapshot.rows.some((row) => isEligible(row));
+	const nextEnabled = enabled && hasEligibleRows;
+	if (Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled) === nextEnabled) {
 		return current;
 	}
 	return {
@@ -724,7 +709,8 @@ export function applyGlobalChainProxyGroupProfileState(
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: {
-			rows,
+			rows: current.stage2Snapshot.rows,
+			chainProxyTargetGroupSwitchOptimizationEnabled: nextEnabled,
 			serverAggregationGroups: current.stage2Snapshot.serverAggregationGroups,
 		},
 	};
@@ -747,6 +733,7 @@ export function updateStage2RowState(
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
 			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
 			current.stage2Snapshot.serverAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
 		),
 	};
 }
@@ -778,7 +765,11 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string, 
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(nextRows, current.stage2Snapshot.serverAggregationGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			nextRows,
+			current.stage2Snapshot.serverAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
 	};
 }
 
@@ -799,6 +790,7 @@ export function deleteStage2RowState(current: AppState, landingNodeName: string)
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
 			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
 			current.stage2Snapshot.serverAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
 		),
 	};
 }
@@ -831,7 +823,11 @@ export function updateServerAggregationStrategyState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows,
+			nextServerAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
 	};
 }
 
@@ -881,7 +877,11 @@ export function updateServerAggregationGroupState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows,
+			nextServerAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
 	};
 }
 
@@ -926,7 +926,11 @@ export function reorderServerAggregationMemberState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows,
+			nextServerAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
 	};
 }
 
@@ -969,7 +973,11 @@ export function moveServerAggregationMemberToIndexState(
 		...current,
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(current.stage2Snapshot.rows, nextServerAggregationGroups),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows,
+			nextServerAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
 	};
 }
 
@@ -983,6 +991,7 @@ export function clearServerAggregationGroupsState(current: AppState): AppState {
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: {
 			rows: current.stage2Snapshot.rows,
+			chainProxyTargetGroupSwitchOptimizationEnabled: current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
 			serverAggregationGroups: [],
 		},
 	};

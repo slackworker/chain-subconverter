@@ -122,10 +122,10 @@ const COPY = {
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
 		selectTarget: "请选择",
-		chainProxyGroupProfileLabel: "目标策略组节点切换优化（实验性）",
-		chainProxyGroupProfileHint:
+		switchOptimizationLabel: "目标策略组节点切换优化（实验性）",
+		switchOptimizationHint:
 			"开启后，为链式代理所选的地域策略组启用更短的健康检查间隔与更快的节点切换；节点异常时尽快切换到可用节点。关闭时沿用订阅模板中的默认设置。",
-		chainProxyGroupProfileHintAria: "目标策略组节点切换优化说明",
+		switchOptimizationHintAria: "目标策略组节点切换优化说明",
 		generating: "生成中…",
 		generateLink: "生成链接",
 		stage3Title: "输出",
@@ -268,10 +268,10 @@ const COPY = {
 		fixedNodes: "Fixed nodes",
 		noCommonChoices: "No common choices available",
 		selectTarget: "Select a target",
-		chainProxyGroupProfileLabel: "Target policy-group node switching optimization",
-		chainProxyGroupProfileHint:
+		switchOptimizationLabel: "Target policy-group node switching optimization",
+		switchOptimizationHint:
 			"When enabled, applies shorter health-check intervals and faster node switching to regional policy groups selected for chain proxies. When disabled, the subscription template defaults apply.",
-		chainProxyGroupProfileHintAria: "Target policy-group node switching optimization help",
+		switchOptimizationHintAria: "Target policy-group node switching optimization help",
 		generating: "Generating...",
 		generateLink: "Generate link",
 		stage3Title: "Output",

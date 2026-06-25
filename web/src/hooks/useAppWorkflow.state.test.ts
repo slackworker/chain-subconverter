@@ -195,7 +195,6 @@ describe("useAppWorkflow.state", () => {
 			droppedDerivedRows: 0,
 			resetModes: 0,
 			clearedTargets: 0,
-			clearedChainProxyProfiles: 0,
 			filteredAggregationMembers: 0,
 			disabledAggregationGroups: 0,
 			removedAggregationGroups: 0,
@@ -214,7 +213,6 @@ describe("useAppWorkflow.state", () => {
 						landingNodeName: "landing-hk custom",
 						mode: "port_forward",
 						targetName: "relay-a.example.com:7443",
-						chainProxyGroupProfile: "aggressive_url_test",
 					},
 					{
 						rowId: "landing-obsolete-2",
@@ -258,7 +256,6 @@ describe("useAppWorkflow.state", () => {
 			rowId: "landing-hk",
 			mode: "none",
 			targetName: null,
-			chainProxyGroupProfile: undefined,
 		});
 		expect(result.snapshot.serverAggregationGroups).toEqual([
 			{
@@ -271,7 +268,6 @@ describe("useAppWorkflow.state", () => {
 		expect(result.report).toMatchObject({
 			droppedDerivedRows: 1,
 			resetModes: 1,
-			clearedChainProxyProfiles: 1,
 			filteredAggregationMembers: 1,
 			disabledAggregationGroups: 1,
 		});

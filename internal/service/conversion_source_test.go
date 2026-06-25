@@ -573,7 +573,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 	}
 }
 
-func TestRenderCompleteConfigFromSource_OverridesChainProxyGroupProfileOnManagedPass3Path(t *testing.T) {
+func TestRenderCompleteConfigFromSource_AppliesSwitchOptimizationOnManagedPass3Path(t *testing.T) {
 	chainTarget := "🇭🇰 香港节点"
 	source := &fakeSnapshotRenderingSource{
 		fakeConversionSource: fakeConversionSource{
@@ -634,14 +634,15 @@ func TestRenderCompleteConfigFromSource_OverridesChainProxyGroupProfileOnManaged
 		context.Background(),
 		source,
 		Stage1Input{},
-		Stage2Snapshot{Rows: []Stage2Row{{
+		Stage2Snapshot{
+			ChainProxyTargetGroupSwitchOptimizationEnabled: true,
+			Rows: []Stage2Row{{
 			RowID:                  "hk-1",
 			SourceLandingNodeName:  "HK Landing",
 			ProxyName:              "HK Landing",
 			LandingNodeName:        "HK Landing",
 			Mode:                   "chain",
 			TargetName:             &chainTarget,
-			ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
 		}}},
 		InputLimits{},
 	)
@@ -649,11 +650,11 @@ func TestRenderCompleteConfigFromSource_OverridesChainProxyGroupProfileOnManaged
 		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
 	}
 
-	if !strings.Contains(renderedConfig, "    type: fallback") {
+	if !strings.Contains(renderedConfig, "    type: url-test") {
 		t.Fatalf("rendered config should override proxy-group type on managed pass3 path:\n%s", renderedConfig)
 	}
 	if !strings.Contains(renderedConfig, "    max-failed-times: 1") || !strings.Contains(renderedConfig, "    lazy: false") {
-		t.Fatalf("rendered config should include aggressive fallback fields on managed pass3 path:\n%s", renderedConfig)
+		t.Fatalf("rendered config should include switch optimization fields on managed pass3 path:\n%s", renderedConfig)
 	}
 	if strings.Contains(renderedConfig, "      - HK Landing\n") {
 		t.Fatalf("rendered config should still strip landing node from the target region group:\n%s", renderedConfig)

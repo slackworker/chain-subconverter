@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "re
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import { Tooltip } from "../../lib/Tooltip";
-import { isChainProxyGroupProfileEligible } from "../../lib/stage2";
+import { isSwitchOptimizationEligible } from "../../lib/stage2";
 import { ArrowRightIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
@@ -106,14 +106,11 @@ export function Stage2Section({
 	tableWrapRef,
 }: Stage2SectionProps) {
 	const { stage2Rows, state } = workflow;
-	const hasChainProxyGroupProfileEligibleRows = stage2Rows.some((row) =>
-		isChainProxyGroupProfileEligible(state.stage2Init, row),
+	const hasSwitchOptimizationEligibleRows = stage2Rows.some((row) =>
+		isSwitchOptimizationEligible(state.stage2Init, row),
 	);
-	const chainProxyGroupProfileGlobalEnabled = stage2Rows.some(
-		(row) =>
-			isChainProxyGroupProfileEligible(state.stage2Init, row)
-			&& Boolean(row.chainProxyGroupProfile),
-	);
+	const switchOptimizationEnabled =
+		hasSwitchOptimizationEligibleRows && Boolean(state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
@@ -298,19 +295,19 @@ export function Stage2Section({
 											<input
 												className="a-switch__input"
 												type="checkbox"
-												checked={chainProxyGroupProfileGlobalEnabled}
-												disabled={!isStage2Editable || !hasChainProxyGroupProfileEligibleRows}
-												aria-label={copy.chainProxyGroupProfileLabel}
+												checked={switchOptimizationEnabled}
+												disabled={!isStage2Editable || !hasSwitchOptimizationEligibleRows}
+												aria-label={copy.switchOptimizationLabel}
 												onChange={(event) =>
-													workflow.handleGlobalChainProxyGroupProfileChange(event.target.checked)}
+													workflow.handleSwitchOptimizationChange(event.target.checked)}
 											/>
 											<span className="a-switch" aria-hidden />
 											<span className="a-advanced__switch-label">
-												{copy.chainProxyGroupProfileLabel}{" "}
-												<Tooltip content={copy.chainProxyGroupProfileHint}>
+												{copy.switchOptimizationLabel}{" "}
+												<Tooltip content={copy.switchOptimizationHint}>
 													<span
 														className="a-hint"
-														aria-label={copy.chainProxyGroupProfileHintAria}
+														aria-label={copy.switchOptimizationHintAria}
 													>
 														?
 													</span>

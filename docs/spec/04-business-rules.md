@@ -282,7 +282,7 @@
 
 补充规则：
 
-- `stage2Init.rows[].chainProxyGroupProfile` 初始化时必须为空或省略；该字段只用于用户后续为 `chain + proxy-groups` 目标选择受管激进 profile
+- `stage2Init.rows[]` 不暴露切换优化字段；开关由 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 全局承载
 
 #### 初始化决策顺序
 
@@ -371,8 +371,7 @@
 - `mode = port_forward`：第四列写入端口转发 `server:port`
 - `rows` 数组顺序不参与生成语义；校验与恢复以 `rowId` 为行定位主键，`sourceLandingNodeName` 仅用于连接参数绑定
 - `serverAggregationGroups[]` 只新增聚合策略组产物，不得覆盖任何行的 `mode/targetName` 语义
-- `chainProxyGroupProfile` 是行级保存、组级生效的受管配置：只记录“当前行指向的地域策略组应使用哪种激进 profile”，不改变该行 `dialer-proxy` 指向的 `targetName`
-- 当前受支持的 profile 只有 `aggressive_fallback` 与 `aggressive_url_test`
+- `chainProxyTargetGroupSwitchOptimizationEnabled` 是全局保存、组级生效的受管配置：开启后，所有 `mode = chain` 且目标为 `proxy-groups` 的行统一应用节点切换优化（`url-test` 覆写），不改变该行 `dialer-proxy` 指向的 `targetName`
 
 ### 3.2 生成前校验
 
@@ -384,10 +383,7 @@
 - 若多个落地节点同时选择同一个 `forwardRelays[].name` 作为 `port_forward` 目标，必须以 `DUPLICATE_FORWARD_RELAY_TARGET` 阻断生成
 - 若某行选择的 `chain` 目标在当前 `chainTargets[]` 中 `isEmpty = true`，必须以 `EMPTY_CHAIN_TARGET` 阻断生成
 - 若 `serverAggregationGroups[]` 违反 `2.7` 校验规则，必须阻断生成
-- 若 `chainProxyGroupProfile` 不是空值、`aggressive_fallback` 或 `aggressive_url_test`，必须以 `INVALID_REQUEST` 阻断生成
-- `mode = none` 或 `mode = port_forward` 时，`chainProxyGroupProfile` 必须为空；否则必须以 `INVALID_REQUEST` 阻断生成
-- `mode = chain` 且 `targetName` 指向 `kind = proxies` 的候选时，`chainProxyGroupProfile` 必须为空；否则必须以 `INVALID_REQUEST` 阻断生成
-- 同一份 `stage2Snapshot` 中，若多个行选择同一个 `kind = proxy-groups` 的 `targetName`，其 `chainProxyGroupProfile` 必须一致；不一致时必须以 `INVALID_REQUEST` 阻断生成
+- 若 `chainProxyTargetGroupSwitchOptimizationEnabled = true`，后端只对当前符合条件行（`mode = chain` 且 `targetName` 为 `kind = proxy-groups`）生效
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 - `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 
@@ -407,7 +403,7 @@
 
 - 上游订阅内容变化导致引用仍有效时，恢复结果保持可重放；导致任一引用失效时，恢复结果为不可重放
 - 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
-- 若某行保存了 `chainProxyGroupProfile`，只要当前 `proxy-groups` 候选仍存在且该 profile 仍受支持，就不因组成员变化而判为冲突
+- 若 `chainProxyTargetGroupSwitchOptimizationEnabled = true`，只要当前 `proxy-groups` 候选仍存在，即不因组成员变化而判为冲突
 - 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
@@ -426,17 +422,16 @@
 
 ### 3.3.1 既有地域策略组覆写（Pass 3 后）
 
-若某些行为 `mode = chain` 且为其 `proxy-groups` 目标保存了 `chainProxyGroupProfile`，后端在 `full-base pass` 完成且执行 `1.3` 出组后，必须继续对最终 YAML 中的同名既有地域策略组做受管覆写。
+若 `chainProxyTargetGroupSwitchOptimizationEnabled = true` 且某些行为 `mode = chain` 且目标为 `proxy-groups`，后端在 `full-base pass` 完成且执行 `1.3` 出组后，必须继续对最终 YAML 中的同名既有地域策略组做受管覆写。
 
 覆写规则：
 
 - 覆写优先于模板原组的 `type` 与健康检查相关参数
 - 只允许覆写当前快照引用到的既有 `proxy-groups`；不得为该能力新增新的策略组名
 - 覆写对象按 `targetName` 定位；最终该行的 `dialer-proxy` 仍保持 `dialer-proxy: <targetName>`
-- 组成员列表沿用 `full-base pass` 与 `1.3` 出组后的结果，不因 profile 选择而重新展开成员
-- 两种受管 profile 都必须统一写入以下健康检查参数：`url = https://cp.cloudflare.com/generate_204`、`interval = 60`、`lazy = false`、`timeout = 500`、`max-failed-times = 1`
-- `aggressive_fallback`：将组 `type` 覆写为 `fallback`；不处理 `tolerance` 字段
-- `aggressive_url_test`：将组 `type` 覆写为 `url-test`；不处理 `tolerance` 字段
+- 组成员列表沿用 `full-base pass` 与 `1.3` 出组后的结果，不因切换优化开关而重新展开成员
+- 切换优化必须统一写入以下健康检查参数：`url = https://cp.cloudflare.com/generate_204`、`interval = 60`、`lazy = false`、`timeout = 500`、`max-failed-times = 1`
+- `chainProxyTargetGroupSwitchOptimizationEnabled = true` 时，组 `type` 覆写为 `url-test`；不处理 `tolerance` 字段
 
 ### 3.3.2 server 聚合组追加（Pass 3 后）
 

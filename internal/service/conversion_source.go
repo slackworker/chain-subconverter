@@ -55,6 +55,7 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 
 func RenderCompleteConfigFromSourceWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits, extraQuery url.Values) (string, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
+	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
 	if snapshotSource, ok := source.(SnapshotPass3RenderingSource); ok {
 		return renderCompleteConfigViaManagedPass3(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits, extraQuery)
 	}
@@ -121,11 +122,17 @@ func renderCompleteConfigViaManagedPass3(
 		return "", err
 	}
 
+	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
+	if err != nil {
+		return "", newInternalResponseError("failed to build stage2 init", fmt.Errorf("build stage2 init: %w", err))
+	}
+
 	rendered, err := stripLandingNodesFromCompleteConfigYAML(
 		fullBaseYAML,
-		stage2Snapshot.Rows,
+		stage2Snapshot,
 		stage2StripLandingNames(landingProxies, stage2Snapshot.Rows),
 		regionGroupNames,
+		proxyGroupChainTargetNameSet(stage2Init),
 	)
 	if err != nil {
 		return "", err

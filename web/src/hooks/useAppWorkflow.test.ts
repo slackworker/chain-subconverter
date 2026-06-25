@@ -1667,7 +1667,7 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		]);
 	});
 
-	it("applies chainProxyGroupProfile to all eligible chain proxy-group rows via global toggle", async () => {
+	it("toggles switch optimization via Stage2 global switch", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -1708,25 +1708,19 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		await runWorkflowAction(() => workflow.current.handleStage1Convert());
 
 		act(() => {
-			workflow.current.handleGlobalChainProxyGroupProfileChange(true);
+			workflow.current.handleSwitchOptimizationChange(true);
 		});
 
-		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
-			"aggressive_url_test",
-			"aggressive_url_test",
-		]);
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
 
 		act(() => {
-			workflow.current.handleGlobalChainProxyGroupProfileChange(false);
+			workflow.current.handleSwitchOptimizationChange(false);
 		});
 
-		expect(workflow.current.stage2Rows.map((row) => row.chainProxyGroupProfile)).toEqual([
-			undefined,
-			undefined,
-		]);
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(false);
 	});
 
-	it("clears chainProxyGroupProfile when chain target switches from proxy-groups to fixed proxies", async () => {
+	it("does not alter global switch optimization when row target switches", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({
 			landingRawText: "ss://landing-node",
@@ -1762,10 +1756,10 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
 
 		act(() => {
-			workflow.current.handleChainProxyGroupProfileChange(rowKey, "aggressive_url_test");
+			workflow.current.handleSwitchOptimizationChange(true);
 		});
 
-		expect(workflow.current.stage2Rows[0].chainProxyGroupProfile).toBe("aggressive_url_test");
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
 
 		act(() => {
 			workflow.current.handleTargetChange(rowKey, "Transit Node A");
@@ -1775,8 +1769,7 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 			mode: "chain",
 			targetName: "Transit Node A",
 		});
-		expect(workflow.current.stage2Rows[0].chainProxyGroupProfile).toBeUndefined();
-		expect(workflow.current.state.stage2Snapshot.rows[0].chainProxyGroupProfile).toBeUndefined();
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
 	});
 
 	it("does not allow switching back to the long URL when it exceeds the public budget", async () => {

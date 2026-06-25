@@ -101,8 +101,9 @@ type Stage2SnapshotFixture struct {
 }
 
 type Stage2Snapshot struct {
-	Rows                    []Stage2Row              `json:"rows"`
-	ServerAggregationGroups []ServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
+	Rows                          []Stage2Row              `json:"rows"`
+	ChainProxyTargetGroupSwitchOptimizationEnabled bool                     `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
+	ServerAggregationGroups       []ServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
 }
 
 type ServerAggregationGroup struct {
@@ -126,7 +127,6 @@ type Stage2Row struct {
 	LandingNodeName        string                     `json:"landingNodeName"`
 	Mode                   string                     `json:"mode"`
 	TargetName             *string                    `json:"targetName"`
-	ChainProxyGroupProfile string                     `json:"chainProxyGroupProfile,omitempty"`
 	RestrictedModes        map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 }
 
@@ -139,7 +139,6 @@ type Stage2InitRow struct {
 	Server                 string                     `json:"server"`
 	Mode                   string                     `json:"mode"`
 	TargetName             *string                    `json:"targetName"`
-	ChainProxyGroupProfile string                     `json:"chainProxyGroupProfile,omitempty"`
 	RestrictedModes        map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 	ModeWarnings           map[string]ModeRestriction `json:"modeWarnings,omitempty"`
 }
@@ -196,24 +195,6 @@ type regionMatcher struct {
 }
 
 const recommendedChainLandingPortMax = 10000
-
-const (
-	ChainProxyGroupProfileAggressiveFallback = "aggressive_fallback"
-	ChainProxyGroupProfileAggressiveURLTest  = "aggressive_url_test"
-)
-
-func normalizeChainProxyGroupProfile(profile string) string {
-	return strings.TrimSpace(profile)
-}
-
-func isSupportedChainProxyGroupProfile(profile string) bool {
-	switch normalizeChainProxyGroupProfile(profile) {
-	case "", ChainProxyGroupProfileAggressiveFallback, ChainProxyGroupProfileAggressiveURLTest:
-		return true
-	default:
-		return false
-	}
-}
 
 func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)

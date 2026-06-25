@@ -7,8 +7,7 @@
         "proxyName": "🇸🇬 Alpha-SS-SG",
         "landingNodeName": "🇸🇬 Alpha-SS-SG",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点",
-        "chainProxyGroupProfile": "aggressive_url_test"
+        "targetName": "🇭🇰 香港节点"
       },
       {
         "rowId": "🇸🇬 Alpha-SS-SG 2",
@@ -16,8 +15,7 @@
         "proxyName": "🇸🇬 Alpha-SS-SG 2",
         "landingNodeName": "🇸🇬 Alpha-SS-SG 2",
         "mode": "chain",
-        "targetName": "🇸🇬 新加坡节点",
-        "chainProxyGroupProfile": "aggressive_url_test"
+        "targetName": "🇸🇬 新加坡节点"
       },
       {
         "rowId": "🇸🇬 Alpha-Reality-SG",
@@ -49,8 +47,7 @@
         "proxyName": "🇯🇵 Beta-SS-JP",
         "landingNodeName": "🇯🇵 Beta-SS-JP",
         "mode": "chain",
-        "targetName": "🇯🇵 日本节点",
-        "chainProxyGroupProfile": "aggressive_url_test"
+        "targetName": "🇯🇵 日本节点"
       },
       {
         "rowId": "🇯🇵 Beta-Reality-JP",
@@ -66,10 +63,10 @@
         "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "mode": "chain",
-        "targetName": "🇭🇰 香港节点",
-        "chainProxyGroupProfile": "aggressive_url_test"
+        "targetName": "🇭🇰 香港节点"
       }
     ],
+    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
     "serverAggregationGroups": [
       {
         "server": "198.51.100.10",

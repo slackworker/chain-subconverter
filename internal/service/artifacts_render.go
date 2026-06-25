@@ -7,29 +7,41 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const aggressiveChainProxyGroupHealthCheckURL = "https://cp.cloudflare.com/generate_204"
+const switchOptimizationHealthCheckURL = "https://cp.cloudflare.com/generate_204"
 
-func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+func renderCompleteConfigYAML(
+	fullBaseYAML string,
+	snapshot Stage2Snapshot,
+	landingNames map[string]struct{},
+	regionGroupNames map[string]struct{},
+	proxyGroupChainTargetNames map[string]struct{},
+) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
 		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
 			return err
 		}
-		if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
+		if err := applySnapshotToInlineProxies(root, snapshot.Rows, lines, replacedLines); err != nil {
 			return err
 		}
-		if err := applyChainProxyGroupProfiles(root, rows, lines, deletedLines, replacedLines); err != nil {
+		if err := applySwitchOptimizationOverrides(root, snapshot, proxyGroupChainTargetNames, lines, deletedLines, replacedLines); err != nil {
 			return err
 		}
 		return nil
 	})
 }
 
-func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+func stripLandingNodesFromCompleteConfigYAML(
+	fullBaseYAML string,
+	snapshot Stage2Snapshot,
+	landingNames map[string]struct{},
+	regionGroupNames map[string]struct{},
+	proxyGroupChainTargetNames map[string]struct{},
+) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
 		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
 			return err
 		}
-		return applyChainProxyGroupProfiles(root, rows, lines, deletedLines, replacedLines)
+		return applySwitchOptimizationOverrides(root, snapshot, proxyGroupChainTargetNames, lines, deletedLines, replacedLines)
 	})
 }
 
@@ -171,9 +183,16 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 	return nil
 }
 
-func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
-	profilesByTarget := collectChainProxyGroupProfiles(rows)
-	if len(profilesByTarget) == 0 {
+func applySwitchOptimizationOverrides(
+	root *yaml.Node,
+	snapshot Stage2Snapshot,
+	proxyGroupChainTargetNames map[string]struct{},
+	lines []string,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
+	targets := collectSwitchOptimizationTargets(snapshot, proxyGroupChainTargetNames)
+	if len(targets) == 0 {
 		return nil
 	}
 
@@ -195,8 +214,7 @@ func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []str
 			return fmt.Errorf("proxy-group entry is missing name")
 		}
 
-		profile, ok := profilesByTarget[nameNode.Value]
-		if !ok {
+		if _, ok := targets[nameNode.Value]; !ok {
 			continue
 		}
 
@@ -213,30 +231,47 @@ func applyChainProxyGroupProfiles(root *yaml.Node, rows []Stage2Row, lines []str
 			}
 		}
 
-		if err := applyChainProxyGroupProfileLines(groupNode, profile, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
-			return fmt.Errorf("apply chain proxy-group profile for %q: %w", nameNode.Value, err)
+		if err := applySwitchOptimizationLines(groupNode, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
+			return fmt.Errorf("apply switch optimization for %q: %w", nameNode.Value, err)
 		}
 	}
 
 	return nil
 }
 
-func collectChainProxyGroupProfiles(rows []Stage2Row) map[string]string {
-	profilesByTarget := make(map[string]string)
-	for _, row := range rows {
+func collectSwitchOptimizationTargets(snapshot Stage2Snapshot, proxyGroupChainTargetNames map[string]struct{}) map[string]struct{} {
+	if !snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+		return nil
+	}
+	targets := make(map[string]struct{})
+	for _, row := range snapshot.Rows {
 		if row.Mode != "chain" || row.TargetName == nil {
 			continue
 		}
-		profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
-		if profile == "" {
+		targetName := strings.TrimSpace(*row.TargetName)
+		if targetName == "" {
 			continue
 		}
-		profilesByTarget[strings.TrimSpace(*row.TargetName)] = profile
+		if _, ok := proxyGroupChainTargetNames[targetName]; !ok {
+			continue
+		}
+		targets[targetName] = struct{}{}
 	}
-	return profilesByTarget
+	return targets
 }
 
-var chainProxyGroupProfileFieldOrder = []string{
+func proxyGroupChainTargetNameSet(stage2Init Stage2Init) map[string]struct{} {
+	names := make(map[string]struct{}, len(stage2Init.ChainTargets))
+	for _, target := range stage2Init.ChainTargets {
+		if target.Kind != "proxy-groups" {
+			continue
+		}
+		names[target.Name] = struct{}{}
+	}
+	return names
+}
+
+var switchOptimizationFieldOrder = []string{
 	"type",
 	"url",
 	"interval",
@@ -246,36 +281,19 @@ var chainProxyGroupProfileFieldOrder = []string{
 	"tolerance",
 }
 
-type chainProxyGroupProfilePatch struct {
-	set map[string]string
+func switchOptimizationPatch() map[string]string {
+	return map[string]string{
+		"type":             "url-test",
+		"url":              switchOptimizationHealthCheckURL,
+		"interval":         "60",
+		"lazy":             "false",
+		"timeout":          "500",
+		"max-failed-times": "1",
+	}
 }
 
-func chainProxyGroupProfilePatchFor(profile string) (chainProxyGroupProfilePatch, error) {
-	patch := chainProxyGroupProfilePatch{
-		set: map[string]string{
-			"url":              aggressiveChainProxyGroupHealthCheckURL,
-			"interval":         "60",
-			"lazy":             "false",
-			"timeout":          "500",
-			"max-failed-times": "1",
-		},
-	}
-
-	switch normalizeChainProxyGroupProfile(profile) {
-	case ChainProxyGroupProfileAggressiveFallback:
-		patch.set["type"] = "fallback"
-	case ChainProxyGroupProfileAggressiveURLTest:
-		patch.set["type"] = "url-test"
-	default:
-		return chainProxyGroupProfilePatch{}, fmt.Errorf("unsupported chain proxy-group profile %q", profile)
-	}
-
-	return patch, nil
-}
-
-func applyChainProxyGroupProfileLines(
+func applySwitchOptimizationLines(
 	groupNode *yaml.Node,
-	profile string,
 	lines []string,
 	startIndex int,
 	endIndex int,
@@ -292,14 +310,10 @@ func applyChainProxyGroupProfileLines(
 		return fmt.Errorf("proxy-group %q is missing proxies", groupName)
 	}
 
-	patch, err := chainProxyGroupProfilePatchFor(profile)
-	if err != nil {
-		return err
-	}
-
+	patch := switchOptimizationPatch()
 	fieldIndent := proxyGroupFieldIndent(lines, startIndex, endIndex)
-	pending := make(map[string]string, len(patch.set))
-	for key, value := range patch.set {
+	pending := make(map[string]string, len(patch))
+	for key, value := range patch {
 		pending[key] = value
 	}
 
@@ -328,7 +342,7 @@ func applyChainProxyGroupProfileLines(
 	}
 
 	insertLines := make([]string, 0, len(pending))
-	for _, key := range chainProxyGroupProfileFieldOrder {
+	for _, key := range switchOptimizationFieldOrder {
 		value, ok := pending[key]
 		if !ok {
 			continue
@@ -349,7 +363,7 @@ func applyChainProxyGroupProfileLines(
 		insertIndex--
 	}
 	if insertIndex <= startIndex {
-		return fmt.Errorf("proxy-group block has no insertion point for profile fields")
+		return fmt.Errorf("proxy-group block has no insertion point for switch optimization fields")
 	}
 
 	replacedLines[insertIndex] = lines[insertIndex] + "\n" + strings.Join(insertLines, "\n")

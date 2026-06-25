@@ -135,13 +135,9 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG 3", "port_forward", "relay-b.example.com:8443")
 	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-Reality-JP", "none", "")
 	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Manual-SOCKS5-HK-Fallback", "chain", "🇭🇰 香港节点")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-SS-SG", "aggressive_url_test")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-SS-SG 2", "aggressive_url_test")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG", "")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG 2", "")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-SS-JP", "aggressive_url_test")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-Reality-JP", "")
-	assertSnapshotRowChainProxyGroupProfile(t, response.Stage2Snapshot.Rows, "🇭🇰 Manual-SOCKS5-HK-Fallback", "aggressive_url_test")
+	if !response.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+		t.Fatal("expected chainProxyTargetGroupSwitchOptimizationEnabled to be true")
+	}
 	assertServerAggregationGroup(
 		t,
 		response.Stage2Snapshot.ServerAggregationGroups,
@@ -377,28 +373,6 @@ func assertSnapshotRow(t *testing.T, rows []Stage2Row, landingNodeName string, m
 		}
 		if row.TargetName == nil || *row.TargetName != targetName {
 			t.Fatalf("row %q targetName = %v, want %q", landingNodeName, row.TargetName, targetName)
-		}
-		return
-	}
-
-	t.Fatalf("landing node %q not found in snapshot rows: %v", landingNodeName, rows)
-}
-
-func assertSnapshotRowChainProxyGroupProfile(t *testing.T, rows []Stage2Row, landingNodeName string, expected string) {
-	t.Helper()
-
-	for _, row := range rows {
-		if row.LandingNodeName != landingNodeName {
-			continue
-		}
-		if expected == "" {
-			if row.ChainProxyGroupProfile != "" {
-				t.Fatalf("row %q chainProxyGroupProfile = %q, want empty", landingNodeName, row.ChainProxyGroupProfile)
-			}
-			return
-		}
-		if row.ChainProxyGroupProfile != expected {
-			t.Fatalf("row %q chainProxyGroupProfile = %q, want %q", landingNodeName, row.ChainProxyGroupProfile, expected)
 		}
 		return
 	}

@@ -142,60 +142,24 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 	}
 }
 
-func TestValidateGenerateSnapshot_RejectsChainProxyGroupProfileForPortForward(t *testing.T) {
-	targetName := "relay.example.com:80"
-	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
-
-	_, err := validateGenerateSnapshot(
-		Stage1Input{ForwardRelayItems: []string{targetName}},
-		Stage2Snapshot{
-			Rows: []Stage2Row{{
-				LandingNodeName:        "HK Landing",
-				Mode:                   "port_forward",
-				TargetName:             &targetName,
-				ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
-			}},
-		},
-		fixtures,
-	)
-	if err == nil {
-		t.Fatal("validateGenerateSnapshot() error = nil, want chainProxyGroupProfile validation")
-	}
-	if !strings.Contains(err.Error(), "chainProxyGroupProfile must be empty") {
-		t.Fatalf("validateGenerateSnapshot() error = %v", err)
-	}
-}
-
-func TestValidateGenerateSnapshot_RejectsConflictingChainProxyGroupProfilesForSameTarget(t *testing.T) {
+func TestValidateGenerateSnapshot_AllowsGlobalSwitchOptimization(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
 
 	_, err := validateGenerateSnapshot(
 		Stage1Input{},
 		Stage2Snapshot{
-			Rows: []Stage2Row{
-				{
-					SourceLandingNodeName:  "HK Landing",
-					ProxyName:              "HK Landing",
-					Mode:                   "chain",
-					TargetName:             &targetName,
-					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveFallback,
-				},
-				{
-					SourceLandingNodeName:  "HK Landing",
-					ProxyName:              "HK Landing 2",
-					Mode:                   "chain",
-					TargetName:             &targetName,
-					ChainProxyGroupProfile: ChainProxyGroupProfileAggressiveURLTest,
-				},
-			},
+			ChainProxyTargetGroupSwitchOptimizationEnabled: true,
+			Rows: []Stage2Row{{
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &targetName,
+			}},
 		},
 		fixtures,
 	)
-	if err == nil {
-		t.Fatal("validateGenerateSnapshot() error = nil, want chainProxyGroupProfile conflict")
-	}
-	if !strings.Contains(err.Error(), "chainProxyGroupProfile") {
+	if err != nil {
 		t.Fatalf("validateGenerateSnapshot() error = %v", err)
 	}
 }

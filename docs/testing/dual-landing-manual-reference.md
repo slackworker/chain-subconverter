@@ -97,4 +97,4 @@ relay-b.example.com:8443
 
 ## 验收
 
-- short ID 金样：`JFbfaKnvWb4`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
+- short ID 金样：`ezWo9f6C4p`（Stage3 反向解析；同一份可见配置应得到一致 short ID）

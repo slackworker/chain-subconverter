@@ -25,7 +25,7 @@ import {
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	isStage2SourceRow,
-	isChainProxyGroupProfileEligible,
+	isSwitchOptimizationEligible,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -40,7 +40,7 @@ import {
 } from "../lib/workflow-log";
 import type { ResponseOriginStage, WorkflowLogEntry } from "../lib/state";
 import { WORKFLOW_EVENTS, type WorkflowEventCode } from "../lib/workflow-log-events";
-import type { BlockingError, ChainProxyGroupProfile, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
 import {
@@ -68,7 +68,7 @@ import {
 	updateServerAggregationGroupState,
 	updateServerAggregationStrategyState,
 	updateStage1InputState,
-	applyGlobalChainProxyGroupProfileState,
+	applySwitchOptimizationState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
 import type { Stage2SnapshotMergeReport } from "./useAppWorkflow.state";
@@ -111,13 +111,6 @@ function buildStage2MergeMessages(
 			level: "warning",
 			code: "STAGE2_MERGE_TARGET_CLEARED",
 			message: `${report.clearedTargets} 行的目标已清空：原目标在最新候选中不可用。`,
-		});
-	}
-	if (report.clearedChainProxyProfiles > 0) {
-		messages.push({
-			level: "warning",
-			code: "STAGE2_MERGE_PROFILE_CLEARED",
-			message: `${report.clearedChainProxyProfiles} 行的策略组优化配置已清空：当前模式或目标不再适用。`,
 		});
 	}
 	if (report.filteredAggregationMembers > 0) {
@@ -202,34 +195,11 @@ export interface AppWorkflowViewModel {
 		memberRowId: string,
 		toIndex: number,
 	) => void;
-	handleChainProxyGroupProfileChange: (landingNodeName: string, profile: ChainProxyGroupProfile | "") => void;
-	handleGlobalChainProxyGroupProfileChange: (enabled: boolean) => void;
+	handleSwitchOptimizationChange: (enabled: boolean) => void;
 	handleClearServerAggregationGroups: () => void;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
-}
-
-function normalizeChainProxyGroupProfileValue(profile: Stage2Row["chainProxyGroupProfile"] | "") {
-	return profile ?? "";
-}
-
-function sanitizeChainProxyGroupProfile(
-	stage2Init: Stage2Init | null,
-	row: Stage2Row,
-	nextMode: Stage2Row["mode"],
-	nextTargetName: string | null,
-) {
-	const nextRow: Stage2Row = {
-		...row,
-		mode: nextMode,
-		targetName: nextTargetName,
-	};
-	if (!isChainProxyGroupProfileEligible(stage2Init, nextRow)) {
-		return undefined;
-	}
-	const currentProfile = normalizeChainProxyGroupProfileValue(row.chainProxyGroupProfile);
-	return currentProfile === "" ? undefined : currentProfile;
 }
 
 function fallbackBlockingError(error: unknown, context: RequestFailureContext): BlockingError {
@@ -700,12 +670,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			...row,
 			mode,
 			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
-			chainProxyGroupProfile: sanitizeChainProxyGroupProfile(
-				state.stage2Init,
-				row,
-				mode,
-				pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
-			),
 		}));
 	}
 
@@ -714,7 +678,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		updateStage2Row(landingNodeName, (row) => ({
 			...row,
 			targetName: nextTargetName,
-			chainProxyGroupProfile: sanitizeChainProxyGroupProfile(state.stage2Init, row, row.mode, nextTargetName),
 		}));
 	}
 
@@ -961,18 +924,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		);
 	}
 
-	function handleChainProxyGroupProfileChange(landingNodeName: string, profile: ChainProxyGroupProfile | "") {
-		updateStage2Row(landingNodeName, (row) => ({
-			...row,
-			chainProxyGroupProfile: profile === "" ? undefined : profile,
-		}));
-	}
-
-	function handleGlobalChainProxyGroupProfileChange(enabled: boolean) {
-		setState((current) => applyGlobalChainProxyGroupProfileState(
+	function handleSwitchOptimizationChange(enabled: boolean) {
+		setState((current) => applySwitchOptimizationState(
 			current,
 			enabled,
-			(row) => isChainProxyGroupProfileEligible(current.stage2Init, row),
+			(row) => isSwitchOptimizationEligible(current.stage2Init, row),
 		));
 	}
 
@@ -1171,8 +1127,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleServerAggregationEnableWithDefaults,
 		handleServerAggregationMemberReorder,
 		handleServerAggregationMemberMoveTo,
-		handleChainProxyGroupProfileChange,
-		handleGlobalChainProxyGroupProfileChange,
+		handleSwitchOptimizationChange,
 		handleClearServerAggregationGroups,
 		handleGenerate,
 		handlePreferShortUrl,

@@ -49,8 +49,6 @@ export interface RestrictedMode {
 	reasonText: string;
 }
 
-export type ChainProxyGroupProfile = "aggressive_fallback" | "aggressive_url_test";
-
 export interface Stage2Row {
 	rowId?: string;
 	sourceLandingNodeName?: string;
@@ -58,7 +56,6 @@ export interface Stage2Row {
 	landingNodeName: string;
 	mode: "none" | "chain" | "port_forward";
 	targetName: string | null;
-	chainProxyGroupProfile?: ChainProxyGroupProfile;
 }
 
 export interface ServerAggregationGroup {
@@ -94,6 +91,7 @@ export interface Stage2Init {
 
 export interface Stage2Snapshot {
 	rows: Stage2Row[];
+	chainProxyTargetGroupSwitchOptimizationEnabled?: boolean;
 	serverAggregationGroups: ServerAggregationGroup[];
 }
 

@@ -82,6 +82,7 @@ export const initialAppState: AppState = {
 	stage2Init: null,
 	stage2Snapshot: {
 		rows: [],
+		chainProxyTargetGroupSwitchOptimizationEnabled: false,
 		serverAggregationGroups: [],
 	},
 	generatedUrls: null,

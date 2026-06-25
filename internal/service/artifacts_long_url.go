@@ -66,17 +66,17 @@ type longURLAdvancedOptions struct {
 }
 
 type longURLStage2Snapshot struct {
-	Rows                    []longURLStage2Row              `json:"rows"`
-	ServerAggregationGroups []longURLServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
+	Rows                          []longURLStage2Row              `json:"rows"`
+	ChainProxyTargetGroupSwitchOptimizationEnabled *bool                           `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
+	ServerAggregationGroups       []longURLServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
 }
 
 type longURLStage2Row struct {
-	RowID                  string  `json:"rowId"`
-	SourceLandingNodeName  string  `json:"sourceLandingNodeName"`
-	ProxyName              string  `json:"proxyName"`
-	Mode                   string  `json:"mode"`
-	TargetName             *string `json:"targetName"`
-	ChainProxyGroupProfile string  `json:"chainProxyGroupProfile,omitempty"`
+	RowID                 string  `json:"rowId"`
+	SourceLandingNodeName string  `json:"sourceLandingNodeName"`
+	ProxyName             string  `json:"proxyName"`
+	Mode                  string  `json:"mode"`
+	TargetName            *string `json:"targetName"`
 }
 
 type longURLServerAggregationGroup struct {
@@ -296,15 +296,18 @@ func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error 
 
 func (schema longURLPayloadSchema) payload() LongURLPayload {
 	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
+	chainProxyTargetGroupSwitchOptimizationEnabled := false
+	if schema.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled != nil {
+		chainProxyTargetGroupSwitchOptimizationEnabled = *schema.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled
+	}
 	for index, row := range schema.Stage2Snapshot.Rows {
 		rows[index] = Stage2Row{
-			RowID:                  row.RowID,
-			SourceLandingNodeName:  row.SourceLandingNodeName,
-			ProxyName:              row.ProxyName,
-			LandingNodeName:        row.ProxyName,
-			Mode:                   row.Mode,
-			TargetName:             row.TargetName,
-			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
+			RowID:                 row.RowID,
+			SourceLandingNodeName: row.SourceLandingNodeName,
+			ProxyName:             row.ProxyName,
+			LandingNodeName:       row.ProxyName,
+			Mode:                  row.Mode,
+			TargetName:            row.TargetName,
 		}
 	}
 	var serverAggregationGroups []ServerAggregationGroup
@@ -336,8 +339,9 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			},
 		},
 		Stage2Snapshot: Stage2Snapshot{
-			Rows:                    rows,
-			ServerAggregationGroups: serverAggregationGroups,
+			Rows:                          rows,
+			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
+			ServerAggregationGroups:       serverAggregationGroups,
 		},
 	}
 }
@@ -366,8 +370,6 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	}
 
 	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
-	chainProxyGroupProfilesByTarget := make(map[string]string)
-	chainProxyGroupProfileOwners := make(map[string]string)
 	for _, row := range payload.Stage2Snapshot.Rows {
 		rowID := strings.TrimSpace(row.rowIDOrFallback())
 		if rowID == "" {
@@ -386,11 +388,6 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		}
 		rowsByProxyName[proxyName] = struct{}{}
 
-		profile := normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile)
-		if !isSupportedChainProxyGroupProfile(profile) {
-			return fmt.Errorf("unsupported chainProxyGroupProfile %q for proxy %q", row.ChainProxyGroupProfile, proxyName)
-		}
-
 		targetName := ""
 		if row.TargetName != nil {
 			targetName = strings.TrimSpace(*row.TargetName)
@@ -401,29 +398,13 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			if targetName != "" {
 				return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
 			}
-			if profile != "" {
-				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is none", proxyName)
-			}
 		case "chain":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
 			}
-			if existingProfile, exists := chainProxyGroupProfilesByTarget[targetName]; exists && existingProfile != profile {
-				return fmt.Errorf(
-					"chainProxyGroupProfile for target %q conflicts between proxy %q and proxy %q",
-					targetName,
-					chainProxyGroupProfileOwners[targetName],
-					proxyName,
-				)
-			}
-			chainProxyGroupProfilesByTarget[targetName] = profile
-			chainProxyGroupProfileOwners[targetName] = proxyName
 		case "port_forward":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
-			}
-			if profile != "" {
-				return fmt.Errorf("chainProxyGroupProfile must be empty for proxy %q when mode is port_forward", proxyName)
 			}
 		default:
 			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
@@ -611,12 +592,11 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {
 		rows[index] = longURLStage2Row{
-			RowID:                  row.rowIDOrFallback(),
-			SourceLandingNodeName:  row.sourceLandingNodeNameOrFallback(),
-			ProxyName:              row.proxyNameOrFallback(),
-			Mode:                   row.Mode,
-			TargetName:             row.TargetName,
-			ChainProxyGroupProfile: normalizeChainProxyGroupProfile(row.ChainProxyGroupProfile),
+			RowID:                 row.rowIDOrFallback(),
+			SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
+			ProxyName:             row.proxyNameOrFallback(),
+			Mode:                  row.Mode,
+			TargetName:            row.TargetName,
 		}
 	}
 	serverAggregationGroups := make([]longURLServerAggregationGroup, len(payload.Stage2Snapshot.ServerAggregationGroups))
@@ -629,6 +609,11 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 		}
 	}
 
+	var chainProxyTargetGroupSwitchOptimizationEnabled *bool
+	if payload.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+		enabled := true
+		chainProxyTargetGroupSwitchOptimizationEnabled = &enabled
+	}
 	return longURLPayloadSchema{
 		Stage1Input: longURLStage1Input{
 			AdvancedOptions: longURLAdvancedOptions{
@@ -644,8 +629,9 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			TransitRawText:    payload.Stage1Input.TransitRawText,
 		},
 		Stage2Snapshot: longURLStage2Snapshot{
-			Rows:                    rows,
-			ServerAggregationGroups: serverAggregationGroups,
+			Rows:                          rows,
+			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
+			ServerAggregationGroups:       serverAggregationGroups,
 		},
 		V: payload.V,
 	}

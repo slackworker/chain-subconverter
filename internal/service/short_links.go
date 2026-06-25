@@ -240,8 +240,9 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 	})
 
 	canonical.Stage2Snapshot = Stage2Snapshot{
-		Rows:                    rows,
-		ServerAggregationGroups: groups,
+		Rows:                          rows,
+		ChainProxyTargetGroupSwitchOptimizationEnabled: payload.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
+		ServerAggregationGroups:       groups,
 	}
 	return canonical
 }
@@ -252,14 +253,12 @@ func compareStage2RowCanonicalOrder(left Stage2Row, right Stage2Row) int {
 		strings.TrimSpace(left.proxyNameOrFallback()),
 		strings.TrimSpace(left.Mode),
 		normalizeOptionalStringValue(left.TargetName),
-		strings.TrimSpace(normalizeChainProxyGroupProfile(left.ChainProxyGroupProfile)),
 	}
 	rightFields := []string{
 		strings.TrimSpace(right.sourceLandingNodeNameOrFallback()),
 		strings.TrimSpace(right.proxyNameOrFallback()),
 		strings.TrimSpace(right.Mode),
 		normalizeOptionalStringValue(right.TargetName),
-		strings.TrimSpace(normalizeChainProxyGroupProfile(right.ChainProxyGroupProfile)),
 	}
 	return compareStringFields(leftFields, rightFields)
 }

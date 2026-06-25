@@ -108,7 +108,7 @@ go run ./cmd/testfixturegen -scenario dual-landing-chain-port-forward -stage1-li
   - `Beta-SS-JP` 保持 `chain -> 🇯🇵 日本节点`
   - `Beta-Reality-JP` 固定为 `none`
   - 手动 SOCKS5 保持 `chain -> 🇭🇰 香港节点`
-  - 启用 `serverAggregationGroups`（`198.51.100.10`，`fallback`）与 `chainProxyGroupProfile = aggressive_url_test`
+  - 启用 `serverAggregationGroups`（`198.51.100.10`，`fallback`）与 `chainProxyTargetGroupSwitchOptimizationEnabled = true`
 - `generate` / `resolve-url` / `short-links` 使用该固定快照验证长链接与短链接的可回放性
 
 也就是说，本基线同时覆盖自动识别、Stage 2 从默认 `chain` 手动切换到 `port_forward` / `none`，以及长/短链接恢复。
