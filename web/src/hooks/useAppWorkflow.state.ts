@@ -450,7 +450,7 @@ export function updateStage1InputState(
 	nextStage1Input: Stage1Input,
 	changedFields: string[],
 ): AppState {
-	const becomesStale = current.stage2Snapshot.rows.length > 0;
+	const becomesStale = changedFields.length > 0 && current.stage2Snapshot.rows.length > 0;
 	let blockingErrors = clearStage1FieldErrors(current.blockingErrors, changedFields);
 	if (changedFields.length > 0 && current.responseOriginStage === "stage1") {
 		blockingErrors = [];

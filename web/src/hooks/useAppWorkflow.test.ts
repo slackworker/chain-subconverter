@@ -304,6 +304,31 @@ describe("useAppWorkflow", () => {
 		expect(workflow.current.state.messages).toEqual([]);
 	});
 
+	it("does not mark Stage 2 stale when Stage 1 only changes trailing line breaks", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init = buildStage2Init();
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		expect(workflow.current.state.stage2Stale).toBe(false);
+
+		await updateStage1Input(workflow, {
+			...stage1Input,
+			landingRawText: `${stage1Input.landingRawText}\r\n\r\n`,
+			transitRawText: `${stage1Input.transitRawText}\n`,
+		});
+
+		expect(workflow.current.state.stage2Stale).toBe(false);
+	});
+
 	it("downgrades invalid Stage 2 fields after reconvert instead of full reset", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

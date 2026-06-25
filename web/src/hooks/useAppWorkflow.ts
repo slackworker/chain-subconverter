@@ -29,7 +29,7 @@ import {
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
-import { hydrateStage1Input, initialAppState, toStage1InputPayload } from "../lib/state";
+import { hydrateStage1Input, initialAppState, normalizeRawTextareaInput, toStage1InputPayload } from "../lib/state";
 import {
 	appendWorkflowLogEntries,
 	backendMessagesToWorkflowLog,
@@ -335,10 +335,10 @@ function sameNullableBoolean(current: boolean | null | undefined, next: boolean 
 function getChangedStage1Fields(current: Stage1Input, next: Stage1Input) {
 	const changedFields = new Set<string>();
 
-	if (current.landingRawText !== next.landingRawText) {
+	if (normalizeRawTextareaInput(current.landingRawText) !== normalizeRawTextareaInput(next.landingRawText)) {
 		changedFields.add("landingRawText");
 	}
-	if (current.transitRawText !== next.transitRawText) {
+	if (normalizeRawTextareaInput(current.transitRawText) !== normalizeRawTextareaInput(next.transitRawText)) {
 		changedFields.add("transitRawText");
 	}
 	if (!sameStringArray(current.forwardRelayItems, next.forwardRelayItems)) {

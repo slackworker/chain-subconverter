@@ -50,12 +50,18 @@ export const initialStage1Input: Stage1Input = {
 	},
 };
 
+export function normalizeRawTextareaInput(value: string): string {
+	return value
+		.replace(/\r\n?/g, "\n")
+		.replace(/\n+$/g, "");
+}
+
 export function toStage1InputPayload(stage1Input: Stage1Input): Stage1InputPayload {
 	const { enablePortForward: _enablePortForward, ...advancedOptions } = stage1Input.advancedOptions;
 
 	return {
-		landingRawText: stage1Input.landingRawText,
-		transitRawText: stage1Input.transitRawText,
+		landingRawText: normalizeRawTextareaInput(stage1Input.landingRawText),
+		transitRawText: normalizeRawTextareaInput(stage1Input.transitRawText),
 		forwardRelayItems: stage1Input.forwardRelayItems,
 		advancedOptions,
 	};
