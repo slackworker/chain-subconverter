@@ -1328,6 +1328,10 @@
 	margin-top: 0;
 }
 
+.a-check-row--stage2-advanced {
+	padding-top: 0;
+}
+
 .a-advanced__switch-label {
 	display: inline-flex;
 	align-items: center;

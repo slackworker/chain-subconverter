@@ -291,34 +291,30 @@ export function Stage2Section({
 							{copy.advancedOptions}
 						</button>
 						{stage2AdvancedOpen ? (
-							<div className="a-advanced">
-								<div className="a-advanced__body">
-									<div className="a-check-row">
-										<label className="a-check a-check--switch">
-											<input
-												className="a-switch__input"
-												type="checkbox"
-												checked={switchOptimizationEnabled}
-												disabled={!isStage2Editable || !hasSwitchOptimizationEligibleRows}
-												aria-label={copy.switchOptimizationLabel}
-												onChange={(event) =>
-													workflow.handleSwitchOptimizationChange(event.target.checked)}
-											/>
-											<span className="a-switch" aria-hidden />
-											<span className="a-advanced__switch-label">
-												{copy.switchOptimizationLabel}{" "}
-												<Tooltip content={copy.switchOptimizationHint}>
-													<span
-														className="a-hint"
-														aria-label={copy.switchOptimizationHintAria}
-													>
-														?
-													</span>
-												</Tooltip>
+							<div className="a-check-row a-check-row--stage2-advanced">
+								<label className="a-check a-check--switch">
+									<input
+										className="a-switch__input"
+										type="checkbox"
+										checked={switchOptimizationEnabled}
+										disabled={!isStage2Editable || !hasSwitchOptimizationEligibleRows}
+										aria-label={copy.switchOptimizationLabel}
+										onChange={(event) =>
+											workflow.handleSwitchOptimizationChange(event.target.checked)}
+									/>
+									<span className="a-switch" aria-hidden />
+									<span className="a-advanced__switch-label">
+										{copy.switchOptimizationLabel}{" "}
+										<Tooltip content={copy.switchOptimizationHint}>
+											<span
+												className="a-hint"
+												aria-label={copy.switchOptimizationHintAria}
+											>
+												?
 											</span>
-										</label>
-									</div>
-								</div>
+										</Tooltip>
+									</span>
+								</label>
 							</div>
 						) : null}
 					</>
