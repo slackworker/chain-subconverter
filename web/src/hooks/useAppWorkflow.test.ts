@@ -241,6 +241,137 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+	it("preserves non-conflicting Stage 2 edits after reconvert", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+			forwardRelayItems: ["relay-a.example.com:7443"],
+		});
+		const firstStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+		const secondStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			...firstStage2Init,
+			forwardRelays: [{ name: "relay-a.example.com:7443" }, { name: "relay-b.example.com:8443" }],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: firstStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+			workflow.current.handleModeChange(sourceRowKey, "port_forward");
+			workflow.current.handleTargetChange(sourceRowKey, "relay-a.example.com:7443");
+		});
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: secondStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, {
+			...stage1Input,
+			forwardRelayItems: ["relay-a.example.com:7443", "relay-b.example.com:8443"],
+		});
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			mode: "port_forward",
+			targetName: "relay-a.example.com:7443",
+		});
+		expect(workflow.current.state.messages).toEqual([]);
+	});
+
+	it("downgrades invalid Stage 2 fields after reconvert instead of full reset", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+			forwardRelayItems: ["relay-a.example.com:7443"],
+		});
+		const firstStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+		const secondStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [],
+			rows: firstStage2Init.rows,
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: firstStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleModeChange(sourceRowKey, "port_forward");
+			workflow.current.handleTargetChange(sourceRowKey, "relay-a.example.com:7443");
+		});
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			mode: "port_forward",
+			targetName: "relay-a.example.com:7443",
+		});
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: secondStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, {
+			...stage1Input,
+			advancedOptions: {
+				...stage1Input.advancedOptions,
+				include: ["HK"],
+			},
+		});
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			mode: "none",
+			targetName: null,
+		});
+		expect(workflow.current.state.messages.map((message) => message.code)).toContain("STAGE2_MERGE_MODE_RESET");
+	});
+
 	it("surfaces stage1 blocking errors and failure log entries when convert fails", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

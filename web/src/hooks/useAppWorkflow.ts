@@ -58,6 +58,7 @@ import {
 	clearServerAggregationGroupsState,
 	completeWorkflowRequestState,
 	deleteStage2RowState,
+	mergeStage2SnapshotAfterConvert,
 	reportCurrentLinkInputErrorState,
 	moveServerAggregationMemberToIndexState,
 	reorderServerAggregationMemberState,
@@ -70,6 +71,7 @@ import {
 	applyGlobalChainProxyGroupProfileState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
+import type { Stage2SnapshotMergeReport } from "./useAppWorkflow.state";
 
 export type WorkflowTone = "neutral" | "warning" | "success";
 
@@ -85,6 +87,62 @@ interface RequestFailureContext {
 }
 
 type Stage2SnapshotRows = typeof initialAppState.stage2Snapshot.rows;
+
+function buildStage2MergeMessages(
+	report: Stage2SnapshotMergeReport,
+): Message[] {
+	const messages: Message[] = [];
+	if (report.droppedDerivedRows > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_ROW_DROPPED",
+			message: `已移除 ${report.droppedDerivedRows} 条失效副本：其来源落地节点在最新转换结果中不存在。`,
+		});
+	}
+	if (report.resetModes > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_MODE_RESET",
+			message: `${report.resetModes} 行的配置方式已按最新可选模式回退。`,
+		});
+	}
+	if (report.clearedTargets > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_TARGET_CLEARED",
+			message: `${report.clearedTargets} 行的目标已清空：原目标在最新候选中不可用。`,
+		});
+	}
+	if (report.clearedChainProxyProfiles > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_PROFILE_CLEARED",
+			message: `${report.clearedChainProxyProfiles} 行的策略组优化配置已清空：当前模式或目标不再适用。`,
+		});
+	}
+	if (report.filteredAggregationMembers > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_AGG_MEMBER_FILTERED",
+			message: `聚合组已移除 ${report.filteredAggregationMembers} 个失效成员引用。`,
+		});
+	}
+	if (report.disabledAggregationGroups > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_AGG_GROUP_DISABLED",
+			message: `${report.disabledAggregationGroups} 个聚合组因成员不足 2 个而自动关闭。`,
+		});
+	}
+	if (report.removedAggregationGroups > 0) {
+		messages.push({
+			level: "warning",
+			code: "STAGE2_MERGE_AGG_GROUP_REMOVED",
+			message: `${report.removedAggregationGroups} 个无效聚合组已移除。`,
+		});
+	}
+	return messages;
+}
 
 export interface AppWorkflowViewModel {
 	state: typeof initialAppState;
@@ -486,14 +544,24 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 
 		try {
 			const response = await postStage1Convert({ stage1Input: toStage1InputPayload(stage1Input) });
-			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage1");
-			setState((current) => applyStage1ConvertSuccessState(
-				current,
-				response.stage2Init,
-				response.messages,
-				response.blockingErrors,
-				logEntries,
-			));
+			setState((current) => {
+				const mergeResult = mergeStage2SnapshotAfterConvert(current, response.stage2Init);
+				const mergeMessages = buildStage2MergeMessages(mergeResult.report);
+				const mergedMessages = response.messages.concat(mergeMessages);
+				const logEntries = backendMessagesToWorkflowLog(response.messages, "stage1").concat(
+					mergeMessages.map((message) =>
+						buildWorkflowLogEntry(message.level, message.code, message.message, "frontend", "stage1"),
+					),
+				);
+				return applyStage1ConvertSuccessState(
+					current,
+					response.stage2Init,
+					mergedMessages,
+					response.blockingErrors,
+					logEntries,
+					mergeResult.snapshot,
+				);
+			});
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
 			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {

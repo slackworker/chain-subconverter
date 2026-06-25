@@ -8,9 +8,13 @@ import type { AppState, ResponseOriginStage, WorkflowLogEntry } from "../lib/sta
 import { appendWorkflowLogEntries } from "../lib/workflow-log";
 import {
 	findStage2RowByKey,
+	getSelectableChoices,
+	getStage2RowKey,
 	getServerAggregationGroup,
 	getServerAggregationStrategy,
 	getStage2RowSourceLandingName,
+	isChainProxyGroupProfileEligible,
+	isStage2SourceRow,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 } from "../lib/stage2";
@@ -61,6 +65,28 @@ interface GenerateShortURLFailureStateOptions extends ShortURLCreationStateOptio
 	requireShortURL: boolean;
 }
 
+export interface Stage2SnapshotMergeReport {
+	droppedDerivedRows: number;
+	resetModes: number;
+	clearedTargets: number;
+	clearedChainProxyProfiles: number;
+	filteredAggregationMembers: number;
+	disabledAggregationGroups: number;
+	removedAggregationGroups: number;
+}
+
+function createStage2SnapshotMergeReport(): Stage2SnapshotMergeReport {
+	return {
+		droppedDerivedRows: 0,
+		resetModes: 0,
+		clearedTargets: 0,
+		clearedChainProxyProfiles: 0,
+		filteredAggregationMembers: 0,
+		disabledAggregationGroups: 0,
+		removedAggregationGroups: 0,
+	};
+}
+
 export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 	return stage2Init.rows.map((row) => ({
 		rowId: row.rowId,
@@ -102,6 +128,201 @@ function normalizeStage2SnapshotRowsAndGroups(rows: Stage2Row[], serverAggregati
 	return {
 		rows,
 		serverAggregationGroups: normalizeServerAggregationGroups(rows, serverAggregationGroups),
+	};
+}
+
+function getStage2InitRowsBySource(stage2Init: Stage2Init) {
+	const bySource = new Map<string, Stage2Init["rows"][number]>();
+	for (const row of stage2Init.rows) {
+		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+		if (sourceLandingNodeName === "" || bySource.has(sourceLandingNodeName)) {
+			continue;
+		}
+		bySource.set(sourceLandingNodeName, row);
+	}
+	return bySource;
+}
+
+function getRowServerFromStage2Init(
+	row: Stage2Row,
+	stage2InitRowsBySource: Map<string, Stage2Init["rows"][number]>,
+) {
+	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+	const stage2InitRow = stage2InitRowsBySource.get(sourceLandingNodeName);
+	const server = stage2InitRow?.server?.trim() ?? "";
+	if (server !== "") {
+		return server;
+	}
+	return sourceLandingNodeName === "" ? "" : `source:${sourceLandingNodeName}`;
+}
+
+function getAllowedModes(
+	stage2Init: Stage2Init,
+	stage2InitRowsBySource: Map<string, Stage2Init["rows"][number]>,
+	sourceLandingNodeName: string,
+) {
+	const restrictedModes = stage2InitRowsBySource.get(sourceLandingNodeName)?.restrictedModes ?? {};
+	return stage2Init.availableModes.filter((mode) => restrictedModes[mode] === undefined);
+}
+
+export function mergeStage2SnapshotAfterConvert(
+	current: AppState,
+	stage2Init: Stage2Init,
+): { snapshot: AppState["stage2Snapshot"]; report: Stage2SnapshotMergeReport } {
+	const report = createStage2SnapshotMergeReport();
+	const stage2InitRowsBySource = getStage2InitRowsBySource(stage2Init);
+	const baseRows = buildStage2SnapshotRows(stage2Init);
+	if (current.stage2Snapshot.rows.length === 0) {
+		return {
+			snapshot: { rows: baseRows, serverAggregationGroups: [] },
+			report,
+		};
+	}
+
+	const existingSourceRows = new Map<string, Stage2Row>();
+	for (const row of current.stage2Snapshot.rows) {
+		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+		if (sourceLandingNodeName === "") {
+			continue;
+		}
+		const existing = existingSourceRows.get(sourceLandingNodeName);
+		if (existing === undefined) {
+			existingSourceRows.set(sourceLandingNodeName, row);
+			continue;
+		}
+		if (!isStage2SourceRow(existing) && isStage2SourceRow(row)) {
+			existingSourceRows.set(sourceLandingNodeName, row);
+		}
+	}
+
+	const mergedRows: Stage2Row[] = baseRows.map((baseRow) => {
+		const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
+		const existingSourceRow = existingSourceRows.get(sourceLandingNodeName);
+		if (existingSourceRow === undefined) {
+			return baseRow;
+		}
+		const mergedProxyName = existingSourceRow.proxyName ?? existingSourceRow.landingNodeName;
+		return {
+			...baseRow,
+			rowId: existingSourceRow.rowId ?? baseRow.rowId,
+			sourceLandingNodeName: existingSourceRow.sourceLandingNodeName ?? sourceLandingNodeName,
+			proxyName: mergedProxyName,
+			landingNodeName: existingSourceRow.landingNodeName ?? mergedProxyName ?? baseRow.landingNodeName,
+			mode: existingSourceRow.mode,
+			targetName: existingSourceRow.targetName,
+			chainProxyGroupProfile: existingSourceRow.chainProxyGroupProfile,
+		};
+	});
+
+	for (const row of current.stage2Snapshot.rows) {
+		if (isStage2SourceRow(row)) {
+			continue;
+		}
+		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+		if (sourceLandingNodeName === "" || !stage2InitRowsBySource.has(sourceLandingNodeName)) {
+			report.droppedDerivedRows += 1;
+			continue;
+		}
+		mergedRows.push({
+			...row,
+			sourceLandingNodeName: row.sourceLandingNodeName ?? sourceLandingNodeName,
+		});
+	}
+
+	const validatedRows = mergedRows.map((row) => {
+		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
+		const allowedModes = getAllowedModes(stage2Init, stage2InitRowsBySource, sourceLandingNodeName);
+		let mode = row.mode;
+		let targetName = row.targetName;
+		let chainProxyGroupProfile = row.chainProxyGroupProfile;
+		if (!allowedModes.includes(mode)) {
+			const fallbackMode = allowedModes.includes("none")
+				? "none"
+				: (allowedModes[0] ?? "none");
+			if (mode !== fallbackMode) {
+				report.resetModes += 1;
+			}
+			mode = fallbackMode;
+			targetName = null;
+		}
+
+		if (mode === "none") {
+			targetName = null;
+		} else {
+			const selectableChoices = getSelectableChoices(
+				stage2Init,
+				mergedRows,
+				getStage2RowKey(row),
+				mode,
+			);
+			const selectableValues = new Set(selectableChoices.map((choice) => choice.value));
+			if (targetName === null || !selectableValues.has(targetName)) {
+				if (targetName !== null) {
+					report.clearedTargets += 1;
+				}
+				targetName = null;
+			}
+		}
+
+		const nextRow: Stage2Row = {
+			...row,
+			mode,
+			targetName,
+		};
+		if (!isChainProxyGroupProfileEligible(stage2Init, nextRow) && chainProxyGroupProfile !== undefined) {
+			report.clearedChainProxyProfiles += 1;
+			chainProxyGroupProfile = undefined;
+		}
+		return {
+			...nextRow,
+			chainProxyGroupProfile,
+		};
+	});
+
+	const rowsByID = new Map(
+		validatedRows
+			.map((row) => {
+				const rowID = row.rowId?.trim() ?? "";
+				return rowID === "" ? null : ([rowID, row] as const);
+			})
+			.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
+	);
+	const nextServerAggregationGroups: ServerAggregationGroup[] = [];
+	const seenServers = new Set<string>();
+	for (const group of current.stage2Snapshot.serverAggregationGroups) {
+		const server = group.server.trim();
+		if (server === "" || seenServers.has(server) || (group.strategy !== "fallback" && group.strategy !== "url-test")) {
+			report.removedAggregationGroups += 1;
+			continue;
+		}
+		seenServers.add(server);
+		const existingMemberRowIds = Array.from(
+			new Set(group.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean)),
+		);
+		const memberRowIds = existingMemberRowIds.filter((rowID) => {
+			const row = rowsByID.get(rowID);
+			if (row === undefined) {
+				return false;
+			}
+			return getRowServerFromStage2Init(row, stage2InitRowsBySource) === server;
+		});
+		report.filteredAggregationMembers += Math.max(0, existingMemberRowIds.length - memberRowIds.length);
+		let enabled = group.enabled;
+		if (enabled && memberRowIds.length < 2) {
+			enabled = false;
+			report.disabledAggregationGroups += 1;
+		}
+		nextServerAggregationGroups.push({
+			server,
+			enabled,
+			strategy: group.strategy,
+			memberRowIds,
+		});
+	}
+
+	return {
+		snapshot: normalizeStage2SnapshotRowsAndGroups(validatedRows, nextServerAggregationGroups),
+		report,
 	};
 }
 
@@ -251,11 +472,20 @@ export function updateStage1InputState(
 	};
 }
 
-export function applyStage2InitState(current: AppState, stage2Init: Stage2Init): AppState {
+export function applyStage2InitState(
+	current: AppState,
+	stage2Init: Stage2Init,
+	stage2SnapshotOverride?: AppState["stage2Snapshot"],
+): AppState {
 	return {
 		...current,
 		stage2Init,
-		stage2Snapshot: { rows: buildStage2SnapshotRows(stage2Init), serverAggregationGroups: [] },
+		stage2Snapshot: stage2SnapshotOverride
+			? normalizeStage2SnapshotRowsAndGroups(
+				stage2SnapshotOverride.rows,
+				stage2SnapshotOverride.serverAggregationGroups,
+			)
+			: { rows: buildStage2SnapshotRows(stage2Init), serverAggregationGroups: [] },
 		generatedUrls: null,
 		stage3Expired: false,
 		stage2Stale: false,
@@ -269,9 +499,10 @@ export function applyStage1ConvertSuccessState(
 	messages: Message[],
 	blockingErrors: BlockingError[],
 	logEntries: WorkflowLogEntry[],
+	stage2SnapshotOverride?: AppState["stage2Snapshot"],
 ): AppState {
 	return completeWorkflowRequestState(
-		applyStage2InitState(current, stage2Init),
+		applyStage2InitState(current, stage2Init, stage2SnapshotOverride),
 		"stage1",
 		messages,
 		blockingErrors,
