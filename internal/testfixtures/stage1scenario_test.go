@@ -45,7 +45,7 @@ func TestLoadStage1Scenario_DualLandingChainPortForward(t *testing.T) {
 	if got := scenario.Stage1Input.LandingRawTextWithManualSocks(); got == scenario.Stage1Input.LandingRawText() {
 		t.Fatal("LandingRawTextWithManualSocks() should append manual socks URIs")
 	}
-	if got := scenario.Stage1Input.TransitRawText(); got != "https://fixtures.example.com/transit-a-subscription.txt\nhttps://fixtures.example.com/transit-b-subscription.txt" {
+	if got := scenario.Stage1Input.TransitRawText(); got != "https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1\nhttps://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta" {
 		t.Fatalf("TransitRawText() = %q", got)
 	}
 	if scenario.TemplateFixture.InputURL != "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini" {

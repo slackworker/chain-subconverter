@@ -1,2 +1,2 @@
-https://fixtures.example.com/transit-a-subscription.txt
-https://fixtures.example.com/transit-b-subscription.txt
+https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1
+https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta

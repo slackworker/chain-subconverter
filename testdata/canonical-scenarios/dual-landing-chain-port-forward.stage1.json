@@ -19,8 +19,8 @@
       }
     ],
     "transitItems": [
-      "https://fixtures.example.com/transit-a-subscription.txt",
-      "https://fixtures.example.com/transit-b-subscription.txt"
+      "https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1",
+      "https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta"
     ],
     "forwardRelayItems": [
       "relay-a.example.com:7443",
@@ -29,19 +29,18 @@
     "advancedOptions": {
       "emoji": true,
       "udp": true,
-      "skipCertVerify": false,
       "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
     }
   },
   "transitFixtures": [
     {
       "id": "transit-a",
-      "subscriptionURL": "https://fixtures.example.com/transit-a-subscription.txt",
+      "subscriptionURL": "https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1",
       "uriContentFile": "dual-landing-chain-port-forward/transit-a.uri.txt"
     },
     {
       "id": "transit-b",
-      "subscriptionURL": "https://fixtures.example.com/transit-b-subscription.txt",
+      "subscriptionURL": "https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta",
       "uriContentFile": "dual-landing-chain-port-forward/transit-b.uri.txt"
     }
   ],

@@ -92,3 +92,132 @@ func TestBuildShortLinkResponse_KeepsShortIDStableAcrossBaseURLs(t *testing.T) {
 		t.Fatalf("second longUrl = %q, want base b", secondResponse.LongURL)
 	}
 }
+
+func TestCanonicalShortLinkStateKey_IgnoresRowIDAndOrderNoise(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	firstPayload := BuildLongURLPayload(stage1, Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:                 "alpha-random-row-id",
+				SourceLandingNodeName: "🇸🇬 Alpha",
+				ProxyName:             "🇸🇬 Alpha",
+				LandingNodeName:       "🇸🇬 Alpha",
+				Mode:                  "chain",
+				TargetName:            &targetSG,
+			},
+			{
+				RowID:                 "alpha-derived-random",
+				SourceLandingNodeName: "🇸🇬 Alpha",
+				ProxyName:             "🇸🇬 Alpha 2",
+				LandingNodeName:       "🇸🇬 Alpha 2",
+				Mode:                  "none",
+			},
+		},
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       "198.51.100.10",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"alpha-random-row-id", "alpha-derived-random"},
+			},
+		},
+	})
+
+	secondPayload := BuildLongURLPayload(stage1, Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:                 "another-random-id-xyz",
+				SourceLandingNodeName: "🇸🇬 Alpha",
+				ProxyName:             "🇸🇬 Alpha 2",
+				LandingNodeName:       "🇸🇬 Alpha 2",
+				Mode:                  "none",
+			},
+			{
+				RowID:                 "source-row-random-abc",
+				SourceLandingNodeName: "🇸🇬 Alpha",
+				ProxyName:             "🇸🇬 Alpha",
+				LandingNodeName:       "🇸🇬 Alpha",
+				Mode:                  "chain",
+				TargetName:            &targetSG,
+			},
+		},
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       "198.51.100.10",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"another-random-id-xyz", "source-row-random-abc"},
+			},
+		},
+	})
+
+	firstLongURL, err := EncodeLongURL("https://a.example.com/base", firstPayload, 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() first error = %v", err)
+	}
+	secondLongURL, err := EncodeLongURL("https://b.example.com/base", secondPayload, 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() second error = %v", err)
+	}
+
+	firstKey, err := CanonicalShortLinkStateKey(firstLongURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() first error = %v", err)
+	}
+	secondKey, err := CanonicalShortLinkStateKey(secondLongURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() second error = %v", err)
+	}
+
+	if firstKey != secondKey {
+		t.Fatalf("CanonicalShortLinkStateKey() mismatch after row order/id noise: %q != %q", firstKey, secondKey)
+	}
+	if DeterministicShortID(firstKey) != DeterministicShortID(secondKey) {
+		t.Fatalf("DeterministicShortID() mismatch after row order/id noise")
+	}
+}
+
+func TestCanonicalShortLinkStateKey_ChangesWhenVisibleNodeChanges(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildURL := func(proxyName string) string {
+		payload := BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "row-random",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             proxyName,
+					LandingNodeName:       proxyName,
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+			},
+		})
+		longURL, err := EncodeLongURL("https://a.example.com/base", payload, 0)
+		if err != nil {
+			t.Fatalf("EncodeLongURL() error = %v", err)
+		}
+		return longURL
+	}
+
+	firstKey, err := CanonicalShortLinkStateKey(buildURL("🇸🇬 Alpha"), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() first error = %v", err)
+	}
+	secondKey, err := CanonicalShortLinkStateKey(buildURL("🇸🇬 Alpha-X"), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() second error = %v", err)
+	}
+	if firstKey == secondKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should change when proxy name changes")
+	}
+}

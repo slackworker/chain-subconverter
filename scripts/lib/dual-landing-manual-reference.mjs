@@ -222,7 +222,7 @@ export function renderDualLandingManualReference({
 		"",
 		"## 验收",
 		"",
-		`- short ID 金样：\`${shortID}\`（Stage3 反向解析；预览站每次生成 ID 不同，Stage2 组合应一致）`,
+		`- short ID 金样：\`${shortID}\`（Stage3 反向解析；同一份可见配置应得到一致 short ID）`,
 		"",
 	].join("\n");
 
