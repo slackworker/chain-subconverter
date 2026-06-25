@@ -186,9 +186,9 @@ describe("RuntimeStatusBadges", () => {
 		expect(container.textContent).toContain("126ms");
 	});
 
-	it("shows ok subconverter badge for internal deployments", async () => {
+	it("shows ok subconverter badge when latency is 10ms or less", async () => {
 		mockGetRuntimeStatus.mockResolvedValueOnce(
-			buildStatus({ subconverter: { healthy: true, networkScope: "internal", latencyMs: 15 } }),
+			buildStatus({ subconverter: { healthy: true, networkScope: "internal", latencyMs: 8 } }),
 		);
 
 		const container = renderBadges({ locale: "zh" });
@@ -200,7 +200,7 @@ describe("RuntimeStatusBadges", () => {
 		expect(subconverterBadge?.getAttribute("title")).toContain("内部网络");
 	});
 
-	it("shows warn subconverter badge for cross-network deployments", async () => {
+	it("shows warn subconverter badge when latency exceeds 10ms", async () => {
 		mockGetRuntimeStatus.mockResolvedValueOnce(
 			buildStatus({ subconverter: { healthy: true, networkScope: "cross_network", latencyMs: 88 } }),
 		);
@@ -277,11 +277,19 @@ describe("resolveStorageBadgeState", () => {
 });
 
 describe("resolveSubconverterBadgeState", () => {
-	it("maps internal, cross-network, and unavailable states", () => {
-		expect(resolveSubconverterBadgeState(buildStatus().subconverter)).toBe("ok");
+	it("maps latency thresholds and unavailable states", () => {
+		expect(resolveSubconverterBadgeState(buildStatus().subconverter)).toBe("warn");
 		expect(
-			resolveSubconverterBadgeState(buildStatus({ subconverter: { networkScope: "cross_network" } }).subconverter),
-		).toBe("warn");
+			resolveSubconverterBadgeState(buildStatus({ subconverter: { latencyMs: 10 } }).subconverter),
+		).toBe("ok");
+		expect(
+			resolveSubconverterBadgeState(buildStatus({ subconverter: { latencyMs: 5 } }).subconverter),
+		).toBe("ok");
+		expect(
+			resolveSubconverterBadgeState(
+				buildStatus({ subconverter: { networkScope: "cross_network", latencyMs: 5 } }).subconverter,
+			),
+		).toBe("ok");
 		expect(
 			resolveSubconverterBadgeState(buildStatus({ subconverter: { healthy: false } }).subconverter),
 		).toBe("error");
