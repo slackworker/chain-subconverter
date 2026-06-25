@@ -1403,24 +1403,12 @@ function AdvancedCheckbox({
 	onChange: (checked: boolean) => void;
 }) {
 	return (
-		<label className="a-check a-check--box">
-			<span className="a-check__box">
-				<input
-					className="a-check__input"
-					type="checkbox"
-					checked={checked}
-					onChange={(event) => onChange(event.target.checked)}
-				/>
-				<svg className="a-check__mark" viewBox="0 0 14 10" fill="none" aria-hidden="true">
-					<path
-						d="M1 5L4.5 8.5L13 1"
-						stroke="currentColor"
-						strokeWidth="2"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
-			</span>
+		<label className="a-check">
+			<input
+				type="checkbox"
+				checked={checked}
+				onChange={(event) => onChange(event.target.checked)}
+			/>
 			{label}
 		</label>
 	);
