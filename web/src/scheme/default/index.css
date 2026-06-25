@@ -1397,6 +1397,28 @@
 	gap: 1rem;
 }
 
+.a-advanced .a-check-row {
+	gap: 0.65rem 1.25rem;
+	padding-top: 0;
+}
+
+.a-advanced .a-check-row .a-check--box {
+	gap: 0.35rem;
+	font-size: 0.82rem;
+	font-weight: 500;
+}
+
+.a-advanced .a-check-row .a-check__input {
+	width: 1.05rem;
+	height: 1.05rem;
+	border-radius: 3px;
+}
+
+.a-advanced .a-check-row .a-check__mark {
+	width: 0.62rem;
+	height: 0.62rem;
+}
+
 .a-check-row {
 	display: flex;
 	flex-wrap: wrap;
