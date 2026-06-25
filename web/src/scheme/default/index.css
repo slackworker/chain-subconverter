@@ -1285,6 +1285,18 @@
 	gap: 0.5rem;
 }
 
+.a-empty-state {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3rem 1rem;
+	border: 1px dashed var(--color-line);
+	border-radius: var(--radius);
+	color: var(--color-muted);
+	font-size: 0.875rem;
+	text-align: center;
+}
+
 .a-stage2-table-toolbar {
 	display: flex;
 	justify-content: flex-end;

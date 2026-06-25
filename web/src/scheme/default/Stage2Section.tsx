@@ -266,7 +266,9 @@ export function Stage2Section({
 						</label>
 					</div>
 				) : null}
-				{stage2AggregationMode ? (
+				{stage2Rows.length === 0 ? (
+					<div className="a-empty-state">{copy.stage2Empty}</div>
+				) : stage2AggregationMode ? (
 					<Stage2AggregationTree {...sharedTableProps} />
 				) : (
 					<Stage2FlatTable {...sharedTableProps} />

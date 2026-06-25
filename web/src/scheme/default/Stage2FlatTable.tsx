@@ -118,34 +118,26 @@ export function Stage2FlatTable({
 					</tr>
 				</thead>
 				<tbody>
-					{stage2Rows.length === 0 ? (
-						<tr>
-							<td colSpan={4} className="a-table__empty">
-								{copy.stage2Empty}
-							</td>
-						</tr>
-					) : (
-						stage2Rows.map((row, rowIndex) => (
-							<Stage2FlatTableRow
-								key={getStage2RowStrictKey(row)}
-								row={row}
-								rowIndex={rowIndex}
-								stage2Rows={stage2Rows}
-								workflow={workflow}
-								locale={locale}
-								copy={copy}
-								openTargetMenuRow={openTargetMenuRow}
-								setOpenTargetMenuRow={setOpenTargetMenuRow}
-								chainTargetMenuTriggerRef={chainTargetMenuTriggerRef}
-								chainTargetMenuPanelRef={chainTargetMenuPanelRef}
-								chainTargetMenuPortalEl={chainTargetMenuPortalEl}
-								primaryOpenByRow={primaryOpenByRow}
-								supplementOpenByRow={supplementOpenByRow}
-								setPrimaryOpen={setPrimaryOpen}
-								setSupplementOpen={setSupplementOpen}
-							/>
-						))
-					)}
+					{stage2Rows.map((row, rowIndex) => (
+						<Stage2FlatTableRow
+							key={getStage2RowStrictKey(row)}
+							row={row}
+							rowIndex={rowIndex}
+							stage2Rows={stage2Rows}
+							workflow={workflow}
+							locale={locale}
+							copy={copy}
+							openTargetMenuRow={openTargetMenuRow}
+							setOpenTargetMenuRow={setOpenTargetMenuRow}
+							chainTargetMenuTriggerRef={chainTargetMenuTriggerRef}
+							chainTargetMenuPanelRef={chainTargetMenuPanelRef}
+							chainTargetMenuPortalEl={chainTargetMenuPortalEl}
+							primaryOpenByRow={primaryOpenByRow}
+							supplementOpenByRow={supplementOpenByRow}
+							setPrimaryOpen={setPrimaryOpen}
+							setSupplementOpen={setSupplementOpen}
+						/>
+					))}
 				</tbody>
 			</table>
 		</div>

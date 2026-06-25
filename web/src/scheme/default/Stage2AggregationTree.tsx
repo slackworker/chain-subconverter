@@ -182,34 +182,26 @@ export function Stage2AggregationTree({
 					</tr>
 				</thead>
 				<tbody>
-					{treeNodes.length === 0 ? (
-						<tr>
-							<td colSpan={5} className="a-table__empty">
-								{copy.stage2Empty}
-							</td>
-						</tr>
-					) : (
-						treeNodes.map((node, nodeIndex) => (
-							<Stage2AggregationTreeRow
-								key={node.kind === "server" ? `server:${node.server}` : node.rowKey}
-								node={node}
-								nodeIndex={nodeIndex}
-								treeNodes={treeNodes}
-								workflow={workflow}
-								locale={locale}
-								copy={copy}
-								openTargetMenuRow={openTargetMenuRow}
-								setOpenTargetMenuRow={setOpenTargetMenuRow}
-								chainTargetMenuTriggerRef={chainTargetMenuTriggerRef}
-								chainTargetMenuPanelRef={chainTargetMenuPanelRef}
-								chainTargetMenuPortalEl={chainTargetMenuPortalEl}
-								primaryOpenByRow={primaryOpenByRow}
-								supplementOpenByRow={supplementOpenByRow}
-								setPrimaryOpen={setPrimaryOpen}
-								setSupplementOpen={setSupplementOpen}
-							/>
-						))
-					)}
+					{treeNodes.map((node, nodeIndex) => (
+						<Stage2AggregationTreeRow
+							key={node.kind === "server" ? `server:${node.server}` : node.rowKey}
+							node={node}
+							nodeIndex={nodeIndex}
+							treeNodes={treeNodes}
+							workflow={workflow}
+							locale={locale}
+							copy={copy}
+							openTargetMenuRow={openTargetMenuRow}
+							setOpenTargetMenuRow={setOpenTargetMenuRow}
+							chainTargetMenuTriggerRef={chainTargetMenuTriggerRef}
+							chainTargetMenuPanelRef={chainTargetMenuPanelRef}
+							chainTargetMenuPortalEl={chainTargetMenuPortalEl}
+							primaryOpenByRow={primaryOpenByRow}
+							supplementOpenByRow={supplementOpenByRow}
+							setPrimaryOpen={setPrimaryOpen}
+							setSupplementOpen={setSupplementOpen}
+						/>
+					))}
 				</tbody>
 			</table>
 		</div>
