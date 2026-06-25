@@ -892,9 +892,9 @@ proxy-groups:
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 60
-    tolerance: 1
+    tolerance: 50
     lazy: false
-    timeout: 2000
+    timeout: 500
     max-failed-times: 1
     proxies:
       - 🇭🇰 Transit-A-HongKong-SS-01
@@ -914,9 +914,9 @@ proxy-groups:
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 60
-    tolerance: 1
+    tolerance: 50
     lazy: false
-    timeout: 2000
+    timeout: 500
     max-failed-times: 1
     proxies:
       - 🇯🇵 Transit-A-Japan-Trojan-01
@@ -926,9 +926,9 @@ proxy-groups:
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 60
-    tolerance: 1
+    tolerance: 50
     lazy: false
-    timeout: 2000
+    timeout: 500
     max-failed-times: 1
     proxies:
       - 🇸🇬 Transit-A-Singapore-Hysteria2-01
@@ -959,7 +959,7 @@ proxy-groups:
     type: fallback
     url: https://cp.cloudflare.com/generate_204
     interval: 60
-    timeout: 1000
+    timeout: 500
     lazy: false
     max-failed-times: 1
     proxies:

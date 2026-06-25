@@ -434,9 +434,9 @@
 - 只允许覆写当前快照引用到的既有 `proxy-groups`；不得为该能力新增新的策略组名
 - 覆写对象按 `targetName` 定位；最终该行的 `dialer-proxy` 仍保持 `dialer-proxy: <targetName>`
 - 组成员列表沿用 `full-base pass` 与 `1.3` 出组后的结果，不因 profile 选择而重新展开成员
-- 两种受管 profile 都必须统一写入以下健康检查参数：`url = https://cp.cloudflare.com/generate_204`、`interval = 60`、`lazy = false`、`timeout = 2000`、`max-failed-times = 1`
-- `aggressive_fallback`：将组 `type` 覆写为 `fallback`，并删除 `tolerance`
-- `aggressive_url_test`：将组 `type` 覆写为 `url-test`，并写入 `tolerance = 1`
+- 两种受管 profile 都必须统一写入以下健康检查参数：`url = https://cp.cloudflare.com/generate_204`、`interval = 60`、`lazy = false`、`timeout = 500`、`max-failed-times = 1`
+- `aggressive_fallback`：将组 `type` 覆写为 `fallback`；不处理 `tolerance` 字段
+- `aggressive_url_test`：将组 `type` 覆写为 `url-test`；不处理 `tolerance` 字段
 
 ### 3.3.2 server 聚合组追加（Pass 3 后）
 
@@ -447,7 +447,7 @@
 - `url = https://cp.cloudflare.com/generate_204`
 - `interval = 60`
 - `lazy = false`
-- `timeout = 1000`
+- `timeout = 500`
 - `max-failed-times = 1`
 
 组 `type` 取快照中的 `strategy`（`fallback` 或 `url-test`）；当前不写入 `tolerance` 等额外字段。

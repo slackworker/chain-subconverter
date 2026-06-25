@@ -11,7 +11,7 @@ import (
 const (
 	serverAggregationGroupURL            = "https://cp.cloudflare.com/generate_204"
 	serverAggregationGroupInterval       = "60"
-	serverAggregationGroupTimeout        = "1000"
+	serverAggregationGroupTimeout        = "500"
 	serverAggregationGroupMaxFailedTimes = "1"
 )
 

@@ -247,8 +247,7 @@ var chainProxyGroupProfileFieldOrder = []string{
 }
 
 type chainProxyGroupProfilePatch struct {
-	set             map[string]string
-	deleteTolerance bool
+	set map[string]string
 }
 
 func chainProxyGroupProfilePatchFor(profile string) (chainProxyGroupProfilePatch, error) {
@@ -257,7 +256,7 @@ func chainProxyGroupProfilePatchFor(profile string) (chainProxyGroupProfilePatch
 			"url":              aggressiveChainProxyGroupHealthCheckURL,
 			"interval":         "60",
 			"lazy":             "false",
-			"timeout":          "2000",
+			"timeout":          "500",
 			"max-failed-times": "1",
 		},
 	}
@@ -265,10 +264,8 @@ func chainProxyGroupProfilePatchFor(profile string) (chainProxyGroupProfilePatch
 	switch normalizeChainProxyGroupProfile(profile) {
 	case ChainProxyGroupProfileAggressiveFallback:
 		patch.set["type"] = "fallback"
-		patch.deleteTolerance = true
 	case ChainProxyGroupProfileAggressiveURLTest:
 		patch.set["type"] = "url-test"
-		patch.set["tolerance"] = "1"
 	default:
 		return chainProxyGroupProfilePatch{}, fmt.Errorf("unsupported chain proxy-group profile %q", profile)
 	}
@@ -323,9 +320,6 @@ func applyChainProxyGroupProfileLines(
 			replacedLines[lineIndex] = fieldIndent + key + ": " + patchValue
 			delete(pending, key)
 			continue
-		}
-		if key == "tolerance" && patch.deleteTolerance {
-			deletedLines[lineIndex] = struct{}{}
 		}
 	}
 
