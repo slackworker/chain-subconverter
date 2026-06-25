@@ -2791,6 +2791,10 @@ select.a-select {
 	font-size: 1.1rem;
 }
 
+.a-modal .a-field-label {
+	font-weight: 400;
+}
+
 .a-modal__grid {
 	display: grid;
 	gap: 0.65rem;
