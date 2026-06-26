@@ -1,5 +1,7 @@
 # 第三方设备部署回归记录（公开结论）
 
+> **下一轮回归目标**：`v3.1.0-beta.1` @ `beta-latest`（待发 tag；打 tag 并部署后覆盖本节 digest，勿提前伪造）。
+
 按 [release-runbook.md](release-runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。
 
 **维护**：单线开发下每种部署形态**只保留最新一轮**——覆盖对应节与下表日期/结果，**不追加**「历史」段；更早 digest 见 Git 历史该文件 diff。正式 Beta tag 里程碑见 [RELEASES.md](../../RELEASES.md)。
@@ -19,28 +21,28 @@
 
 | 形态 | 设备 / 平台 | 最近回归 | 结果 |
 |------|-------------|----------|------|
-| **内网一体化** | vps-01（LAN Compose） | 2026-05-30 | **通过** |
-| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-05-30 | **通过** |
+| **内网一体化** | vps-01（LAN Compose） | 2026-06-01 | **通过** |
+| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-06-01 | **通过** |
 | **双 Docker 分离** | Railway + Koyeb（demo preview） | 2026-05-23 | **通过** |
 
 外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
 
 ---
 
-## 内网一体化 — vps-01（2026-05-30，`dev-latest`）
+## 内网一体化 — vps-01（2026-06-01，`beta-latest`）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:eeff0ea63c5d5f23e3605e69486922af7b75fe02ce3ae3abe7af906605ed3c24`，与 vps-02 一致；`dev` @ `65e4f01`）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（正式 tag **`v3.0.0-beta.4`**；digest `sha256:7bf643faac15a21492fbf5554d9d1f4995c607350382f47277474bd20c59efa8`，与 vps-02 一致；`beta` @ `666a100`）；`subconverter:integration-chain-subconverter`（digest `sha256:c7073588b711b3abec59096cc6706255841623fa64b6b2116bc6efbdbbbd3775`，`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
-- **回归**：`healthz`、`/api/runtime-config`、WSL `deployed-smoke`（Worker dual-transit）
+- **回归**：`healthz`、`/api/runtime-status`、WSL `deployed-smoke`（Worker dual-transit）
 - **结果**：**通过**
 - **细节**：SSH、入口 URL、smoke 命令见本地文件
 
 ---
 
-## 公网 HTTPS 一体化 — vps-02（2026-05-30，`dev-latest`）
+## 公网 HTTPS 一体化 — vps-02（2026-06-01，`beta-latest`）
 
-- **镜像 tag**：与 vps-01 同 digest（`dev-latest`，`dev` @ `65e4f01`）；`subconverter:integration-chain-subconverter` 同 digest（`sha256:c7073588...`，`/version` = `v0.9.2-c7b26b5-...`）
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest`，正式 tag **`v3.0.0-beta.4`**，`beta` @ `666a100`）；`subconverter:integration-chain-subconverter` 同 digest（`sha256:c7073588...`，`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致生成链接为 `http://`）

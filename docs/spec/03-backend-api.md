@@ -199,7 +199,7 @@
 
 - `messages[]` 只承载 `info` 与 `warning`
 - `messages[]` 表示服务端返回的非阻断用户提示；它是前端 workflow log 的后端消息源之一，但不等同于整个前端日志系统
-- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED` 与 `RESTORE_CONFLICT`
+- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
 - `messages[]` 不承诺字段级或行级定位语义，也不单独决定前端展示位置
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `blockingErrors[]` 只承载阻断当前请求的错误
@@ -234,6 +234,15 @@
 - `500`：未知内部错误；`blockingErrors[]` 必须非空
 - `POST /api/resolve-url` 返回 `restoreStatus = conflicted` 时仍是 `200`，不视为接口失败
 - 所有 `/api/*` 与 `/sub*` 响应应返回 `X-Request-ID` header，供前端问题与服务端 access / operation log 关联；该值不进入 JSON body
+
+### 5b. 运维 access log（stderr）
+
+面向部署者 / `docker logs`；不等同于 API `messages[]` 或前端 workflow log。实现见 `internal/api/access_log.go`。
+
+- 默认只记录：HTTP 状态 `>= 400`、关键业务 `operation`（如 `stage1_convert`、`generate`、`short_link_create`、`resolve_url`、订阅读取）、或响应含 warning 级 `messages[]` 的成功请求
+- 成功的 `GET /healthz` 与常规静态资源成功请求默认不写入 access log
+- 典型字段：`method`、`path`（敏感 query 已 redact）、`status`、`duration_ms`、`client_ip`、`request_id`、`operation`、`error_code`、`warning_codes`；反代场景含 `origin_scheme` / `origin_host` / `trusted_proxy`
+- 原始技术错误串不得写入用户可见通道；排障通过 `request_id` 关联 access log 与 operator 上下文
 
 ---
 
@@ -277,9 +286,9 @@
 ```json
 {
   "app": {
-    "version": "v3.0.0-beta.3",
-    "releaseTag": "v3.0.0-beta.3",
-    "imageTag": "3.0.0-beta.3",
+    "version": "v3.1.0-beta.1",
+    "releaseTag": "v3.1.0-beta.1",
+    "imageTag": "3.1.0-beta.1",
     "revision": "86922c3deadbeef86922c3deadbeef86922c3d",
     "imageDigest": "sha256:eeff0ea63c5d5f23e3605e69486922af7b75fe02ce3ae3abe7af906605ed3c24"
   },
@@ -301,7 +310,7 @@
 约束：
 
 - `app.version` 为展示字段：优先 `releaseTag`，否则回退 `imageTag`，再回退本地构建默认值
-- `app.releaseTag` 仅在版本发布 tag 构建时返回（例如 `v3.0.0-beta.3`）
+- `app.releaseTag` 仅在版本发布 tag 构建时返回（例如 `v3.1.0-beta.1`）
 - `app.imageTag` 为当前镜像 tag（例如 `beta-latest`、`latest`、`dev-latest` 或版本号镜像 tag）
 - `app.revision` 为构建来源 commit SHA，供诊断与发布追溯
 - `app.imageDigest` 为当前部署镜像 digest（`sha256:…`）；构建时经 `APP_IMAGE_DIGEST` 注入，或由运行时环境变量 `CHAIN_SUBCONVERTER_IMAGE_DIGEST` 覆盖；footer hover 展示构建元信息（`releaseTag`、`imageTag`、短 `revision`、`imageDigest`）
@@ -672,7 +681,7 @@
 
 规则：
 
-- `v` 是长链接编码版本字段；后端编码端当前写出 `v = 3`，解码端按兼容策略接受受支持版本（用于恢复与短链解析）
+- `v` 是长链接编码版本字段；后端编码端当前写出 `v = 3`，解码端按兼容策略接受 `v = 2` 与 `v = 3`（用于恢复与短链解析）
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
 - `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 属于规范长链接状态的一部分
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接

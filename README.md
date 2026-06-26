@@ -2,7 +2,7 @@
 
 **节点 → 配置/订阅**：准备落地和中转节点/订阅，通过网页交互完成 **Mihomo** 链式代理的配置，输出完整 YAML 配置或订阅 URL。
 
-> [v3.0.0-beta.4](RELEASES.md#v300-beta4) 已上线，正式版即将发布。
+> [v3.0.0-beta.4](RELEASES.md#v300-beta4) 已发布；[v3.1.0-beta.1](RELEASES.md#v310-beta1草稿) 准备中（3.1 Beta 线）。
 
 ## 主要能力
 

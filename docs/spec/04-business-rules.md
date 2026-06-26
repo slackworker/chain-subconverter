@@ -78,6 +78,21 @@
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
+### 0.2.3 模板 emoji 地域对齐预处理
+
+当阶段 1 高级选项 `emoji = true`（或等价启用节点 emoji）时，后端在远程模板拉取并校验通过之后、写入托管模板并交给 `subconverter` 之前，必须对模板内容做预处理，使地域策略组的展示 emoji 与同地域节点的 emoji 规则对齐。
+
+规则：
+
+- 仅处理模板 `[custom]` 段（或等价结构）中的 `custom_proxy_group=` 行；识别口径与 §2.6 地域策略组一致（组名 leading emoji + 文本 + `节点`）
+- 从组名提取展示用 emoji，复用已解析的地域匹配表达式作为节点匹配范围
+- 在模板 emoji 规则区为该地域追加或更新规则：**匹配范围 → 与组名相同的 emoji**；地域覆盖规则须排在默认规则之前
+- 若模板尚未声明 emoji 相关开关，须补齐启用节点 emoji 所需的最小声明（`add_emoji` / `remove_old_emoji`）；可引用 `subconverter` 内置默认 emoji 表补全其余地区
+- 若模板已手写 `emoji=` 且某地域规则与组名 emoji **冲突**，以模板显式声明为准，不静默覆盖；须返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
+- `emoji = false` 或未开启时：不注入，保持模板原样
+- 组名无 leading emoji（不符合地域组识别）时不注入对应规则
+- 预处理不得破坏 `custom_proxy_group` 行语义及链式自动填充口径；不修改 `subconverter` 服务端 `pref`
+
 ---
 
 ## 1. 转换并自动填充

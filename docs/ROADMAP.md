@@ -9,7 +9,9 @@ Phase 0–4 已完成，进入**维护期**。backlog 与最近验证见 [STATUS
 | 2 — 最小业务闭环 | ✅ | 3-pass；Smoke fixture |
 | 2.5 — 文档与边界 | ✅ | 包边界、fixture 文档化 |
 | 3 — 扩展业务与 API | ✅ | [spec/03-backend-api.md](spec/03-backend-api.md) |
-| 4 — 前端、部署、Beta | ✅ | 默认 `/`；`v3.0.0-beta.1/2/3` |
+| 4 — 前端、部署、Beta | ✅ | 默认 `/`；`v3.0.0-beta.1/2/3/4` |
+
+**3.1 Beta 线**（维护期新里程碑）：`v3.1.0-beta.1` 准备中 — 进度见 [STATUS.md](STATUS.md)，不发实时细节于此。
 
 开放项与发版节奏见 [STATUS.md](STATUS.md) backlog；发布检查见 [release-runbook](testing/release-runbook.md)。
 
