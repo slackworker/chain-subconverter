@@ -143,10 +143,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        scheme: [default, a]
 
     steps:
       - name: Checkout repository
@@ -163,9 +159,9 @@ jobs:
         working-directory: web
         run: npm ci
 
-      - name: Build frontend scheme
+      - name: Build release baseline frontend scheme
         working-directory: web
-        run: npm run build:${{ matrix.scheme }}
+        run: npm run build:default
 
   web-build-exploratory:
     name: Web Build (exploratory, non-blocking)
