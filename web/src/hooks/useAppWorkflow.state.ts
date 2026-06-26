@@ -521,6 +521,33 @@ export function applyStage1ConvertSuccessState(
 	);
 }
 
+export function applyStage2ResetSuccessState(
+	current: AppState,
+	stage2Init: Stage2Init,
+	stage2Snapshot: AppState["stage2Snapshot"],
+	messages: Message[],
+	blockingErrors: BlockingError[],
+	logEntries: WorkflowLogEntry[],
+): AppState {
+	return completeWorkflowRequestState(
+		{
+			...current,
+			...expireGeneratedOutput(current),
+			stage2Init,
+			stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+				stage2Snapshot.rows,
+				stage2Snapshot.serverAggregationGroups ?? [],
+				Boolean(stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+			),
+			stage2Stale: false,
+		},
+		"stage2",
+		messages,
+		blockingErrors,
+		logEntries,
+	);
+}
+
 interface RestoreStateOptions {
 	blockingErrors: BlockingError[];
 	logEntries: WorkflowLogEntry[];

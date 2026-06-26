@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "re
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import { Tooltip } from "../../lib/Tooltip";
 import { isSwitchOptimizationEligible } from "../../lib/stage2";
-import { ArrowRightIcon, ChevronDownIcon } from "./Icons";
+import { ArrowRightIcon, ChevronDownIcon, ResetIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
 import {
@@ -105,7 +105,7 @@ export function Stage2Section({
 	isStage2Editable,
 	tableWrapRef,
 }: Stage2SectionProps) {
-	const { stage2Rows, state } = workflow;
+	const { stage2Rows, state, isResettingStage2 } = workflow;
 	const hasSwitchOptimizationEligibleRows = stage2Rows.some((row) =>
 		isSwitchOptimizationEligible(state.stage2Init, row),
 	);
@@ -122,6 +122,10 @@ export function Stage2Section({
 		const hasEnabledAggregation = state.stage2Snapshot.serverAggregationGroups.some((group) => group.enabled);
 		if (hasEnabledAggregation) {
 			setStage2AggregationMode(true);
+			return;
+		}
+		if (state.stage2Snapshot.serverAggregationGroups.length === 0) {
+			setStage2AggregationMode(false);
 		}
 	}, [state.stage2Snapshot.serverAggregationGroups, setStage2AggregationMode]);
 
@@ -315,6 +319,18 @@ export function Stage2Section({
 										</Tooltip>
 									</span>
 								</label>
+								<span className="a-check-row__divider" aria-hidden="true" />
+								<button
+									type="button"
+									className="a-stage2-advanced-reset"
+									disabled={!isStage2Editable || isResettingStage2 || isGenerating}
+									aria-busy={isResettingStage2 || undefined}
+									title={copy.stage2Reset}
+									onClick={() => void workflow.handleStage2Reset()}
+								>
+									<ResetIcon className="a-icon" aria-hidden />
+									<span>{copy.stage2Reset}</span>
+								</button>
 							</div>
 						) : null}
 					</>
@@ -330,7 +346,7 @@ export function Stage2Section({
 							/>
 						</div>
 					) : null}
-					<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
+					<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating || isResettingStage2} onClick={() => void handleGenerate()}>
 						{isGenerating ? (
 							copy.generating
 						) : (

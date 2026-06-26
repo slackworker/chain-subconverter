@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 
-import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
+import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert, postStage2Reset } from "../lib/api";
 import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
@@ -54,6 +54,7 @@ import {
 	applyShortURLCreationSuccessState,
 	applyShortURLPreferenceToggleState,
 	applyStage1ConvertSuccessState,
+	applyStage2ResetSuccessState,
 	cloneStage2RowState,
 	clearServerAggregationGroupsState,
 	completeWorkflowRequestState,
@@ -150,6 +151,7 @@ export interface AppWorkflowViewModel {
 	isConverting: boolean;
 	isRestoring: boolean;
 	isGenerating: boolean;
+	isResettingStage2: boolean;
 	isCreatingShortUrl: boolean;
 	isConflictReadonly: boolean;
 	isStage2Editable: boolean;
@@ -198,6 +200,7 @@ export interface AppWorkflowViewModel {
 	) => void;
 	handleSwitchOptimizationChange: (enabled: boolean) => void;
 	handleClearServerAggregationGroups: () => void;
+	handleStage2Reset: () => Promise<void>;
 	handleGenerate: () => Promise<void>;
 	handlePreferShortUrl: (checked: boolean) => Promise<void>;
 	recordWorkflowEvent: (code: WorkflowEventCode, originStage?: ResponseOriginStage | null) => void;
@@ -372,6 +375,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	const [isConverting, setIsConverting] = useState(false);
 	const [isRestoring, setIsRestoring] = useState(false);
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [isResettingStage2, setIsResettingStage2] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
 	const stage2DerivedRowSequenceRef = useRef(0);
 
@@ -379,7 +383,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	const modeOptions = getModeOptions(state.stage2Init);
 	const isConflictReadonly = state.restoreStatus === "conflicted";
 	const isStage2Editable = state.stage2Init !== null && !state.stage2Stale && !isConflictReadonly;
-	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating;
+	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating && !isResettingStage2;
 	const originStageLabel = getOriginStageLabel(state.responseOriginStage);
 	const visibleMessages = getVisibleMessages(state.messages, state.responseOriginStage);
 	const workflowLog = state.workflowLog;
@@ -387,7 +391,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		stage2Stale: state.stage2Stale,
 		hasStage2Rows: stage2Rows.length > 0,
 		hasBlockingErrors: state.blockingErrors.length > 0,
-		isRequestInFlight: isConverting,
+		isRequestInFlight: isConverting || isResettingStage2,
 		isConflictReadonly,
 	});
 
@@ -937,6 +941,48 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		setState((current) => clearServerAggregationGroupsState(current));
 	}
 
+	async function handleStage2Reset() {
+		if (!isStage2Editable || isResettingStage2) {
+			return;
+		}
+
+		const stage1Input = state.stage1Input;
+		const stage2Snapshot = state.stage2Snapshot;
+		setIsResettingStage2(true);
+		setState((current) => startWorkflowRequestState(current, "stage2", workflowActionSeparator("ACTION_STAGE2_RESET")));
+
+		try {
+			const response = await postStage2Reset({
+				stage1Input: toStage1InputPayload(stage1Input),
+				stage2Snapshot,
+				reset: { scope: "all" },
+			});
+			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage2");
+			setState((current) => applyStage2ResetSuccessState(
+				current,
+				response.stage2Init,
+				response.stage2Snapshot,
+				response.messages,
+				response.blockingErrors,
+				logEntries,
+			));
+		} catch (error) {
+			const errorResponse = getErrorResponse(error);
+			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
+				stageLabel: "Stage 2 / 配置区",
+				actionLabel: "重置",
+				requestPath: "POST /api/stage2/reset",
+			})];
+			const messages = errorResponse?.messages ?? [];
+			const logEntries = backendMessagesToWorkflowLog(messages, "stage2").concat(
+				frontendWorkflowFailureEvent("STAGE2_RESET_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
+			);
+			setState((current) => completeWorkflowRequestState(current, "stage2", messages, blockingErrors, logEntries));
+		} finally {
+			setIsResettingStage2(false);
+		}
+	}
+
 	async function handleGenerate() {
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
@@ -1092,6 +1138,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		isConverting,
 		isRestoring,
 		isGenerating,
+		isResettingStage2,
 		isCreatingShortUrl,
 		isConflictReadonly,
 		isStage2Editable,
@@ -1130,6 +1177,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		handleServerAggregationMemberMoveTo,
 		handleSwitchOptimizationChange,
 		handleClearServerAggregationGroups,
+		handleStage2Reset,
 		handleGenerate,
 		handlePreferShortUrl,
 		recordWorkflowEvent,
