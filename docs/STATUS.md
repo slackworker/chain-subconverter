@@ -1,6 +1,6 @@
 # 项目状态
 
-> 最近更新：2026-06-25 · **3.0 线** 正式 Beta tag [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) 已发布 · **3.1 Beta 线** [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿) **准备中**（dev HEAD，尚未打 tag）
+> 最近更新：2026-06-26 · **3.0 线** 正式 Beta tag [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) 已发布 · **3.1 Beta 线** [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿) **准备中**（dev HEAD，尚未打 tag）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
 
@@ -54,5 +54,5 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-06-01 vps-01/02 **beta.4** / `beta-latest` **通过**（见 [third-party-deployments.md](testing/third-party-deployments.md)）；3.1 待发 tag 后复验 |
+| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** `test:e2e:real:release` **通过**（见 [third-party-deployments.md](testing/third-party-deployments.md)）；正式 **beta** 线待发 tag 后复验 |
 | **本地自动化基线** | 2026-06-25 release-runbook：`go test ./...`、Vitest 134、`test:e2e:mock` 4、`build:default`–`c2`、`docker compose config` **通过** |
