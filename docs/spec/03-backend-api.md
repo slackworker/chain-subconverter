@@ -199,7 +199,7 @@
 
 - `messages[]` 只承载 `info` 与 `warning`
 - `messages[]` 表示服务端返回的非阻断用户提示；它是前端 workflow log 的后端消息源之一，但不等同于整个前端日志系统
-- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
+- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`STAGE2_RESET`、`STAGE2_ROW_RESET`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
 - `messages[]` 不承诺字段级或行级定位语义，也不单独决定前端展示位置
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `blockingErrors[]` 只承载阻断当前请求的错误
@@ -484,6 +484,69 @@
 - `LANDING_NODE_NOT_FOUND`：当错误来源是行快照引用缺失时，须 `scope = stage2_row`（`context.rowId` 必填，建议同时返回 `context.proxyName`）；当错误来源是 server 聚合成员引用到当前环境缺失的落地节点时，须 `scope = global`
 - `INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`：都必须返回 `scope = global`，且不要求返回 `context`
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
+- `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
+
+### 2b. `POST /api/stage2/reset`
+
+用途：基于当前 `stage1Input` 重新计算 Stage 2 初始配置，并按指定范围恢复 `stage2Snapshot`。
+
+请求结构：
+
+- `stage1Input`：结构同 `POST /api/stage1/convert` 请求体中的 `stage1Input`
+- `stage2Snapshot`：当前编辑态快照，结构同本文“2. 阶段 2 配置快照”
+- `reset`：恢复动作
+  - `scope = all`：恢复整个 Stage 2 为初始配置
+  - `scope = row`：只恢复指定 `rowId` 对应行
+  - `rowId`：`scope = row` 时必填
+
+最小请求示例：
+
+```json
+{
+  "stage1Input": { "...": "同 POST /api/stage1/convert 请求示例" },
+  "stage2Snapshot": {
+    "rows": [
+      {
+        "rowId": "HK 01",
+        "sourceLandingNodeName": "HK 01",
+        "proxyName": "HK 01",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      }
+    ],
+    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+    "serverAggregationGroups": []
+  },
+  "reset": {
+    "scope": "row",
+    "rowId": "HK 01"
+  }
+}
+```
+
+成功响应：
+
+```json
+{
+  "stage2Init": { "...": "结构同本文“3. 阶段 2 初始化数据”" },
+  "stage2Snapshot": { "...": "重置后的快照" },
+  "messages": [],
+  "blockingErrors": []
+}
+```
+
+规则：
+
+- `scope = all`：`stage2Snapshot` 必须恢复为当前 `stage1Input` 对应的初始快照（`rows` 来自 `stage2Init.rows`，`serverAggregationGroups = []`，切换优化开关为 `false`）
+- `scope = row`：仅恢复指定行的 `proxyName`、`landingNodeName`、`mode` 与 `targetName`；其他行与聚合组保持不变
+- `scope = row` 时，行定位以 `rowId` 为准；若找不到对应行，接口失败
+
+最小失败语义：
+
+- `400`：`INVALID_REQUEST`（包括 `reset.scope` 非法、`scope = row` 但 `rowId` 缺失）
+- `422`：`STAGE2_ROW_NOT_FOUND`、`LANDING_NODE_NOT_FOUND`
+- `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
+- `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
 ### 4. `POST /api/short-links`

@@ -1,5 +1,7 @@
 package service
 
+import "strings"
+
 func generateWorkflowMessages() []Message {
 	return []Message{{
 		Level:   "info",
@@ -25,4 +27,19 @@ func restoreWorkflowMessages(restoreStatus string) []Message {
 		Code:    "RESTORE_METADATA_READY",
 		Message: "已读取恢复快照。",
 	}}
+}
+
+func stage2ResetWorkflowMessage(scope string) Message {
+	if strings.TrimSpace(scope) == "row" {
+		return Message{
+			Level:   "info",
+			Code:    "STAGE2_ROW_RESET",
+			Message: "已恢复该行为初始配置。",
+		}
+	}
+	return Message{
+		Level:   "info",
+		Code:    "STAGE2_RESET",
+		Message: "已恢复 Stage 2 初始配置。",
+	}
 }

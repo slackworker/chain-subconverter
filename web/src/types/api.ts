@@ -110,6 +110,22 @@ export interface GenerateRequest {
 	stage2Snapshot: Stage2Snapshot;
 }
 
+export interface Stage2ResetRequest {
+	stage1Input: Stage1InputPayload;
+	stage2Snapshot: Stage2Snapshot;
+	reset: {
+		scope: "all" | "row";
+		rowId?: string;
+	};
+}
+
+export interface Stage2ResetResponse {
+	stage2Init: Stage2Init;
+	stage2Snapshot: Stage2Snapshot;
+	messages: Message[];
+	blockingErrors: BlockingError[];
+}
+
 export interface GenerateResponse {
 	longUrl: string;
 	messages: Message[];

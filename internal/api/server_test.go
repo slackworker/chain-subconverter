@@ -122,6 +122,64 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	}
 }
 
+func TestStage2ResetHandler_AllScopeHappyPath(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	var stage1Request service.Stage1ConvertRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"), &stage1Request)
+	var generateRequest service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &generateRequest)
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	})
+
+	requestBody := mustMarshalIndented(t, service.Stage2ResetRequest{
+		Stage1Input:    stage1Request.Stage1Input,
+		Stage2Snapshot: generateRequest.Stage2Snapshot,
+		Reset: service.Stage2ResetAction{
+			Scope: "all",
+		},
+	})
+	request := httptest.NewRequest(http.MethodPost, "/api/stage2/reset", strings.NewReader(requestBody))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	var response service.Stage2ResetResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if len(response.Stage2Snapshot.Rows) != len(response.Stage2Init.Rows) {
+		t.Fatalf("len(stage2Snapshot.rows) = %d, want %d", len(response.Stage2Snapshot.Rows), len(response.Stage2Init.Rows))
+	}
+	if len(response.Stage2Snapshot.ServerAggregationGroups) != 0 {
+		t.Fatalf("len(stage2Snapshot.serverAggregationGroups) = %d, want 0", len(response.Stage2Snapshot.ServerAggregationGroups))
+	}
+	if len(response.Messages) == 0 || response.Messages[len(response.Messages)-1].Code != "STAGE2_RESET" {
+		t.Fatalf("reset messages mismatch: got %v", response.Messages)
+	}
+}
+
+func TestStage2ResetHandler_InvalidScope(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{})
+
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"/api/stage2/reset",
+		strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":null,"config":"https://templates.example.com/default.ini","include":null,"exclude":null}},"stage2Snapshot":{"rows":[],"serverAggregationGroups":[]},"reset":{"scope":"unsupported"}}`),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
+		Code:    "INVALID_REQUEST",
+		Message: "unsupported reset scope",
+		Scope:   "global",
+	})
+}
+
 func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	source := &fakeConversionSource{
@@ -1468,9 +1526,9 @@ func TestSubscriptionHandler_RejectsLandingWithoutServerField(t *testing.T) {
 	handler.ServeHTTP(recorder, request)
 
 	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
-		Code:      "SUBCONVERTER_UNAVAILABLE",
-		Message:   "转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查阶段 1 输入和模板设置后重试。",
-		Scope:     "global",
+		Code:    "SUBCONVERTER_UNAVAILABLE",
+		Message: "转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查阶段 1 输入和模板设置后重试。",
+		Scope:   "global",
 		Context: map[string]any{"diagnostic": map[string]any{
 			"problemClass":    unavailableProblemConversionResultInvalid,
 			"userInputSource": unavailableInputSourceLanding,
