@@ -54,5 +54,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** `test:e2e:real:smoke` + `test:e2e:real:full` **通过**（见 [deployments.md](testing/deployments.md)）；正式 **beta** 线待发 tag 后复验 |
-| **本地自动化基线** | 2026-06-25 runbook：`go test ./...`、Vitest 134、`test:e2e:mock:smoke` + `test:e2e:mock:full`、`build:default`–`c2`、`docker compose config` **通过** |
+| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** @ `ac82158`（`NormalizeStage2Snapshot`）`test:e2e:real:smoke` + `test:e2e:real:full` **通过**（见 [deployments.md](testing/deployments.md)）；正式 **beta** 线待发 tag 后复验 |
+| **本地自动化基线** | 2026-06-26：`go test ./...`、`test:e2e:mock:all` **通过**；完整 runbook 清单见 [runbook.md](testing/runbook.md) |

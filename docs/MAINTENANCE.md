@@ -7,7 +7,8 @@
 | 事件 | 更新 |
 |------|------|
 | 发版 / 镜像 tag | [RELEASES.md](../RELEASES.md)（正式 tag）；[STATUS.md](STATUS.md) 页眉/最近验证各一行；[deployments.md](testing/deployments.md) **覆盖**对应形态节 |
-| 例行 `deployed-smoke`（滚动 tag） | **只**覆盖 [deployments.md](testing/deployments.md) 与 STATUS「第三方部署」一行；不追加历史段、不重复 digest 到 STATUS 表 |
+| 例行第三方 smoke（滚动 tag） | **只**覆盖 [deployments.md](testing/deployments.md) 与 STATUS「第三方部署」一行；不追加历史段、不重复 digest 到 STATUS 表 |
+| E2E spec 变更 | [testing/README.md](testing/README.md) §`real-full`；既有第三方结论视为无效，须重跑 `real-smoke` + `real-full` 后再覆盖 [deployments.md](testing/deployments.md) |
 | 行为或 API 变更 | `docs/spec/02–05`；[STATUS.md](STATUS.md) 仅一句指向 spec |
 | 场景 / 金样变更 | `testdata/canonical-scenarios/*.stage1.json` → [fixtures.md](testing/fixtures.md) |
 | 新 backlog | [STATUS.md](STATUS.md) backlog 表 |

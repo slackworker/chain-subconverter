@@ -70,7 +70,8 @@ non-blocking job：
   - fallback 顺序重排后 `memberRowIds` 顺序与 UI 配置一致。
 - `real-full` 保持轻量：
   - 不做脆弱拖拽手势断言；
-  - 至少校验聚合配置已被接受，并在 generate / resolve 回放链路中保持一致。
+  - 至少校验聚合配置已被接受，并在 generate / resolve 回放链路中保持一致（含复制行、「线路聚合模式」、组内「聚合」勾选；见 `real-dual-landing-full-flow.spec.ts`）。
+- **E2E spec 变更后**：须重跑第三方 `real-smoke` + `real-full` 再更新 [deployments.md](deployments.md) 结论；勿在旧镜像结论上直接标记通过。
 
 ## fixture 维护流水线
 

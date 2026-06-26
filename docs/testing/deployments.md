@@ -31,26 +31,27 @@
 
 ## 内网一体化 — vps-01（2026-06-26，`dev-latest`）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:7cf139b6488c2911bfdd8f7e02325d8e1ee88279945a2fd2876a05a6104399d7`，`dev` @ `4f3dc004`）；`subconverter:integration-chain-subconverter`（`/version` = `v0.9.2-c7b26b5-...`，本轮未换 digest）
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:b7df699ee1a0025c310d47a586d91459d52a94c086c717426572adf6833a90ac`，`dev` @ `ac821587`）；`subconverter:integration-chain-subconverter`（`/version` = `v0.9.2-c7b26b5-...`，本轮未换 digest）
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：已同步为 slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)；旧 compose 曾残留 upstream `Aethersailor/...`）
-- **回归**：`healthz`、`/api/runtime-status`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker 双中转）
+- **回归**：`healthz`、`/api/runtime-status`；`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit；full 含复制行 + 聚合模式 + resolve 回放）
 - **结果**：**通过**
-- **关键发现**：首次在真实 VPS 跑通 full real e2e；`pull && up` 不会自动更新 compose env，须对照仓库默认 env 合并后再 `up --force-recreate app`；vps-01 首轮 core-flow 曾因 `raw.githubusercontent.com` 偶发拉取失败需重试
+- **关键发现**：`fcd80d6` 扩展 `real-full` 后，`4f3dc004` 镜像在 resolve 回放因空 `serverAggregationGroups` 未序列化而失败；`ac821587`（`NormalizeStage2Snapshot`）修复后复验通过。`pull && up` 不会自动更新 compose env，须对照仓库默认 env 合并后再 `up --force-recreate app`
 - **细节**：SSH、入口 URL、smoke 命令见本地文件
 
 ---
 
 ## 公网 HTTPS 一体化 — vps-02（2026-06-26，`dev-latest`）
 
-- **镜像 tag**：与 vps-01 同 digest（`dev-latest`，`dev` @ `4f3dc004`）；`subconverter:integration-chain-subconverter` 同 vps-01（`/version` = `v0.9.2-c7b26b5-...`）
+- **镜像 tag**：与 vps-01 同 digest（`dev-latest`，`dev` @ `ac821587`）；`subconverter:integration-chain-subconverter` 同 vps-01（`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`
 - **DEFAULT_TEMPLATE_URL**：同 vps-01（slackworker fork，已从旧 upstream 同步）
-- **回归**：公网 HTTPS；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（origin 与 `E2E_BASE_URL` 一致；generate / short-links / resolve / Stage2 编排回放）
+- **回归**：公网 HTTPS；`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（origin 与 `E2E_BASE_URL` 一致；generate / short-links / resolve / Stage2 编排回放）
 - **结果**：**通过**
+- **关键发现**：与 vps-01 同轮复验；HTTPS 入口与 resolve 回放均正常
 - **细节**：SSH、域名、smoke 命令见本地文件
 
 ---
@@ -63,7 +64,7 @@
   - Koyeb：`https://fantastic-loise-slackers-134ea8cc.koyeb.app/`
 - **subconverter 入口**：Railway `https://sparkling-luck-production.up.railway.app/`（`GET /version` → `subconverter v0.9.1-70ad654-mihomo backend`）
 - **镜像 tag**：本轮未从响应头确认；subconverter 版本见 `/version`
-- **回归**：`healthz`、`/api/runtime-config`、`/` UI；WSL `deployed-smoke`（Worker 双中转）；subconverter `/version`
+- **回归**：`healthz`、`/api/runtime-config`、`/` UI；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit）；subconverter `/version`
 - **结果**：**通过**
 - **关键发现**：双 Docker 分离下 stage1 → generate → 订阅读取 → short-link round-trip 均正常；生成链接 origin 与各自 HTTPS 入口一致
 - **后续**：可作为对外 demo preview；复验时覆盖本节与上表日期；命令见本地文件
