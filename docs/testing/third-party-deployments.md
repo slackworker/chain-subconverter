@@ -35,7 +35,7 @@
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：已同步为 slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)；旧 compose 曾残留 upstream `Aethersailor/...`）
-- **回归**：`healthz`、`/api/runtime-status`；WSL `test:e2e:real:release`（`real-deployed-core-flow` + `real-dual-landing-full-flow`，Worker dual-transit）
+- **回归**：`healthz`、`/api/runtime-status`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit）
 - **结果**：**通过**
 - **关键发现**：首次在真实 VPS 跑通 full dual-landing real e2e；`pull && up` 不会自动更新 compose env，须对照仓库默认 env 合并后再 `up --force-recreate app`；vps-01 首轮 core-flow 曾因 `raw.githubusercontent.com` 偶发拉取失败需重试
 - **细节**：SSH、入口 URL、smoke 命令见本地文件
@@ -49,7 +49,7 @@
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`
 - **DEFAULT_TEMPLATE_URL**：同 vps-01（slackworker fork，已从旧 upstream 同步）
-- **回归**：公网 HTTPS；WSL `test:e2e:real:release`（origin 与 `E2E_BASE_URL` 一致；generate / short-links / resolve / Stage2 编排回放）
+- **回归**：公网 HTTPS；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（origin 与 `E2E_BASE_URL` 一致；generate / short-links / resolve / Stage2 编排回放）
 - **结果**：**通过**
 - **细节**：SSH、域名、smoke 命令见本地文件
 

@@ -77,10 +77,29 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 
 	const firstRow = locateStage2Row(page, firstRowName);
 	const secondRow = locateStage2Row(page, secondRowName);
+	await firstRow.getByRole("button", { name: "复制" }).click();
+	const replicaRowName = `${firstRowName} 2`;
+	const replicaRow = locateStage2Row(page, replicaRowName);
+	await expect(replicaRow).toBeVisible();
+	const aggregationModeToggle = page.getByRole("checkbox", { name: "线路聚合模式" });
+	if (!(await aggregationModeToggle.isChecked())) {
+		await aggregationModeToggle.evaluate((checkbox) => {
+			(checkbox as HTMLInputElement).click();
+		});
+	}
+	const aggregationEnableToggles = page.getByRole("checkbox", { name: "聚合" });
+	if ((await aggregationEnableToggles.count()) > 0) {
+		await aggregationEnableToggles.first().evaluate((checkbox) => {
+			(checkbox as HTMLInputElement).click();
+		});
+	}
+
 	await selectStage2MenuOption(page, firstRow, 0, "链式代理");
 	await selectStage2MenuOption(page, firstRow, 1, preferredChainTarget);
 	await selectStage2MenuOption(page, secondRow, 0, "端口转发");
 	await selectStage2MenuOption(page, secondRow, 1, relayB);
+	await selectStage2MenuOption(page, replicaRow, 0, "端口转发");
+	await selectStage2MenuOption(page, replicaRow, 1, relayA);
 
 	const generateButton = page.getByRole("button", { name: "生成链接" });
 	await expect(generateButton).toBeEnabled({ timeout: 90_000 });
@@ -90,12 +109,24 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	await expectHTTPResponseOK(generateResponse, "generate");
 
 	const generateRequest = generateResponse.request().postDataJSON() as GenerateRequest;
+	const sourceSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === firstRowName);
+	const replicaSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === replicaRowName);
+	if (sourceSnapshotRow?.rowId === undefined || replicaSnapshotRow?.rowId === undefined) {
+		throw new Error("real dual-landing full flow requires row IDs for aggregation assertions");
+	}
+	expect(generateRequest.stage2Snapshot.serverAggregationGroups).toBeInstanceOf(Array);
+	expect(sourceSnapshotRow.rowId).not.toBe(replicaSnapshotRow.rowId);
 	expect(generateRequest.stage2Snapshot.rows).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				landingNodeName: firstRowName,
 				mode: "chain",
 				targetName: preferredChainTarget,
+			}),
+			expect.objectContaining({
+				landingNodeName: replicaRowName,
+				mode: "port_forward",
+				targetName: relayA,
 			}),
 			expect.objectContaining({
 				landingNodeName: secondRowName,
@@ -130,16 +161,24 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 				targetName: preferredChainTarget,
 			}),
 			expect.objectContaining({
+				landingNodeName: replicaRowName,
+				mode: "port_forward",
+				targetName: relayA,
+			}),
+			expect.objectContaining({
 				landingNodeName: secondRowName,
 				mode: "port_forward",
 				targetName: relayB,
 			}),
 		]),
 	);
+	expect(resolvePayload.stage2Snapshot.serverAggregationGroups).toEqual(generateRequest.stage2Snapshot.serverAggregationGroups);
 
 	await page.getByRole("button", { name: "反向解析" }).click();
 	await expect(firstRow.locator(".a-target-menu__trigger").nth(0)).toContainText("链式代理");
 	await expect(firstRow.locator(".a-target-menu__trigger").nth(1)).toContainText(preferredChainTarget);
+	await expect(replicaRow.locator(".a-target-menu__trigger").nth(0)).toContainText("端口转发");
+	await expect(replicaRow.locator(".a-target-menu__trigger").nth(1)).toContainText(relayA);
 	await expect(secondRow.locator(".a-target-menu__trigger").nth(0)).toContainText("端口转发");
 	await expect(secondRow.locator(".a-target-menu__trigger").nth(1)).toContainText(relayB);
 });

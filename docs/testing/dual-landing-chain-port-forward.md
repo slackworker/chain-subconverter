@@ -1,15 +1,15 @@
-# Comprehensive fixture：`dual-landing-chain-port-forward`
+# 复杂场景 fixture：`dual-landing-chain-port-forward`
 
-本文说明当前 Comprehensive fixture，用于补齐 Smoke 尚未覆盖的多落地、多中转订阅、端口转发与长/短链接恢复路径。
+本文说明当前复杂场景 fixture，用于补齐 `full` 入口中的多落地、多中转订阅、端口转发与长/短链接恢复路径。
 
 ## 用途
 
-对外文档层将这组数据定义为 `Comprehensive` 分层；底层 fixture ID 仍保持 `dual-landing-chain-port-forward`，避免影响目录名、命令参数与现有测试代码。
+对外文档层将这组数据归入 `full` 入口（`mock-full` / `real-full`）；底层 fixture ID 仍保持 `dual-landing-chain-port-forward`，避免影响目录名、命令参数与现有测试代码。
 
 当前默认约定是：
 
-- 当新功能主要影响双落地 / 双中转 / template / port-forward / 长短链接恢复这类复杂组合时，优先补到 Comprehensive
-- 若该功能同时也会影响默认主线或部署 smoke，则仍应补一条 Smoke 断言，避免只在复杂样例里兜底
+- 当新功能主要影响双落地 / 双中转 / template / port-forward / 长短链接恢复这类复杂组合时，优先补到 `full`
+- 若该功能同时也会影响默认主线或部署 `smoke`，则仍应补一条 `smoke` 断言，避免只在复杂样例里兜底
 
 该样例固定覆盖一组更接近日常使用的场景：
 
@@ -127,5 +127,5 @@ go run ./cmd/testfixturegen -scenario dual-landing-chain-port-forward -stage1-li
 - 本样例仍是固定、Mock、仓库跟踪的数据集，不依赖真实外部订阅源
 - **Golden 为何是 18 不是 19**：review golden 与 `testfixturegen -stage1-live-base-url` 重录时，两条 transit 都只用 canonical 的 `transit-a.uri.txt` / `transit-b.uri.txt`（明文 URI 行，经 subconverter 当订阅拉取），**两条都不走 `?target=ClashMeta`**。上游 subconverter 解析 Shadowrocket 风格 `vmess://` 时，识别正则不接受 Base64 载荷末尾 **`=` 填充**，每条 URI 各静默丢 1 条 VMess → **9+9=18**。
 - **手工联调为何常见 19**：[dual-landing-manual-reference.md](dual-landing-manual-reference.md) 里 Sub-2 推荐 `?target=ClashMeta`（YAML 不经上述 URI 解析，VMess 保留），与 Sub-1 默认 Base64 URI 混用时为 **9+10=19**。属输入格式与 golden 不一致，不是 chain-subconverter 单独过滤；**暂不修**（与 `4+1` 落地基线无直接耦合）。
-- 当前仍与 `3pass-ss2022-test-subscription` 这个 Smoke fixture 并存；这属于分层与快速故障定界考虑，不代表 Comprehensive 过大而不能复用到 Smoke
+- 当前仍与 `3pass-ss2022-test-subscription` 这个基础 fixture 并存；这属于分层与快速故障定界考虑，不代表复杂场景 fixture 过大而不能复用到 `smoke`
 - 浏览器级 happy path 与阻断错误 E2E 仍属于后续工作，不由本基线替代

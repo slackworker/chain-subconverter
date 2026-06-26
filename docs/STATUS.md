@@ -46,7 +46,7 @@
 
 ## 测试基线
 
-Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-review.md](testing/test-system-review.md)。金样只改 `testdata/canonical-scenarios/*.stage1.json`，再跑 `testfixturegen` + worker `sync/check`。
+测试口径统一为 `mock/real × smoke/full`；fixture 维护与 CI 分层见 [testing/test-system-review.md](testing/test-system-review.md)。金样只改 `testdata/canonical-scenarios/*.stage1.json`，再跑 `testfixturegen` + worker `sync/check`。
 
 ## 最近验证
 
@@ -54,5 +54,5 @@ Smoke / Comprehensive 两套 fixture 与 CI 分层见 [testing/test-system-revie
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** `test:e2e:real:release` **通过**（见 [third-party-deployments.md](testing/third-party-deployments.md)）；正式 **beta** 线待发 tag 后复验 |
-| **本地自动化基线** | 2026-06-25 release-runbook：`go test ./...`、Vitest 134、`test:e2e:mock` 4、`build:default`–`c2`、`docker compose config` **通过** |
+| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** `test:e2e:real:smoke` + `test:e2e:real:full` **通过**（见 [third-party-deployments.md](testing/third-party-deployments.md)）；正式 **beta** 线待发 tag 后复验 |
+| **本地自动化基线** | 2026-06-25 release-runbook：`go test ./...`、Vitest 134、`test:e2e:mock:smoke` + `test:e2e:mock:full`、`build:default`–`c2`、`docker compose config` **通过** |

@@ -10,7 +10,7 @@ import {
 	selectStage2MenuOption,
 } from "./helpers";
 
-import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse, Stage2Row } from "../src/types/api";
+import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
 
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 
@@ -28,12 +28,18 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 		forwardRelays: [{ name: relayA }, { name: relayB }],
 		rows: [
 			{
+				rowId: "Alpha-Reality-HK-PortForward",
+				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
+				server: "hk.example.com",
 				landingNodeName: "Alpha-Reality-HK-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
 			},
 			{
+				rowId: "Beta-Reality-JP-PortForward",
+				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
+				server: "jp.example.com",
 				landingNodeName: "Beta-Reality-JP-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
@@ -118,12 +124,33 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 
+	const sourceRow = locateStage2Row(page, "Alpha-Reality-HK-PortForward");
+	await sourceRow.getByRole("button", { name: "复制" }).click();
+	const replicaLandingNodeName = "Alpha-Reality-HK-PortForward 2";
+	const replicaRow = locateStage2Row(page, replicaLandingNodeName);
+	await expect(replicaRow).toBeVisible();
+	const aggregationModeToggle = page.getByRole("checkbox", { name: "线路聚合模式" });
+	if (!(await aggregationModeToggle.isChecked())) {
+		await aggregationModeToggle.evaluate((checkbox) => {
+			(checkbox as HTMLInputElement).click();
+		});
+	}
+	const aggregationEnableToggles = page.getByRole("checkbox", { name: "聚合" });
+	if ((await aggregationEnableToggles.count()) > 0) {
+		await aggregationEnableToggles.first().evaluate((checkbox) => {
+			(checkbox as HTMLInputElement).click();
+		});
+	}
+
 	const rowA = locateStage2Row(page, "Alpha-Reality-HK-PortForward");
 	const rowB = locateStage2Row(page, "Beta-Reality-JP-PortForward");
+	const rowReplica = locateStage2Row(page, replicaLandingNodeName);
 	await selectStage2MenuOption(page, rowA, 0, "链式代理");
 	await selectStage2MenuOption(page, rowA, 1, "HK Relay Group");
 	await selectStage2MenuOption(page, rowB, 0, "端口转发");
 	await selectStage2MenuOption(page, rowB, 1, relayB);
+	await selectStage2MenuOption(page, rowReplica, 0, "端口转发");
+	await selectStage2MenuOption(page, rowReplica, 1, relayA);
 
 	await page.getByRole("button", { name: "生成链接" }).click();
 	const currentLink = page.getByLabel("当前链接");
@@ -138,18 +165,6 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 	await expect(rowB.locator(".a-target-menu__trigger").nth(1)).toContainText(relayB);
 	await expect(currentLink).toHaveValue(shortURL);
 
-	const expectedRows: Stage2Row[] = [
-		{
-			landingNodeName: "Alpha-Reality-HK-PortForward",
-			mode: "chain",
-			targetName: "HK Relay Group",
-		},
-		{
-			landingNodeName: "Beta-Reality-JP-PortForward",
-			mode: "port_forward",
-			targetName: relayB,
-		},
-	];
 	const firstStage1Request = stage1Requests.at(0);
 	if (firstStage1Request === undefined) {
 		throw new Error("stage1 convert request was not captured");
@@ -158,7 +173,42 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 	expect(firstStage1Request.stage1Input.advancedOptions.include).toEqual(["HK"]);
 	expect(firstStage1Request.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 	expect(generateRequests).toHaveLength(1);
-	expect(generateRequests[0]?.stage2Snapshot.rows).toEqual(expectedRows);
+	const firstGenerateRequest = generateRequests[0];
+	if (firstGenerateRequest === undefined) {
+		throw new Error("generate request was not captured");
+	}
+	expect(firstGenerateRequest.stage2Snapshot.rows).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				landingNodeName: "Alpha-Reality-HK-PortForward",
+				mode: "chain",
+				targetName: "HK Relay Group",
+			}),
+			expect.objectContaining({
+				landingNodeName: replicaLandingNodeName,
+				mode: "port_forward",
+				targetName: relayA,
+			}),
+			expect.objectContaining({
+				landingNodeName: "Beta-Reality-JP-PortForward",
+				mode: "port_forward",
+				targetName: relayB,
+			}),
+		]),
+	);
+	const sourceSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === "Alpha-Reality-HK-PortForward");
+	const replicaSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === replicaLandingNodeName);
+	if (sourceSnapshotRow?.rowId === undefined || replicaSnapshotRow?.rowId === undefined) {
+		throw new Error("source/replica row IDs are required for aggregation assertions");
+	}
+	expect(firstGenerateRequest.stage2Snapshot.serverAggregationGroups).toBeInstanceOf(Array);
+	expect(sourceSnapshotRow.rowId).not.toBe(replicaSnapshotRow.rowId);
+	expect(firstGenerateRequest.stage2Snapshot.rows.map((row) => row.landingNodeName)).toEqual([
+		"Alpha-Reality-HK-PortForward",
+		replicaLandingNodeName,
+		"Beta-Reality-JP-PortForward",
+	]);
+	expect(replicaSnapshotRow.sourceLandingNodeName).toBe("Alpha-Reality-HK-PortForward");
 	expect(shortLinkRequests).toEqual([longURL]);
 	expect(resolveRequests).toEqual([shortURL]);
 });

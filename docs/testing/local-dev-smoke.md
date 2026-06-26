@@ -1,4 +1,4 @@
-# 本地 UI 启动与 Smoke
+# 本地 UI 启动与回归
 
 状态见 [../STATUS.md](../STATUS.md)；契约见 spec；本文只写本地联调步骤。环境：`VS Code + WSL + Docker Desktop`。
 
@@ -32,7 +32,8 @@
 ```bash
 go test ./...
 cd web && npm run test
-cd web && npm run test:e2e:mock
+cd web && npm run test:e2e:mock:smoke
+cd web && npm run test:e2e:mock:full
 cd web && npm run build:default && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2
 docker compose -f deploy/docker-compose.yml config
 ```
@@ -46,7 +47,7 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 	-e CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
 	-v "$PWD":/work -w /work/web \
 	mcr.microsoft.com/playwright:v1.60.0-noble \
-	npm run test:e2e:mock
+	npm run test:e2e:mock:all
 ```
 
 本地 smoke：`./scripts/dev-up.sh default` — 确认 `healthz`、`stage1/convert`、Stage 3、workflow log。
@@ -101,7 +102,8 @@ Worker 同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy
 发布前非阻断真实部署 E2E（需公网入口）：
 
 ```bash
-cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:release
+cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:smoke
+cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:full
 ```
 
 ## 高频排障
