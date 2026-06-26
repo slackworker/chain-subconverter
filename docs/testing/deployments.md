@@ -23,7 +23,7 @@
 |------|-------------|----------|------|
 | **内网一体化** | vps-01（LAN Compose） | 2026-06-26 | **通过** |
 | **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-06-26 | **通过** |
-| **双 Docker 分离** | Railway + Koyeb（demo preview） | 2026-05-23 | **通过** |
+| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-06-26 | **通过** |
 
 外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
 
@@ -56,18 +56,16 @@
 
 ---
 
-## 双 Docker 分离 — Railway + Koyeb（2026-05-23）
+## 双 Docker 分离 — Koyeb + vps-02（2026-06-26）
 
-- **部署形态**：`app` 与 `subconverter` 分属独立 Docker 项目；`UPSTREAM` / `FACING` 跨公网互访
-- **chain-subconverter 入口**（可作项目 **demo preview**）：
-  - Railway：`https://chain-subconverter-production.up.railway.app/`
-  - Koyeb：`https://fantastic-loise-slackers-134ea8cc.koyeb.app/`
-- **subconverter 入口**：Railway `https://sparkling-luck-production.up.railway.app/`（`GET /version` → `subconverter v0.9.1-70ad654-mihomo backend`）
-- **镜像 tag**：本轮未从响应头确认；subconverter 版本见 `/version`
-- **回归**：`healthz`、`/api/runtime-config`、`/` UI；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit）；subconverter `/version`
+- **部署形态**：`app`（Koyeb）与 `subconverter`（vps-02 独立 Compose）分属两套 Docker；`UPSTREAM` / `FACING` 跨公网互访
+- **chain-subconverter 入口**（**demo preview**）：Koyeb `https://chain-subconverter.koyeb.app/`
+- **subconverter 入口**：vps-02 独立 Compose（`GET /version` → `subconverter v0.9.2-c7b26b5-mihomo-integration-chain-subconverter backend`）
+- **镜像 tag**：Koyeb app `dev-latest` @ `ac821587`；subconverter `integration-chain-subconverter`
+- **回归**：`healthz`、`/api/runtime-status`（`subconverter.networkScope=cross_network`）、`/` UI；subconverter `/version`；主流程手工验证
 - **结果**：**通过**
-- **关键发现**：双 Docker 分离下 stage1 → generate → 订阅读取 → short-link round-trip 均正常；生成链接 origin 与各自 HTTPS 入口一致
-- **后续**：可作为对外 demo preview；复验时覆盖本节与上表日期；命令见本地文件
+- **关键发现**：独立 subconverter 须常驻独立 compose（曾仅创建 compose 未 `up`，导致后端不通）；恢复后 Koyeb app 与 vps-02 subconverter 互访正常
+- **细节**：subconverter 地址、Compose 路径、smoke 命令见本地文件
 
 ---
 

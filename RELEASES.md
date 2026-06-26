@@ -186,7 +186,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 
 公网预览（仅供体验 UI 与流程，**请勿填入真实节点**）：
 
-<https://fantastic-loise-slackers-134ea8cc.koyeb.app/>
+<https://chain-subconverter.koyeb.app/>
 
 假节点示例数据见根目录 `README.md`（在线预览仅体验流程，请勿填真实节点）。
 

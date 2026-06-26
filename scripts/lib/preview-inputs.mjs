@@ -7,7 +7,7 @@ export const WORKER_FIXTURES_BASE =
 	"https://chain-subconverter-test-fixtures.slackworker.workers.dev";
 const WORKER_DOWNLOAD_PREFIX = `${WORKER_FIXTURES_BASE}/dual-landing/download`;
 
-const PREVIEW_URL = "https://fantastic-loise-slackers-134ea8cc.koyeb.app/";
+const PREVIEW_URL = "https://chain-subconverter.koyeb.app/";
 
 const AUTO_GENERATED_BANNER = [
 	"<!--",

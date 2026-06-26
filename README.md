@@ -15,7 +15,7 @@
 
 ### 在线体验
 
-公网预览：<https://fantastic-loise-slackers-134ea8cc.koyeb.app/>（仅体验 UI 与流程；**请勿提交真实节点或敏感订阅**）
+公网预览：<https://chain-subconverter.koyeb.app/>（仅体验 UI 与流程；**请勿提交真实节点或敏感订阅**）
 
 假数据参考：按 [docs/testing/preview-inputs.md](docs/testing/preview-inputs.md) 粘贴输入即可走完整流程。
 

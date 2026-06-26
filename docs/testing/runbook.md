@@ -178,7 +178,7 @@ cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_
 |------|-------------|------|----------|------|
 | **内网一体化** | （如 vps-01） | `http://<lan-ip>:11200/` | YYYY-MM-DD | |
 | **公网 HTTPS 一体化** | （如 vps-02） | `https://<your-domain>/` | YYYY-MM-DD | |
-| **双 Docker 分离** | （如 Railway + Koyeb） | 见各平台 URL | YYYY-MM-DD | |
+| **双 Docker 分离** | （如 Koyeb + vps-02） | 见各平台 URL | YYYY-MM-DD | |
 
 ---
 
