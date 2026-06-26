@@ -1,29 +1,15 @@
-import { expect, test, type Page, type Response } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
+import { addTagInField, applyDefaultUiPreferences, expectHTTPResponseOK } from "./helpers";
 
 import type { GenerateRequest, ResolveURLResponse, Stage1ConvertRequest } from "../src/types/api";
 
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 
-async function expectOKResponse(response: Response, label: string) {
-	if (response.ok()) {
-		return;
-	}
-	throw new Error(`${label} failed with HTTP ${response.status()}: ${await response.text()}`);
-}
-
-async function addTag(page: Page, fieldLabel: string, tag: string) {
-	const field = page.locator(".a-field").filter({ has: page.getByText(fieldLabel, { exact: true }) });
-	const input = field.locator(".a-tag-field__input");
-	await input.fill(tag);
-	await input.press("Enter");
-	await expect(field.locator(".a-tag-chip__text", { hasText: tag })).toBeVisible();
-}
-
 test.describe.configure({ mode: "serial" });
 
-test("include hk + exclude JP flow through convert, generate, and resolve", async ({ page, baseURL }) => {
+test("mock dual-landing filters keep include and exclude through replay", async ({ page, baseURL }) => {
 	test.setTimeout(180_000);
 
 	const origin = baseURL?.trim();
@@ -31,10 +17,7 @@ test("include hk + exclude JP flow through convert, generate, and resolve", asyn
 		throw new Error("include/exclude filter e2e requires Playwright baseURL");
 	}
 
-	await page.addInitScript(() => {
-		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
-		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
-	});
+	await applyDefaultUiPreferences(page);
 
 	await Promise.all([
 		page.waitForResponse((resp) => resp.url().includes("/api/runtime-config") && resp.ok()),
@@ -49,15 +32,15 @@ test("include hk + exclude JP flow through convert, generate, and resolve", asyn
 	await page.getByLabel("中转信息").fill(canonicalStage1Inputs.transitInput);
 
 	await page.getByRole("button", { name: "高级选项" }).click();
-	await addTag(page, "包含节点", "hk");
-	await addTag(page, "排除节点", "JP");
+	await addTagInField(page, "包含节点", "hk");
+	await addTagInField(page, "排除节点", "JP");
 
 	const stage1ConvertResponsePromise = page.waitForResponse(
 		(resp) => resp.url().includes("/api/stage1/convert"),
 	);
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 	const stage1ConvertResponse = await stage1ConvertResponsePromise;
-	await expectOKResponse(stage1ConvertResponse, "stage1 convert");
+	await expectHTTPResponseOK(stage1ConvertResponse, "stage1 convert");
 
 	const stage1ConvertRequest = stage1ConvertResponse.request().postDataJSON() as Stage1ConvertRequest;
 	expect(stage1ConvertRequest.stage1Input.advancedOptions.include).toEqual(["hk"]);
@@ -70,7 +53,7 @@ test("include hk + exclude JP flow through convert, generate, and resolve", asyn
 	const generateResponsePromise = page.waitForResponse((resp) => resp.url().includes("/api/generate"));
 	await generateButton.click();
 	const generateResponse = await generateResponsePromise;
-	await expectOKResponse(generateResponse, "generate");
+	await expectHTTPResponseOK(generateResponse, "generate");
 
 	const generateRequest = generateResponse.request().postDataJSON() as GenerateRequest;
 	expect(generateRequest.stage1Input.advancedOptions.include).toEqual(["hk"]);

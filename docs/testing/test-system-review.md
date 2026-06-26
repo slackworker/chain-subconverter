@@ -23,12 +23,13 @@
    - 当前重点：`stage1.ts`、`stage2.ts`、`state.ts`、`notices.ts`、`hooks/useAppWorkflow.ts`。
    - 职责：输入归一化、payload / restore 语义、relay 互斥与 target 选择等不值得放进浏览器层的规则。
 3. Mocked Playwright：稳定的浏览器级 smoke。
-   - 入口：`cd web && npm run test:e2e -- default-happy-path.spec.ts port-forward-happy-path.spec.ts`
-   - 职责：验证默认 `/` 的主线 happy path，以及 port-forward 的关键交互与恢复路径。
+   - 入口（PR blocking）：`cd web && npm run test:e2e:mock`
+   - 扩展入口（非 blocking）：`cd web && npm run test:e2e:mock:filters`
+   - 职责：验证默认 `/` 的核心链路、dual-landing port-forward 编排，以及 dual-landing full-flow 的 Stage1→Stage2→Stage3 回放一致性。
    - 约束：只测 deterministic mocked API，不扩成大规模矩阵。
-4. Real deployed smoke：手动发布前检查。
-   - 入口：`cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e -- deployed-smoke.spec.ts`
-   - 职责：确认真实部署的 healthz、convert、generate、short-link、resolve 与 `/sub` 下载链路仍可用。
+4. Real deployed smoke：手动发布前检查（non-blocking）。
+   - 入口：`cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:release`
+   - 职责：确认真实部署的 healthz、convert、generate、short-link、resolve、`/sub` 下载链路，以及 dual-landing 全流程在真实环境可回放。
 
 ## CI 门禁（当前）
 
@@ -49,7 +50,7 @@
 | Web Mock E2E | `cd web && npm run test:e2e:mock`（job `web-mock-e2e`，**blocking**） |
 | Compose Config | `docker compose -f deploy/docker-compose.yml config` |
 
-**刻意不作为 blocking 门禁**：`go test -race`、覆盖率门槛 / 报告、`golangci-lint` 或前端 lint、带真实 `subconverter` 的 Compose 集成 job、deployed smoke（见下文「当前缺口」）。Mocked Playwright 仅保留两条稳定 happy path，并已纳入 blocking CI。
+**刻意不作为 blocking 门禁**：`go test -race`、覆盖率门槛 / 报告、`golangci-lint` 或前端 lint、带真实 `subconverter` 的 Compose 集成 job、real deployed smoke（见下文「当前缺口」）。Mocked Playwright 只保留 deterministic mocked API 集合（`mock-default-core-flow`、`mock-dual-landing-port-forward`、`mock-dual-landing-full-flow`），并已纳入 blocking CI。
 
 ### `docker-publish.yml`（推 `beta` / `main` 或 tag 时发镜像）
 
@@ -67,9 +68,12 @@
    - `Comprehensive` = `dual-landing-chain-port-forward`，用于双落地 / 双中转 / template / port-forward / Worker 相关复杂覆盖
    - 新功能默认先看是否能落在 `Smoke`；只有明显依赖复杂拓扑时才只补 `Comprehensive`
 - `Comprehensive` 当前已补齐 dual-landing 的 `stage1/convert` API golden，以及 `internal/api` 对 `stage1/convert`、`short-links`、`resolve-url`（long URL / short URL）的 handler-level happy path 回放。
-- 浏览器层只保留少量 mocked smoke：
-  - `default-happy-path.spec.ts`：默认最小 happy path
-  - `port-forward-happy-path.spec.ts`：port-forward 开关、relay 标签、互斥选择、generate / restore
+- 浏览器层命名统一为 `mock-*` / `real-*`：
+  - `mock-default-core-flow.spec.ts`：默认最小主线与 Stage3 回放
+  - `mock-dual-landing-port-forward.spec.ts`：port-forward 开关、relay 标签、互斥选择、generate / restore
+  - `mock-dual-landing-full-flow.spec.ts`：dual-landing 完整流程（Stage1→Stage2复杂编排→Stage3回放）
+  - `mock-dual-landing-filters.spec.ts`：include / exclude 标签在 convert、generate、resolve 链路保真（扩展项，非 blocking）
+  - `real-deployed-core-flow.spec.ts` + `real-dual-landing-full-flow.spec.ts`：发布前 non-blocking 真实部署验证
 - `testdata/canonical-scenarios/` 继续作为 Stage 1 场景源头：
    - `3pass-ss2022-test-subscription`：Smoke fixture
    - `dual-landing-chain-port-forward`：Comprehensive fixture
@@ -120,4 +124,4 @@
 - `stage2-snapshot` 等 frozen 金样是否需重录不由 CI 判定（设计边界）；见上文 Frozen 重录 runbook。
 - deployed smoke 仍依赖手动运行与真实环境，不追求 PR 级自动化。
 - 更广 scheme 矩阵、阻断错误路径与视觉一致性检查继续保持非阻塞项。
-- 阻断路径 E2E（非 blocking）：沿用 mocked API，在 `default` scheme 补 3～5 条「接线原型」spec（如 `stage1_field` convert 失败、`stage3_action` short-links 失败、`global` 503）；业务语义仍以 Go + Vitest 为主，勿扩成 code × scheme 矩阵。实现后更新 `package.json` 的 `test:e2e:mock` 文件列表。
+- 阻断路径 E2E（非 blocking）：沿用 mocked API，在 `default` scheme 补 3～5 条「接线原型」spec（如 `stage1_field` convert 失败、`stage3_action` short-links 失败、`global` 503）；业务语义仍以 Go + Vitest 为主，勿扩成 code × scheme 矩阵。若新增此类用例，优先挂到 `test:e2e:mock:filters` 或新增 `test:e2e:mock:*` 扩展脚本，避免膨胀 PR blocking 集。
