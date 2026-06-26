@@ -11,9 +11,9 @@
 | 位置 | 内容 |
 |------|------|
 | 本文件（进仓库） | 日期、镜像 tag、设备角色、回归范围、通过/失败、关键发现与后续动作 |
-| `third-party-deployments.local.md`（同目录，gitignore） | 主机名、IP、SSH、公网域名、完整 `CHAIN_SUBCONVERTER_E2E_*` smoke 命令 |
+| `deployments.local.md`（同目录，gitignore） | 主机名、IP、SSH、公网域名、完整 `CHAIN_SUBCONVERTER_E2E_*` smoke 命令 |
 
-首次克隆：复制 [runbook.md#第三方本地记录模板](runbook.md#第三方本地记录模板) 内容 → `third-party-deployments.local.md`。完成回归后：**覆盖**本文件对应节，细节同步 `.local.md`。
+首次克隆：复制 [runbook.md#第三方本地记录模板](runbook.md#第三方本地记录模板) 内容 → `deployments.local.md`。完成回归后：**覆盖**本文件对应节，细节同步 `deployments.local.md`。
 
 ---
 
@@ -77,4 +77,4 @@
 CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" ./scripts/third-party-smoke.sh
 ```
 
-完整 `E2E_*` 与 SSH/运维示例：`third-party-deployments.local.md`。
+完整 `E2E_*` 与 SSH/运维示例：`deployments.local.md`。

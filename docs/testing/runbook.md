@@ -136,7 +136,7 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 
 ## 公网 E2E（第三方部署）
 
-订阅 URL 以 [preview-inputs.md](preview-inputs.md) 为准（勿复制到多处）。在仓库根执行；公网 app 入口勿写入 Git，见 `third-party-deployments.local.md`（同目录，gitignore）：
+订阅 URL 以 [preview-inputs.md](preview-inputs.md) 为准（勿复制到多处）。在仓库根执行；公网 app 入口勿写入 Git，见 `deployments.local.md`（同目录，gitignore）：
 
 ```bash
 CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" \
@@ -166,7 +166,7 @@ cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_
 
 ## 第三方本地记录模板
 
-复制为本目录下的 `third-party-deployments.local.md`（已 gitignore，勿提交）。
+复制为本目录下的 `deployments.local.md`（已 gitignore，勿提交）。
 
 公开结论写在同目录 [deployments.md](deployments.md)（每种形态只保留最新一轮，覆盖写）。
 
