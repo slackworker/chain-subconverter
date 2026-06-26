@@ -1,14 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { applyDefaultUiPreferences, locateStage2Row, mockReplayableResolveRoute, mockRuntimeConfig } from "./helpers";
 
 import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
 
-function getStage2Row(page: Page, landingNodeName: string) {
-	return page.locator(".a-table tbody tr", {
-		has: page.locator(`.a-stage2-row-name-input[value="${landingNodeName}"]`),
-	});
-}
-
-test("default UI minimal happy path via fixed-port runtime", async ({ page }) => {
+test("mock default core flow keeps generate and replay consistent", async ({ page }) => {
 	const landingInput = "ss://landing-happy-path";
 	const transitInput = "https://example.com/transit-happy-path.txt";
 	const longURL = "http://127.0.0.1:11200/sub?target=clash&url=https%3A%2F%2Fexample.com%2Ftransit-happy-path.txt";
@@ -32,19 +28,8 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 	const shortLinkRequests: string[] = [];
 	const resolveRequests: string[] = [];
 
-	await page.addInitScript(() => {
-		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
-		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
-	});
-
-	await page.route("**/api/runtime-config", async (route) => {
-		await route.fulfill({
-			json: {
-				defaultTemplateURL: "https://example.com/default-template.ini",
-				maxPublicLongURLLength: 8192,
-			},
-		});
-	});
+	await applyDefaultUiPreferences(page);
+	await mockRuntimeConfig(page);
 
 	await page.route("**/api/stage1/convert", async (route) => {
 		const request = route.request().postDataJSON() as Stage1ConvertRequest;
@@ -87,26 +72,15 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 		});
 	});
 
-	await page.route("**/api/resolve-url", async (route) => {
-		const request = route.request().postDataJSON() as { url: string };
-		const latestGenerateRequest = generateRequests.at(-1);
-		if (latestGenerateRequest === undefined) {
-			throw new Error("generate request was not captured before resolve-url");
-		}
-		resolveRequests.push(request.url);
-		await route.fulfill({
-			json: {
-				longUrl: longURL,
-				shortUrl: shortURL,
-				restoreStatus: "replayable",
-				stage1Input: latestGenerateRequest.stage1Input,
-				stage2Snapshot: latestGenerateRequest.stage2Snapshot,
-				messages: [
-					{ level: "info", code: "RESTORE_METADATA_READY", message: "已读取恢复快照。" },
-				],
-				blockingErrors: [],
-			},
-		});
+	await mockReplayableResolveRoute({
+		page,
+		generateRequests,
+		resolveRequests,
+		longURL,
+		shortURL,
+		messages: [
+			{ level: "info", code: "RESTORE_METADATA_READY", message: "已读取恢复快照。" },
+		],
 	});
 
 	await page.goto("/");
@@ -156,7 +130,7 @@ test("default UI minimal happy path via fixed-port runtime", async ({ page }) =>
 	]);
 });
 
-test("default UI conflicted Short ID restore keeps Stage 2 snapshot visible but readonly", async ({ page }) => {
+test("mock default restore conflict keeps stage2 snapshot readonly", async ({ page }) => {
 	const shortId = "Ib2t8wwr3OZ";
 	const shortURL = "http://127.0.0.1:11200/sub/conflicted-short";
 	const longURL = "http://127.0.0.1:11200/sub?data=conflicted-short";
@@ -164,19 +138,8 @@ test("default UI conflicted Short ID restore keeps Stage 2 snapshot visible but 
 	const transitInput = "https://example.com/restored-transit.txt";
 	const resolveRequests: string[] = [];
 
-	await page.addInitScript(() => {
-		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
-		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
-	});
-
-	await page.route("**/api/runtime-config", async (route) => {
-		await route.fulfill({
-			json: {
-				defaultTemplateURL: "https://example.com/default-template.ini",
-				maxPublicLongURLLength: 8192,
-			},
-		});
-	});
+	await applyDefaultUiPreferences(page);
+	await mockRuntimeConfig(page);
 
 	await page.route("**/api/resolve-url", async (route) => {
 		const request = route.request().postDataJSON() as { url: string };
@@ -227,7 +190,7 @@ test("default UI conflicted Short ID restore keeps Stage 2 snapshot visible but 
 	await expect(page.getByLabel("中转信息")).toHaveValue(transitInput);
 	await expect(currentLink).toHaveValue(shortURL);
 
-	const row = getStage2Row(page, "HK 01");
+	const row = locateStage2Row(page, "HK 01");
 	await expect(row.locator(".a-target-menu__trigger").nth(0)).toContainText("链式代理");
 	await expect(row.locator(".a-target-menu__trigger").nth(1)).toContainText("HK Relay Group");
 	await expect(page.getByRole("button", { name: "生成链接" })).toBeDisabled();

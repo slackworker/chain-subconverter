@@ -1,4 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import {
+	applyDefaultUiPreferences,
+	locateStage2Row,
+	mockReplayableResolveRoute,
+	mockRuntimeConfig,
+	selectStage2MenuOption,
+} from "./helpers";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 
@@ -6,30 +14,7 @@ import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse, Stag
 
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 
-function getStage2Row(page: Page, landingNodeName: string) {
-	return page.locator(".a-table tbody tr", {
-		has: page.locator(`.a-stage2-row-name-input[value="${landingNodeName}"]`),
-	});
-}
-
-async function pickStage2FlatSelectOption(
-	page: Page,
-	row: ReturnType<typeof getStage2Row>,
-	triggerIndex: number,
-	optionText: string,
-) {
-	const trigger = row.locator(".a-target-menu__trigger").nth(triggerIndex);
-	await trigger.click();
-	await expect(trigger).toHaveAttribute("aria-expanded", "true");
-	const panel = page.locator(".a-target-menu__panel--anchored").last();
-	const option = panel.locator(".a-target-menu__item").filter({ hasText: optionText });
-	await expect(option).toHaveCount(1);
-	await option.evaluate((element) => {
-		(element as HTMLButtonElement).click();
-	});
-}
-
-test("default UI port-forward mocked happy path keeps relay choices exclusive and replayable", async ({ page }) => {
+test("mock dual-landing port-forward keeps relay choices exclusive and replayable", async ({ page }) => {
 	const [relayA, relayB] = canonicalStage1Inputs.forwardRelayItems;
 	if (!relayA || !relayB) {
 		throw new Error("dual-landing canonical scenario must provide two forward relay items");
@@ -62,19 +47,8 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	const shortLinkRequests: string[] = [];
 	const resolveRequests: string[] = [];
 
-	await page.addInitScript(() => {
-		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
-		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
-	});
-
-	await page.route("**/api/runtime-config", async (route) => {
-		await route.fulfill({
-			json: {
-				defaultTemplateURL: "https://example.com/default-template.ini",
-				maxPublicLongURLLength: 8192,
-			},
-		});
-	});
+	await applyDefaultUiPreferences(page);
+	await mockRuntimeConfig(page);
 
 	await page.route("**/api/stage1/convert", async (route) => {
 		const request = route.request().postDataJSON() as Stage1ConvertRequest;
@@ -113,24 +87,12 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 		});
 	});
 
-	await page.route("**/api/resolve-url", async (route) => {
-		const request = route.request().postDataJSON() as { url: string };
-		const latestGenerateRequest = generateRequests.at(-1);
-		if (latestGenerateRequest === undefined) {
-			throw new Error("generate request was not captured before resolve-url");
-		}
-		resolveRequests.push(request.url);
-		await route.fulfill({
-			json: {
-				longUrl: longURL,
-				shortUrl: shortURL,
-				restoreStatus: "replayable",
-				stage1Input: latestGenerateRequest.stage1Input,
-				stage2Snapshot: latestGenerateRequest.stage2Snapshot,
-				messages: [],
-				blockingErrors: [],
-			},
-		});
+	await mockReplayableResolveRoute({
+		page,
+		generateRequests,
+		resolveRequests,
+		longURL,
+		shortURL,
 	});
 
 	await page.goto("/");
@@ -157,16 +119,16 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 
-	const rowA = getStage2Row(page, "Alpha-Reality-HK-PortForward");
-	const rowB = getStage2Row(page, "Beta-Reality-JP-PortForward");
+	const rowA = locateStage2Row(page, "Alpha-Reality-HK-PortForward");
+	const rowB = locateStage2Row(page, "Beta-Reality-JP-PortForward");
 
-	await pickStage2FlatSelectOption(page, rowA, 0, "端口转发");
+	await selectStage2MenuOption(page, rowA, 0, "端口转发");
 	const rowAModeTrigger = rowA.locator(".a-target-menu__trigger").nth(0);
 	const rowATargetTrigger = rowA.locator(".a-target-menu__trigger").nth(1);
 	await expect(rowATargetTrigger).toContainText("请选择");
-	await pickStage2FlatSelectOption(page, rowA, 1, relayA);
+	await selectStage2MenuOption(page, rowA, 1, relayA);
 
-	await pickStage2FlatSelectOption(page, rowB, 0, "端口转发");
+	await selectStage2MenuOption(page, rowB, 0, "端口转发");
 	const rowBTargetTrigger = rowB.locator(".a-target-menu__trigger").nth(1);
 	await rowBTargetTrigger.click();
 	await expect(rowBTargetTrigger).toHaveAttribute("aria-expanded", "true");
@@ -219,25 +181,14 @@ test("default UI port-forward mocked happy path keeps relay choices exclusive an
 	expect(resolveRequests).toEqual([shortURL]);
 });
 
-test("default UI port-forward modal preserves draft tags after backdrop close", async ({ page }) => {
+test("mock dual-landing port-forward modal keeps draft relay tags", async ({ page }) => {
 	const [relayA] = canonicalStage1Inputs.forwardRelayItems;
 	if (!relayA) {
 		throw new Error("dual-landing canonical scenario must provide at least one forward relay item");
 	}
 
-	await page.addInitScript(() => {
-		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
-		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
-	});
-
-	await page.route("**/api/runtime-config", async (route) => {
-		await route.fulfill({
-			json: {
-				defaultTemplateURL: "https://example.com/default-template.ini",
-				maxPublicLongURLLength: 8192,
-			},
-		});
-	});
+	await applyDefaultUiPreferences(page);
+	await mockRuntimeConfig(page);
 
 	await page.goto("/");
 

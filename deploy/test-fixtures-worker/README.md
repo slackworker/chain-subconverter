@@ -88,7 +88,7 @@ curl -sS "http://127.0.0.1:8787/dual-landing/download/Landing-Subscription?targe
 
 ## 在公网 smoke 中使用
 
-`CHAIN_SUBCONVERTER_E2E_*_INPUT` 传给 `deployed-smoke.spec.ts` 的应是“订阅源 URL”，不是 `?target=URI` 这种“展开后的明文内容”。`deployed-smoke.spec.ts` 现在支持 `CHAIN_SUBCONVERTER_E2E_LANDING_INPUT_2/_3...` 与 `CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT_2/_3...` 追加多行输入，所以双中转 smoke 不需要手写换行转义。
+`CHAIN_SUBCONVERTER_E2E_*_INPUT` 传给 real 部署 E2E（`real-deployed-core-flow.spec.ts` / `real-dual-landing-full-flow.spec.ts`）的应是“订阅源 URL”，不是 `?target=URI` 这种“展开后的明文内容”。real 部署 E2E 支持 `CHAIN_SUBCONVERTER_E2E_LANDING_INPUT_2/_3...` 与 `CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT_2/_3...` 追加多行输入，所以双中转 smoke 不需要手写换行转义。
 
 完整环境变量示例见 [local-dev-smoke.md](../../docs/testing/local-dev-smoke.md) 与 [third-party-deployments.local.example.md](../../docs/testing/third-party-deployments.local.example.md)；订阅 URL 取值见 [dual-landing-manual-reference.md](../../docs/testing/dual-landing-manual-reference.md)。
 

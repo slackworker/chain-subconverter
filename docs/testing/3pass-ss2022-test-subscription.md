@@ -11,7 +11,7 @@
 当前默认约定是：
 
 - 新功能若没有明显依赖双落地 / 双中转 / template / port-forward 这类复杂拓扑，优先先补到 Smoke
-- `web/e2e/deployed-smoke.spec.ts` 的默认 fallback 输入继续跟随这组 Smoke 数据
+- `web/e2e/real-deployed-core-flow.spec.ts` 的默认 fallback 输入继续跟随这组 Smoke 数据
 
 固定覆盖范围包括：
 
@@ -41,7 +41,7 @@ go run ./cmd/testfixturegen -scenario 3pass-ss2022-test-subscription
 
 当前该命令对这组 Smoke fixture 只负责刷新 `stage1/input/*`。`stage2/output/*` 继续保留为历史固定基线，不跟随 canonical 自动重录。
 
-当前这个 canonical 场景继续固定 Smoke 真正消费的规范化 Stage 1 输入，不额外引入双落地场景里那种更丰富的 transit/template 附属材料。它现在的职责主要是：作为最小内部回放基线，以及 `web/e2e/deployed-smoke.spec.ts` 的默认 fallback 输入来源；Cloudflare Worker 公网 fixture 已转向 `dual-landing-chain-port-forward` 这套更完整的 Comprehensive 数据。
+当前这个 canonical 场景继续固定 Smoke 真正消费的规范化 Stage 1 输入，不额外引入双落地场景里那种更丰富的 transit/template 附属材料。它现在的职责主要是：作为最小内部回放基线，以及 `web/e2e/real-deployed-core-flow.spec.ts` 的默认 fallback 输入来源；Cloudflare Worker 公网 fixture 已转向 `dual-landing-chain-port-forward` 这套更完整的 Comprehensive 数据。
 
 该目录固定保存以下基线材料：
 

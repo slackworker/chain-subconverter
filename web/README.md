@@ -11,7 +11,9 @@ npm install
 npm run dev          # 或 dev:b1 / dev:b2 / dev:c1 / dev:c2
 npm run build        # 或 build:default / build:b1 / …
 npm run test         # Vitest
-npm run test:e2e     # Playwright；需仓库根 ./scripts/dev-up.sh default
+npm run test:e2e:mock         # PR blocking mocked Playwright
+npm run test:e2e:real:release # 发布前 non-blocking 真实部署 E2E
+npm run test:e2e              # Playwright 全量（调试用）
 ```
 
 发布前完整检查见 [docs/testing/release-runbook.md](../docs/testing/release-runbook.md)。
