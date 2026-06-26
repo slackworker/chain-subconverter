@@ -66,9 +66,9 @@ type longURLAdvancedOptions struct {
 }
 
 type longURLStage2Snapshot struct {
-	Rows                          []longURLStage2Row              `json:"rows"`
+	Rows                                           []longURLStage2Row              `json:"rows"`
 	ChainProxyTargetGroupSwitchOptimizationEnabled *bool                           `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
-	ServerAggregationGroups       []longURLServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
+	ServerAggregationGroups                        []longURLServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
 }
 
 type longURLStage2Row struct {
@@ -152,6 +152,7 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 
 	// Canonicalize decoded payload to the latest in-memory schema version.
 	payload.V = longURLSchemaVersion
+	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
 
 	if err := ValidateStage1InputLimits(payload.Stage1Input, limits); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate stage1 input limits: %w", err)
@@ -339,9 +340,9 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			},
 		},
 		Stage2Snapshot: Stage2Snapshot{
-			Rows:                          rows,
+			Rows: rows,
 			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
-			ServerAggregationGroups:       serverAggregationGroups,
+			ServerAggregationGroups:                        serverAggregationGroups,
 		},
 	}
 }
@@ -629,9 +630,9 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			TransitRawText:    payload.Stage1Input.TransitRawText,
 		},
 		Stage2Snapshot: longURLStage2Snapshot{
-			Rows:                          rows,
+			Rows: rows,
 			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
-			ServerAggregationGroups:       serverAggregationGroups,
+			ServerAggregationGroups:                        serverAggregationGroups,
 		},
 		V: payload.V,
 	}

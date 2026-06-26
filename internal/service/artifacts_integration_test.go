@@ -26,6 +26,7 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 
 	var expectedPayload LongURLPayload
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "long-url.payload.json"), &expectedPayload)
+	expectedPayload.Stage2Snapshot = NormalizeStage2Snapshot(expectedPayload.Stage2Snapshot)
 
 	expectedStage1Response := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
 	expectedGenerateResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"))

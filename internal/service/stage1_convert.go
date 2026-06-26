@@ -101,9 +101,9 @@ type Stage2SnapshotFixture struct {
 }
 
 type Stage2Snapshot struct {
-	Rows                          []Stage2Row              `json:"rows"`
+	Rows                                           []Stage2Row              `json:"rows"`
 	ChainProxyTargetGroupSwitchOptimizationEnabled bool                     `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
-	ServerAggregationGroups       []ServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
+	ServerAggregationGroups                        []ServerAggregationGroup `json:"serverAggregationGroups"`
 }
 
 type ServerAggregationGroup struct {
@@ -121,26 +121,26 @@ type Stage2Init struct {
 }
 
 type Stage2Row struct {
-	RowID                  string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName  string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName              string                     `json:"proxyName,omitempty"`
-	LandingNodeName        string                     `json:"landingNodeName"`
-	Mode                   string                     `json:"mode"`
-	TargetName             *string                    `json:"targetName"`
-	RestrictedModes        map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	RowID                 string                     `json:"rowId,omitempty"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
+	ProxyName             string                     `json:"proxyName,omitempty"`
+	LandingNodeName       string                     `json:"landingNodeName"`
+	Mode                  string                     `json:"mode"`
+	TargetName            *string                    `json:"targetName"`
+	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 }
 
 type Stage2InitRow struct {
-	RowID                  string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName  string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName              string                     `json:"proxyName,omitempty"`
-	LandingNodeName        string                     `json:"landingNodeName"`
-	LandingNodeType        string                     `json:"landingNodeType"`
-	Server                 string                     `json:"server"`
-	Mode                   string                     `json:"mode"`
-	TargetName             *string                    `json:"targetName"`
-	RestrictedModes        map[string]ModeRestriction `json:"restrictedModes,omitempty"`
-	ModeWarnings           map[string]ModeRestriction `json:"modeWarnings,omitempty"`
+	RowID                 string                     `json:"rowId,omitempty"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
+	ProxyName             string                     `json:"proxyName,omitempty"`
+	LandingNodeName       string                     `json:"landingNodeName"`
+	LandingNodeType       string                     `json:"landingNodeType"`
+	Server                string                     `json:"server"`
+	Mode                  string                     `json:"mode"`
+	TargetName            *string                    `json:"targetName"`
+	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	ModeWarnings          map[string]ModeRestriction `json:"modeWarnings,omitempty"`
 }
 
 type ModeRestriction struct {

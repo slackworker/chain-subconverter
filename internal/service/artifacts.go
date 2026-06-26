@@ -143,6 +143,12 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 }
 
 func NormalizeStage2Snapshot(snapshot Stage2Snapshot) Stage2Snapshot {
+	if snapshot.Rows == nil {
+		snapshot.Rows = []Stage2Row{}
+	}
+	if snapshot.ServerAggregationGroups == nil {
+		snapshot.ServerAggregationGroups = []ServerAggregationGroup{}
+	}
 	return snapshot
 }
 
