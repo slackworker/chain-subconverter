@@ -1,6 +1,6 @@
 # 项目状态
 
-> 最近更新：2026-06-26 · **3.0 线** 正式 Beta tag [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) 已发布 · **3.1 Beta 线** [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿) **准备中**（dev HEAD，尚未打 tag）
+> 最近更新：2026-06-26 · **3.0 线** 正式 Beta tag [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) 已发布 · **3.1 Beta 线** [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿) **准备中**（`dev-latest` @ `cf820c2` 预演通过，尚未打 tag）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
@@ -54,5 +54,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** @ `ac82158`（`NormalizeStage2Snapshot`）`test:e2e:real:smoke` + `test:e2e:real:full` **通过**（见 [deployments.md](testing/deployments.md)）；正式 **beta** 线待发 tag 后复验 |
-| **本地自动化基线** | 2026-06-26：`go test ./...`、`test:e2e:mock:all` **通过**；完整 runbook 清单见 [runbook.md](testing/runbook.md) |
+| **第三方部署** | 2026-06-26 三形态 **`dev-latest`** @ `cf820c2`（vps-01/02 + Koyeb）`real-smoke` + `real-full` **通过**（见 [deployments.md](testing/deployments.md)）；**beta.1 待发 tag** 后须 `beta-latest` 复验 |
+| **本地自动化基线** | 2026-06-26：`go test ./...`、`test:e2e:mock:all`、push `dev` CI **通过**；完整 runbook 清单见 [runbook.md](testing/runbook.md) |

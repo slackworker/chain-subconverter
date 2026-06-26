@@ -31,27 +31,27 @@
 
 ## 内网一体化 — vps-01（2026-06-26，`dev-latest`）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:b7df699ee1a0025c310d47a586d91459d52a94c086c717426572adf6833a90ac`，`dev` @ `ac821587`）；`subconverter:integration-chain-subconverter`（`/version` = `v0.9.2-c7b26b5-...`，本轮未换 digest）
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:bdbf94556c906a4066a5eb37df02c03687ca84e7a9df85152a27745f2525964e`，`dev` @ `cf820c2`）；`subconverter:integration-chain-subconverter`（`/version` = `v0.9.2-c7b26b5-...`，本轮未换 digest）
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
-- **DEFAULT_TEMPLATE_URL**：已同步为 slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)；旧 compose 曾残留 upstream `Aethersailor/...`）
-- **回归**：`healthz`、`/api/runtime-status`；`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit；full 含复制行 + 聚合模式 + resolve 回放）
+- **DEFAULT_TEMPLATE_URL**：已同步为 slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)）
+- **回归**：`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit；full 含复制行 + 聚合模式 + resolve 回放）
 - **结果**：**通过**
-- **关键发现**：`fcd80d6` 扩展 `real-full` 后，`4f3dc004` 镜像在 resolve 回放因空 `serverAggregationGroups` 未序列化而失败；`ac821587`（`NormalizeStage2Snapshot`）修复后复验通过。`pull && up` 不会自动更新 compose env，须对照仓库默认 env 合并后再 `up --force-recreate app`
+- **关键发现**：`cf820c2` 含扩展聚合策略与 default UI 修订；三形态 `real-full` 均通过，可作为 `v3.1.0-beta.1` 发版前 dev-latest 预演快照
 - **细节**：SSH、入口 URL、smoke 命令见本地文件
 
 ---
 
 ## 公网 HTTPS 一体化 — vps-02（2026-06-26，`dev-latest`）
 
-- **镜像 tag**：与 vps-01 同 digest（`dev-latest`，`dev` @ `ac821587`）；`subconverter:integration-chain-subconverter` 同 vps-01（`/version` = `v0.9.2-c7b26b5-...`）
+- **镜像 tag**：与 vps-01 同 digest（`dev-latest`，`dev` @ `cf820c2`）；`subconverter:integration-chain-subconverter` 同 vps-01（`/version` = `v0.9.2-c7b26b5-...`）
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`
-- **DEFAULT_TEMPLATE_URL**：同 vps-01（slackworker fork，已从旧 upstream 同步）
-- **回归**：公网 HTTPS；`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（origin 与 `E2E_BASE_URL` 一致；generate / short-links / resolve / Stage2 编排回放）
+- **DEFAULT_TEMPLATE_URL**：同 vps-01（slackworker fork）
+- **回归**：公网 HTTPS；`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（origin 与 `E2E_BASE_URL` 一致）
 - **结果**：**通过**
-- **关键发现**：与 vps-01 同轮复验；HTTPS 入口与 resolve 回放均正常
+- **关键发现**：与 vps-01 同轮 `cf820c2` 预演；HTTPS 入口与 resolve 回放均正常
 - **细节**：SSH、域名、smoke 命令见本地文件
 
 ---
@@ -61,10 +61,10 @@
 - **部署形态**：`app`（Koyeb）与 `subconverter`（vps-02 独立 Compose）分属两套 Docker；`UPSTREAM` / `FACING` 跨公网互访
 - **chain-subconverter 入口**（**demo preview**）：Koyeb `https://chain-subconverter.koyeb.app/`
 - **subconverter 入口**：vps-02 独立 Compose（`GET /version` → `subconverter v0.9.2-c7b26b5-mihomo-integration-chain-subconverter backend`）
-- **镜像 tag**：Koyeb app `dev-latest` @ `ac821587`；subconverter `integration-chain-subconverter`
-- **回归**：`healthz`、`/api/runtime-status`（`subconverter.networkScope=cross_network`）、`/` UI；subconverter `/version`；主流程手工验证
+- **镜像 tag**：Koyeb app `dev-latest` @ `cf820c2`（digest 同 vps-01）；subconverter `integration-chain-subconverter`（本轮 `pull && up --force-recreate`）
+- **回归**：Koyeb `koyeb service redeploy`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`；subconverter `/version`
 - **结果**：**通过**
-- **关键发现**：独立 subconverter 须常驻独立 compose（曾仅创建 compose 未 `up`，导致后端不通）；恢复后 Koyeb app 与 vps-02 subconverter 互访正常
+- **关键发现**：`cf820c2` 预演下跨公网双 Docker 形态 `real-full` 通过；Koyeb redeploy 后须等待 healthz 就绪再跑 E2E
 - **细节**：subconverter 地址、Compose 路径、smoke 命令见本地文件
 
 ---
