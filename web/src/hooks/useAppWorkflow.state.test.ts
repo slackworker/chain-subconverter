@@ -260,7 +260,7 @@ describe("useAppWorkflow.state", () => {
 		expect(result.snapshot.serverAggregationGroups).toEqual([
 			{
 				server: "hk.example.com",
-				enabled: false,
+				enabled: true,
 				strategy: "fallback",
 				memberRowIds: ["landing-hk"],
 			},
@@ -269,7 +269,7 @@ describe("useAppWorkflow.state", () => {
 			droppedDerivedRows: 1,
 			resetModes: 1,
 			filteredAggregationMembers: 1,
-			disabledAggregationGroups: 1,
+			disabledAggregationGroups: 0,
 		});
 	});
 

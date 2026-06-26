@@ -314,14 +314,9 @@ export function mergeStage2SnapshotAfterConvert(
 			return getRowServerFromStage2Init(row, stage2InitRowsBySource) === server;
 		});
 		report.filteredAggregationMembers += Math.max(0, existingMemberRowIds.length - memberRowIds.length);
-		let enabled = group.enabled;
-		if (enabled && memberRowIds.length < 2) {
-			enabled = false;
-			report.disabledAggregationGroups += 1;
-		}
 		nextServerAggregationGroups.push({
 			server,
-			enabled,
+			enabled: group.enabled,
 			strategy: group.strategy,
 			memberRowIds,
 		});

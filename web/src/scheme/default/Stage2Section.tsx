@@ -119,10 +119,6 @@ export function Stage2Section({
 		const hasEnabledAggregation = state.stage2Snapshot.serverAggregationGroups.some((group) => group.enabled);
 		if (hasEnabledAggregation) {
 			setStage2AggregationMode(true);
-			return;
-		}
-		if (state.stage2Snapshot.serverAggregationGroups.length === 0) {
-			setStage2AggregationMode(false);
 		}
 	}, [state.stage2Snapshot.serverAggregationGroups, setStage2AggregationMode]);
 
