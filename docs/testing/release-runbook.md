@@ -23,6 +23,8 @@
 
 记录字段见 [third-party-deployments.md](third-party-deployments.md)。
 
+**Compose 环境变量同步**：`docker compose pull && up`（[deploy/README.md §仅更新镜像](../../deploy/README.md)）**只换镜像**，不会改写设备上已有的 `docker-compose.yml` 环境变量。仓库默认 env（如 `DEFAULT_TEMPLATE_URL`、`TRUSTED_PROXY_CIDRS`）有变更时，须对照 [deploy/docker-compose.yml](../../deploy/docker-compose.yml) 或 README heredoc **合并/重生成 compose**，再 `docker compose up -d --force-recreate app`；勿假设 pull 会自动带上最新默认配置。
+
 ## 发布后最小回归
 
 `healthz`、默认 `/` 主流程、`GET /sub` 或 `/sub/<id>` 至少一条；双 Docker 时确认 subconverter 模板 URL；短链重启可恢复。

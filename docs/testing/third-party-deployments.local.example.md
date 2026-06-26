@@ -22,6 +22,13 @@
 - **Compose 路径**：
 - **镜像 tag**：
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：
+- **DEFAULT_TEMPLATE_URL**：（与 [deploy/docker-compose.yml](../../deploy/docker-compose.yml) 保持一致；旧设备可能仍指向 upstream `Aethersailor/...`，须手动同步）
+
+### 运维摘要
+
+仅换镜像 tag：`docker compose pull && docker compose up -d`（**不**更新 compose 内 env）。
+
+默认 env 有变（模板 URL、TRUSTED_PROXY_CIDRS 等）：对照 [deploy/README.md](../../deploy/README.md) heredoc 或 [deploy/docker-compose.yml](../../deploy/docker-compose.yml) 改 `docker-compose.yml`，再 `docker compose up -d --force-recreate app`。
 
 ### 本地自动复验（WSL）
 
