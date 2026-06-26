@@ -1794,6 +1794,43 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(false);
 	});
 
+	it("allows enabling switch optimization before any eligible chain target is selected", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					server: "landing-hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		act(() => {
+			workflow.current.handleSwitchOptimizationChange(true);
+		});
+
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
+	});
+
 	it("does not alter global switch optimization when row target switches", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

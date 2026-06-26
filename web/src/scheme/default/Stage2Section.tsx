@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "re
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import { Tooltip } from "../../lib/Tooltip";
-import { isSwitchOptimizationEligible } from "../../lib/stage2";
 import { ArrowRightIcon, ChevronDownIcon, ResetIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
@@ -106,11 +105,9 @@ export function Stage2Section({
 	tableWrapRef,
 }: Stage2SectionProps) {
 	const { stage2Rows, state, isResettingStage2 } = workflow;
-	const hasSwitchOptimizationEligibleRows = stage2Rows.some((row) =>
-		isSwitchOptimizationEligible(state.stage2Init, row),
+	const switchOptimizationEnabled = Boolean(
+		state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
 	);
-	const switchOptimizationEnabled =
-		hasSwitchOptimizationEligibleRows && Boolean(state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled);
 	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
 	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
 	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
@@ -301,7 +298,7 @@ export function Stage2Section({
 										className="a-switch__input"
 										type="checkbox"
 										checked={switchOptimizationEnabled}
-										disabled={!isStage2Editable || !hasSwitchOptimizationEligibleRows}
+										disabled={!isStage2Editable}
 										aria-label={copy.switchOptimizationLabel}
 										onChange={(event) =>
 											workflow.handleSwitchOptimizationChange(event.target.checked)}

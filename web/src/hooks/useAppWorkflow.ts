@@ -25,7 +25,6 @@ import {
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	isStage2SourceRow,
-	isSwitchOptimizationEligible,
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
@@ -930,11 +929,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleSwitchOptimizationChange(enabled: boolean) {
-		setState((current) => applySwitchOptimizationState(
-			current,
-			enabled,
-			(row) => isSwitchOptimizationEligible(current.stage2Init, row),
-		));
+		setState((current) => applySwitchOptimizationState(current, enabled));
 	}
 
 	function handleClearServerAggregationGroups() {

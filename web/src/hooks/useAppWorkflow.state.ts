@@ -13,7 +13,6 @@ import {
 	getServerAggregationGroup,
 	getServerAggregationStrategy,
 	getStage2RowSourceLandingName,
-	isSwitchOptimizationEligible,
 	isStage2SourceRow,
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
@@ -328,8 +327,9 @@ export function mergeStage2SnapshotAfterConvert(
 		});
 	}
 
-	const hasEligibleRows = validatedRows.some((row) => isSwitchOptimizationEligible(stage2Init, row));
-	const chainProxyTargetGroupSwitchOptimizationEnabled = hasEligibleRows && Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled);
+	const chainProxyTargetGroupSwitchOptimizationEnabled = Boolean(
+		current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
+	);
 	return {
 		snapshot: normalizeStage2SnapshotRowsAndGroups(validatedRows, nextServerAggregationGroups, chainProxyTargetGroupSwitchOptimizationEnabled),
 		report,
@@ -735,14 +735,8 @@ export function applyShortURLCreationFailureState(current: AppState, options: Sh
 	);
 }
 
-export function applySwitchOptimizationState(
-	current: AppState,
-	enabled: boolean,
-	isEligible: (row: Stage2Row) => boolean,
-): AppState {
-	const hasEligibleRows = current.stage2Snapshot.rows.some((row) => isEligible(row));
-	const nextEnabled = enabled && hasEligibleRows;
-	if (Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled) === nextEnabled) {
+export function applySwitchOptimizationState(current: AppState, enabled: boolean): AppState {
+	if (Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled) === enabled) {
 		return current;
 	}
 	return {
@@ -751,7 +745,7 @@ export function applySwitchOptimizationState(
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: {
 			rows: current.stage2Snapshot.rows,
-			chainProxyTargetGroupSwitchOptimizationEnabled: nextEnabled,
+			chainProxyTargetGroupSwitchOptimizationEnabled: enabled,
 			serverAggregationGroups: current.stage2Snapshot.serverAggregationGroups,
 		},
 	};
