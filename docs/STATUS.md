@@ -2,7 +2,7 @@
 
 > 最近更新：2026-06-26 · **3.0 线** 正式 Beta tag [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) 已发布 · **3.1 Beta 线** [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿) **准备中**（dev HEAD，尚未打 tag）
 
-**唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/release-runbook.md](testing/release-runbook.md)。
+**唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
@@ -26,7 +26,7 @@
 - **同轮两类改动**：公共部分先上 `main` 并同步 `dev`，方案部分再上 `dev`；勿混在一个提交里。
 - **`beta`**：不作日常开发分支；仅在选定已回归快照后更新，用于 `beta-latest` / Beta tag。**v3.1.0-beta.1 发版轮次只合并 `dev→beta`，不推进 `main`。**
 
-同一分支可同时预览 `/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2`；多 worktree 并行须设 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（见 [local-dev-smoke.md](testing/local-dev-smoke.md)）。
+同一分支可同时预览 `/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2`；多 worktree 并行须设 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（见 [runbook.md](testing/runbook.md)）。
 
 ## 已稳定范围
 
@@ -42,17 +42,17 @@
 | 可配置 LOG_LEVEL | 运维 stderr 尚无 `LOG_LEVEL` 与可选文件输出；当前为结构化 slog 固定 INFO |
 | 安全 | 基础 SSRF/限速已落地；更严格出站与 egress 待评估 |
 | 可复现性 | 验收依赖外部模板/订阅；`subconverter` 浮动 tag 须在回归记录中注明 |
-| 反馈 | Issue；部署失败或未解问题写在 [third-party-deployments.md](testing/third-party-deployments.md) 对应节 |
+| 反馈 | Issue；部署失败或未解问题写在 [deployments.md](testing/deployments.md) 对应节 |
 
 ## 测试基线
 
-测试口径统一为 `mock/real × smoke/full`；fixture 维护与 CI 分层见 [testing/test-system-review.md](testing/test-system-review.md)。金样只改 `testdata/canonical-scenarios/*.stage1.json`，再跑 `testfixturegen` + worker `sync/check`。
+测试口径统一为 `mock/real × smoke/full`；fixture 维护与 CI 分层见 [testing/README.md](testing/README.md)。金样只改 `testdata/canonical-scenarios/*.stage1.json`，再跑 `testfixturegen` + worker `sync/check`。
 
 ## 最近验证
 
-> 例行部署结论以 [third-party-deployments.md](testing/third-party-deployments.md) 为准（覆盖写，不滚历史）；更早记录见 Git 历史。正式 tag 见 [RELEASES.md](../RELEASES.md)。**下一轮第三方回归目标：`v3.1.0-beta.1` @ `beta-latest`（待发 tag，勿伪造 digest）。**
+> 例行部署结论以 [deployments.md](testing/deployments.md) 为准（覆盖写，不滚历史）；更早记录见 Git 历史。正式 tag 见 [RELEASES.md](../RELEASES.md)。**下一轮第三方回归目标：`v3.1.0-beta.1` @ `beta-latest`（待发 tag，勿伪造 digest）。**
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** `test:e2e:real:smoke` + `test:e2e:real:full` **通过**（见 [third-party-deployments.md](testing/third-party-deployments.md)）；正式 **beta** 线待发 tag 后复验 |
-| **本地自动化基线** | 2026-06-25 release-runbook：`go test ./...`、Vitest 134、`test:e2e:mock:smoke` + `test:e2e:mock:full`、`build:default`–`c2`、`docker compose config` **通过** |
+| **第三方部署** | 2026-06-26 vps-01/02 **`dev-latest`** `test:e2e:real:smoke` + `test:e2e:real:full` **通过**（见 [deployments.md](testing/deployments.md)）；正式 **beta** 线待发 tag 后复验 |
+| **本地自动化基线** | 2026-06-25 runbook：`go test ./...`、Vitest 134、`test:e2e:mock:smoke` + `test:e2e:mock:full`、`build:default`–`c2`、`docker compose config` **通过** |

@@ -18,7 +18,7 @@ npm run test:e2e:real:full    # 发布前 non-blocking 真实部署 full
 npm run test:e2e              # Playwright 全量（调试用）
 ```
 
-发布前完整检查见 [docs/testing/release-runbook.md](../docs/testing/release-runbook.md)。
+发布前完整检查见 [docs/testing/runbook.md](../docs/testing/runbook.md)。
 
 ## 本地开发
 
@@ -28,7 +28,7 @@ npm run test:e2e              # Playwright 全量（调试用）
 ./scripts/dev-up.sh <scheme>   # default | b1 | b2 | c1 | c2
 ```
 
-或 VS Code 任务 `dev: up`（固定 scheme `default`）。端口、多 worktree offset、排障见 [docs/testing/local-dev-smoke.md](../docs/testing/local-dev-smoke.md)。
+或 VS Code 任务 `dev: up`（固定 scheme `default`）。端口、多 worktree offset、排障见 [docs/testing/runbook.md](../docs/testing/runbook.md)。
 
 ## 方案路由
 

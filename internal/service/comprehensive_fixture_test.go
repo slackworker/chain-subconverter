@@ -243,7 +243,7 @@ func TestDualLandingManualReferenceShortIDMatchesGeneratedResult(t *testing.T) {
 
 	matches := dualLandingManualReferenceShortIDPattern.FindStringSubmatch(readDualLandingManualReferenceDoc(t))
 	if len(matches) != 2 {
-		t.Fatalf("failed to parse short ID from docs/testing/dual-landing-manual-reference.md")
+		t.Fatalf("failed to parse short ID from docs/testing/preview-inputs.md")
 	}
 
 	expectedShortID := matches[1]
@@ -304,7 +304,7 @@ func dualLandingManualReferenceFile(t *testing.T) string {
 		"..",
 		"docs",
 		"testing",
-		"dual-landing-manual-reference.md",
+		"preview-inputs.md",
 	)
 }
 

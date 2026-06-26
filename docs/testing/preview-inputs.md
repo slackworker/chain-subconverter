@@ -7,11 +7,11 @@ Do not edit by hand. Refresh:
 cd deploy/test-fixtures-worker && npm run sync
 -->
 
-# dual-landing 手工测试数据
+# 在线预览粘贴数据
 
-[在线预览 Demo](https://fantastic-loise-slackers-134ea8cc.koyeb.app/) · [fixture 说明](dual-landing-chain-port-forward.md) · [README](../../README.md)
+[在线预览 Demo](https://fantastic-loise-slackers-134ea8cc.koyeb.app/) · [Full 场景说明](fixtures.md#full-场景) · [README](../../README.md)
 
-顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。
+Full 场景手工联调顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。
 
 ## Stage1
 

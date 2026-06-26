@@ -4,12 +4,12 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import {
-	buildDualLandingManualReferenceMarkdown,
+	buildPreviewInputsMarkdown,
 	buildTransitSubscriptionURLs,
 	extractLongURLGoldenPath,
 	extractShortID,
-	loadDualLandingManualReferenceInputs,
-} from "../../../scripts/lib/dual-landing-manual-reference.mjs";
+	loadPreviewInputsInputs,
+} from "../../../scripts/lib/preview-inputs.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,8 +39,8 @@ test("extracts host-agnostic long URL golden path", () => {
 	assert.equal(extractLongURLGoldenPath(longUrl), "/sub?data=abc123");
 });
 
-test("manual reference maps fields in landing-then-transit order", () => {
-	const markdown = buildDualLandingManualReferenceMarkdown(repoRoot);
+test("preview inputs maps fields in landing-then-transit order", () => {
+	const markdown = buildPreviewInputsMarkdown(repoRoot);
 	assert.match(markdown, /AUTO-GENERATED/);
 	assert.doesNotMatch(markdown, /generate\.request\.json/);
 	assert.doesNotMatch(markdown, /stage1\/convert/);
@@ -48,12 +48,15 @@ test("manual reference maps fields in landing-then-transit order", () => {
 	assert.doesNotMatch(markdown, /\[.*\]\(https:\/\/chain-subconverter-test-fixtures/);
 	assert.match(markdown, /落地 → SOCKS5 → 中转/);
 	assert.match(markdown, /### 中转信息/);
+	assert.match(markdown, /# 在线预览粘贴数据/);
+	assert.match(markdown, /fixtures\.md#full-场景/);
+	assert.doesNotMatch(markdown, /dual-landing 手工测试数据/);
 	assert.equal((markdown.match(/Airport-Subscription-1/g) ?? []).length, 1);
 	const transitURLs = buildTransitSubscriptionURLs();
 	for (const url of transitURLs) {
 		assert.ok(markdown.includes(url), `missing transit URL: ${url}`);
 	}
-	const { stage1Input } = loadDualLandingManualReferenceInputs(repoRoot).scenario;
+	const { stage1Input } = loadPreviewInputsInputs(repoRoot).scenario;
 	for (const uri of stage1Input.landingItems) {
 		assert.ok(markdown.includes(uri), `missing landing URI: ${uri}`);
 	}
@@ -62,7 +65,7 @@ test("manual reference maps fields in landing-then-transit order", () => {
 	assert.match(markdown, /### Stage2 操作要点/);
 	assert.match(markdown, /线路聚合模式/);
 	assert.match(markdown, /目标策略组节点切换优化/);
-	const { shortLinkResponse } = loadDualLandingManualReferenceInputs(repoRoot);
+	const { shortLinkResponse } = loadPreviewInputsInputs(repoRoot);
 	const shortID = extractShortID(shortLinkResponse.shortUrl);
 	const longURLGoldenPath = extractLongURLGoldenPath(shortLinkResponse.longUrl);
 	assert.match(markdown, /long URL payload 金样/);

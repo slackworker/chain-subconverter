@@ -5,9 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-	buildDualLandingManualReferenceMarkdown,
-	DUAL_LANDING_MANUAL_REFERENCE_PATH,
-} from "../../../scripts/lib/dual-landing-manual-reference.mjs";
+	buildPreviewInputsMarkdown,
+	PREVIEW_INPUTS_DOC_PATH,
+} from "../../../scripts/lib/preview-inputs.mjs";
 import {
 	buildLandingURILinesWithManualSocks,
 	buildSubscriptionFiles,
@@ -115,11 +115,11 @@ for (const file of generatedFiles) {
 	writeOrCheckFile(path.join(workerDownloadRoot, file.name), file.content);
 }
 
-const manualReferencePath = path.join(repoRoot, DUAL_LANDING_MANUAL_REFERENCE_PATH);
-writeOrCheckFile(manualReferencePath, buildDualLandingManualReferenceMarkdown(repoRoot));
+const previewInputsPath = path.join(repoRoot, PREVIEW_INPUTS_DOC_PATH);
+writeOrCheckFile(previewInputsPath, buildPreviewInputsMarkdown(repoRoot));
 
 if (!checkMode) {
 	process.stdout.write(
-		`synced ${generatedFiles.length} worker fixtures to dual-landing/download and manual reference doc from dual-landing canonical data\n`,
+		`synced ${generatedFiles.length} worker fixtures to dual-landing/download and preview-inputs.md from full canonical data\n`,
 	);
 }

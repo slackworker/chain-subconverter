@@ -10,7 +10,7 @@
 **日期:** 待定  
 **镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
 
-> 本文档为发版前草稿；打 tag 前须按 [release-runbook](docs/testing/release-runbook.md) 核对实现与 digest。
+> 本文档为发版前草稿；打 tag 前须按 [runbook](docs/testing/runbook.md) 核对实现与 digest。
 
 ### 概述
 
@@ -41,7 +41,7 @@
 
 #### 测试 / fixture
 
-- Comprehensive fixture `dual-landing-chain-port-forward` 对齐 **4+1 落地** 与聚合/切换优化 golden（见 [dual-landing-chain-port-forward.md](docs/testing/dual-landing-chain-port-forward.md)）。
+- Full 场景 fixture 对齐 **4+1 落地** 与聚合/切换优化 golden（见 [fixtures.md](docs/testing/fixtures.md#full-场景)）。
 
 ### 自部署
 
@@ -58,7 +58,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.1.0-beta.1"
 1. 拉取新镜像并重启 Compose；短链数据卷可保留。
 2. **长链接**：beta.4 生成的 v2 链接仍可解码恢复；新生成链接为 v3。若快照含聚合组或切换优化，须用 3.1 重新生成后再分享。
 3. **`enablePortForward`** 仍不在 API/长链接中；端口转发由 UI 开关控制（延续 beta.4）。
-4. 探索性 `/ui/b1|b2|c1|c2` 非发布门禁（见 [release-runbook](docs/testing/release-runbook.md)）。
+4. 探索性 `/ui/b1|b2|c1|c2` 非发布门禁（见 [runbook](docs/testing/runbook.md)）。
 
 ### Beta 说明
 
@@ -224,7 +224,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 - **设备**：未针对手机浏览器专门优化。
 - **HTTPS / 反代**：若前面有 HTTPS 终止或固定域名，请按 [deploy/README.md](deploy/README.md) 设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，避免生成错误链接。
 
-运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)（2026-06-01 vps-01/02 内网与公网一体化 **beta.4** / `beta-latest` **通过**；2026-05-29 beta.3；2026-05-25 beta.2；2026-05-23 双 Docker 分离形态 **通过**）。
+运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/deployments.md](docs/testing/deployments.md)（2026-06-01 vps-01/02 内网与公网一体化 **beta.4** / `beta-latest` **通过**；2026-05-29 beta.3；2026-05-25 beta.2；2026-05-23 双 Docker 分离形态 **通过**）。
 
 ### 反馈
 

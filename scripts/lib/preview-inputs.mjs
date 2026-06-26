@@ -187,7 +187,7 @@ function renderStage2OperationChecklist() {
 	].join("\n");
 }
 
-export function renderDualLandingManualReference({
+export function renderPreviewInputsMarkdown({
 	scenario,
 	stage1ConvertResponse,
 	stage2Snapshot,
@@ -196,7 +196,7 @@ export function renderDualLandingManualReference({
 }) {
 	const stage1Input = scenario?.stage1Input;
 	if (!stage1Input) {
-		throw new Error("dual-landing canonical scenario is missing stage1Input");
+		throw new Error("full canonical scenario is missing stage1Input");
 	}
 
 	const landingURILines = buildLandingURILines(stage1Input);
@@ -223,11 +223,11 @@ export function renderDualLandingManualReference({
 	const sections = [
 		AUTO_GENERATED_BANNER,
 		"",
-		"# dual-landing 手工测试数据",
+		"# 在线预览粘贴数据",
 		"",
-		`[在线预览 Demo](${previewUrl}) · [fixture 说明](dual-landing-chain-port-forward.md) · [README](../../README.md)`,
+		`[在线预览 Demo](${previewUrl}) · [Full 场景说明](fixtures.md#full-场景) · [README](../../README.md)`,
 		"",
-		"顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。",
+		"Full 场景手工联调顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。",
 		"",
 		"## Stage1",
 		"",
@@ -286,7 +286,7 @@ export function renderDualLandingManualReference({
 	return `${sections.replace(/\n+$/, "")}\n`;
 }
 
-export function loadDualLandingManualReferenceInputs(repoRoot) {
+export function loadPreviewInputsInputs(repoRoot) {
 	const scenarioPath = path.join(
 		repoRoot,
 		"testdata",
@@ -332,13 +332,9 @@ export function loadDualLandingManualReferenceInputs(repoRoot) {
 	};
 }
 
-export function buildDualLandingManualReferenceMarkdown(repoRoot, options = {}) {
-	const inputs = loadDualLandingManualReferenceInputs(repoRoot);
-	return renderDualLandingManualReference({ ...inputs, ...options });
+export function buildPreviewInputsMarkdown(repoRoot, options = {}) {
+	const inputs = loadPreviewInputsInputs(repoRoot);
+	return renderPreviewInputsMarkdown({ ...inputs, ...options });
 }
 
-export const DUAL_LANDING_MANUAL_REFERENCE_PATH = path.join(
-	"docs",
-	"testing",
-	"dual-landing-manual-reference.md",
-);
+export const PREVIEW_INPUTS_DOC_PATH = path.join("docs", "testing", "preview-inputs.md");

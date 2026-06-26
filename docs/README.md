@@ -24,8 +24,8 @@
 
 1. [spec/00-governance.md](spec/00-governance.md) → [spec/01-overview.md](spec/01-overview.md)
 2. 按改动面：`spec/02`–`05`
-3. 测试体系与入口：[testing/test-system-review.md](testing/test-system-review.md)
-其余 `spec/`、`testing/` 文件按任务打开（包括本地联调、发版 runbook、fixture 细节）。
+3. 测试体系与入口：[testing/README.md](testing/README.md)
+其余 `spec/`、`testing/` 文件按任务打开（包括操作手册、fixture 细则）。
 
 ## 临时区
 

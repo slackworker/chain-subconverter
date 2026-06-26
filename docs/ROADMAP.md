@@ -13,7 +13,7 @@ Phase 0–4 已完成，进入**维护期**。backlog 与最近验证见 [STATUS
 
 **3.1 Beta 线**（维护期新里程碑）：`v3.1.0-beta.1` 准备中 — 进度见 [STATUS.md](STATUS.md)，不发实时细节于此。
 
-开放项与发版节奏见 [STATUS.md](STATUS.md) backlog；发布检查见 [release-runbook](testing/release-runbook.md)。
+开放项与发版节奏见 [STATUS.md](STATUS.md) backlog；发布检查见 [runbook](testing/runbook.md)。
 
 ## 非目标（维护期）
 

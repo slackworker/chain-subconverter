@@ -2,7 +2,7 @@
 
 > **下一轮回归目标**：`v3.1.0-beta.1` @ `beta-latest`（待发 tag；打 tag 并部署后覆盖本节 digest，勿提前伪造）。
 
-按 [release-runbook.md](release-runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。
+按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
 **维护**：单线开发下每种部署形态**只保留最新一轮**——覆盖对应节与下表日期/结果，**不追加**「历史」段；更早 digest 见 Git 历史该文件 diff。正式 Beta tag 里程碑见 [RELEASES.md](../../RELEASES.md)。
 
@@ -11,9 +11,9 @@
 | 位置 | 内容 |
 |------|------|
 | 本文件（进仓库） | 日期、镜像 tag、设备角色、回归范围、通过/失败、关键发现与后续动作 |
-| [third-party-deployments.local.md](third-party-deployments.local.md)（同目录，gitignore） | 主机名、IP、SSH、公网域名、完整 `CHAIN_SUBCONVERTER_E2E_*` smoke 命令 |
+| `third-party-deployments.local.md`（同目录，gitignore） | 主机名、IP、SSH、公网域名、完整 `CHAIN_SUBCONVERTER_E2E_*` smoke 命令 |
 
-首次克隆：复制 [third-party-deployments.local.example.md](third-party-deployments.local.example.md) → `third-party-deployments.local.md`。完成回归后：**覆盖**本文件对应节，细节同步 `.local.md`。
+首次克隆：复制 [runbook.md#第三方本地记录模板](runbook.md#第三方本地记录模板) 内容 → `third-party-deployments.local.md`。完成回归后：**覆盖**本文件对应节，细节同步 `.local.md`。
 
 ---
 
@@ -35,9 +35,9 @@
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：已同步为 slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)；旧 compose 曾残留 upstream `Aethersailor/...`）
-- **回归**：`healthz`、`/api/runtime-status`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker dual-transit）
+- **回归**：`healthz`、`/api/runtime-status`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`（Worker 双中转）
 - **结果**：**通过**
-- **关键发现**：首次在真实 VPS 跑通 full dual-landing real e2e；`pull && up` 不会自动更新 compose env，须对照仓库默认 env 合并后再 `up --force-recreate app`；vps-01 首轮 core-flow 曾因 `raw.githubusercontent.com` 偶发拉取失败需重试
+- **关键发现**：首次在真实 VPS 跑通 full real e2e；`pull && up` 不会自动更新 compose env，须对照仓库默认 env 合并后再 `up --force-recreate app`；vps-01 首轮 core-flow 曾因 `raw.githubusercontent.com` 偶发拉取失败需重试
 - **细节**：SSH、入口 URL、smoke 命令见本地文件
 
 ---
@@ -63,7 +63,7 @@
   - Koyeb：`https://fantastic-loise-slackers-134ea8cc.koyeb.app/`
 - **subconverter 入口**：Railway `https://sparkling-luck-production.up.railway.app/`（`GET /version` → `subconverter v0.9.1-70ad654-mihomo backend`）
 - **镜像 tag**：本轮未从响应头确认；subconverter 版本见 `/version`
-- **回归**：`healthz`、`/api/runtime-config`、`/` UI；WSL `deployed-smoke`（Worker dual-transit）；subconverter `/version`
+- **回归**：`healthz`、`/api/runtime-config`、`/` UI；WSL `deployed-smoke`（Worker 双中转）；subconverter `/version`
 - **结果**：**通过**
 - **关键发现**：双 Docker 分离下 stage1 → generate → 订阅读取 → short-link round-trip 均正常；生成链接 origin 与各自 HTTPS 入口一致
 - **后续**：可作为对外 demo preview；复验时覆盖本节与上表日期；命令见本地文件
@@ -73,8 +73,8 @@
 ## 复测入口（无敏感信息）
 
 ```bash
-# 必须显式指定目标；落地/中转订阅 URL 见 dual-landing-manual-reference.md
+# 必须显式指定目标；落地/中转订阅 URL 见 preview-inputs.md
 CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" ./scripts/third-party-smoke.sh
 ```
 
-完整 `E2E_*` 与 SSH/运维示例：[third-party-deployments.local.md](third-party-deployments.local.md)。
+完整 `E2E_*` 与 SSH/运维示例：`third-party-deployments.local.md`。

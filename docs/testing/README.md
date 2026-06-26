@@ -1,10 +1,18 @@
-# 测试体系总览
+# 测试体系
 
-状态与 backlog 见 [../STATUS.md](../STATUS.md)。本文只定义统一测试术语、四象限入口与 CI 门禁映射。
+状态与 backlog 见 [../STATUS.md](../STATUS.md)。本文定义统一测试术语、四象限入口与 CI 门禁映射。
 
-> 约束：底层 fixture ID 保持不变：`3pass-ss2022-test-subscription`、`dual-landing-chain-port-forward`。
+## 我想…
 
-## 统一术语（对外）
+| 我想… | 只读 |
+|------|------|
+| 了解测试分层与 CI 门禁 | 本文 |
+| 本地开发 / 发版前跑命令 | [runbook.md](runbook.md) |
+| 改金样 / 理解 Smoke 与 Full 场景 | [fixtures.md](fixtures.md) |
+| 查第三方设备回归结论 | [deployments.md](deployments.md) |
+| 在线预览粘贴假数据 | [preview-inputs.md](preview-inputs.md) |
+
+## 统一术语
 
 测试仅使用二维命名：`mock/real × smoke/full`。
 
@@ -19,6 +27,8 @@
 
 - `cd web && npm run test:e2e:mock:all`
 - `cd web && npm run test:e2e:real:all`
+
+日常最小示例：`cd web && npm run test:e2e:mock:smoke`（完整命令见 [runbook.md](runbook.md)）。
 
 ## 分层职责
 
@@ -71,4 +81,4 @@ non-blocking job：
 3. `cd deploy/test-fixtures-worker && npm run sync && npm run check`
 4. `go test ./...`
 
-`manual-doc` 产物：`docs/testing/dual-landing-manual-reference.md`（由 worker `sync/check` 生成，勿手改正文）。
+场景细则见 [fixtures.md](fixtures.md)；在线预览粘贴数据由 worker `sync/check` 生成 [preview-inputs.md](preview-inputs.md)（勿手改正文）。
