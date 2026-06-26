@@ -4,13 +4,11 @@
 
 ---
 
-## v3.1.0-beta.1（草稿）
+## v3.1.0-beta.1
 
-**Tag:** `v3.1.0-beta.1`（待发）  
-**日期:** 待定  
+**Tag:** `v3.1.0-beta.1`  
+**日期:** 2026-06-26  
 **镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
-
-> 本文档为发版前草稿；打 tag 前须按 [runbook](docs/testing/runbook.md) 核对实现与 digest。
 
 ### 概述
 

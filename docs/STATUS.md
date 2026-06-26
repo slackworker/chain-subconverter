@@ -1,13 +1,13 @@
 # 项目状态
 
-> 最近更新：2026-06-26 · **3.0 线** 正式 Beta tag [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) 已发布 · **3.1 Beta 线** [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿) **准备中**（`dev-latest` @ `cf820c2` 预演通过，尚未打 tag）
+> 最近更新：2026-06-26 · **3.1 Beta 线** 正式 tag [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1) 已发布 · **3.0 线** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（`main` 尚未同步稳定线）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.0 Beta 线已发布**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4；`main` 尚未同步 3.0 稳定线）
-- **3.1 Beta 准备中**：下一目标 [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1草稿)（聚合组、切换优化、emoji 预处理、长链 v3、default UI）；**本轮发版仅更新 `beta` / `beta-latest`，不同步 `main`**
+- **3.1 Beta 线已发布**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（聚合组、切换优化、emoji 预处理、长链 v3、default UI）；镜像 `beta-latest`
+- **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
 - **Phase 0–4 已完成**；维护期以 3.1 Beta 收口、回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
