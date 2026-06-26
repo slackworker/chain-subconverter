@@ -19,7 +19,7 @@ import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import { Tooltip } from "../../lib/Tooltip";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon } from "./Icons";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, ResetIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField, type TagFieldHandle, type TagFieldReject } from "./TagField";
 import { Stage2Section } from "./Stage2Section";
@@ -1033,15 +1033,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												}))
 											}
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
-												<path
-													d="M4 7v5h5M5.5 12a6.5 6.5 0 1 0 2-4.7L4 10.8"
-													stroke="currentColor"
-													strokeWidth="1.8"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												/>
-											</svg>
+											<ResetIcon className="a-icon" aria-hidden />
 										</button>
 									</div>
 									{configFieldErrors.length > 0 ? (

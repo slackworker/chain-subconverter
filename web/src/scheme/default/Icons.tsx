@@ -81,24 +81,51 @@ export function ExternalLinkIcon(props: SVGProps<SVGSVGElement>) {
 	);
 }
 
-export function ResetIcon(props: SVGProps<SVGSVGElement>) {
+const resetIconSvgProps = {
+	xmlns: "http://www.w3.org/2000/svg",
+	width: 24,
+	height: 24,
+	viewBox: "0 0 24 24",
+	fill: "none",
+	stroke: "currentColor",
+	strokeWidth: 2,
+	strokeLinecap: "round",
+	strokeLinejoin: "round",
+} as const;
+
+/** Lucide rotate-ccw — 逆时针弧 + 角箭头，表单「恢复默认」最常用 */
+export function ResetIconRotateCcw(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width="24"
-			height="24"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			{...props}
-		>
-			<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+		<svg {...resetIconSvgProps} {...props}>
+			<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+			<path d="M3 3v5h5" />
 		</svg>
 	);
 }
+
+/** Lucide undo-2 — 更轻的弯箭头，弧线更短 */
+export function ResetIconUndo2(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg {...resetIconSvgProps} {...props}>
+			<path d="M9 14 4 9l5-5" />
+			<path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+		</svg>
+	);
+}
+
+/** Lucide history — 时钟 + 逆时针弧，偏「回到初始状态」 */
+export function ResetIconHistory(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg {...resetIconSvgProps} {...props}>
+			<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+			<path d="M3 3v5h5" />
+			<path d="M12 7v5l4 2" />
+		</svg>
+	);
+}
+
+/** 切换备选：把别名指到 ResetIconUndo2 或 ResetIconHistory */
+export const ResetIcon = ResetIconRotateCcw;
 
 export function GripHorizontalIcon(props: SVGProps<SVGSVGElement>) {
 	return (
