@@ -132,6 +132,7 @@ const COPY = {
 		switchOptimizationHint:
 			"开启后，为链式代理所选的地域策略组启用更短的健康检查间隔与更快的节点切换；节点异常时尽快切换到可用节点。关闭时沿用订阅模板中的默认设置。",
 		switchOptimizationHintAria: "目标策略组节点切换优化说明",
+		stage1Reset: "重置",
 		stage2Reset: "重置",
 		generating: "生成中…",
 		generateLink: "生成链接",
@@ -285,6 +286,7 @@ const COPY = {
 		switchOptimizationHint:
 			"When enabled, applies shorter health-check intervals and faster node switching to regional policy groups selected for chain proxies. When disabled, the subscription template defaults apply.",
 		switchOptimizationHintAria: "Target policy-group node switching optimization help",
+		stage1Reset: "Reset",
 		stage2Reset: "Reset",
 		generating: "Generating...",
 		generateLink: "Generate link",
@@ -649,6 +651,8 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		getStage3FieldErrors,
 		getPrimaryBlockingErrorsForStage,
 		handleStage1Convert,
+		handleStage1Reset,
+		isStage1AtInitial,
 		handleRestore,
 		handleGenerate,
 		handlePreferShortUrl,
@@ -1072,7 +1076,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 									/>
 								</div>
 
-								<div className="a-check-row">
+								<div className="a-check-row a-check-row--tail-reset">
 									<AdvancedCheckbox
 										label={copy.emoji}
 										checked={state.stage1Input.advancedOptions.emoji === true}
@@ -1112,6 +1116,16 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											}))
 										}
 									/>
+									<button
+										type="button"
+										className="a-stage-action-reset"
+										disabled={isConverting || isStage1AtInitial}
+										title={copy.stage1Reset}
+										onClick={handleStage1Reset}
+									>
+										<ResetIcon className="a-icon" aria-hidden />
+										<span>{copy.stage1Reset}</span>
+									</button>
 								</div>
 								</div>
 							</div>

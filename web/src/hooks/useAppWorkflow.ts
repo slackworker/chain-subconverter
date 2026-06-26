@@ -28,7 +28,14 @@ import {
 	matchesStage2RowKey,
 	pickNextTarget,
 } from "../lib/stage2";
-import { hydrateStage1Input, initialAppState, normalizeRawTextareaInput, toStage1InputPayload } from "../lib/state";
+import {
+	hydrateStage1Input,
+	initialAppState,
+	initialStage1Input,
+	isInitialStage1Input,
+	normalizeRawTextareaInput,
+	toStage1InputPayload,
+} from "../lib/state";
 import {
 	appendWorkflowLogEntries,
 	backendMessagesToWorkflowLog,
@@ -177,6 +184,8 @@ export interface AppWorkflowViewModel {
 		landingNodeName: string,
 	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
 	handleStage1Convert: () => Promise<void>;
+	handleStage1Reset: () => void;
+	isStage1AtInitial: boolean;
 	handleRestore: () => Promise<void>;
 	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
 	handleCloneStage2Row: (landingNodeName: string) => void;
@@ -480,6 +489,15 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return updateStage1InputState(current, nextStage1Input, changedFields);
 		});
 	}
+
+	function handleStage1Reset() {
+		if (isConverting || isInitialStage1Input(state.stage1Input)) {
+			return;
+		}
+		updateStage1Input(() => initialStage1Input);
+	}
+
+	const isStage1AtInitial = isInitialStage1Input(state.stage1Input);
 
 	function getStage1FieldErrors(field: string) {
 		return getFieldErrors(state.blockingErrors, field);
@@ -1158,6 +1176,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getServerAggregationGroup: getServerAggregationGroupForRow,
 		getServerAggregationOrderedMembers: getServerAggregationOrderedMembersForRow,
 		handleStage1Convert,
+		handleStage1Reset,
+		isStage1AtInitial,
 		handleRestore,
 		handleProxyNameChange,
 		handleCloneStage2Row,

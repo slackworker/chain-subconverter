@@ -292,7 +292,7 @@ export function Stage2Section({
 							{copy.advancedOptions}
 						</button>
 						{stage2AdvancedOpen ? (
-							<div className="a-check-row a-check-row--stage2-advanced">
+							<div className="a-check-row a-check-row--stage2-advanced a-check-row--tail-reset">
 								<label className="a-check a-check--switch">
 									<input
 										className="a-switch__input"
@@ -316,10 +316,9 @@ export function Stage2Section({
 										</Tooltip>
 									</span>
 								</label>
-								<span className="a-check-row__divider" aria-hidden="true" />
 								<button
 									type="button"
-									className="a-stage2-advanced-reset"
+									className="a-stage-action-reset"
 									disabled={!isStage2Editable || isResettingStage2 || isGenerating}
 									aria-busy={isResettingStage2 || undefined}
 									title={copy.stage2Reset}

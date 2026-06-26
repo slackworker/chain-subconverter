@@ -67,6 +67,10 @@ export function toStage1InputPayload(stage1Input: Stage1Input): Stage1InputPaylo
 	};
 }
 
+export function isInitialStage1Input(stage1Input: Stage1Input): boolean {
+	return JSON.stringify(toStage1InputPayload(stage1Input)) === JSON.stringify(toStage1InputPayload(initialStage1Input));
+}
+
 function deriveEnablePortForward(stage1Input: Stage1InputPayload): boolean {
 	return stage1Input.forwardRelayItems.length > 0;
 }
