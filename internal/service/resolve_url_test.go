@@ -414,6 +414,148 @@ func TestResolveURLFromSource_ShortLinkStoreUnavailable(t *testing.T) {
 	}
 }
 
+func TestResolveURLFromSource_DowngradesTemplateUnavailableToConflicted(t *testing.T) {
+	stage1Input := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "ss://landing",
+		TransitRawText: "ss://transit",
+	})
+	targetName := "🇭🇰 香港节点"
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{{
+			RowID:                 "HK 01",
+			SourceLandingNodeName: "HK 01",
+			ProxyName:             "HK 01",
+			LandingNodeName:       "HK 01",
+			Mode:                  "chain",
+			TargetName:            &targetName,
+		}},
+	}
+	longURL, err := EncodeLongURL("http://localhost:11200", BuildLongURLPayload(stage1Input, snapshot), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	source := &failingPrepareConversionSource{
+		prepareErr: newResponseError(
+			http.StatusServiceUnavailable,
+			"TEMPLATE_CONFIG_UNAVAILABLE",
+			"模板 URL 当前不可用：无法从 templates.example.com 拉取模板内容。",
+			"global",
+			nil,
+			nil,
+			errors.New("template unavailable"),
+		),
+	}
+
+	response, err := ResolveURLFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		nil,
+		longURL,
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("ResolveURLFromSource() error = %v", err)
+	}
+	if response.RestoreStatus != "conflicted" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "conflicted")
+	}
+	if response.Stage1Input.LandingRawText != stage1Input.LandingRawText {
+		t.Fatalf("landingRawText mismatch: got %q want %q", response.Stage1Input.LandingRawText, stage1Input.LandingRawText)
+	}
+	if response.Stage1Input.TransitRawText != stage1Input.TransitRawText {
+		t.Fatalf("transitRawText mismatch: got %q want %q", response.Stage1Input.TransitRawText, stage1Input.TransitRawText)
+	}
+	if response.Stage1Input.AdvancedOptions.Config == nil || stage1Input.AdvancedOptions.Config == nil {
+		t.Fatalf("config should not be nil: got=%v want=%v", response.Stage1Input.AdvancedOptions.Config, stage1Input.AdvancedOptions.Config)
+	}
+	if strings.TrimSpace(*response.Stage1Input.AdvancedOptions.Config) != strings.TrimSpace(*stage1Input.AdvancedOptions.Config) {
+		t.Fatalf("config mismatch: got %q want %q", *response.Stage1Input.AdvancedOptions.Config, *stage1Input.AdvancedOptions.Config)
+	}
+	if len(response.Stage2Snapshot.Rows) != 1 {
+		t.Fatalf("stage2Snapshot rows mismatch: got %d want 1", len(response.Stage2Snapshot.Rows))
+	}
+	if response.Stage2Snapshot.Rows[0].RowID != "HK 01" || response.Stage2Snapshot.Rows[0].Mode != "chain" {
+		t.Fatalf("stage2 row mismatch: got %+v", response.Stage2Snapshot.Rows[0])
+	}
+	if len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected no blocking errors, got %v", response.BlockingErrors)
+	}
+	if len(response.Messages) != 1 || response.Messages[0].Code != "RESTORE_CONFLICT" {
+		t.Fatalf("messages mismatch: got %v", response.Messages)
+	}
+}
+
+func TestResolveURLFromSource_DowngradesTemplateConfigFieldErrorToConflicted(t *testing.T) {
+	stage1Input := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "ss://landing",
+		TransitRawText: "ss://transit",
+	})
+	targetName := "🇭🇰 香港节点"
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{{
+			RowID:                 "HK 01",
+			SourceLandingNodeName: "HK 01",
+			ProxyName:             "HK 01",
+			LandingNodeName:       "HK 01",
+			Mode:                  "chain",
+			TargetName:            &targetName,
+		}},
+	}
+	longURL, err := EncodeLongURL("http://localhost:11200", BuildLongURLPayload(stage1Input, snapshot), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	source := &failingPrepareConversionSource{
+		prepareErr: newResponseError(
+			http.StatusBadRequest,
+			"INVALID_REQUEST",
+			"config must not target private or loopback addresses",
+			"stage1_field",
+			map[string]any{"field": "config"},
+			nil,
+			errors.New("invalid template host"),
+		),
+	}
+
+	response, err := ResolveURLFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		nil,
+		longURL,
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("ResolveURLFromSource() error = %v", err)
+	}
+	if response.RestoreStatus != "conflicted" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "conflicted")
+	}
+	if response.Stage1Input.LandingRawText != stage1Input.LandingRawText {
+		t.Fatalf("landingRawText mismatch: got %q want %q", response.Stage1Input.LandingRawText, stage1Input.LandingRawText)
+	}
+	if response.Stage1Input.TransitRawText != stage1Input.TransitRawText {
+		t.Fatalf("transitRawText mismatch: got %q want %q", response.Stage1Input.TransitRawText, stage1Input.TransitRawText)
+	}
+	if response.Stage1Input.AdvancedOptions.Config == nil || stage1Input.AdvancedOptions.Config == nil {
+		t.Fatalf("config should not be nil: got=%v want=%v", response.Stage1Input.AdvancedOptions.Config, stage1Input.AdvancedOptions.Config)
+	}
+	if strings.TrimSpace(*response.Stage1Input.AdvancedOptions.Config) != strings.TrimSpace(*stage1Input.AdvancedOptions.Config) {
+		t.Fatalf("config mismatch: got %q want %q", *response.Stage1Input.AdvancedOptions.Config, *stage1Input.AdvancedOptions.Config)
+	}
+	if len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected no blocking errors, got %v", response.BlockingErrors)
+	}
+	if len(response.Messages) != 1 || response.Messages[0].Code != "RESTORE_CONFLICT" {
+		t.Fatalf("messages mismatch: got %v", response.Messages)
+	}
+}
+
 func TestParseResolveURLInput(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -455,6 +597,18 @@ type fakeShortLinkResolver struct {
 	longURLByID    map[string]string
 	err            error
 	lastResolvedID string
+}
+
+type failingPrepareConversionSource struct {
+	prepareErr error
+}
+
+func (source *failingPrepareConversionSource) Convert(_ context.Context, _ subconverter.Request) (subconverter.ThreePassResult, error) {
+	return subconverter.ThreePassResult{}, errors.New("unexpected Convert call")
+}
+
+func (source *failingPrepareConversionSource) PrepareConversion(_ context.Context, _ Stage1Input) (PreparedConversion, error) {
+	return PreparedConversion{}, source.prepareErr
 }
 
 func (resolver *fakeShortLinkResolver) ResolveShortID(_ context.Context, shortID string) (string, error) {

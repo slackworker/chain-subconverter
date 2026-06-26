@@ -49,6 +49,17 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 
 	fixtures, err := LoadConversionFixtures(ctx, source, payload.Stage1Input, limits)
 	if err != nil {
+		if restoreStatus, messages, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
+			return ResolveURLResponse{
+				LongURL:        resolved,
+				ShortURL:       shortURL,
+				RestoreStatus:  restoreStatus,
+				Stage1Input:    payload.Stage1Input,
+				Stage2Snapshot: payload.Stage2Snapshot,
+				Messages:       messages,
+				BlockingErrors: []BlockingError{},
+			}, nil
+		}
 		return ResolveURLResponse{}, err
 	}
 
@@ -69,6 +80,29 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		Messages:       messages,
 		BlockingErrors: []BlockingError{},
 	}, nil
+}
+
+func downgradeRestoreTemplateFixtureError(err error) (string, []Message, bool) {
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		return "", nil, false
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code == "TEMPLATE_CONFIG_UNAVAILABLE" {
+		return "conflicted", []Message{{
+			Level:   "warning",
+			Code:    "RESTORE_CONFLICT",
+			Message: "当前快照使用的模板 URL 暂时不可用，已恢复输入与快照供参考；请更新模板 URL 后重新转换。",
+		}}, true
+	}
+	if blockingError.Scope == "stage1_field" && fmt.Sprint(blockingError.Context["field"]) == "config" {
+		return "conflicted", []Message{{
+			Level:   "warning",
+			Code:    "RESTORE_CONFLICT",
+			Message: "当前快照使用的模板 URL 已失效或不再可用，已恢复输入与快照供参考；请更新模板 URL 后重新转换。",
+		}}, true
+	}
+	return "", nil, false
 }
 
 func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, error) {
