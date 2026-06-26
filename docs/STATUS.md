@@ -54,5 +54,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-06-26 三形态 **`dev-latest`** @ `cf820c2` 预演通过；**`beta-latest`** @ `v3.1.0-beta.1` 复验进行中（见 [deployments.md](testing/deployments.md)） |
+| **第三方部署** | 2026-06-26 vps-01/02 **`beta-latest`** @ `v3.1.0-beta.1`（`6a8f93a`）`real-smoke` + `real-full` **通过**（见 [deployments.md](testing/deployments.md)）；Koyeb demo 仍为 `dev-latest` 预演 |
 | **本地自动化基线** | 2026-06-26：`go test ./...`、`test:e2e:mock:all`、push `dev` CI **通过**；完整 runbook 清单见 [runbook.md](testing/runbook.md) |
