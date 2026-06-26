@@ -249,6 +249,24 @@
 - 符合条件的行指：`mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups`
 - 当用户把链式目标从 `proxy-groups` 切到 `proxies`（固定节点）、切换到 `none` / `port_forward`，或第四列被清空时，前端不需要额外写入行级字段；后端仅按当前符合条件行与全局开关状态决定是否覆写目标策略组
 
+### 2.6.2 线路聚合模式（基线路由 UI）
+
+- 表格上方 toolbar 提供「线路聚合模式」开关；开启后平铺表 ↔ 聚合树切换（非高级选项内）
+- 关闭聚合模式时清空 `serverAggregationGroups[]`（与 [`Stage2Section.handleAggregationModeToggle`](../../web/src/scheme/default/Stage2Section.tsx) 行为一致）
+- 聚合组配置写入 `serverAggregationGroups[]`；渲染语义见 [04 §2.7 / §3.3.2](04-business-rules.md)
+- 不自动为所有 server 批量建组；用户须在聚合树内显式启用
+
+### 2.6.3 两种故障转移能力的分工
+
+| 能力 | 开关位置 | 作用对象 | 典型场景 |
+|------|----------|----------|----------|
+| 策略组节点切换优化 | 高级选项 | 链式目标为**既有地域策略组**（`proxy-groups`） | 加快该策略组内中转节点切换 |
+| 线路聚合 | 表格 toolbar | 同一 **server** 下多行（副本/不同中转） | 多线路互为 backup，追加新策略组 |
+
+- **允许同时开启**；后端顺序：§3.3.1 覆写既有组 → §3.3.2 追加聚合组（见 [04 §3.5](04-business-rules.md)）
+- **不做互斥**；两者解决不同层级问题，非二选一
+- 链式目标选固定节点/端口转发时，仅聚合能力 relevant；选地域策略组时，切换优化 relevant
+
 ### 2.7 生成动作
 
 - 功能：提交阶段 1 输入快照与阶段 2 配置快照，调用 `POST /api/generate`，获取可消费的长链接
