@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前正式 Beta 线**：[`v3.1.0-beta.1`](../../RELEASES.md#v310-beta1) @ `beta-latest`（vps-01/02 一体化形态已复验）。
+> **当前正式 Beta 线**：[`v3.1.0-beta.1`](../../RELEASES.md#v310-beta1) @ `beta-latest`（vps-01/02 一体化 + Koyeb demo 均已复验）。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
@@ -23,7 +23,7 @@
 |------|-------------|----------|------|
 | **内网一体化** | vps-01（LAN Compose） | 2026-06-26 | **通过** |
 | **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-06-26 | **通过** |
-| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-06-26 | **通过**（`dev-latest` 预演） |
+| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-06-26 | **通过**（`beta-latest`） |
 
 外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
 
@@ -56,15 +56,15 @@
 
 ---
 
-## 双 Docker 分离 — Koyeb + vps-02（2026-06-26，`dev-latest` 预演）
+## 双 Docker 分离 — Koyeb + vps-02（2026-06-26，`beta-latest`）
 
 - **部署形态**：`app`（Koyeb）与 `subconverter`（vps-02 独立 Compose）分属两套 Docker；`UPSTREAM` / `FACING` 跨公网互访
 - **chain-subconverter 入口**（**demo preview**）：Koyeb `https://chain-subconverter.koyeb.app/`
 - **subconverter 入口**：vps-02 独立 Compose（`GET /version` → `subconverter v0.9.2-c7b26b5-mihomo-integration-chain-subconverter backend`）
-- **镜像 tag**：Koyeb app `dev-latest` @ `cf820c2`（beta.1 发版轮未切 Koyeb）；subconverter `integration-chain-subconverter`
-- **回归**：Koyeb `koyeb service redeploy`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`；subconverter `/version`
-- **结果**：**通过**（dev-latest 预演）
-- **关键发现**：demo preview 仍跟踪 `dev-latest`；正式 Beta 验收以 vps 一体化 `beta-latest` 为准
+- **镜像 tag**：Koyeb app `beta-latest`（digest 同 vps-01/02，`v3.1.0-beta.1` @ `6a8f93a`）；subconverter `integration-chain-subconverter`
+- **回归**：Koyeb `koyeb service update … --docker …:beta-latest`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`；subconverter `/version`
+- **结果**：**通过**
+- **关键发现**：demo preview 已与 vps 一体化同轮切 `beta-latest` 并复验通过
 - **细节**：subconverter 地址、Compose 路径、smoke 命令见本地文件
 
 ---
