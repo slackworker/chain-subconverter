@@ -235,3 +235,57 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_UsesEmojiServerDefaul
 		t.Fatalf("rendered config should use emoji+server as default name:\n%s", rendered)
 	}
 }
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_RendersExtendedStrategyTypes(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: Existing Group",
+		"    type: fallback",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"",
+	}, "\n")
+
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			snapshot := Stage2Snapshot{
+				Rows: []Stage2Row{
+					{
+						RowID:                 "hk-1",
+						SourceLandingNodeName: "HK Landing",
+						ProxyName:             "HK Landing",
+						LandingNodeName:       "HK Landing",
+					},
+					{
+						RowID:                 "hk-2",
+						SourceLandingNodeName: "HK Landing",
+						ProxyName:             "HK Landing Copy",
+						LandingNodeName:       "HK Landing Copy",
+					},
+				},
+				ServerAggregationGroups: []ServerAggregationGroup{
+					{
+						Server:       "landing.example.com",
+						Enabled:      true,
+						Strategy:     strategy,
+						MemberRowIDs: []string{"hk-1", "hk-2"},
+					},
+				},
+			}
+
+			rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+			if err != nil {
+				t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+			}
+			if !strings.Contains(rendered, "  - name: landing.example.com\n    type: "+strategy) {
+				t.Fatalf("rendered config should include managed group strategy %q:\n%s", strategy, rendered)
+			}
+		})
+	}
+}

@@ -105,7 +105,12 @@ function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGr
 		if (server === "" || seen.has(server)) {
 			continue;
 		}
-		if (group.strategy !== "fallback" && group.strategy !== "url-test") {
+		if (
+			group.strategy !== "fallback"
+			&& group.strategy !== "url-test"
+			&& group.strategy !== "select"
+			&& group.strategy !== "load-balance"
+		) {
 			continue;
 		}
 		const memberRowIds = Array.from(
@@ -285,7 +290,16 @@ export function mergeStage2SnapshotAfterConvert(
 	const seenServers = new Set<string>();
 	for (const group of current.stage2Snapshot.serverAggregationGroups) {
 		const server = group.server.trim();
-		if (server === "" || seenServers.has(server) || (group.strategy !== "fallback" && group.strategy !== "url-test")) {
+		if (
+			server === ""
+			|| seenServers.has(server)
+			|| (
+				group.strategy !== "fallback"
+				&& group.strategy !== "url-test"
+				&& group.strategy !== "select"
+				&& group.strategy !== "load-balance"
+			)
+		) {
 			report.removedAggregationGroups += 1;
 			continue;
 		}

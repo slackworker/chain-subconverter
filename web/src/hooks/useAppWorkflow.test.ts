@@ -1081,6 +1081,55 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("fallback");
 	});
 
+	it("supports select/load-balance aggregation strategies in workflow handlers", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeName: "landing-hk",
+				landingNodeType: "ss",
+				server: "",
+				mode: "chain",
+				targetName: "HK Relay Group",
+			}],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "select");
+		});
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("select");
+		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("select");
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "load-balance");
+		});
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("load-balance");
+		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("load-balance");
+	});
+
 	it("reorders server aggregation members and preserves order across strategy switches", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

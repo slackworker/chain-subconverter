@@ -40,7 +40,7 @@ import {
 } from "../lib/workflow-log";
 import type { ResponseOriginStage, WorkflowLogEntry } from "../lib/state";
 import { WORKFLOW_EVENTS, type WorkflowEventCode } from "../lib/workflow-log-events";
-import type { BlockingError, Message, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, Message, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
 import {
@@ -87,6 +87,7 @@ interface RequestFailureContext {
 }
 
 type Stage2SnapshotRows = typeof initialAppState.stage2Snapshot.rows;
+type AggregationStrategy = ServerAggregationGroup["strategy"];
 
 function buildStage2MergeMessages(
 	report: Stage2SnapshotMergeReport,
@@ -168,9 +169,9 @@ export interface AppWorkflowViewModel {
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
 	getChainTargetChoiceGroups: () => ChainTargetChoiceGroup[];
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
-	getServerAggregationStrategy: (landingNodeName: string) => "fallback" | "url-test" | null;
+	getServerAggregationStrategy: (landingNodeName: string) => AggregationStrategy | null;
 	canConfigureServerAggregationGroup: (landingNodeName: string) => boolean;
-	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean } | null;
+	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean } | null;
 	getServerAggregationOrderedMembers: (
 		landingNodeName: string,
 	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
@@ -182,9 +183,9 @@ export interface AppWorkflowViewModel {
 	canDeleteStage2Row: (landingNodeName: string) => boolean;
 	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
 	handleTargetChange: (landingNodeName: string, targetName: string) => void;
-	handleServerAggregationStrategyChange: (landingNodeName: string, strategy: "fallback" | "url-test" | null) => void;
-	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean }) => void;
-	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: "fallback" | "url-test" }) => void;
+	handleServerAggregationStrategyChange: (landingNodeName: string, strategy: AggregationStrategy | null) => void;
+	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean }) => void;
+	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: AggregationStrategy }) => void;
 	handleServerAggregationMemberReorder: (
 		landingNodeName: string,
 		memberRowId: string,
@@ -740,7 +741,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		return count > 1;
 	}
 
-	function handleServerAggregationStrategyChange(landingNodeName: string, strategy: "fallback" | "url-test" | null) {
+	function handleServerAggregationStrategyChange(landingNodeName: string, strategy: AggregationStrategy | null) {
 		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
 		if (matchedRow === null) {
 			return;
@@ -773,7 +774,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 
 	function handleServerAggregationChange(
 		landingNodeName: string,
-		payload: { enabled: boolean; strategy: "fallback" | "url-test"; memberChecked: boolean },
+		payload: { enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean },
 	) {
 		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
 		const rowMeta = getStage2RowMeta(landingNodeName);
@@ -806,7 +807,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 
 	function handleServerAggregationEnableWithDefaults(
 		landingNodeName: string,
-		payload: { enabled: boolean; strategy: "fallback" | "url-test" },
+		payload: { enabled: boolean; strategy: AggregationStrategy },
 	) {
 		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
 		if (anchorGroup === null) {

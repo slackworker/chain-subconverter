@@ -292,6 +292,66 @@ func TestCanonicalShortLinkStateKey_IgnoresURLTestMemberOrder(t *testing.T) {
 	}
 }
 
+func TestCanonicalShortLinkStateKey_IgnoresExtendedStrategyMemberOrder(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildURL := func(strategy string, memberRowIDs []string) string {
+		payload := BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "row-source",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha",
+					LandingNodeName:       "🇸🇬 Alpha",
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+				{
+					RowID:                 "row-derived",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha 2",
+					LandingNodeName:       "🇸🇬 Alpha 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{
+				{
+					Server:       "198.51.100.10",
+					Enabled:      true,
+					Strategy:     strategy,
+					MemberRowIDs: memberRowIDs,
+				},
+			},
+		})
+		longURL, err := EncodeLongURL("https://a.example.com/base", payload, 0)
+		if err != nil {
+			t.Fatalf("EncodeLongURL() error = %v", err)
+		}
+		return longURL
+	}
+
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			orderedKey, err := CanonicalShortLinkStateKey(buildURL(strategy, []string{"row-source", "row-derived"}), InputLimits{})
+			if err != nil {
+				t.Fatalf("CanonicalShortLinkStateKey() ordered error = %v", err)
+			}
+			reorderedKey, err := CanonicalShortLinkStateKey(buildURL(strategy, []string{"row-derived", "row-source"}), InputLimits{})
+			if err != nil {
+				t.Fatalf("CanonicalShortLinkStateKey() reordered error = %v", err)
+			}
+			if orderedKey != reorderedKey {
+				t.Fatalf("CanonicalShortLinkStateKey() should ignore %s member order", strategy)
+			}
+		})
+	}
+}
+
 func TestBuildShortLinkResponse_FallbackMemberOrderChangesLongURLAndShortID(t *testing.T) {
 	store := NewInMemoryShortLinkStore()
 	stage1 := stage1InputWithTemplate(Stage1Input{

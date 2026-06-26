@@ -61,7 +61,7 @@ export interface Stage2Row {
 export interface ServerAggregationGroup {
 	server: string;
 	enabled: boolean;
-	strategy: "fallback" | "url-test";
+	strategy: "fallback" | "url-test" | "select" | "load-balance";
 	memberRowIds: string[];
 }
 

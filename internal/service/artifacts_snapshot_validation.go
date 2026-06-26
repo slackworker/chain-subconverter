@@ -171,7 +171,7 @@ func validateServerAggregationGroups(
 		}
 
 		switch strings.TrimSpace(group.Strategy) {
-		case "fallback", "url-test":
+		case "fallback", "url-test", "select", "load-balance":
 		default:
 			cause := fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
 			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)

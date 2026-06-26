@@ -234,6 +234,50 @@ func TestValidateGenerateSnapshot_AllowsServerAggregationGroupForSameServerRows(
 	}
 }
 
+func TestValidateGenerateSnapshot_AllowsServerAggregationGroupWithExtendedStrategies(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			resolved, err := validateGenerateSnapshot(
+				Stage1Input{},
+				Stage2Snapshot{
+					Rows: []Stage2Row{
+						{
+							RowID:                 "hk-1",
+							SourceLandingNodeName: "HK Landing",
+							ProxyName:             "HK Landing",
+							Mode:                  "chain",
+							TargetName:            &targetName,
+						},
+						{
+							RowID:                 "hk-2",
+							SourceLandingNodeName: "HK Landing",
+							ProxyName:             "HK Landing 2",
+							Mode:                  "none",
+						},
+					},
+					ServerAggregationGroups: []ServerAggregationGroup{{
+						Server:       "landing.example.com",
+						Enabled:      true,
+						Strategy:     strategy,
+						MemberRowIDs: []string{"hk-1", "hk-2"},
+					}},
+				},
+				fixtures,
+			)
+			if err != nil {
+				t.Fatalf("validateGenerateSnapshot() error = %v", err)
+			}
+			if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+				t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+			}
+		})
+	}
+}
+
 func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithUnknownMember(t *testing.T) {
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
 

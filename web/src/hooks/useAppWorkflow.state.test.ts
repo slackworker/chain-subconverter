@@ -273,6 +273,56 @@ describe("useAppWorkflow.state", () => {
 		});
 	});
 
+	it("keeps select/load-balance strategies during snapshot merge", () => {
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					mode: "none",
+					targetName: null,
+				}],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "select", memberRowIds: ["landing-hk"] }],
+			},
+		};
+
+		const mergedSelect = mergeStage2SnapshotAfterConvert(current, stage2Init);
+		expect(mergedSelect.snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			strategy: "select",
+		});
+
+		const mergedLoadBalance = mergeStage2SnapshotAfterConvert({
+			...current,
+			stage2Snapshot: {
+				...current.stage2Snapshot,
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "load-balance", memberRowIds: ["landing-hk"] }],
+			},
+		}, stage2Init);
+		expect(mergedLoadBalance.snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			strategy: "load-balance",
+		});
+	});
+
 	it("completes a workflow request with patch data and logs", () => {
 		const current = {
 			...initialAppState,
@@ -418,6 +468,29 @@ describe("useAppWorkflow.state", () => {
 		}, "hk.example.com", "fallback");
 
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }]);
+	});
+
+	it("accepts select and load-balance strategies when updating groups", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
+			},
+		};
+
+		const selected = updateServerAggregationStrategyState(current, "hk.example.com", "select");
+		expect(selected.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "select", memberRowIds: ["hk-1", "hk-2"] },
+		]);
+
+		const loadBalanced = updateServerAggregationStrategyState(selected, "hk.example.com", "load-balance");
+		expect(loadBalanced.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "load-balance", memberRowIds: ["hk-1", "hk-2"] },
+		]);
 	});
 
 it("clears server aggregation groups when deleting back to a single row", () => {

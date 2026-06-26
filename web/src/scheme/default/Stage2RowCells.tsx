@@ -7,7 +7,7 @@ import {
 	getStage2RowEditableName,
 	getStage2TargetDisplayLabel,
 } from "../../lib/stage2";
-import type { Stage2Row } from "../../types/api";
+import type { ServerAggregationGroup, Stage2Row } from "../../types/api";
 import type { Stage2TreeGlyphParts } from "./stage2AggregationTree";
 import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
 import { Stage2MemberOrderList } from "./Stage2MemberOrderList";
@@ -57,12 +57,14 @@ export function getModeLabel(mode: string, locale: Stage2Locale, copy: Stage2Cop
 }
 
 export function getAggregationStrategyLabel(
-	strategy: "fallback" | "url-test",
+	strategy: ServerAggregationGroup["strategy"],
 	copy: Stage2Copy & Record<string, string>,
 ) {
-	const labels: Record<"fallback" | "url-test", string> = {
+	const labels: Record<ServerAggregationGroup["strategy"], string> = {
 		fallback: copy.strategy_fallback as string,
 		"url-test": copy.strategy_url_test as string,
+		select: copy.strategy_select as string,
+		"load-balance": copy.strategy_load_balance as string,
 	};
 	return labels[strategy] ?? strategy;
 }
@@ -307,9 +309,9 @@ interface Stage2RowModeCellProps {
 	onModeChange: AppWorkflowViewModel["handleModeChange"];
 	modeWarnId: string;
 	rowErrorId: string;
-	strategyValue?: "fallback" | "url-test";
+	strategyValue?: ServerAggregationGroup["strategy"];
 	strategyDisabled?: boolean;
-	onStrategyChange?: (strategy: "fallback" | "url-test") => void;
+	onStrategyChange?: (strategy: ServerAggregationGroup["strategy"]) => void;
 	emptyPlaceholder?: boolean;
 	openTargetMenuRow: string | null;
 	setOpenTargetMenuRow: (rowKey: string | null) => void;
@@ -345,7 +347,7 @@ export function Stage2RowModeCell({
 	}
 
 	if (strategyValue !== undefined && onStrategyChange) {
-		const strategyOptions = (["fallback", "url-test"] as const).map((value) => ({
+		const strategyOptions = (["fallback", "url-test", "select", "load-balance"] as const).map((value) => ({
 			value,
 			label: getAggregationStrategyLabel(value, copy),
 		}));
@@ -360,7 +362,7 @@ export function Stage2RowModeCell({
 					options={strategyOptions}
 					disabled={!editable || strategyDisabled}
 					ariaLabel={copy.aggregationStrategyLabel}
-					onSelect={(value) => onStrategyChange(value as "fallback" | "url-test")}
+					onSelect={(value) => onStrategyChange(value as ServerAggregationGroup["strategy"])}
 					openTargetMenuRow={openTargetMenuRow}
 					setOpenTargetMenuRow={setOpenTargetMenuRow}
 					menuTriggerRef={chainTargetMenuTriggerRef}
@@ -662,7 +664,7 @@ interface Stage2ServerMemberOrderCellProps {
 	anchorRowKey: string;
 	editable: boolean;
 	enabled: boolean;
-	strategy: "fallback" | "url-test";
+	strategy: ServerAggregationGroup["strategy"];
 	copy: Stage2Copy;
 	members: Array<{ rowId: string; displayName: string; isSource: boolean }>;
 	onMemberMoveTo: (memberRowId: string, toIndex: number) => void;

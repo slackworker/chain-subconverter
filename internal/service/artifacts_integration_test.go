@@ -219,6 +219,56 @@ func TestDecodeLongURLPayload_RejectsServerAggregationGroupWithDuplicateMembers(
 	}
 }
 
+func TestDecodeLongURLPayload_AcceptsExtendedServerAggregationStrategies(t *testing.T) {
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			longURL, err := EncodeLongURL(
+				"http://localhost:11200",
+				BuildLongURLPayload(
+					stage1InputWithTemplate(Stage1Input{}),
+					Stage2Snapshot{
+						Rows: []Stage2Row{
+							{
+								RowID:                 "HK 01",
+								SourceLandingNodeName: "HK 01",
+								ProxyName:             "HK 01",
+								LandingNodeName:       "HK 01",
+								Mode:                  "none",
+							},
+							{
+								RowID:                 "HK 02",
+								SourceLandingNodeName: "HK 02",
+								ProxyName:             "HK 02",
+								LandingNodeName:       "HK 02",
+								Mode:                  "none",
+							},
+						},
+						ServerAggregationGroups: []ServerAggregationGroup{{
+							Server:       "landing.example.com",
+							Enabled:      true,
+							Strategy:     strategy,
+							MemberRowIDs: []string{"HK 01", "HK 02"},
+						}},
+					},
+				),
+				0,
+			)
+			if err != nil {
+				t.Fatalf("EncodeLongURL() error = %v", err)
+			}
+
+			payload, err := DecodeLongURLPayload(longURL, InputLimits{})
+			if err != nil {
+				t.Fatalf("DecodeLongURLPayload() error = %v", err)
+			}
+			if got := payload.Stage2Snapshot.ServerAggregationGroups[0].Strategy; got != strategy {
+				t.Fatalf("decoded strategy mismatch: got %q want %q", got, strategy)
+			}
+		})
+	}
+}
+
 func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) {
 	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"rows":[]},"v":1}`)
 	encodedData, err := encodeCompressedData(payloadJSON)

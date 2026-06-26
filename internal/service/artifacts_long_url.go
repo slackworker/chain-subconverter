@@ -432,7 +432,7 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			continue
 		}
 		switch strings.TrimSpace(group.Strategy) {
-		case "fallback", "url-test":
+		case "fallback", "url-test", "select", "load-balance":
 		default:
 			return fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
 		}
