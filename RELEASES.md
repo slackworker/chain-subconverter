@@ -2,6 +2,19 @@
 
 只记录当前 3.x 关键版本；完整历史见 [GitHub Releases](https://github.com/slackworker/chain-subconverter/releases) 与对应 tag。
 
+## 当前发布流水线（2026-06 起）
+
+为避免同一提交在 `beta` 与 `v*` tag 上重复构建镜像，发布流程统一为：
+
+1. 推送到 `dev`：触发 `CI`（门禁回归）。
+2. 合并到 `beta`：再次触发 `CI`（发布前门禁）。
+3. 打 `v*` tag：触发 `Build and Push Docker Image`（含发布校验与多架构镜像发布）。
+
+说明：
+
+- `CI` 不再在 tag push 上重复执行；Docker 发布会等待同 SHA 的 `CI` 成功（`Publish Validation`）。
+- `beta-latest` 与版本 tag（如 `v3.1.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
+
 ---
 
 ## v3.1.0-beta.1
@@ -60,7 +73,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.1.0-beta.1"
 
 ### Beta 说明
 
-仍属预发布；安全与部署注意同 beta.1（见下文「Beta 说明」与 [SECURITY.md](SECURITY.md)）。本轮发版仅更新 `beta` 分支与 `beta-latest`，**不同步 `main`**。
+仍属预发布；安全与部署注意同 beta.1（见下文「Beta 说明」与 [SECURITY.md](SECURITY.md)）。本轮发版仅更新 `beta` 分支；镜像通过 `v3.1.0-beta.1` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
 
 ---
 

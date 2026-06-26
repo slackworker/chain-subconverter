@@ -40,7 +40,7 @@
 
 权威文件：`.github/workflows/ci.yml`、`.github/workflows/docker-publish.yml`。
 
-### `ci.yml`（PR + push 到 `dev` / `beta` / `main`）
+### `ci.yml`（PR + push 到 `dev` / `beta` / `main`；不在 tag push 上重复执行）
 
 blocking job：
 
@@ -59,8 +59,10 @@ non-blocking job：
 
 ### `docker-publish.yml`
 
+- 触发来源：push 到 `main`、push tag `v*`、以及手动 `workflow_dispatch`。
 - `Publish Validation` 默认等待同 SHA 的 `ci.yml` 成功后再构建镜像。
 - 保留 `dev-latest` 手动发布快路径（跳过 validation）；其它发布路径继续复用同一 CI 门禁。
+- 通过移除 `beta` 分支上的自动构建，避免“同一 SHA 在 merge `beta` 与打 `v*` tag 时重复构建镜像”。
 
 ## `mock-full` / `real-full` 约束
 

@@ -7,8 +7,6 @@ on:
       - beta
       - main
       - dev
-    tags:
-      - 'v*'
 
 jobs:
   go-test:
