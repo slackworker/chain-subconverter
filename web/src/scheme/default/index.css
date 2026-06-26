@@ -1049,7 +1049,7 @@
 	margin: 0;
 	border: none;
 	padding: var(--lined-input-pad-block) 0.65rem;
-	font-family: var(--font-ui);
+	font-family: sans-serif;
 	font-weight: 400;
 	font-size: var(--lined-input-font-size);
 	line-height: var(--lined-input-line-height);
@@ -1064,7 +1064,7 @@
 }
 
 .a-lined-input__textarea::placeholder {
-	font-family: var(--font-ui);
+	font-family: inherit;
 	font-weight: 400;
 	color: color-mix(in srgb, var(--color-muted) 72%, transparent);
 }
