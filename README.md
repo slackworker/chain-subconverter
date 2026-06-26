@@ -1,8 +1,8 @@
-# chain-subconverter
+# 链式代理订阅转换
 
-**节点 → 配置/订阅**：落地/中转节点经网页点选完成 **Mihomo** 链式代理与端口转发，内置 **subconverter** 直接输出可导入的 YAML 与订阅。
+**节点 → 配置/订阅**：准备落地和中转节点/订阅，通过网页交互完成 **Mihomo** 链式代理的配置，输出完整 YAML 配置或订阅 URL。
 
-> 节点副本已上线，正式版即将发布。
+> [v3.1.0-beta.1](RELEASES.md#v310-beta1) 已发布（3.1 Beta 线）；[v3.0.0-beta.4](RELEASES.md#v300-beta4) 为上一里程碑。
 
 ## 主要能力
 
@@ -15,9 +15,9 @@
 
 ### 在线体验
 
-公网预览：<https://fantastic-loise-slackers-134ea8cc.koyeb.app/>（仅体验 UI 与流程；**请勿提交真实节点或敏感订阅**）
+公网预览：<https://chain-subconverter.koyeb.app/>（仅体验 UI 与流程；**请勿提交真实节点或敏感订阅**）
 
-假数据参考：按 [docs/testing/dual-landing-manual-reference.md](docs/testing/dual-landing-manual-reference.md) 粘贴输入即可走完整流程。
+假数据参考：按 [docs/testing/preview-inputs.md](docs/testing/preview-inputs.md) 粘贴输入即可走完整流程。
 
 ### 自部署
 

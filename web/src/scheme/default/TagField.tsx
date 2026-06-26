@@ -1,6 +1,6 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 
-import { tryAppendTag, type AppendTagResult } from "../../lib/tags";
+import { tokenizeTagInput, tryAppendTag, type AppendTagResult } from "../../lib/tags";
 
 export type TagFieldRejectReason = "duplicate" | "invalid";
 
@@ -27,10 +27,13 @@ interface TagFieldProps {
 	placeholder?: string;
 	addLabel?: string;
 	removeTagAriaLabel?: (tag: string) => string;
+	autoNormalizeFullWidthColon?: boolean;
 	/** 与列表内已有项、{@link existingTags} 比较时的规范化（如端口转发 server:port）。 */
 	formatTag?: (raw: string) => string;
 	/** 已提交到表单其它处的标签（如 modal 草稿对比 stage1 已有端口转发）。 */
 	existingTags?: readonly string[];
+	/** 开启后可在单次输入中按空白/逗号/分号批量拆分标签。 */
+	splitByDelimiters?: boolean;
 	onReject?: (reject: TagFieldReject) => void;
 }
 
@@ -66,43 +69,56 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 		placeholder,
 		addLabel = "添加",
 		removeTagAriaLabel,
+		autoNormalizeFullWidthColon = false,
 		formatTag,
 		existingTags,
+		splitByDelimiters = false,
 		onReject,
 	},
 	ref,
 ) {
 	const [draft, setDraft] = useState("");
+	const isComposingRef = useRef(false);
 
 	const list = values ?? [];
 
-	function applyAppend(trimmed: string): TagFieldFlushResult {
-		const result = tryAppendTag(trimmed, list, existingTags ?? [], formatTag);
-		if (result.ok) {
-			onChange(result.next.length ? result.next : null);
-			setDraft("");
-			return { kind: "committed", next: result.next.length ? result.next : null };
+	function applyAppend(raw: string): TagFieldFlushResult {
+		const candidates = tokenizeTagInput(raw, splitByDelimiters);
+		if (candidates.length === 0) {
+			return { kind: "unchanged", reason: "empty" };
 		}
-		const reject = rejectFromAppend(result);
-		if (reject) {
-			setDraft("");
-			onReject?.(reject);
-			return {
-				kind: "rejected",
-				reason: reject.reason,
-				tag: reject.tag,
-				message: reject.message,
-			};
+
+		let nextList = list;
+		for (const candidate of candidates) {
+			const result = tryAppendTag(candidate, nextList, existingTags ?? [], formatTag);
+			if (!result.ok) {
+				const reject = rejectFromAppend(result);
+				if (reject) {
+					setDraft("");
+					onReject?.(reject);
+					return {
+						kind: "rejected",
+						reason: reject.reason,
+						tag: reject.tag,
+						message: reject.message,
+					};
+				}
+				return { kind: "unchanged", reason: "empty" };
+			}
+			nextList = result.next;
 		}
-		return { kind: "unchanged", reason: "empty" };
+
+		onChange(nextList.length ? nextList : null);
+		setDraft("");
+		return { kind: "committed", next: nextList.length ? nextList : null };
 	}
 
 	useImperativeHandle(ref, () => ({
-		flushDraft: () => applyAppend(draft.trim()),
+		flushDraft: () => applyAppend(draft),
 	}));
 
 	function commitDraft() {
-		applyAppend(draft.trim());
+		applyAppend(draft);
 	}
 
 	function removeAt(index: number) {
@@ -118,7 +134,31 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 					<input
 						className="a-input a-tag-field__input"
 						value={draft}
-						onChange={(event) => setDraft(event.target.value)}
+						onChange={(event) => {
+							const nextValue = event.target.value;
+							// 中文输入法组合输入期间不要改值，避免重复字符（如 "：" 变 "::"）。
+							if (isComposingRef.current) {
+								setDraft(nextValue);
+								return;
+							}
+							setDraft(
+								autoNormalizeFullWidthColon
+									? nextValue.split("：").join(":")
+									: nextValue,
+							);
+						}}
+						onCompositionStart={() => {
+							isComposingRef.current = true;
+						}}
+						onCompositionEnd={(event) => {
+							isComposingRef.current = false;
+							const composedValue = event.currentTarget.value;
+							setDraft(
+								autoNormalizeFullWidthColon
+									? composedValue.split("：").join(":")
+									: composedValue,
+							);
+						}}
 						onKeyDown={(event) => {
 							if (event.key === "Enter") {
 								event.preventDefault();

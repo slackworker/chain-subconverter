@@ -21,7 +21,7 @@ const (
 	DefaultMaxURLsPerField              = 32
 	DefaultShortLinkDBPath              = "data/short-links.sqlite3"
 	DefaultShortLinkCapacity            = 1000
-	DefaultDefaultTemplateURL           = "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
+	DefaultDefaultTemplateURL           = "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 	DefaultDefaultTemplateFetchCacheTTL = 5 * time.Minute
 	DefaultTemplateFetchCacheTTL        = 0 * time.Second
 	DefaultTemplateAllowPrivateNetworks = false

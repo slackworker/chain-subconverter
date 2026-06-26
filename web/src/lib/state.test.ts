@@ -32,6 +32,19 @@ describe("state helpers", () => {
 		});
 	});
 
+	it("normalizes trailing line breaks in stage1 raw texts when building payload", () => {
+		expect(
+			toStage1InputPayload({
+				...initialStage1Input,
+				landingRawText: "ss://landing-a\r\nss://landing-b\r\n\r\n",
+				transitRawText: "https://example.com/transit.txt\n\n",
+			}),
+		).toMatchObject({
+			landingRawText: "ss://landing-a\nss://landing-b",
+			transitRawText: "https://example.com/transit.txt",
+		});
+	});
+
 	it("restores enablePortForward from persisted relay items after a payload roundtrip", () => {
 		expect(
 			hydrateStage1Input(

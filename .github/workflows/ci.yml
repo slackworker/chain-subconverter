@@ -104,8 +104,8 @@ jobs:
         working-directory: web
         run: npm run test
 
-  web-mock-e2e:
-    name: Web Mock E2E
+  web-e2e-mock-smoke:
+    name: Web E2E Mock Smoke
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -134,19 +134,15 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run mocked Playwright E2E tests
+      - name: Run mocked smoke E2E tests
         working-directory: web
-        run: npm run test:e2e:mock
+        run: npm run test:e2e:mock:smoke
 
-  web-build:
-    name: Web Build (release baseline)
+  web-e2e-mock-full:
+    name: Web E2E Mock Full
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        scheme: [default, a]
 
     steps:
       - name: Checkout repository
@@ -163,9 +159,43 @@ jobs:
         working-directory: web
         run: npm ci
 
-      - name: Build frontend scheme
+      - name: Install Playwright browsers
         working-directory: web
-        run: npm run build:${{ matrix.scheme }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run mocked full E2E tests
+        working-directory: web
+        run: npm run test:e2e:mock:full
+
+  web-build:
+    name: Web Build (release baseline)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build release baseline frontend scheme
+        working-directory: web
+        run: npm run build:default
 
   web-build-exploratory:
     name: Web Build (exploratory, non-blocking)

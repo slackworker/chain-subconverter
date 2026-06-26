@@ -20,8 +20,8 @@ func TestLoadStage1Scenario_DualLandingChainPortForward(t *testing.T) {
 	if scenario.ScenarioID != "dual-landing-chain-port-forward" {
 		t.Fatalf("ScenarioID = %q", scenario.ScenarioID)
 	}
-	if len(scenario.Stage1Input.LandingItems) != 6 {
-		t.Fatalf("len(LandingItems) = %d, want 6", len(scenario.Stage1Input.LandingItems))
+	if len(scenario.Stage1Input.LandingItems) != 4 {
+		t.Fatalf("len(LandingItems) = %d, want 4", len(scenario.Stage1Input.LandingItems))
 	}
 	if len(scenario.Stage1Input.ManualSocks5Items) != 1 {
 		t.Fatalf("len(ManualSocks5Items) = %d, want 1", len(scenario.Stage1Input.ManualSocks5Items))
@@ -45,10 +45,10 @@ func TestLoadStage1Scenario_DualLandingChainPortForward(t *testing.T) {
 	if got := scenario.Stage1Input.LandingRawTextWithManualSocks(); got == scenario.Stage1Input.LandingRawText() {
 		t.Fatal("LandingRawTextWithManualSocks() should append manual socks URIs")
 	}
-	if got := scenario.Stage1Input.TransitRawText(); got != "https://fixtures.example.com/transit-a-subscription.txt\nhttps://fixtures.example.com/transit-b-subscription.txt" {
+	if got := scenario.Stage1Input.TransitRawText(); got != "https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1\nhttps://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2?target=ClashMeta" {
 		t.Fatalf("TransitRawText() = %q", got)
 	}
-	if scenario.TemplateFixture.InputURL != "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini" {
+	if scenario.TemplateFixture.InputURL != "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini" {
 		t.Fatalf("TemplateFixture.InputURL = %q", scenario.TemplateFixture.InputURL)
 	}
 	if got := scenario.Stage1Input.ManualSocks5Items[0].GeneratedURI; got != "tg://socks?server=manual-socks-hk.example.test&port=1080&remarks=Manual-SOCKS5-HK-Fallback&user=demo-user&pass=demo-pass" {
@@ -125,7 +125,7 @@ func TestLoadStage1Scenario_3PassSS2022TestSubscription(t *testing.T) {
 	assertRenderedFile(t, files, LandingFileName, "ss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=@198.51.100.10:8888#SS2022-Test-256-US\n")
 	assertRenderedFile(t, files, TransitFileName, "http://198.51.100.20:3001/download/test-subscription\n")
 	assertRenderedFile(t, files, ForwardRelaysFileName, "")
-	assertRenderedFile(t, files, AdvancedOptionsFileName, "emoji: true\nudp: true\nskipCertVerify:\nconfig: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini\ninclude:\nexclude:\n")
+	assertRenderedFile(t, files, AdvancedOptionsFileName, "emoji: true\nudp: true\nskipCertVerify:\nconfig: https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini\ninclude:\nexclude:\n")
 	if got := scenario.Stage1Input.LandingRawTextWithManualSocks(); got != scenario.Stage1Input.LandingRawText() {
 		t.Fatalf("LandingRawTextWithManualSocks() = %q, want identical landing text when no manual socks items", got)
 	}
@@ -135,7 +135,7 @@ func TestRenderReviewStage1InputFiles(t *testing.T) {
 	emoji := true
 	udp := true
 	skipCertVerify := false
-	config := "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
+	config := "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 
 	files, err := RenderReviewStage1InputFiles(CanonicalStage1Input{
 		LandingItems: []string{"landing-a", "landing-b"},
@@ -161,7 +161,7 @@ func TestRenderReviewStage1InputFiles(t *testing.T) {
 	assertRenderedFile(t, files, LandingFileName, "landing-a\nlanding-b\ntg://socks?server=manual-socks.example.test&port=1080&remarks=Manual-SOCKS5-Test\n")
 	assertRenderedFile(t, files, TransitFileName, "transit-a\ntransit-b\n")
 	assertRenderedFile(t, files, ForwardRelaysFileName, "relay-a:7443\n")
-	assertRenderedFile(t, files, AdvancedOptionsFileName, "emoji: true\nudp: true\nskipCertVerify: false\nconfig: https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini\ninclude:\nexclude:\n")
+	assertRenderedFile(t, files, AdvancedOptionsFileName, "emoji: true\nudp: true\nskipCertVerify: false\nconfig: https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini\ninclude:\nexclude:\n")
 }
 
 func TestCanonicalStage1Input_ToReviewStage1Input(t *testing.T) {

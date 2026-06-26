@@ -27,12 +27,14 @@ const minimalStage2Init: Stage2Init = {
 		{
 			landingNodeName: "landing-a",
 			landingNodeType: "ss",
+			server: "a.example.com",
 			mode: "none",
 			targetName: null,
 		},
 		{
 			landingNodeName: "landing-b",
 			landingNodeType: "vless",
+			server: "b.example.com",
 			mode: "none",
 			targetName: null,
 		},

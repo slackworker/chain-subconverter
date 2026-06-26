@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
+import { applyDefaultUiPreferences, expectHTTPResponseOK } from "./helpers";
 
-import type { Response } from "@playwright/test";
 import type { ResolveURLResponse, ShortLinkResponse } from "../src/types/api";
 
 /**
@@ -18,7 +18,7 @@ import type { ResolveURLResponse, ShortLinkResponse } from "../src/types/api";
  *
  *   CHAIN_SUBCONVERTER_E2E_BASE_URL=https://chain-subconverter.example.com \
  *   CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
- *   npm run test:e2e -- deployed-smoke.spec.ts
+ *   npm run test:e2e -- real-deployed-core-flow.spec.ts
  */
 const defaultStage1Inputs = loadCanonicalStage1Inputs("3pass-ss2022-test-subscription");
 const devUpRuntimeFile = new URL("../../.tmp/dev-up/runtime.env", import.meta.url);
@@ -70,13 +70,6 @@ function resolveBackendOrigin(baseURL: string) {
 	return backendOriginFromDevUpRuntime(uiOrigin) ?? uiOrigin;
 }
 
-async function expectOKResponse(response: Response, label: string) {
-	if (response.ok()) {
-		return;
-	}
-	throw new Error(`${label} failed with HTTP ${response.status()}: ${await response.text()}`);
-}
-
 function inputFromEnv(name: string, fallback: string) {
 	const values: Array<{ index: number; value: string }> = [];
 	const primary = process.env[name]?.trim();
@@ -108,7 +101,7 @@ function inputFromEnv(name: string, fallback: string) {
 
 test.describe.configure({ mode: "serial" });
 
-test("deployed stack: healthz + UI convert + generate", async ({ page, baseURL }) => {
+test("real deployed core flow validates healthz and stage3 round-trip", async ({ page, baseURL }) => {
 	test.setTimeout(120_000);
 
 	const origin = baseURL?.trim();
@@ -122,10 +115,7 @@ test("deployed stack: healthz + UI convert + generate", async ({ page, baseURL }
 	expect(health.ok()).toBeTruthy();
 	expect((await health.text()).trim()).toBe("ok");
 
-	await page.addInitScript(() => {
-		window.localStorage.setItem("chain-subconverter-ui.locale", "zh");
-		window.localStorage.setItem("chain-subconverter-ui.theme", "light");
-	});
+	await applyDefaultUiPreferences(page);
 
 	await Promise.all([
 		page.waitForResponse(
@@ -144,7 +134,7 @@ test("deployed stack: healthz + UI convert + generate", async ({ page, baseURL }
 		(resp) => resp.url().includes("/api/stage1/convert"),
 	);
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
-	await expectOKResponse(await stage1ConvertResponsePromise, "stage1 convert");
+	await expectHTTPResponseOK(await stage1ConvertResponsePromise, "stage1 convert");
 
 	const generateButton = page.getByRole("button", { name: "生成链接" });
 	await expect(generateButton).toBeEnabled({ timeout: 60_000 });
@@ -152,7 +142,7 @@ test("deployed stack: healthz + UI convert + generate", async ({ page, baseURL }
 		(resp) => resp.url().includes("/api/generate"),
 	);
 	await generateButton.click();
-	await expectOKResponse(await generateResponsePromise, "generate");
+	await expectHTTPResponseOK(await generateResponsePromise, "generate");
 
 	const currentLink = page.getByLabel("当前链接");
 	await expect(currentLink).not.toHaveValue("", { timeout: 30_000 });

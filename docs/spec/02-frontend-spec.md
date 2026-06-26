@@ -41,16 +41,15 @@
 - 方案层可以通过注入或装配的方式提供 Stage 容器、notice renderer、status display、target chooser 等 UI 实现，但不得改变共享业务语义
 - A/B/C 方案应以 `0 UI` 为起点独立开发，不以任一既有页面壳层作为继承前提
 - 共享层严格限定为业务契约与状态语义，不包含任何 UI 壳、页面骨架或视觉容器实现
-- `web/src/scheme/default` 是默认发布入口的冻结目录，不作为实验方案的共享基类；`web/src/scheme/a|b1|b2|c1|c2` 才是 `dev` 分支上的持续演进方案目录
+- `web/src/scheme/default` 是默认发布入口的冻结目录，不作为实验方案的共享基类；`web/src/scheme/b1|b2|c1|c2` 才是 `dev` 分支上的持续演进方案目录
 - 每个 scheme 目录必须保持自包含：至少由本地 `Page.tsx` 导出统一入口 `SchemePage`，并由本地 `index.ts` 声明 scheme 元数据；不得让 `default` 运行时直接 import 实验 scheme 的页面实现
 - 当需要把某个实验方案提升为默认入口时，权威动作是把该 scheme 目录整体复制到 `web/src/scheme/default`，然后仅重写 `default/index.ts` 的默认元数据；不得把 `default` 改成某个实验方案的运行时别名
 
-### 方案分级：对照基线与探索性
+### 方案分级：发布基线与探索性
 
 | 方案 | 路由 | `interactionTier` | 定位 |
 |------|------|-------------------|------|
 | `default` | `/` | `baseline` | 发布默认入口；冻结目录，不作为 dev 上的持续实验场 |
-| UI A | `/ui/a` | `baseline` | `dev` 分支对照方案；实现时以本章方案层约定与共享通知承载模型为参考 |
 | UI B-1 | `/ui/b1` | `exploratory` | 探索性方案 B 变体 1（`feat/ui-b-1`） |
 | UI B-2 | `/ui/b2` | `exploratory` | 探索性方案 B 变体 2（`feat/ui-b-2`） |
 | UI C-1 | `/ui/c1` | `exploratory` | 探索性方案 C 变体 1（`feat/ui-c-1`） |
@@ -58,7 +57,7 @@
 
 **探索性方案（UI B / UI C）**
 
-- 优先验证不同的信息架构、操作路径、布局节奏与视觉风格；**不作为**本章对方案层交互/呈现细节的权威样板，也不要求与 `default` / UI A 在壳层或视觉上对齐。
+- 优先验证不同的信息架构、操作路径、布局节奏与视觉风格；**不作为**本章对方案层交互/呈现细节的权威样板，也不要求与 `default` 在壳层或视觉上对齐。
 - **允许**：在不影响业务正确性的前提下，脱离本章对交互方式、分步/平铺节奏、通知区具体形态、按钮分组与文案层级等的描述，自行定义交互与风格。
 - **不得**：削弱或改写上文「共享层必须定义的内容」、[04-business-rules](04-business-rules.md) 业务规则、[03-backend-api](03-backend-api.md) 接口契约，以及共享业务层状态语义（含 `blockingErrors[]` / `messages[]`、`restoreStatus`、阶段 2 只读冲突态等）。
 - **验收口径（业务能力）**：须能完整走通主线——阶段 1「转换并自动填充」→ 阶段 2 配置（含 stale、复制行、`conflicted` 只读冲突等）→ 阶段 3 生成与消费（长/短链、打开预览、复制、下载、反向解析）→ 必要时经 `resolve-url` 恢复；错误须按 `scope` 可定位且可阻断错误操作。不要求与 spec 02 的交互细节或文案一一对应。
@@ -137,15 +136,15 @@
 
 #### 1.2.1 端口转发服务
 
-- `default` / `a` 方案无启用开关，端口转发入口默认暴露；探索性方案（`b1`、`b2`、`c1`、`c2`）仍可通过各自 UI 开关控制
+- `default` 方案无启用开关，端口转发入口默认暴露；探索性方案（`b1`、`b2`、`c1`、`c2`）仍可通过各自 UI 开关控制
 - 端口转发服务在业务语义上是阶段 1 的独立逻辑块
 - 端口转发服务不写入 `transitRawText`，而是以独立字段 `forwardRelayItems` 进入阶段 1 快照
 - 端口转发服务的后续消费链路独立于中转节点文本输入；其输入、校验、去重与阶段 2 消费均按独立业务语义处理
 - 提交阶段 1 快照时，端口转发服务必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
 - `enablePortForward` 是前端本地 UI 控制字段，不进入后端 API 请求体，也不进入长链接共享状态
-- `default` / `a` 方案：不提供 `enablePortForward` switch；用户可直接使用“+端口转发”入口而无需先开启开关
+- `default` 方案：不提供 `enablePortForward` switch；用户可直接使用“+端口转发”入口而无需先开启开关
 - 探索性方案：`enablePortForward` 初始值默认 `false`；用户开启 switch 后可先进入“显示端口转发入口但尚未录入条目”的状态；用户关闭 switch 后必须清空 `forwardRelayItems`；仅因用户删除或移除全部端口转发条目时，前端不得自动将该 switch 反向关闭
-- 从 `resolve-url` 恢复页面时，`enablePortForward` 仅作为前端本地派生字段恢复：按 `forwardRelayItems.length > 0` 派生；`default` / `a` 方案的端口转发入口始终可见，不依赖该字段
+- 从 `resolve-url` 恢复页面时，`enablePortForward` 仅作为前端本地派生字段恢复：按 `forwardRelayItems.length > 0` 派生；`default` 方案的端口转发入口始终可见，不依赖该字段
 - 校验与去重口径：统一遵循 [04-business-rules](04-business-rules.md) `1.1.2 端口转发服务输入校验（权威口径）`
 - 前端可在 modal 录入或确认提交时复用同一口径做预校验，并阻止非法值进入 `forwardRelayItems`；但后端返回的校验结果仍是最终裁决
 
@@ -194,10 +193,13 @@
 | `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享） |
 | `rows[].landingNodeName` | string | 兼容字段，等同 `proxyName` |
 | `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
+| `rows[].server` | string | 落地 server；只读，用于按 server 分组；见 [03](03-backend-api.md) / [04 §2.1](04-business-rules.md) |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
 | `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
+| `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
+| `chainProxyTargetGroupSwitchOptimizationEnabled` | `boolean` | 全局开关；开启后对所有符合条件的 `proxy-groups` 目标统一应用节点切换优化（`url-test` 覆写） |
 
 ### 2.2 共享业务槽位
 
@@ -239,6 +241,31 @@
 - `chainTargets[].isEmpty = true` 的 `proxy-groups` 候选保留展示、禁止选择，并提示“策略组为空，不允许作为中转策略组”
 - 当 `mode = port_forward` 时，第四列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`；提示用户端口转发服务必须在中转机上完成与落地节点一一对应的配置；不可多个落地节点选择同一个端口转化服务，当一个端口转发服务已被其他落地节点选择时保留展示、禁止选择
 - 前端直接使用后端返回的候选列表与默认值
+
+### 2.6.1 链式地域组节点切换优化（基线路由）
+
+- 本阶段只提供**全局开关**，不提供每行选择器；切换优化控件属于阶段 2 的**基线路由**能力：当前只在 `/`（`default`）暴露；探索性路由 `/ui/b*`、`/ui/c*` 本轮不复制该控件
+- 全局开关开启时，前端必须写入 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled = true`；关闭时写入 `false`（沿用模板默认）
+- 符合条件的行指：`mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups`
+- 当用户把链式目标从 `proxy-groups` 切到 `proxies`（固定节点）、切换到 `none` / `port_forward`，或第四列被清空时，前端不需要额外写入行级字段；后端仅按当前符合条件行与全局开关状态决定是否覆写目标策略组
+
+### 2.6.2 线路聚合模式（基线路由 UI）
+
+- 表格上方 toolbar 提供「线路聚合模式」开关；开启后平铺表 ↔ 聚合树切换（非高级选项内）
+- 关闭聚合模式时清空 `serverAggregationGroups[]`（与 [`Stage2Section.handleAggregationModeToggle`](../../web/src/scheme/default/Stage2Section.tsx) 行为一致）
+- 聚合组配置写入 `serverAggregationGroups[]`；渲染语义见 [04 §2.7 / §3.3.2](04-business-rules.md)
+- 不自动为所有 server 批量建组；用户须在聚合树内显式启用
+
+### 2.6.3 两种故障转移能力的分工
+
+| 能力 | 开关位置 | 作用对象 | 典型场景 |
+|------|----------|----------|----------|
+| 策略组节点切换优化 | 高级选项 | 链式目标为**既有地域策略组**（`proxy-groups`） | 加快该策略组内中转节点切换 |
+| 线路聚合 | 表格 toolbar | 同一 **server** 下多行（副本/不同中转） | 多线路互为 backup，追加新策略组 |
+
+- **允许同时开启**；后端顺序：§3.3.1 覆写既有组 → §3.3.2 追加聚合组（见 [04 §3.5](04-business-rules.md)）
+- **不做互斥**；两者解决不同层级问题，非二选一
+- 链式目标选固定节点/端口转发时，仅聚合能力 relevant；选地域策略组时，切换优化 relevant
 
 ### 2.7 生成动作
 

@@ -7,7 +7,7 @@ export const WORKER_FIXTURES_BASE =
 	"https://chain-subconverter-test-fixtures.slackworker.workers.dev";
 const WORKER_DOWNLOAD_PREFIX = `${WORKER_FIXTURES_BASE}/dual-landing/download`;
 
-const PREVIEW_URL = "https://fantastic-loise-slackers-134ea8cc.koyeb.app/";
+const PREVIEW_URL = "https://chain-subconverter.koyeb.app/";
 
 const AUTO_GENERATED_BANNER = [
 	"<!--",
@@ -75,6 +75,19 @@ export function extractShortID(shortUrl) {
 	return shortID;
 }
 
+/** Host-agnostic golden path for manual long URL / payload verification. */
+export function extractLongURLGoldenPath(longUrl) {
+	if (typeof longUrl !== "string" || longUrl.trim() === "") {
+		throw new Error("short-links.response.json is missing longUrl");
+	}
+	const parsed = new URL(longUrl);
+	const data = parsed.searchParams.get("data")?.trim();
+	if (!data) {
+		throw new Error(`longUrl is missing data query parameter: ${longUrl}`);
+	}
+	return `/sub?data=${data}`;
+}
+
 function renderAdvancedOptions(advancedOptions) {
 	const lines = [];
 	if (typeof advancedOptions?.config === "string" && advancedOptions.config.trim() !== "") {
@@ -133,7 +146,48 @@ function renderManualSocksTable(manualSocksItems) {
 	].join("\n");
 }
 
-export function renderDualLandingManualReference({
+function renderManualSocksURI(manualSocksItems) {
+	const item = manualSocksItems?.[0];
+	if (!item) {
+		throw new Error("canonical scenario is missing manualSocks5Items[0]");
+	}
+	const auth =
+		typeof item.username === "string" &&
+		item.username.trim() !== "" &&
+		typeof item.password === "string" &&
+		item.password.trim() !== ""
+			? `${encodeURIComponent(item.username)}:${encodeURIComponent(item.password)}@`
+			: "";
+	const fragment =
+		typeof item.name === "string" && item.name.trim() !== ""
+			? `#${encodeURIComponent(item.name)}`
+			: "";
+	return `socks5://${auth}${item.server}:${item.port}${fragment}`;
+}
+
+function renderManualSocksGeneratedTGURI(manualSocksItems) {
+	const item = manualSocksItems?.[0];
+	if (!item) {
+		throw new Error("canonical scenario is missing manualSocks5Items[0]");
+	}
+	if (typeof item.generatedURI !== "string" || item.generatedURI.trim() === "") {
+		throw new Error("canonical scenario is missing manualSocks5Items[0].generatedURI");
+	}
+	return item.generatedURI.trim();
+}
+
+function renderStage2OperationChecklist() {
+	return [
+		"- 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：源行设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。",
+		"- 为 `🇸🇬 Alpha-Reality-SG` 新建 `2` 个副本：源行设为 `无`，两个副本分别设为 `端口转发 -> relay-a.example.com:7443`、`端口转发 -> relay-b.example.com:8443`。",
+		"- `🇯🇵 Beta-SS-JP` 保持 `链式 -> 🇯🇵 日本节点`；`🇯🇵 Beta-Reality-JP` 改为 `无`。",
+		"- 开启“线路聚合模式”，并在 `198.51.100.10` 组中勾选入组：`🇸🇬 Alpha-SS-SG`、`🇸🇬 Alpha-SS-SG 2`、`🇸🇬 Alpha-Reality-SG 2`、`🇸🇬 Alpha-Reality-SG 3`（不要勾选 `🇸🇬 Alpha-Reality-SG`）。",
+		"- 在 `198.51.100.10` 组的「顺序管理」中拖拽调整 fallback 顺序为：`🇸🇬 Alpha-Reality-SG 2` → `🇸🇬 Alpha-Reality-SG 3` → `🇸🇬 Alpha-SS-SG` → `🇸🇬 Alpha-SS-SG 2`。",
+		"- `198.51.100.11` 相关节点不入组聚合；同时开启“目标策略组节点切换优化”。",
+	].join("\n");
+}
+
+export function renderPreviewInputsMarkdown({
 	scenario,
 	stage1ConvertResponse,
 	stage2Snapshot,
@@ -142,12 +196,12 @@ export function renderDualLandingManualReference({
 }) {
 	const stage1Input = scenario?.stage1Input;
 	if (!stage1Input) {
-		throw new Error("dual-landing canonical scenario is missing stage1Input");
+		throw new Error("full canonical scenario is missing stage1Input");
 	}
 
 	const landingURILines = buildLandingURILines(stage1Input);
-	if (landingURILines.length !== 6) {
-		throw new Error(`expected 6 landing URIs, got ${landingURILines.length}`);
+	if (landingURILines.length === 0) {
+		throw new Error("expected landing URIs, got 0");
 	}
 
 	const relayLines = (stage1Input.forwardRelayItems ?? [])
@@ -163,26 +217,35 @@ export function renderDualLandingManualReference({
 	}
 
 	const shortID = extractShortID(shortLinkResponse.shortUrl);
+	const longURLGoldenPath = extractLongURLGoldenPath(shortLinkResponse.longUrl);
 	const transitURLs = buildTransitSubscriptionURLs();
 
 	const sections = [
 		AUTO_GENERATED_BANNER,
 		"",
-		"# dual-landing 手工测试数据",
+		"# 在线预览粘贴数据",
 		"",
-		`[在线预览 Demo](${previewUrl}) · [fixture 说明](dual-landing-chain-port-forward.md) · [README](../../README.md)`,
+		`[在线预览 Demo](${previewUrl}) · [Full 场景说明](fixtures.md#full-场景) · [README](../../README.md)`,
 		"",
-		"顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。",
+		"Full 场景手工联调顺序：**落地 → SOCKS5 → 中转 → 高级（含端口转发）→ 转换**。落地区只贴 URI，勿用 Worker 落地订阅链接。",
 		"",
 		"## Stage1",
 		"",
-		"### 落地节点（6 行）",
+		`### 落地节点（${landingURILines.length} 行）`,
 		"",
 		codeBlockLines(landingURILines),
 		"",
 		"### + 添加 SOCKS5",
 		"",
 		renderManualSocksTable(stage1Input.manualSocks5Items),
+		"",
+		"SOCKS5 URI 输入（与上表字段二选一）：",
+		"",
+		codeBlockLines([renderManualSocksURI(stage1Input.manualSocks5Items)]),
+		"",
+		"添加后应生成并追加同一条 TG URI（用于核对）：",
+		"",
+		codeBlockLines([renderManualSocksGeneratedTGURI(stage1Input.manualSocks5Items)]),
 		"",
 		"### 中转信息（2 行）",
 		"",
@@ -202,20 +265,28 @@ export function renderDualLandingManualReference({
 		"",
 		renderStage2Bullets(stage2InitRows),
 		"",
+		"### Stage2 操作要点（先操作，再对照金样）",
+		"",
+		renderStage2OperationChecklist(),
+		"",
 		"**生成前金样**",
 		"",
 		renderStage2Bullets(stage2Snapshot.rows),
 		"",
 		"## 验收",
 		"",
-		`- short ID 金样：\`${shortID}\`（Stage3 反向解析；预览站每次生成 ID 不同，Stage2 组合应一致）`,
+		`- short ID 金样：\`${shortID}\`（Stage3 反向解析；同一份可见配置应得到一致 short ID）`,
+		"",
+		"- long URL payload 金样（`/sub?data=…`；scheme/host 随部署变化，同一份可见配置应得到一致 payload）：",
+		"",
+		codeBlockLines([longURLGoldenPath]),
 		"",
 	].join("\n");
 
 	return `${sections.replace(/\n+$/, "")}\n`;
 }
 
-export function loadDualLandingManualReferenceInputs(repoRoot) {
+export function loadPreviewInputsInputs(repoRoot) {
 	const scenarioPath = path.join(
 		repoRoot,
 		"testdata",
@@ -261,13 +332,9 @@ export function loadDualLandingManualReferenceInputs(repoRoot) {
 	};
 }
 
-export function buildDualLandingManualReferenceMarkdown(repoRoot, options = {}) {
-	const inputs = loadDualLandingManualReferenceInputs(repoRoot);
-	return renderDualLandingManualReference({ ...inputs, ...options });
+export function buildPreviewInputsMarkdown(repoRoot, options = {}) {
+	const inputs = loadPreviewInputsInputs(repoRoot);
+	return renderPreviewInputsMarkdown({ ...inputs, ...options });
 }
 
-export const DUAL_LANDING_MANUAL_REFERENCE_PATH = path.join(
-	"docs",
-	"testing",
-	"dual-landing-manual-reference.md",
-);
+export const PREVIEW_INPUTS_DOC_PATH = path.join("docs", "testing", "preview-inputs.md");

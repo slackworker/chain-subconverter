@@ -1,5 +1,5 @@
 {
-  "v": 2,
+  "v": 3,
   "stage1Input": {
     "landingRawText": "ss://MjAyMi1ibGFrZTMtYWVzLTI1Ni1nY206MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=@198.51.100.10:8888#SS2022-Test-256-US",
     "transitRawText": "http://198.51.100.20:3001/download/test-subscription",
@@ -8,7 +8,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": null,
       "exclude": null
     }

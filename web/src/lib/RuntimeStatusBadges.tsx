@@ -93,13 +93,15 @@ export function resolveStorageBadgeState(used: number, capacity: number): Storag
 	return "ok";
 }
 
+const SUBCONVERTER_LATENCY_WARN_MS = 10;
+
 export function resolveSubconverterBadgeState(
 	subconverter: RuntimeStatusResponse["subconverter"],
 ): BadgeState {
 	if (!subconverter.healthy) {
 		return "error";
 	}
-	if (subconverter.networkScope === "cross_network") {
+	if (subconverter.latencyMs !== undefined && subconverter.latencyMs > SUBCONVERTER_LATENCY_WARN_MS) {
 		return "warn";
 	}
 	return "ok";

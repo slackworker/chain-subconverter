@@ -64,7 +64,7 @@
 补充规则：
 
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
-- `config` 必须是阶段 1 快照中显式保存的远程 HTTP(S) 模板 URL；前端初始值来自部署默认模板 URL，部署默认模板 URL 必须可配置，默认值为 `https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
+- `config` 必须是阶段 1 快照中显式保存的远程 HTTP(S) 模板 URL；前端初始值来自部署默认模板 URL，部署默认模板 URL 必须可配置，默认值为 `https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
 - `chain-subconverter` 必须先拉取 `config` 指向的模板，再把后端托管的内部模板 URL 传给 `subconverter`
 - `chain-subconverter` 不得把用户提供的远程模板 URL 直接透传给 `subconverter`
 - 当 `config` 等于部署默认模板 URL 时，其成功拉取结果必须先通过模板解析校验，只有校验通过的内容才允许写入默认模板缓存
@@ -77,6 +77,21 @@
 - query 构造逐项保持该语义：复选框 `null` 不传、显式 `true/false` 按值传递；`config` 必须由后端模板准备流程统一处理；`include`、`exclude` 仅在非空数组时参与 query 构造，并在传给上游前按输入顺序用 `|` 拼接为单个参数
 - 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
+
+### 0.2.3 模板 emoji 地域对齐预处理
+
+当阶段 1 高级选项 `emoji = true`（或等价启用节点 emoji）时，后端在远程模板拉取并校验通过之后、写入托管模板并交给 `subconverter` 之前，必须对模板内容做预处理，使地域策略组的展示 emoji 与同地域节点的 emoji 规则对齐。
+
+规则：
+
+- 仅处理模板 `[custom]` 段（或等价结构）中的 `custom_proxy_group=` 行；识别口径与 §2.6 地域策略组一致（组名 leading emoji + 文本 + `节点`）
+- 从组名提取展示用 emoji，复用已解析的地域匹配表达式作为节点匹配范围
+- 在模板 emoji 规则区为该地域追加或更新规则：**匹配范围 → 与组名相同的 emoji**；地域覆盖规则须排在默认规则之前
+- 若模板尚未声明 emoji 相关开关，须补齐启用节点 emoji 所需的最小声明（`add_emoji` / `remove_old_emoji`）；可引用 `subconverter` 内置默认 emoji 表补全其余地区
+- 若模板已手写 `emoji=` 且某地域规则与组名 emoji **冲突**，以模板显式声明为准，不静默覆盖；须返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
+- `emoji = false` 或未开启时：不注入，保持模板原样
+- 组名无 leading emoji（不符合地域组识别）时不注入对应规则
+- 预处理不得破坏 `custom_proxy_group` 行语义及链式自动填充口径；不修改 `subconverter` 服务端 `pref`
 
 ---
 
@@ -192,9 +207,10 @@
 - `landingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
 - `stage2Init` 阶段仅依赖 Pass 1 身份；Pass 3 前按 `sourceLandingNodeName` 从 Pass 1 取连接参数（见 `2.1.2`）
 - `landingNodeType` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.type`，并允许结合该节点内的附加字段做展示分类
+- `server` 固定来源于当前落地节点解析结果中的 `server` 字段（优先以 Pass 3 可唯一匹配身份的节点端点为准）；必填且不能为空
 - 当前展示分类补充规则为：`type = vless` 且存在 `reality-opts` 时，展示类型记为 `Reality`；`type = ss` 且存在 `plugin=shadow-tls`、`plugin: shadow-tls`、`shadow-tls` 或等价 `plugin-opts` 标记时，展示类型记为 `ShadowTLS`
 - 按“每个落地节点一行”生成 `stage2Init.rows[]`
-- 阶段 2 第一列展示 `proxyName`，第二列展示 `landingNodeType`
+- 阶段 2 第一列展示 `proxyName`，第二列展示 `landingNodeType`，并提供 `server` 元信息用于分组展示
 
 ### 2.1.1 落地节点命名与身份边界（`stage2Init`）
 
@@ -266,6 +282,7 @@
 5. `stage1/convert` 阶段允许省略 `isEmpty`（未知即留空）；`EMPTY_CHAIN_TARGET` 的最终裁决在生成/订阅校验链路完成 Pass 3 后执行
 6. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
 7. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+8. 按 `2.7` 渲染出的 `serverAggregationGroups` 聚合组属于最终 YAML 衍生产物，不参与 `chainTargets[]` 收集
 
 ### 2.4 收集端口转发候选
 
@@ -276,7 +293,11 @@
 
 ### 2.5 自动填写 `mode` 与第四列
 
-阶段 2 初始化时，后端必须直接为每行产出 `landingNodeType`、默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
+阶段 2 初始化时，后端必须直接为每行产出 `landingNodeType`、`server`、默认的 `mode` 与 `targetName`；前端按 `stage2Init.rows[]` 渲染初始状态。
+
+补充规则：
+
+- `stage2Init.rows[]` 不暴露切换优化字段；开关由 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 全局承载
 
 #### 初始化决策顺序
 
@@ -329,6 +350,29 @@
 
 命中 **0** 条或 **多于 1** 条时，链式自动识别失败（见 2.5）；**恰好 1** 条时，只有当该策略组在当次 `chainTargets[]` 中存在且 `isEmpty` 留空，才允许自动填写。
 
+### 2.7 按 server 聚合配置（`stage2Snapshot.serverAggregationGroups[]`）
+
+按落地 `server` 分组；多个 `sourceLandingNodeName` 可共享同一 `server` 端点并入同一组，成员以 `rowId` 显式引用。
+
+- `serverAggregationGroups[]` 表达“按 server 分组的显式聚合策略组配置”
+- `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
+- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback` 或 `url-test`
+- `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`；数组顺序承载组内成员顺序，去重时保留首次出现的位置
+- `enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
+- `enabled = true` 时，每个成员行对应的 `rows[].server` 必须与组 `server` 一致；跨 server 入组必须阻断
+- `enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
+- 该聚合配置只影响最终 YAML 产物，不回写阶段 2 链式候选；`rows[].targetName` 在 `mode = chain` 下仍只允许引用 `chainTargets[].name`
+
+#### 聚合组 YAML 名称推导
+
+聚合组无独立 `groupName` 字段；最终 YAML 策略组名由 **`memberRowIds[]` 去重后第一个成员**（锚点行）的 `proxyName` 推导：
+
+1. 若锚点行 `proxyName` 非空、不等于其 `sourceLandingNodeName`、且不以 `srv` + 空白 + `:` / `：` 前缀开头，则聚合组名 = 该 `proxyName`
+2. 否则使用默认展示名：`国旗 emoji + server`（组内源行行名前缀国旗一致时取该 emoji；无法确定单一国旗时仅 `server`）
+3. 若推导名与既有 `proxy-groups` 或同批待写入聚合组重名，按 `基名 2`、`基名 3`…递增直至唯一
+
+前端 Stage 2 聚合树中 server 分组节点的可编辑名称与上述锚点行 `proxyName` 保持同步；用户编辑组名即编辑锚点行 `proxyName`。
+
 ---
 
 ## 3. 生成前校验与改写
@@ -341,6 +385,8 @@
 - `mode = chain`：第四列写入 `dialer-proxy`
 - `mode = port_forward`：第四列写入端口转发 `server:port`
 - `rows` 数组顺序不参与生成语义；校验与恢复以 `rowId` 为行定位主键，`sourceLandingNodeName` 仅用于连接参数绑定
+- `serverAggregationGroups[]` 只新增聚合策略组产物，不得覆盖任何行的 `mode/targetName` 语义
+- `chainProxyTargetGroupSwitchOptimizationEnabled` 是全局保存、组级生效的受管配置：开启后，所有 `mode = chain` 且目标为 `proxy-groups` 的行统一应用节点切换优化（`url-test` 覆写），不改变该行 `dialer-proxy` 指向的 `targetName`
 
 ### 3.2 生成前校验
 
@@ -351,6 +397,8 @@
 - 若 `targetName` 在对应候选列表中不存在，必须阻断生成
 - 若多个落地节点同时选择同一个 `forwardRelays[].name` 作为 `port_forward` 目标，必须以 `DUPLICATE_FORWARD_RELAY_TARGET` 阻断生成
 - 若某行选择的 `chain` 目标在当前 `chainTargets[]` 中 `isEmpty = true`，必须以 `EMPTY_CHAIN_TARGET` 阻断生成
+- 若 `serverAggregationGroups[]` 违反 `2.7` 校验规则，必须阻断生成
+- 若 `chainProxyTargetGroupSwitchOptimizationEnabled = true`，后端只对当前符合条件行（`mode = chain` 且 `targetName` 为 `kind = proxy-groups`）生效
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 - `POST /api/generate` 完成上述校验与链接编码，返回可消费的链接
 
@@ -370,9 +418,12 @@
 
 - 上游订阅内容变化导致引用仍有效时，恢复结果保持可重放；导致任一引用失效时，恢复结果为不可重放
 - 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
+- 若 `chainProxyTargetGroupSwitchOptimizationEnabled = true`，只要当前 `proxy-groups` 候选仍存在，即不因组成员变化而判为冲突
 - 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
+- 若 `serverAggregationGroups[]` 中某启用组违反 `2.7` 校验规则（未知成员 `rowId`、跨 server 入组、成员数不足 2 等），则视为不可重放
+- 启用组成员仅因 `proxyName` 变化导致聚合组 YAML 名变化，不单独判为不可重放；只要成员 `rowId` 与 `server` 引用仍有效即可
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
 
 ### 3.3 快照应用（Pass 3 前）
@@ -382,7 +433,38 @@
 - 按 `sourceLandingNodeName` 从 Pass 1 取连接参数，按 `proxyName` 展开托管 landing 的 `proxies[]`
 - `mode = chain`：写入 `dialer-proxy: <targetName>`
 - `mode = port_forward`：将 `targetName` 解析为 `server` 与 `port` 并替换
-- Pass 3 后**不再**对 full-base 正文做上述 YAML 补丁（仅保留 `1.3` 出组）
+- Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing 行语义只通过 Pass 3 前的托管 landing 输入生效
+
+### 3.3.1 既有地域策略组覆写（Pass 3 后）
+
+若 `chainProxyTargetGroupSwitchOptimizationEnabled = true` 且某些行为 `mode = chain` 且目标为 `proxy-groups`，后端在 `full-base pass` 完成且执行 `1.3` 出组后，必须继续对最终 YAML 中的同名既有地域策略组做受管覆写。
+
+覆写规则：
+
+- 覆写优先于模板原组的 `type` 与健康检查相关参数
+- 只允许覆写当前快照引用到的既有 `proxy-groups`；不得为该能力新增新的策略组名
+- 覆写对象按 `targetName` 定位；最终该行的 `dialer-proxy` 仍保持 `dialer-proxy: <targetName>`
+- 组成员列表沿用 `full-base pass` 与 `1.3` 出组后的结果，不因切换优化开关而重新展开成员
+- 切换优化必须统一写入以下健康检查参数：`url = https://cp.cloudflare.com/generate_204`、`interval = 60`、`lazy = false`、`timeout = 500`、`max-failed-times = 1`
+- `chainProxyTargetGroupSwitchOptimizationEnabled = true` 时，组 `type` 覆写为 `url-test`；不处理 `tolerance` 字段
+
+### 3.3.2 server 聚合组追加（Pass 3 后）
+
+`serverAggregationGroups[]` 中 `enabled = true` 的组，在 `full-base pass` 完成且执行 `1.3` 出组后，向最终 YAML 的 `proxy-groups` 追加新策略组（不修改既有 `proxies[]` 与行级 `dialer-proxy` 语义）。
+
+每条追加组固定写入以下健康检查参数：
+
+- `url = https://cp.cloudflare.com/generate_204`
+- `interval = 60`
+- `lazy = false`
+- `timeout = 500`
+- `max-failed-times = 1`
+
+组 `type` 取快照中的 `strategy`（`fallback` 或 `url-test`）；当前不写入 `tolerance` 等额外字段。
+
+组 `proxies` 成员列表按 `memberRowIds[]` 去重后顺序，引用各行渲染结果的 `proxyName`；成员 proxy 必须已存在于最终 `proxies[]`。
+
+组名按 `2.7` 聚合组 YAML 名称推导规则生成。
 
 ### 3.4 协议与端口限制
 
@@ -391,7 +473,7 @@
 ### 3.5 最终配置交付时机
 
 - 订阅打开/下载时即时生成 `completeConfig`
-- 流程：重跑 Pass 1+2 → `3.3` 合并托管 landing → Pass 3 full-base → `1.3` 出组 → 返回
+- 流程：重跑 Pass 1+2 → `3.3` 合并托管 landing → Pass 3 full-base → `1.3` 出组 → `3.3.1` 既有地域策略组覆写 + `3.3.2` server 聚合组追加 → 返回
 - 任一必需 pass 失败则订阅渲染失败
 
 ## 4. 共享通知生命周期

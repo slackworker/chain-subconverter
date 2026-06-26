@@ -23,4 +23,5 @@ curl -fsS "${BASE_URL%/}/healthz" | tr -d '\n'
 echo
 
 cd "$ROOT/web"
-npm run test:e2e -- deployed-smoke.spec.ts
+npm run test:e2e:real:smoke
+npm run test:e2e:real:full

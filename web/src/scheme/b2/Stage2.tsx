@@ -25,7 +25,7 @@ import {
 } from "./theme";
 
 const MODE_LABELS: Record<string, string> = {
-	none: "不配置",
+	none: "无/直连",
 	chain: "链式代理",
 	port_forward: "端口转发",
 };

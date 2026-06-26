@@ -26,6 +26,7 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 
 	var expectedPayload LongURLPayload
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "long-url.payload.json"), &expectedPayload)
+	expectedPayload.Stage2Snapshot = NormalizeStage2Snapshot(expectedPayload.Stage2Snapshot)
 
 	expectedStage1Response := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
 	expectedGenerateResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"))
@@ -67,8 +68,12 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 		t.Fatalf("rendered config still contains landing node in the default US proxy-group")
 	}
 
-	if got := mustMarshalIndented(t, stage1Response); strings.TrimSpace(got) != strings.TrimSpace(expectedStage1Response) {
-		t.Fatalf("stage1-convert.response.json mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedStage1Response)
+	var expectedStage1 Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedStage1Response), &expectedStage1); err != nil {
+		t.Fatalf("decode expected stage1 response: %v", err)
+	}
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(stage1Response), normalizeStage1ConvertResponseForContract(expectedStage1)) {
+		t.Fatalf("stage1-convert.response.json mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, stage1Response), mustMarshalIndented(t, expectedStage1))
 	}
 	if got := mustMarshalIndented(t, generateResponse); strings.TrimSpace(got) != strings.TrimSpace(expectedGenerateResponse) {
 		t.Fatalf("generate.response.json mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedGenerateResponse)
@@ -177,6 +182,93 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 	}
 }
 
+func TestDecodeLongURLPayload_RejectsServerAggregationGroupWithDuplicateMembers(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{
+				Rows: []Stage2Row{{
+					RowID:                 "HK 01",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					LandingNodeName:       "HK 01",
+					Mode:                  "none",
+				}},
+				ServerAggregationGroups: []ServerAggregationGroup{{
+					Server:       "landing.example.com",
+					Enabled:      true,
+					Strategy:     "fallback",
+					MemberRowIDs: []string{"HK 01", "HK 01"},
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(longURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: server aggregation group for server") ||
+		!strings.Contains(err.Error(), "must include at least 2 memberRowIds") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
+func TestDecodeLongURLPayload_AcceptsExtendedServerAggregationStrategies(t *testing.T) {
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			longURL, err := EncodeLongURL(
+				"http://localhost:11200",
+				BuildLongURLPayload(
+					stage1InputWithTemplate(Stage1Input{}),
+					Stage2Snapshot{
+						Rows: []Stage2Row{
+							{
+								RowID:                 "HK 01",
+								SourceLandingNodeName: "HK 01",
+								ProxyName:             "HK 01",
+								LandingNodeName:       "HK 01",
+								Mode:                  "none",
+							},
+							{
+								RowID:                 "HK 02",
+								SourceLandingNodeName: "HK 02",
+								ProxyName:             "HK 02",
+								LandingNodeName:       "HK 02",
+								Mode:                  "none",
+							},
+						},
+						ServerAggregationGroups: []ServerAggregationGroup{{
+							Server:       "landing.example.com",
+							Enabled:      true,
+							Strategy:     strategy,
+							MemberRowIDs: []string{"HK 01", "HK 02"},
+						}},
+					},
+				),
+				0,
+			)
+			if err != nil {
+				t.Fatalf("EncodeLongURL() error = %v", err)
+			}
+
+			payload, err := DecodeLongURLPayload(longURL, InputLimits{})
+			if err != nil {
+				t.Fatalf("DecodeLongURLPayload() error = %v", err)
+			}
+			if got := payload.Stage2Snapshot.ServerAggregationGroups[0].Strategy; got != strategy {
+				t.Fatalf("decoded strategy mismatch: got %q want %q", got, strategy)
+			}
+		})
+	}
+}
+
 func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) {
 	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"rows":[]},"v":1}`)
 	encodedData, err := encodeCompressedData(payloadJSON)
@@ -193,6 +285,106 @@ func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) 
 		t.Fatal("expected error, got nil")
 	}
 	if !strings.Contains(err.Error(), "unmarshal long URL payload: json: unknown field \"enablePortForward\"") {
+		t.Fatalf("error mismatch: got %v", err)
+	}
+}
+
+func TestDecodeLongURLPayload_AcceptsCompatiblePayloadVersionAndCanonicalizes(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	parsedURL, err := url.Parse(longURL)
+	if err != nil {
+		t.Fatalf("url.Parse() error = %v", err)
+	}
+	payloadJSON, err := decodeCompressedData(parsedURL.Query().Get(longURLParamData))
+	if err != nil {
+		t.Fatalf("decodeCompressedData() error = %v", err)
+	}
+
+	var schema longURLPayloadSchema
+	if err := json.Unmarshal(payloadJSON, &schema); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	schema.V = 2
+
+	mutatedPayloadJSON, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	mutatedData, err := encodeCompressedData(mutatedPayloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	mutatedLongURL, err := joinSubURL("http://localhost:11200", mutatedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+
+	payload, err := DecodeLongURLPayload(mutatedLongURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("DecodeLongURLPayload() error = %v", err)
+	}
+	if payload.V != longURLSchemaVersion {
+		t.Fatalf("expected payload version to be canonicalized to %d, got %d", longURLSchemaVersion, payload.V)
+	}
+}
+
+func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	parsedURL, err := url.Parse(longURL)
+	if err != nil {
+		t.Fatalf("url.Parse() error = %v", err)
+	}
+	payloadJSON, err := decodeCompressedData(parsedURL.Query().Get(longURLParamData))
+	if err != nil {
+		t.Fatalf("decodeCompressedData() error = %v", err)
+	}
+
+	var schema longURLPayloadSchema
+	if err := json.Unmarshal(payloadJSON, &schema); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	schema.V = longURLSchemaVersion + 1
+
+	mutatedPayloadJSON, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	mutatedData, err := encodeCompressedData(mutatedPayloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	mutatedLongURL, err := joinSubURL("http://localhost:11200", mutatedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+
+	_, err = DecodeLongURLPayload(mutatedLongURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 4") {
 		t.Fatalf("error mismatch: got %v", err)
 	}
 }
@@ -261,9 +453,18 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		},
 		Stage2Snapshot: Stage2Snapshot{
 			Rows: []Stage2Row{{
-				LandingNodeName: "HK 01",
-				Mode:            "chain",
-				TargetName:      &targetName,
+				RowID:                 "HK 01",
+				SourceLandingNodeName: "HK 01",
+				ProxyName:             "HK 01",
+				LandingNodeName:       "HK 01",
+				Mode:                  "chain",
+				TargetName:            &targetName,
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"HK 01"},
 			}},
 		},
 	}
@@ -273,7 +474,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]},"v":2}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}],"serverAggregationGroups":[{"server":"landing.example.com","enabled":true,"strategy":"fallback","memberRowIds":["HK 01"]}]},"v":3}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

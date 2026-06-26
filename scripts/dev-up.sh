@@ -16,6 +16,7 @@ FRONTEND_PORT=${CHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT:-5173}
 SUBCONVERTER_READY_ATTEMPTS=${CHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_READY_ATTEMPTS:-30}
 BACKEND_READY_ATTEMPTS=${CHAIN_SUBCONVERTER_DEV_UP_BACKEND_READY_ATTEMPTS:-60}
 BACKEND_FROM_CONTAINER_READY_ATTEMPTS=${CHAIN_SUBCONVERTER_DEV_UP_BACKEND_FROM_CONTAINER_READY_ATTEMPTS:-30}
+FORCE_RESTART=${CHAIN_SUBCONVERTER_DEV_UP_FORCE_RESTART:-0}
 STALE_SUBCONVERTER_PORTS=(25501 25502 25503)
 STALE_BACKEND_PORTS=(11201 11202 11203)
 STALE_FRONTEND_PORTS=(5176)
@@ -498,10 +499,18 @@ EOF
 }
 
 case "$SCHEME" in
-  default|a|b1|b2|c1|c2)
+  default|b1|b2|c1|c2)
     ;;
   *)
-    fail "unsupported scheme '$SCHEME' (expected one of: default, a, b1, b2, c1, c2)"
+    fail "unsupported scheme '$SCHEME' (expected one of: default, b1, b2, c1, c2)"
+    ;;
+esac
+
+case "$FORCE_RESTART" in
+  0|1)
+    ;;
+  *)
+    fail "unsupported CHAIN_SUBCONVERTER_DEV_UP_FORCE_RESTART='$FORCE_RESTART' (expected 0 or 1)"
     ;;
 esac
 
@@ -524,7 +533,18 @@ cleanup_stale_backends
 cleanup_stale_subconverter_containers
 
 if http_ready "http://127.0.0.1:${SUBCONVERTER_PORT}/version"; then
-  log "reusing subconverter on port $SUBCONVERTER_PORT"
+  if [[ "$FORCE_RESTART" == "1" ]]; then
+    SUBCONVERTER_CONFLICT_NAME=$(find_subconverter_container_name "$SUBCONVERTER_PORT")
+    if [[ -n "$SUBCONVERTER_CONFLICT_NAME" ]] && [[ "$SUBCONVERTER_CONFLICT_NAME" == chain-subconverter-dev-subconverter-* ]]; then
+      log "force restart enabled; replacing subconverter container ${SUBCONVERTER_CONFLICT_NAME} on port ${SUBCONVERTER_PORT}"
+      docker rm -f "$SUBCONVERTER_CONFLICT_NAME" >/dev/null 2>&1 || true
+      start_subconverter_container "$SUBCONVERTER_PORT"
+    else
+      fail_fixed_port_conflict "subconverter" "$SUBCONVERTER_PORT"
+    fi
+  else
+    log "reusing subconverter on port $SUBCONVERTER_PORT"
+  fi
 elif ! is_port_busy "$SUBCONVERTER_PORT"; then
   start_subconverter_container "$SUBCONVERTER_PORT"
 else
@@ -545,8 +565,19 @@ fi
 
 BACKEND_STATE="new"
 if reusable_backend_ready "$BACKEND_PORT" "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"; then
-  BACKEND_STATE="reused"
-  log "reusing backend on port $BACKEND_PORT"
+  if [[ "$FORCE_RESTART" == "1" ]]; then
+    EXISTING_BACKEND_PID=$(listener_pid_for_port "$BACKEND_PORT")
+    if [[ -n "$EXISTING_BACKEND_PID" ]] && { backend_process_matches_dev_up "$EXISTING_BACKEND_PID" || backend_process_matches_workspace "$EXISTING_BACKEND_PID"; }; then
+      log "force restart enabled; stopping reusable backend on port $BACKEND_PORT"
+      stop_listener_for_port "$BACKEND_PORT" "workspace backend"
+      start_backend "$BACKEND_PORT" "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"
+    else
+      fail_fixed_port_conflict "backend" "$BACKEND_PORT"
+    fi
+  else
+    BACKEND_STATE="reused"
+    log "reusing backend on port $BACKEND_PORT"
+  fi
 elif ! is_port_busy "$BACKEND_PORT"; then
   start_backend "$BACKEND_PORT" "$SUBCONVERTER_PORT" "$SUBCONVERTER_CONTAINER_NAME"
 else
@@ -562,7 +593,14 @@ fi
 FRONTEND_STATE="new"
 if is_port_busy "$FRONTEND_PORT"; then
   EXISTING_FRONTEND_PID=$(listener_pid_for_port "$FRONTEND_PORT")
-  if [[ -n "$EXISTING_FRONTEND_PID" ]] && frontend_process_matches_runtime "$EXISTING_FRONTEND_PID"; then
+  if [[ "$FORCE_RESTART" == "1" ]]; then
+    if [[ -n "$EXISTING_FRONTEND_PID" ]] && frontend_process_belongs_to_workspace "$EXISTING_FRONTEND_PID"; then
+      log "force restart enabled; stopping workspace frontend on port $FRONTEND_PORT"
+      stop_listener_for_port "$FRONTEND_PORT" "workspace frontend"
+    else
+      fail_fixed_port_conflict "frontend" "$FRONTEND_PORT"
+    fi
+  elif [[ -n "$EXISTING_FRONTEND_PID" ]] && frontend_process_matches_runtime "$EXISTING_FRONTEND_PID"; then
     FRONTEND_STATE="reused"
     log "reusing frontend on port $FRONTEND_PORT"
   elif [[ -n "$EXISTING_FRONTEND_PID" ]] && frontend_process_belongs_to_workspace "$EXISTING_FRONTEND_PID"; then
@@ -582,7 +620,6 @@ if [[ "$SCHEME" == "default" ]]; then
 else
   log "scheme:   http://localhost:${FRONTEND_PORT}/ui/${SCHEME}"
 fi
-log "preview:  http://localhost:${FRONTEND_PORT}/ui/a"
 log "preview:  http://localhost:${FRONTEND_PORT}/ui/b1"
 log "preview:  http://localhost:${FRONTEND_PORT}/ui/b2"
 log "preview:  http://localhost:${FRONTEND_PORT}/ui/c1"

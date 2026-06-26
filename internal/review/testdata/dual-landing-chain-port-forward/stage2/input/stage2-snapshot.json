@@ -2,39 +2,82 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "🇭🇰 Alpha-SS-HK",
+        "rowId": "🇸🇬 Alpha-SS-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "proxyName": "🇸🇬 Alpha-SS-SG",
+        "landingNodeName": "🇸🇬 Alpha-SS-SG",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
       {
-        "landingNodeName": "🇭🇰 Alpha-Reality-HK-PortForward",
-        "mode": "port_forward",
-        "targetName": "relay-a.example.com:7443"
+        "rowId": "🇸🇬 Alpha-SS-SG 2",
+        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "proxyName": "🇸🇬 Alpha-SS-SG 2",
+        "landingNodeName": "🇸🇬 Alpha-SS-SG 2",
+        "mode": "chain",
+        "targetName": "🇸🇬 新加坡节点"
       },
       {
-        "landingNodeName": "🇭🇰 Alpha-Reality-HK-Direct",
+        "rowId": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG",
         "mode": "none",
         "targetName": null
       },
       {
+        "rowId": "🇸🇬 Alpha-Reality-SG 2",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG 2",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG 2",
+        "mode": "port_forward",
+        "targetName": "relay-a.example.com:7443"
+      },
+      {
+        "rowId": "🇸🇬 Alpha-Reality-SG 3",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG 3",
+        "landingNodeName": "🇸🇬 Alpha-Reality-SG 3",
+        "mode": "port_forward",
+        "targetName": "relay-b.example.com:8443"
+      },
+      {
+        "rowId": "🇯🇵 Beta-SS-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
+        "proxyName": "🇯🇵 Beta-SS-JP",
         "landingNodeName": "🇯🇵 Beta-SS-JP",
         "mode": "chain",
         "targetName": "🇯🇵 日本节点"
       },
       {
-        "landingNodeName": "🇯🇵 Beta-Reality-JP-PortForward",
-        "mode": "port_forward",
-        "targetName": "relay-b.example.com:8443"
-      },
-      {
-        "landingNodeName": "🇯🇵 Beta-Reality-JP-Direct",
+        "rowId": "🇯🇵 Beta-Reality-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
+        "proxyName": "🇯🇵 Beta-Reality-JP",
+        "landingNodeName": "🇯🇵 Beta-Reality-JP",
         "mode": "none",
         "targetName": null
-	  },
-	  {
-	    "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-	    "mode": "chain",
-	    "targetName": "🇭🇰 香港节点"
+      },
+      {
+        "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      }
+    ],
+    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+    "serverAggregationGroups": [
+      {
+        "server": "198.51.100.10",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": [
+          "🇸🇬 Alpha-Reality-SG 2",
+          "🇸🇬 Alpha-Reality-SG 3",
+          "🇸🇬 Alpha-SS-SG",
+          "🇸🇬 Alpha-SS-SG 2"
+        ]
       }
     ]
   }

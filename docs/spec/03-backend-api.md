@@ -25,7 +25,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": null
     }
@@ -61,6 +61,21 @@
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
+    ],
+    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+    "serverAggregationGroups": [
+      {
+        "server": "landing.example.com",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": ["HK 01", "HK 01 2"]
+      },
+      {
+        "server": "edge.reality.example",
+        "enabled": false,
+        "strategy": "",
+        "memberRowIds": []
+      }
     ]
   }
 }
@@ -76,6 +91,9 @@
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
+- `serverAggregationGroups[]` 可选；字段形状见上文示例；业务语义、校验、命名与渲染规则见 [04 §2.7](04-business-rules.md) 与 [04 §3.3.2](04-business-rules.md)
+- 渲染出的聚合组是最终 YAML 产物，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
+- `chainProxyTargetGroupSwitchOptimizationEnabled` 为可选布尔值；开启后对所有 `mode = chain` 且 `targetName` 为 `kind = proxy-groups` 的行统一应用节点切换优化（`url-test` 覆写）；适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
 
 ### 3. 阶段 2 初始化数据
 
@@ -97,6 +115,7 @@
         "proxyName": "HK 01",
         "landingNodeName": "HK 01",
         "landingNodeType": "SS",
+        "server": "landing.example.com",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
@@ -106,6 +125,7 @@
         "proxyName": "Reality 01",
         "landingNodeName": "Reality 01",
         "landingNodeType": "Reality",
+        "server": "edge.reality.example",
         "modeWarnings": {
           "chain": {
             "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
@@ -127,10 +147,13 @@
 - `chainTargets[].name`：链式候选名称；同时作为 `stage2Snapshot.rows[].targetName` 的可选值
 - `chainTargets[].kind`：链式候选类别；当前只允许 `proxy-groups` 或 `proxies`
 - `chainTargets[].isEmpty`：可选布尔值；仅 `kind = proxy-groups` 时有语义。空策略组写 `true`；非空策略组留空
+- `chainTargets[]` 仅包含阶段 2 可直接选择的链式候选；任何由 `serverAggregationGroups[]` 派生的聚合组都不应出现在该列表中
 - `forwardRelays[]`：阶段 2 第四列在 `mode = port_forward` 时的候选列表
 - `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
 - `rows[]`：阶段 2 默认行模型，前端直接渲染
 - `rows[].landingNodeType`：落地节点类型展示值
+- `rows[].server`：落地节点 server 展示值（用于按 server 分组与聚合配置）；必填且不能为空字符串
+- `stage2Init.rows[]` 不暴露切换优化字段；开关由 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 全局承载（见 §2）
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
 - `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案
@@ -176,7 +199,7 @@
 
 - `messages[]` 只承载 `info` 与 `warning`
 - `messages[]` 表示服务端返回的非阻断用户提示；它是前端 workflow log 的后端消息源之一，但不等同于整个前端日志系统
-- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED` 与 `RESTORE_CONFLICT`
+- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
 - `messages[]` 不承诺字段级或行级定位语义，也不单独决定前端展示位置
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `blockingErrors[]` 只承载阻断当前请求的错误
@@ -212,6 +235,15 @@
 - `POST /api/resolve-url` 返回 `restoreStatus = conflicted` 时仍是 `200`，不视为接口失败
 - 所有 `/api/*` 与 `/sub*` 响应应返回 `X-Request-ID` header，供前端问题与服务端 access / operation log 关联；该值不进入 JSON body
 
+### 5b. 运维 access log（stderr）
+
+面向部署者 / `docker logs`；不等同于 API `messages[]` 或前端 workflow log。实现见 `internal/api/access_log.go`。
+
+- 默认只记录：HTTP 状态 `>= 400`、关键业务 `operation`（如 `stage1_convert`、`generate`、`short_link_create`、`resolve_url`、订阅读取）、或响应含 warning 级 `messages[]` 的成功请求
+- 成功的 `GET /healthz` 与常规静态资源成功请求默认不写入 access log
+- 典型字段：`method`、`path`（敏感 query 已 redact）、`status`、`duration_ms`、`client_ip`、`request_id`、`operation`、`error_code`、`warning_codes`；反代场景含 `origin_scheme` / `origin_host` / `trusted_proxy`
+- 原始技术错误串不得写入用户可见通道；排障通过 `request_id` 关联 access log 与 operator 上下文
+
 ---
 
 ## API 端点
@@ -228,7 +260,7 @@
 
 ```json
 {
-  "defaultTemplateURL": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+  "defaultTemplateURL": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
   "maxPublicLongURLLength": 8192
 }
 ```
@@ -254,9 +286,9 @@
 ```json
 {
   "app": {
-    "version": "v3.0.0-beta.4",
-    "releaseTag": "v3.0.0-beta.4",
-    "imageTag": "3.0.0-beta.4",
+    "version": "v3.1.0-beta.1",
+    "releaseTag": "v3.1.0-beta.1",
+    "imageTag": "3.1.0-beta.1",
     "revision": "86922c3deadbeef86922c3deadbeef86922c3d",
     "imageDigest": "sha256:eeff0ea63c5d5f23e3605e69486922af7b75fe02ce3ae3abe7af906605ed3c24"
   },
@@ -278,7 +310,7 @@
 约束：
 
 - `app.version` 为展示字段：优先 `releaseTag`，否则回退 `imageTag`，再回退本地构建默认值
-- `app.releaseTag` 仅在版本发布 tag 构建时返回（例如 `v3.0.0-beta.4`）
+- `app.releaseTag` 仅在版本发布 tag 构建时返回（例如 `v3.1.0-beta.1`）
 - `app.imageTag` 为当前镜像 tag（例如 `beta-latest`、`latest`、`dev-latest` 或版本号镜像 tag）
 - `app.revision` 为构建来源 commit SHA，供诊断与发布追溯
 - `app.imageDigest` 为当前部署镜像 digest（`sha256:…`）；构建时经 `APP_IMAGE_DIGEST` 注入，或由运行时环境变量 `CHAIN_SUBCONVERTER_IMAGE_DIGEST` 覆盖；footer hover 展示构建元信息（`releaseTag`、`imageTag`、短 `revision`、`imageDigest`）
@@ -305,7 +337,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": ["TagX"]
     }
@@ -383,6 +415,15 @@
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
+    ],
+    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+    "serverAggregationGroups": [
+      {
+        "server": "landing.example.com",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": ["HK 01", "HK 02"]
+      }
     ]
   }
 }
@@ -432,13 +473,16 @@
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
+- 若 `stage2Snapshot` 含有不受支持的 `mode`，或违反 [04 §3.2](04-business-rules.md) 中 `chainProxyTargetGroupSwitchOptimizationEnabled` 相关校验，后端必须返回 `400 INVALID_REQUEST`，并使用 `scope = stage2_row`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`
+- `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
-- `DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_row`，`context.rowId` 必填；建议同时返回 `context.proxyName`；列级错误加 `context.field`
+- `DUPLICATE_PROXY_NAME`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_row`，`context.rowId` 必填；建议同时返回 `context.proxyName`；列级错误加 `context.field`
+- `LANDING_NODE_NOT_FOUND`：当错误来源是行快照引用缺失时，须 `scope = stage2_row`（`context.rowId` 必填，建议同时返回 `context.proxyName`）；当错误来源是 server 聚合成员引用到当前环境缺失的落地节点时，须 `scope = global`
+- `INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`：都必须返回 `scope = global`，且不要求返回 `context`
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
@@ -598,7 +642,7 @@
 
 ```json
 {
-  "v": 2,
+  "v": 3,
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -607,7 +651,7 @@
       "emoji": true,
       "udp": true,
       "skipCertVerify": null,
-      "config": "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
+      "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": ["TagA", "TagB"],
       "exclude": null
     }
@@ -621,6 +665,15 @@
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       }
+    ],
+    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+    "serverAggregationGroups": [
+      {
+        "server": "landing.example.com",
+        "enabled": true,
+        "strategy": "fallback",
+        "memberRowIds": ["HK 01", "HK 02"]
+      }
     ]
   }
 }
@@ -628,10 +681,11 @@
 
 规则：
 
-- `v` 是长链接编码版本字段，当前固定为 `2`（`v = 1` 视为无效）
+- `v` 是长链接编码版本字段；后端编码端当前写出 `v = 3`，解码端按兼容策略接受 `v = 2` 与 `v = 3`（用于恢复与短链解析）
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
+- `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 属于规范长链接状态的一部分
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
-- 解码时若 `v` 缺失、不是整数、或不是受支持版本，必须视为无效长链接
+- 解码时若 `v` 缺失、不是整数、或超出当前实现支持范围，必须视为无效长链接
 
 ### 3. 额外 query 兼容层
 
@@ -680,7 +734,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
 - 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
-- 当前 `v = 2` 编码下，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- 当前编码默认写出 `v = 3` 时，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
@@ -690,7 +744,7 @@ gzip 规则：
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
-- 长链接编码版本必须显式包含在 `data` 载荷中；当前版本固定为 `v = 2`
+- 长链接编码版本必须显式包含在 `data` 载荷中；编码端默认写出当前版本 `v = 3`，解码端按兼容策略处理受支持版本
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接公开路径固定为 `/sub?...`

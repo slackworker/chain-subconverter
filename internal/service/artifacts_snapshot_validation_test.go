@@ -142,6 +142,28 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 	}
 }
 
+func TestValidateGenerateSnapshot_AllowsGlobalSwitchOptimization(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			ChainProxyTargetGroupSwitchOptimizationEnabled: true,
+			Rows: []Stage2Row{{
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &targetName,
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+}
+
 func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
@@ -170,6 +192,197 @@ func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *test
 	}
 	if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
 		t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+	}
+}
+
+func TestValidateGenerateSnapshot_AllowsServerAggregationGroupForSameServerRows(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	resolved, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+		t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+	}
+}
+
+func TestValidateGenerateSnapshot_AllowsServerAggregationGroupWithExtendedStrategies(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			resolved, err := validateGenerateSnapshot(
+				Stage1Input{},
+				Stage2Snapshot{
+					Rows: []Stage2Row{
+						{
+							RowID:                 "hk-1",
+							SourceLandingNodeName: "HK Landing",
+							ProxyName:             "HK Landing",
+							Mode:                  "chain",
+							TargetName:            &targetName,
+						},
+						{
+							RowID:                 "hk-2",
+							SourceLandingNodeName: "HK Landing",
+							ProxyName:             "HK Landing 2",
+							Mode:                  "none",
+						},
+					},
+					ServerAggregationGroups: []ServerAggregationGroup{{
+						Server:       "landing.example.com",
+						Enabled:      true,
+						Strategy:     strategy,
+						MemberRowIDs: []string{"hk-1", "hk-2"},
+					}},
+				},
+				fixtures,
+			)
+			if err != nil {
+				t.Fatalf("validateGenerateSnapshot() error = %v", err)
+			}
+			if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+				t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+			}
+		})
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithUnknownMember(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "missing-row"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want server aggregation member rejection")
+	}
+	if !strings.Contains(err.Error(), `unknown rowId "missing-row"`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_MEMBER_NOT_FOUND" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_MEMBER_NOT_FOUND")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithOnlyOneMember(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want server aggregation group size rejection")
+	}
+	if !strings.Contains(err.Error(), `requires at least 2 members`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_GROUP_TOO_SMALL")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithDuplicateMembers(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-1"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want duplicated server aggregation group members rejection")
+	}
+	if !strings.Contains(err.Error(), `requires at least 2`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_GROUP_TOO_SMALL")
 	}
 }
 

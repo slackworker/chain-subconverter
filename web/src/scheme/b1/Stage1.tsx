@@ -9,6 +9,7 @@ import { LOCALES, type Locale } from "./locales";
 import { LineNumberTextarea } from "../b2/LineNumberTextarea";
 import { accentLink, tagListShell } from "../b2/theme";
 import { StageStatusBadge } from "./StageStatusBadge";
+import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 
 interface Stage1Props {
 	workflow: AppWorkflowViewModel;
@@ -75,7 +76,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 		setPortForwardDraftTags(null);
 	};
 
-	const defaultTemplateURL = runtimeConfig?.defaultTemplateURL || "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini";
+	const defaultTemplateURL = runtimeConfig?.defaultTemplateURL || DEFAULT_TEMPLATE_URL;
 	const currentTemplateURL = stage1Input.advancedOptions.config ?? "";
 
 	const handleResetTemplateURL = () => {

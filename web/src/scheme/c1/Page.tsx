@@ -17,6 +17,7 @@ import {
 	getStage2RowKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
+	isStage2SourceRow,
 } from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
 import type { WorkflowLogEntry } from "../../lib/state";
@@ -620,7 +621,8 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							const rowKey = getStage2RowKey(row);
 							const displayName = getStage2RowDisplayName(row);
 							const sourceLandingName = getStage2RowSourceLandingName(row);
-							const canDeleteRow = workflow.canDeleteStage2Row(rowKey);
+							const sourceRow = isStage2SourceRow(row);
+							const canDeleteRow = !sourceRow && workflow.canDeleteStage2Row(rowKey);
 							const meta = workflow.getStage2RowMeta(rowKey);
 							const rowErrors = workflow.getStage2RowErrors(rowKey);
 							return (
@@ -640,8 +642,26 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										<div className="c-row-head-side">
 											<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>
 											<div className="c-row-actions">
-												<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable} onClick={() => workflow.handleCloneStage2Row(rowKey)}>复制</button>
-												<button type="button" className="c-btn c-btn--sm" disabled={!workflow.isStage2Editable || !canDeleteRow} title={canDeleteRow ? undefined : "至少保留一行"} onClick={() => workflow.handleDeleteStage2Row(rowKey)}>删除</button>
+												{sourceRow ? (
+													<button
+														type="button"
+														className="c-btn c-btn--sm"
+														disabled={!workflow.isStage2Editable}
+														onClick={() => workflow.handleCloneStage2Row(rowKey)}
+													>
+														复制
+													</button>
+												) : (
+													<button
+														type="button"
+														className="c-btn c-btn--sm"
+														disabled={!workflow.isStage2Editable || !canDeleteRow}
+														title={canDeleteRow ? undefined : "至少保留一行"}
+														onClick={() => workflow.handleDeleteStage2Row(rowKey)}
+													>
+														删除
+													</button>
+												)}
 											</div>
 										</div>
 									</div>
