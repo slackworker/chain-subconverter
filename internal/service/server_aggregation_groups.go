@@ -116,7 +116,7 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 			members = append(members, memberName)
 		}
 		managedName := nextManagedServerAggregationGroupName(
-			deriveManagedServerAggregationGroupBaseName(group.Server, memberRows),
+			deriveManagedServerAggregationGroupBaseName(group.Server, group.GroupName, memberRows),
 			usedNames,
 		)
 		usedNames[managedName] = struct{}{}
@@ -130,7 +130,10 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 	return managedGroups, nil
 }
 
-func deriveManagedServerAggregationGroupBaseName(server string, memberRows []Stage2Row) string {
+func deriveManagedServerAggregationGroupBaseName(server string, groupName string, memberRows []Stage2Row) string {
+	if trimmedGroupName := strings.TrimSpace(groupName); trimmedGroupName != "" {
+		return trimmedGroupName
+	}
 	baseName := strings.TrimSpace(server)
 	if baseName == "" {
 		baseName = "server"
@@ -139,18 +142,7 @@ func deriveManagedServerAggregationGroupBaseName(server string, memberRows []Sta
 	if sourceFlagEmoji := detectServerGroupSourceFlagEmoji(memberRows); sourceFlagEmoji != "" {
 		defaultDisplayName = sourceFlagEmoji + " " + baseName
 	}
-	if len(memberRows) == 0 {
-		return defaultDisplayName
-	}
-
-	anchorRow := memberRows[0]
-	anchorProxyName := strings.TrimSpace(anchorRow.ProxyName)
-	if anchorProxyName == "" ||
-		anchorProxyName == anchorRow.sourceLandingNodeNameOrFallback() ||
-		hasLegacySrvPrefix(anchorProxyName) {
-		return defaultDisplayName
-	}
-	return anchorProxyName
+	return defaultDisplayName
 }
 
 func hasLegacySrvPrefix(name string) bool {

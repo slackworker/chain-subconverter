@@ -108,6 +108,7 @@ type Stage2Snapshot struct {
 
 type ServerAggregationGroup struct {
 	Server       string   `json:"server"`
+	GroupName    string   `json:"groupName,omitempty"`
 	Enabled      bool     `json:"enabled"`
 	Strategy     string   `json:"strategy"`
 	MemberRowIDs []string `json:"memberRowIds,omitempty"`

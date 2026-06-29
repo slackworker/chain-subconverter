@@ -81,6 +81,7 @@ type longURLStage2Row struct {
 
 type longURLServerAggregationGroup struct {
 	Server       string   `json:"server"`
+	GroupName    string   `json:"groupName,omitempty"`
 	Enabled      bool     `json:"enabled"`
 	Strategy     string   `json:"strategy"`
 	MemberRowIDs []string `json:"memberRowIds,omitempty"`
@@ -317,6 +318,7 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 		for index, group := range schema.Stage2Snapshot.ServerAggregationGroups {
 			serverAggregationGroups[index] = ServerAggregationGroup{
 				Server:       group.Server,
+				GroupName:    group.GroupName,
 				Enabled:      group.Enabled,
 				Strategy:     group.Strategy,
 				MemberRowIDs: append([]string(nil), group.MemberRowIDs...),
@@ -604,6 +606,7 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	for index, group := range payload.Stage2Snapshot.ServerAggregationGroups {
 		serverAggregationGroups[index] = longURLServerAggregationGroup{
 			Server:       group.Server,
+			GroupName:    group.GroupName,
 			Enabled:      group.Enabled,
 			Strategy:     group.Strategy,
 			MemberRowIDs: append([]string(nil), group.MemberRowIDs...),

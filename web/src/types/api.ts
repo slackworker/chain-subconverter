@@ -60,6 +60,7 @@ export interface Stage2Row {
 
 export interface ServerAggregationGroup {
 	server: string;
+	groupName?: string;
 	enabled: boolean;
 	strategy: "fallback" | "url-test" | "select" | "load-balance";
 	memberRowIds: string[];

@@ -1081,6 +1081,75 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("fallback");
 	});
 
+	it("stores custom server aggregation group name independently from node proxyName", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-hk-2",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 2",
+					landingNodeName: "landing-hk 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const secondRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+			workflow.current.handleServerAggregationChange(secondRowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+			workflow.current.handleServerAggregationGroupNameChange(sourceRowKey, "HK 手动分组");
+			workflow.current.handleProxyNameChange(sourceRowKey, "HK Source Renamed");
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			groupName: "HK 手动分组",
+			enabled: true,
+			strategy: "fallback",
+		});
+		expect(workflow.current.stage2Rows[0].proxyName).toBe("HK Source Renamed");
+	});
+
 	it("supports select/load-balance aggregation strategies in workflow handlers", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

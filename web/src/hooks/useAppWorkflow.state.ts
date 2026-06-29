@@ -101,6 +101,7 @@ function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGr
 	const seen = new Set<string>();
 	for (const group of serverAggregationGroups) {
 		const server = group.server.trim();
+		const groupName = group.groupName?.trim() ?? "";
 		if (server === "" || seen.has(server)) {
 			continue;
 		}
@@ -118,6 +119,7 @@ function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGr
 		seen.add(server);
 		normalized.push({
 			server,
+			...(groupName !== "" ? { groupName } : {}),
 			enabled: group.enabled,
 			strategy: group.strategy,
 			memberRowIds,
@@ -320,6 +322,7 @@ export function mergeStage2SnapshotAfterConvert(
 		}
 		nextServerAggregationGroups.push({
 			server,
+			...(group.groupName?.trim() ? { groupName: group.groupName.trim() } : {}),
 			enabled: shouldDisableGroup ? false : group.enabled,
 			strategy: group.strategy,
 			memberRowIds,
@@ -915,6 +918,7 @@ export function updateServerAggregationGroupState(
 	}
 	const nextGroup: ServerAggregationGroup = {
 		server: trimmedServer,
+		...(existingGroup?.groupName?.trim() ? { groupName: existingGroup.groupName.trim() } : {}),
 		enabled,
 		strategy,
 		memberRowIds,
@@ -926,6 +930,47 @@ export function updateServerAggregationGroupState(
 	} else {
 		nextServerAggregationGroups.push(nextGroup);
 	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			current.stage2Snapshot.rows,
+			nextServerAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
+	};
+}
+
+export function updateServerAggregationGroupNameState(
+	current: AppState,
+	server: string,
+	groupName: string,
+): AppState {
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
+		return current;
+	}
+	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
+	if (existingGroup === null) {
+		return current;
+	}
+	const trimmedGroupName = groupName.trim();
+	const normalizedGroupName = trimmedGroupName === "" ? undefined : trimmedGroupName;
+	if ((existingGroup.groupName ?? undefined) === normalizedGroupName) {
+		return current;
+	}
+	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
+		(group) => group.server.trim() !== trimmedServer,
+	);
+	nextServerAggregationGroups.push({
+		server: existingGroup.server,
+		enabled: existingGroup.enabled,
+		strategy: existingGroup.strategy,
+		memberRowIds: [...existingGroup.memberRowIds],
+		...(normalizedGroupName ? { groupName: normalizedGroupName } : {}),
+	});
 
 	return {
 		...current,

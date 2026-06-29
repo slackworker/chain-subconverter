@@ -73,6 +73,7 @@ import {
 	startShortURLCreationState,
 	startWorkflowRequestState,
 	updateServerAggregationGroupState,
+	updateServerAggregationGroupNameState,
 	updateServerAggregationStrategyState,
 	updateStage1InputState,
 	applySwitchOptimizationState,
@@ -179,7 +180,8 @@ export interface AppWorkflowViewModel {
 	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
 	getServerAggregationStrategy: (landingNodeName: string) => AggregationStrategy | null;
 	canConfigureServerAggregationGroup: (landingNodeName: string) => boolean;
-	getServerAggregationGroup: (landingNodeName: string) => { server: string; enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean } | null;
+	getServerAggregationGroup: (landingNodeName: string) => { server: string; groupName: string; enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean } | null;
+	handleServerAggregationGroupNameChange: (landingNodeName: string, groupName: string) => void;
 	getServerAggregationOrderedMembers: (
 		landingNodeName: string,
 	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
@@ -718,10 +720,19 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		const group = getServerAggregationGroup(state.stage2Snapshot, server);
 		return {
 			server,
+			groupName: group?.groupName?.trim() ?? "",
 			enabled: group?.enabled ?? false,
 			strategy: getServerAggregationStrategy(state.stage2Snapshot, server) ?? "fallback",
 			memberChecked: rowID !== "" && (group?.memberRowIds ?? []).includes(rowID),
 		};
+	}
+
+	function handleServerAggregationGroupNameChange(landingNodeName: string, groupName: string) {
+		const group = getServerAggregationGroupForRow(landingNodeName);
+		if (group === null) {
+			return;
+		}
+		setState((current) => updateServerAggregationGroupNameState(current, group.server, groupName));
 	}
 
 	function getServerAggregationStrategyForRow(landingNodeName: string) {
@@ -1174,6 +1185,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getServerAggregationStrategy: getServerAggregationStrategyForRow,
 		canConfigureServerAggregationGroup,
 		getServerAggregationGroup: getServerAggregationGroupForRow,
+		handleServerAggregationGroupNameChange,
 		getServerAggregationOrderedMembers: getServerAggregationOrderedMembersForRow,
 		handleStage1Convert,
 		handleStage1Reset,

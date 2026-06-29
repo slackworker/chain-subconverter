@@ -85,6 +85,7 @@ interface Stage2RowNameCellProps {
 	deleteRowTitle?: string;
 	rowNameInputId: string;
 	onProxyNameChange: (rowKey: string, value: string) => void;
+	onNameChange?: (rowKey: string, value: string) => void;
 	onCloneRow: (rowKey: string) => void;
 	onDeleteRow: (rowKey: string) => void;
 	readOnlyLabel?: string;
@@ -226,6 +227,7 @@ export function Stage2RowNameCell({
 	deleteRowTitle,
 	rowNameInputId,
 	onProxyNameChange,
+	onNameChange,
 	onCloneRow,
 	onDeleteRow,
 	readOnlyLabel,
@@ -252,7 +254,7 @@ export function Stage2RowNameCell({
 							value={nameValueOverride ?? getStage2RowEditableName(row)}
 							disabled={!editable}
 							aria-label={copy.proxyNameLabel}
-							onChange={(event) => onProxyNameChange(rowKey, event.target.value)}
+							onChange={(event) => (onNameChange ?? onProxyNameChange)(rowKey, event.target.value)}
 						/>
 						<label
 							className="a-stage2-row-edit-hint"

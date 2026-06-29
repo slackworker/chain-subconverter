@@ -1,7 +1,6 @@
 import { useMemo, type RefObject } from "react";
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
-import type { Stage2Row } from "../../types/api";
 import {
 	getStage2DisplayModeOptions,
 	getStage2RowDisplayName,
@@ -47,23 +46,21 @@ interface Stage2AggregationTreeProps {
 	setSupplementOpen: (rowKey: string, open: boolean) => void;
 }
 
-function getServerGroupDisplayName(displayServer: string, sourceFlagEmoji: string | null): string {
+function getServerGroupDisplayName(displayServer: string, sourceFlagEmoji: string | null, groupName?: string): string {
+	const trimmedGroupName = groupName?.trim() ?? "";
+	if (trimmedGroupName !== "") {
+		return trimmedGroupName;
+	}
 	const serverName = formatServerGroupLabel(displayServer);
 	return sourceFlagEmoji ? `${sourceFlagEmoji} ${serverName}` : serverName;
 }
 
 function getServerGroupEditableName(
-	row: Stage2Row,
 	displayServer: string,
 	sourceFlagEmoji: string | null,
+	groupName?: string,
 ): string {
-	const proxyName = row.proxyName?.trim() ?? "";
-	const sourceLandingName = (row.sourceLandingNodeName?.trim() ?? "") || row.landingNodeName.trim();
-	const serverName = getServerGroupDisplayName(displayServer, sourceFlagEmoji);
-	if (proxyName === "" || proxyName === sourceLandingName || /^srv\s*[:：]/i.test(proxyName)) {
-		return serverName;
-	}
-	return row.proxyName ?? serverName;
+	return getServerGroupDisplayName(displayServer, sourceFlagEmoji, groupName);
 }
 
 export function Stage2AggregationTree({
@@ -99,6 +96,7 @@ export function Stage2AggregationTree({
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
 		handleServerAggregationMemberMoveTo,
+		handleServerAggregationGroupNameChange,
 		getServerAggregationOrderedMembers,
 	} = workflow;
 
@@ -114,8 +112,9 @@ export function Stage2AggregationTree({
 
 		const rows = treeNodes.map((node) => {
 			if (node.kind === "server") {
+				const serverAggregation = getServerAggregationGroup(node.anchorRowKey);
 				return {
-					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji),
+					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji, serverAggregation?.groupName),
 					landingNodeType: copy.typePolicyGroup,
 					modeOptionLabels: [
 						getAggregationStrategyLabel("fallback", copy),
@@ -158,7 +157,7 @@ export function Stage2AggregationTree({
 			headers: [copy.colNodeTree, copy.colAggregation, copy.colTypeAgg, copy.colMode, copy.colTarget] as const,
 			rows,
 		};
-	}, [treeNodes, state.stage2Init, stage2Rows, locale, copy, getStage2RowMeta]);
+	}, [treeNodes, state.stage2Init, stage2Rows, locale, copy, getStage2RowMeta, getServerAggregationGroup]);
 
 	const stage2ColumnStyle = useStage2AggTableColumns(tableWrapRef, stage2ColumnMeasureInput);
 
@@ -263,6 +262,7 @@ function Stage2AggregationTreeRow({
 		handleServerAggregationChange,
 		handleServerAggregationEnableWithDefaults,
 		handleServerAggregationMemberMoveTo,
+		handleServerAggregationGroupNameChange,
 		getServerAggregationOrderedMembers,
 	} = workflow;
 
@@ -283,6 +283,7 @@ function Stage2AggregationTreeRow({
 		}
 		const serverAggregation = getServerAggregationGroup(node.anchorRowKey);
 		const enabled = serverAggregation?.enabled ?? false;
+		const groupName = serverAggregation?.groupName ?? "";
 		const strategy = serverAggregation?.strategy ?? "fallback";
 		const memberChecked = serverAggregation?.memberChecked ?? false;
 
@@ -293,7 +294,7 @@ function Stage2AggregationTreeRow({
 						row={anchorRow}
 						rowKey={node.anchorRowKey}
 						editable={editable && enabled}
-						nameValueOverride={getServerGroupEditableName(anchorRow, node.displayServer, node.sourceFlagEmoji)}
+						nameValueOverride={getServerGroupEditableName(node.displayServer, node.sourceFlagEmoji, groupName)}
 						rowErrors={[]}
 						copy={copy}
 						wrapperClassName={rowInlineClassName}
@@ -301,6 +302,7 @@ function Stage2AggregationTreeRow({
 						canDeleteRow={false}
 						rowNameInputId={`a-s2-server-name-${node.server}`}
 						onProxyNameChange={handleProxyNameChange}
+						onNameChange={handleServerAggregationGroupNameChange}
 						onCloneRow={handleCloneStage2Row}
 						onDeleteRow={handleDeleteStage2Row}
 						toolbarPlaceholder={true}
