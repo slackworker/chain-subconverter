@@ -351,6 +351,81 @@ func TestBuildGenerateResponseFromSource_UsesManagedLandingPass3ForValidation(t 
 	}
 }
 
+func TestBuildGenerateResponseFromSource_ManagedPass3AllowsRenamedPrimaryLanding(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	renamedLanding := "HK Landing Final"
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request: subconverter.Request{
+					LandingRawText: "https://landing.example/sub",
+					TransitRawText: "https://transit.example/sub",
+				},
+				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing Final, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing Final",
+			"      - transit-a",
+			"",
+		}, "\n"),
+	}
+
+	_, err := BuildGenerateResponseFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		GenerateRequest{
+			Stage1Input: Stage1Input{},
+			Stage2Snapshot: Stage2Snapshot{
+				Rows: []Stage2Row{
+					{
+						RowID:                 "hk-1",
+						SourceLandingNodeName: "HK Landing",
+						ProxyName:             renamedLanding,
+						LandingNodeName:       renamedLanding,
+						Mode:                  "chain",
+						TargetName:            &chainTarget,
+					},
+				},
+			},
+		},
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("BuildGenerateResponseFromSource() error = %v", err)
+	}
+	if !strings.Contains(source.gotManagedLandingYAML, "  - {name: HK Landing Final, server: landing.example.com, port: 443, type: ss, dialer-proxy: 🇭🇰 香港节点}") {
+		t.Fatalf("managed landing should keep renamed primary row:\n%s", source.gotManagedLandingYAML)
+	}
+}
+
 func TestRenderCompleteConfigFromSource_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 

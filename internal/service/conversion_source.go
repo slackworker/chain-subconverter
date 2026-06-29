@@ -205,19 +205,19 @@ func loadManagedPass3ValidationFixtures(
 	if err != nil {
 		return ConversionFixtures{}, err
 	}
-	result.FullBase = subconverter.PassResult{
-		YAML: fullBaseYAML,
-	}
-	managedFixtures, err := ConversionFixturesFromResult(result)
-	if err != nil {
+
+	// managed pass3 会使用 stage2Snapshot 的最终代理名重建 landing；
+	// 这里用该“最终态 landing”校验 full-base 结构有效，避免再拿 discovery 初始名做同名硬匹配。
+	validationResult := result
+	validationResult.LandingDiscovery = subconverter.PassResult{YAML: managedLandingYAML}
+	validationResult.FullBase = subconverter.PassResult{YAML: fullBaseYAML}
+	if _, err := ConversionFixturesFromResult(validationResult); err != nil {
 		return ConversionFixtures{}, err
 	}
-	managedFixtures.TemplateConfig = fixtures.TemplateConfig
-	managedFixtures.EffectiveTemplateURL = fixtures.EffectiveTemplateURL
-	managedFixtures.ManagedTemplateURL = fixtures.ManagedTemplateURL
-	managedFixtures.RecognizedRegionGroupNames = append([]string(nil), fixtures.RecognizedRegionGroupNames...)
-	managedFixtures.Messages = append([]Message(nil), fixtures.Messages...)
-	return managedFixtures, nil
+
+	// generate/resolve 的 snapshot 校验必须基于 discovery 初始身份名与 sourceLandingNodeName，
+	// 因此继续返回 stage1 init fixtures（不回灌 managed full-base 名称）。
+	return fixtures, nil
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {
