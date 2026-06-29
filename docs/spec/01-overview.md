@@ -51,7 +51,7 @@ flowchart LR
 
 | 阶段 | 职责 |
 |------|------|
-| 阶段 1：输入区 | 收集落地节点信息、中转节点信息、`subconverter` 参数、端口转发服务信息；执行统一转换管线；生成阶段 2 初始化数据 |
+| 阶段 1：输入区 | 收集落地节点信息、中转节点信息、高级选项与端口转发服务信息；执行统一转换管线并生成阶段 2 初始化数据（emoji 处理见 [04 §0.2.3](04-business-rules.md)） |
 | 阶段 2：配置区 | 基于 `stage2Init` 展示并可编辑 `stage2Snapshot`（含复制/改名）；允许调整 `mode` 与目标；通过主按钮发起「生成链接」 |
 | 阶段 3：输出区 | 展示长链接与可选短链接，并提供基于链接的打开、复制、下载操作 |
 
@@ -64,6 +64,7 @@ flowchart LR
 | 端口转发服务（Port Forward Relay） | `server:port` 格式的服务地址；仅用于端口转发，不进入 `subconverter` |
 | 模板 URL（Template URL） | 阶段 1 `advancedOptions.config` 的业务语义；用于指定本次转换采用的远程模板来源。字段名保留 `config` 只是为了兼容 `subconverter` 的既有 `config` 查询参数约定 |
 | 模板内容（TemplateConfig） | 后端根据模板 URL 拉取、校验并托管后的模板文本；用于驱动地域策略组识别与 `subconverter` 转换，不等同于最终 Mihomo YAML |
+| 节点 emoji 处理 | `emoji` 对外兼容 `subconverter` 参数语义；处理时机与规则以 [04 §0.2.3](04-business-rules.md) 为准 |
 | 基底完整配置（BaseCompleteConfig） | `full-base pass` 生成并经后端后处理后的内部基底配置；仅供校验与订阅渲染使用，不直接暴露给前端 |
 | 完整配置（CompleteConfig） | 订阅打开/下载时，后端经托管 landing + full-base + 出组后即时返回的最终 Mihomo YAML |
 | 区域策略组 | 从本次有效模板中识别出的、名称形如“国旗 emoji + 地区名 + 节点”的 `custom_proxy_group` 策略组 |

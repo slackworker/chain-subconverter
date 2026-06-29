@@ -435,3 +435,63 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationAndServerAggregation(t *t
 		t.Fatalf("server aggregation group should be appended after existing region groups:\n%s", rendered)
 	}
 }
+
+func TestRenderCompleteConfig_ExplicitRenameOverridesRegionEmojiRules(t *testing.T) {
+	enabled := true
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: Alpha-SS-sdgfa, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-sg, type: ss}"}, map[string]string{
+			"🇸🇬 新加坡节点": "transit-sg",
+		}),
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: Alpha-SS-sdgfa, type: ss, server: landing.example.com, port: 443}",
+			"- {name: transit-sg, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - transit-sg",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇸🇬 新加坡节点`fallback`(SG|Singapore|Alpha)\n",
+	}
+
+	stage2Init, err := BuildStage2Init(Stage1Input{
+		AdvancedOptions: AdvancedOptions{Emoji: &enabled},
+	}, fixtures)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+	if len(stage2Init.Rows) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(stage2Init.Rows))
+	}
+
+	customName := "🇸🇬 Alpha-SS-sdgfa-手工"
+	chainTarget := "🇸🇬 新加坡节点"
+	rendered, err := RenderCompleteConfig(
+		Stage1Input{
+			AdvancedOptions: AdvancedOptions{Emoji: &enabled},
+		},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 stage2Init.Rows[0].RowID,
+					SourceLandingNodeName: stage2Init.Rows[0].SourceLandingNodeName,
+					ProxyName:             customName,
+					LandingNodeName:       customName,
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				},
+			},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("RenderCompleteConfig() error = %v", err)
+	}
+
+	if !strings.Contains(rendered, "name: "+customName) {
+		t.Fatalf("rendered config should keep explicit stage2 rename:\n%s", rendered)
+	}
+}

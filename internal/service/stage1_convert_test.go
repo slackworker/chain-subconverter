@@ -26,6 +26,7 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
 		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
 		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
+		TemplateConfig:       defaultRegionConfig,
 	})
 	if err != nil {
 		t.Fatalf("BuildStage2Init() error = %v", err)
@@ -532,6 +533,49 @@ func TestBuildStage2Init_UsesTemplateConfigForDynamicRegionAutoDetect(t *testing
 	}
 	if row.TargetName == nil || *row.TargetName != "🇩🇪 德国节点" {
 		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇩🇪 德国节点")
+	}
+}
+
+func TestBuildStage2Init_AppliesChainEmojiAfterStage1(t *testing.T) {
+	enabled := true
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: Alpha-SS-sdgfa, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-sg, type: ss}"}, map[string]string{
+			"🇸🇬 新加坡节点": "transit-sg",
+		}),
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: Alpha-SS-sdgfa, type: ss, server: landing.example.com, port: 443}",
+			"- {name: transit-sg, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - transit-sg",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇸🇬 新加坡节点`fallback`(SG|Singapore|Alpha)\n",
+	}
+
+	stage2Init, err := BuildStage2Init(Stage1Input{
+		AdvancedOptions: AdvancedOptions{Emoji: &enabled},
+	}, fixtures)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	row := stage2Init.Rows[0]
+	if row.SourceLandingNodeName != "Alpha-SS-sdgfa" {
+		t.Fatalf("SourceLandingNodeName = %q, want %q", row.SourceLandingNodeName, "Alpha-SS-sdgfa")
+	}
+	if row.ProxyName != "🇸🇬 Alpha-SS-sdgfa" {
+		t.Fatalf("ProxyName = %q, want %q", row.ProxyName, "🇸🇬 Alpha-SS-sdgfa")
+	}
+	if row.LandingNodeName != "🇸🇬 Alpha-SS-sdgfa" {
+		t.Fatalf("LandingNodeName = %q, want %q", row.LandingNodeName, "🇸🇬 Alpha-SS-sdgfa")
+	}
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
 	}
 }
 

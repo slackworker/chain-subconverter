@@ -217,9 +217,8 @@ func buildPassURLFromBaseURL(baseURL *url.URL, request Request, rawInput string,
 }
 
 func buildRawQuery(request Request, rawInput string, list bool, extraQuery url.Values) string {
-	params := make([]string, 0, 9)
+	params := make([]string, 0, 8)
 	params = append(params, "target=clash")
-	params = appendOptionalBoolQuery(params, "emoji", request.Options.Emoji)
 	params = appendOptionalBoolQuery(params, "udp", request.Options.UDP)
 	params = appendOptionalBoolQuery(params, "scv", request.Options.SkipCertVerify)
 	params = append(params, "expand=false")

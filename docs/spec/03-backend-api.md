@@ -44,7 +44,8 @@
 - 复选框语义为：`true` 表示显式传 `true`、`false` 表示显式传 `false`、`null` 表示不向上游传该参数；`include = null`、`exclude = null` 表示对应 Tag 列表留空。当前 Web 前端产出层 checkbox 只会产出 `true` 或 `null`，但服务端仍必须正确处理显式传入的 `false`
 - `config` 表示当前快照使用的模板 URL，必须是非空 HTTP(S) URL；`include` 与 `exclude` 为透传 Tag 列表。为兼容空输入，服务端可接受 `include = []`、`exclude = []`，但必须在入站归一化为 `null`
 - 当前 Web 前端若以 TagInput 承载 `include`、`exclude`，接口接受层收到的必须是按输入顺序排列的字符串数组，不使用连续文本序列化
-- `emoji`、`udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`；参数默认值与具体传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
+- `udp`、`skipCertVerify` 与上游 `GET /sub` 的查询参数一一对应；其中 `skipCertVerify` 对应查询参数 `scv`；参数默认值与具体传递规则以 [04-business-rules](04-business-rules.md) `0.2.2 subconverter 参数表` 为准
+- `emoji` 字段保留在阶段 1 快照中并兼容 `true | false | null`；其上游透传与处理时机按 [04 §0.2.3](04-business-rules.md) 执行
 - 参与转换的 `landingRawText` 与 `transitRawText` 必须受上游 `GET /sub` 请求 URI 预算约束；该预算必须可配置，默认完整请求 URI 最多 `16384` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的输入项数量必须受限；该上限必须可配置，默认每个字段最多 `32` 条
 

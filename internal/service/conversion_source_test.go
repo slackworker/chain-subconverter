@@ -49,7 +49,10 @@ func (source *fakeConversionSource) PrepareConversion(_ context.Context, stage1I
 	if source.usePrepared {
 		return source.prepared, nil
 	}
-	return PreparedConversion{Request: toSubconverterRequest(stage1Input)}, nil
+	return PreparedConversion{
+		Request:        toSubconverterRequest(stage1Input),
+		TemplateConfig: defaultRegionConfig,
+	}, nil
 }
 
 type fakeSnapshotRenderingSource struct {
@@ -727,13 +730,13 @@ func TestRenderCompleteConfigFromSource_AppliesSwitchOptimizationOnManagedPass3P
 		Stage2Snapshot{
 			ChainProxyTargetGroupSwitchOptimizationEnabled: true,
 			Rows: []Stage2Row{{
-			RowID:                  "hk-1",
-			SourceLandingNodeName:  "HK Landing",
-			ProxyName:              "HK Landing",
-			LandingNodeName:        "HK Landing",
-			Mode:                   "chain",
-			TargetName:             &chainTarget,
-		}}},
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				LandingNodeName:       "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &chainTarget,
+			}}},
 		InputLimits{},
 	)
 	if err != nil {
@@ -1107,7 +1110,6 @@ func toExpectedSubconverterRequest(stage1Input Stage1Input) subconverter.Request
 		LandingRawText: stage1Input.LandingRawText,
 		TransitRawText: stage1Input.TransitRawText,
 		Options: subconverter.AdvancedOptions{
-			Emoji:          stage1Input.AdvancedOptions.Emoji,
 			UDP:            stage1Input.AdvancedOptions.UDP,
 			SkipCertVerify: stage1Input.AdvancedOptions.SkipCertVerify,
 			Config:         stage1Input.AdvancedOptions.Config,

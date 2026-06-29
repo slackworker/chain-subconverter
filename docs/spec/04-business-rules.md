@@ -51,7 +51,6 @@
 |------|----------|--------|----------|
 | `target` | 隐藏 | `clash` | 必传，固定传 `clash` |
 | `url` | 隐藏 | 无 | 必传；按 `0.2.1` 的 pass 规则传 |
-| `emoji` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `udp` | 展示 | 勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `scv` | 展示 | 不勾选 | 当前前端 checkbox：勾选提交 `true`，不勾选提交 `null`；若接口显式收到 `false`，仍传 `false` |
 | `list` | 隐藏 | 无 | 仅 `landing-discovery pass` 传 `true`；`transit-discovery pass` 与 `full-base pass` 不传 |
@@ -70,28 +69,38 @@
 - 当 `config` 等于部署默认模板 URL 时，其成功拉取结果必须先通过模板解析校验，只有校验通过的内容才允许写入默认模板缓存
 - 当 `config` 等于部署默认模板 URL 且刷新失败时，若当前服务进程中存在此前校验通过的默认模板缓存，可以继续使用该缓存完成本次转换，并在支持 `messages[]` 的响应中返回 warning；若不存在可用缓存，当前请求必须在调用 `subconverter` 前失败
 - `include`、`exclude` 若存在多个 Tag，后端必须基于阶段 1 快照中的数组值，按输入顺序用 `|` 拼接原始值，再整体做 URL 编码后传给 `subconverter`；例如 `["TagA", "TagB", "TagC"]` 最终形成 `include=TagA%7CTagB%7CTagC`
+- `emoji` 高级选项仍属于阶段 1 快照字段，对外兼容 subconverter 参数模型；实现上由 chain 拦截并统一处理，不得向 `subconverter` 透传 `emoji` 查询参数
 - 模板拉取返回非成功 HTTP 状态、请求失败或空内容时，当前请求必须在调用 `subconverter` 前失败
 - 若模板中识别出的地域策略组行缺少必需字段，或其正则无法编译，当前请求必须在调用 `subconverter` 前失败
 - 模板可正常拉取但未识别出任何地域策略组时，请求仍可继续；此时只是不支持基于地域策略组的自动填充
 - 阶段 1 高级选项快照进入 query 构造前，先按 [03-backend-api](03-backend-api.md) 的接口接受层模型完成入站归一化；`config` 缺失、为空或不是 HTTP(S) URL 时必须阻断当前请求
 - query 构造逐项保持该语义：复选框 `null` 不传、显式 `true/false` 按值传递；`config` 必须由后端模板准备流程统一处理；`include`、`exclude` 仅在非空数组时参与 query 构造，并在传给上游前按输入顺序用 `|` 拼接为单个参数
-- 同一次转换管线内，三个 pass 的 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照
+- 同一次转换管线内，三个 pass 的 `udp`、`scv`、`config`、`include`、`exclude` 都必须来自同一份阶段 1 高级选项快照；`emoji` 仅参与 chain 内部处理，不进入 pass query
 - `expand=false` 与 `classic=true` 不提供前端控件，后端必须固定传递
 
-### 0.2.3 模板 emoji 地域对齐预处理
+### 0.2.3 chain 侧 emoji 统一处理
 
-当阶段 1 高级选项 `emoji = true`（或等价启用节点 emoji）时，后端在远程模板拉取并校验通过之后、写入托管模板并交给 `subconverter` 之前，必须对模板内容做预处理，使地域策略组的展示 emoji 与同地域节点的 emoji 规则对齐。
+#### 设计意图
+
+- **对外仍兼容 subconverter 参数模型**：阶段 1 快照、长链接载荷与兼容 query 覆写层继续保留 `emoji` 字段名与 `true | false | null` 三态语义；前端高级选项仍表现为“是否启用节点 emoji”，用户无需感知实现迁移。
+- **对内由 chain 拦截并统一执行**：`emoji` 不再作为上游 `GET /sub` 查询参数透传，也不在模板文本中注入 `add_emoji` / `remove_old_emoji` / `emoji=` 以驱动 `subconverter` 侧 emoji pipeline。
+- **拦截原因（与其他功能的兼容）**：
+  - Stage2 支持用户显式改名；若 `subconverter` 在转换阶段再次执行 emoji 规则，会与 Stage2 展示名及最终 YAML 输出产生不可控覆写。
+  - 本项目采用 snapshot-first 三 pass 与托管 landing 合并；节点名需在 Stage1 输出后、Stage2 初始化前确定，并在后续生成/订阅读取中保持所见即所得。
+  - 模板 emoji 规则仍需参与命名，但应作为 **chain 内部规则来源** 读取，而非改写模板后再交给 `subconverter` 执行，避免“模板注入 + 上游 emoji pipeline + Stage2 改名”三重叠加。
+- **权威定义位置**：本节是 emoji 处理时机、规则来源与命名权威的唯一业务定义；[03-backend-api](03-backend-api.md) 只描述接口字段，[05-tech-stack](05-tech-stack.md) 只描述分层职责。
+
+当阶段 1 高级选项 `emoji = true`（或等价启用节点 emoji）时，后端必须在 **Stage1 的 subconverter 输出之后、进入 Stage2 初始化之前**，由 chain 统一执行节点 emoji 处理；模板文本本身不得被覆写注入 emoji 规则。
 
 规则：
 
-- 仅处理模板 `[custom]` 段（或等价结构）中的 `custom_proxy_group=` 行；识别口径与 §2.6 地域策略组一致（组名 leading emoji + 文本 + `节点`）
-- 从组名提取展示用 emoji，复用已解析的地域匹配表达式作为节点匹配范围
-- 在模板 emoji 规则区为该地域追加或更新规则：**匹配范围 → 与组名相同的 emoji**；地域覆盖规则须排在默认规则之前
-- 若模板尚未声明 emoji 相关开关，须补齐启用节点 emoji 所需的最小声明（`add_emoji` / `remove_old_emoji`）；可引用 `subconverter` 内置默认 emoji 表补全其余地区
-- 若模板已手写 `emoji=` 且某地域规则与组名 emoji **冲突**，以模板显式声明为准，不静默覆盖；须返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
-- `emoji = false` 或未开启时：不注入，保持模板原样
-- 组名无 leading emoji（不符合地域组识别）时不注入对应规则
-- 预处理不得破坏 `custom_proxy_group` 行语义及链式自动填充口径；不修改 `subconverter` 服务端 `pref`
+- `emoji = false` 或未开启时：chain 不做节点 emoji 处理
+- `emoji = true` 时：chain 基于模板中已声明的 `add_emoji`、`remove_old_emoji` 与 `emoji=` 规则，结合地域策略组识别结果构建统一处理器
+- 模板显式 `emoji=` 规则优先于地域组推导规则；发生冲突时保留模板显式规则，并返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
+- chain 处理器只改节点名称，不改模板文本；不得向模板补写 `add_emoji`、`remove_old_emoji` 或 `emoji=...`
+- chain 处理必须满足幂等性：同一节点名重复处理结果保持一致
+- Stage2 初始 `rows[].proxyName` 与 `rows[].landingNodeName` 必须来自 chain 处理后的名称；`rows[].sourceLandingNodeName` 继续保留 discovery 原始身份名
+- Stage2 后续编辑仍以 `proxyName` 为最终权威；生成/订阅读取阶段不得再做二次 emoji 重写，保证所见即所得
 
 ---
 
@@ -204,7 +213,7 @@
 
 - 必须从 `landing-discovery pass` 的结果中收集所有落地节点
 - 收集口径固定为：读取 `list=true` 返回的 Clash YAML `proxies[]`，按每个 `proxy.name` 提取落地身份
-- `landingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
+- `sourceLandingNodeName` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.name`
 - `stage2Init` 阶段仅依赖 Pass 1 身份；Pass 3 前按 `sourceLandingNodeName` 从 Pass 1 取连接参数（见 `2.1.2`）
 - `landingNodeType` 固定来源于 `landing-discovery pass` 返回的结构化 `proxy.type`，并允许结合该节点内的附加字段做展示分类
 - `server` 固定来源于当前落地节点解析结果中的 `server` 字段（优先以 Pass 3 可唯一匹配身份的节点端点为准）；必填且不能为空
@@ -214,16 +223,17 @@
 
 ### 2.1.1 落地节点命名与身份边界（`stage2Init`）
 
-- `stage2Init` 中 `landingNodeName` 来源于 `landing-discovery pass` 的 `proxy.name`
+- `stage2Init` 中 `sourceLandingNodeName` 来源于 `landing-discovery pass` 的 `proxy.name`
+- 当 `emoji = true` 时，`stage2Init.proxyName/landingNodeName` 来源于 chain 在 Stage1 输出后的统一 emoji 处理结果；当 `emoji = false` 时，沿用 discovery 名称
 - `landingNodeType` 只承担展示语义，不进入快照定位键
 - 连接参数在 Pass 3 前从 Pass 1 按 `sourceLandingNodeName` 读取；快照行模型见 `2.1.2`
-- 落地节点名称的产出、重名处理与相关实现细节由 `subconverter` 服务负责；本规格不规定具体命名或消歧算法
+- 落地节点原始名称产出、重名处理与相关实现细节由 `subconverter` 服务负责；但阶段 2 展示/编辑名称由 chain 在 Stage1 输出后统一处理并写入
 - 前端初始化时消费 `stage2Init.landingNodeName`；`stage2Snapshot.proxyName` 的编辑/复制规则见 `2.1.2` 与 [02](02-frontend-spec.md)
 - 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
 
 ### 2.1.2 `stage2Snapshot` 行身份
 
-- `stage2Init`：每 Pass 1 落地一行；`landingNodeName` 只读；同时返回 `rowId`、`sourceLandingNodeName`、`proxyName`（初始三者同 Pass 1 名）
+- `stage2Init`：每 Pass 1 落地一行；`landingNodeName` 只读；同时返回 `rowId`、`sourceLandingNodeName`、`proxyName`（`sourceLandingNodeName` 固定为 Pass 1 名，`proxyName/landingNodeName` 为 chain emoji 处理后的展示名）
 - `rowId`：行稳定 ID（全表唯一）；复制行须新生成，不与 `proxyName` 绑定
 - `proxyName`：最终 YAML `proxies[].name`（全表唯一，可改名）
 - `sourceLandingNodeName`：Pass 1 原始 `proxy.name`（连接参数键；复制行可共享）
@@ -315,7 +325,7 @@
 
 处理步骤：
 
-1. 使用本次有效模板识别出的地域策略组正则，在完整 `landingNodeName` 上逐一匹配
+1. 使用本次有效模板识别出的地域策略组正则，在完整 `proxyName`（即 Stage2 当前展示名）上逐一匹配
 2. 若唯一命中且命中的地域策略组在本次 `chainTargets[]` 中存在，且 `isEmpty` 留空，则该行默认 `mode = chain`，`targetName` 自动填写为对应地域策略组名称；即使该行同时存在 `modeWarnings.chain` 也不改变这一默认行为
 3. 其他情况一律按“未唯一命中”处理：`mode = none`，`targetName = null`
 

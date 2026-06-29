@@ -153,6 +153,7 @@
 - 形态：默认折叠/隐藏
 - 阶段 1 中可配置的 `subconverter` 参数，以及探索性方案使用的端口转发开关，收纳在此区域
 - 前端控件集合：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
+- `emoji` 对外仍表现为 subconverter 风格高级选项（参数名与勾选语义不变）；前端仅负责采集该字段，处理规则以 [04 §0.2.3](04-business-rules.md) 为准
 - 阶段 1 提交模型必须保持结构化：高级菜单区中的 API 字段作为 `advancedOptions` 对象提交；端口转发服务作为 `forwardRelayItems` 数组提交；`enablePortForward` 不提交
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
 - “模板 URL”输入框默认填入 `GET /api/runtime-config` 返回的 `defaultTemplateURL`

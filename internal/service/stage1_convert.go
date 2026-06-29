@@ -248,6 +248,10 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	if err != nil {
 		return Stage2Init{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
+	emojiProcessor, _, err := buildChainEmojiProcessor(fixtures.TemplateConfig, stage1Input.AdvancedOptions)
+	if err != nil {
+		return Stage2Init{}, newInternalResponseError("failed to build chain emoji processor", fmt.Errorf("build chain emoji processor: %w", err))
+	}
 
 	chainTargets, err := buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups)
 	if err != nil {
@@ -279,11 +283,22 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	}
 	rows := make([]Stage2InitRow, 0, len(resolvedLandingProxies))
 	for _, landing := range resolvedLandingProxies {
+		proxyName := landing.Name
+		if emojiProcessor.enabled {
+			proxyName, err = emojiProcessor.Apply(landing.Name)
+			if err != nil {
+				return Stage2Init{}, newInternalResponseError(
+					"failed to apply chain emoji rules",
+					fmt.Errorf("apply chain emoji rules for %q: %w", landing.Name, err),
+				)
+			}
+		}
+
 		row := Stage2InitRow{
 			RowID:                 landing.Name,
 			SourceLandingNodeName: landing.Name,
-			ProxyName:             landing.Name,
-			LandingNodeName:       landing.Name,
+			ProxyName:             proxyName,
+			LandingNodeName:       proxyName,
 			LandingNodeType:       landing.TypeLabel,
 			Server:                landing.Server,
 			Mode:                  "none",
@@ -300,11 +315,11 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 
 		finalAvailableModes := filterRestrictedModes(availableModes, restrictedModes)
 		if containsString(finalAvailableModes, "chain") {
-			targetName, ok, err := detectDefaultChainTarget(landing.Name, regionMatchers, chainTargetNames)
+			targetName, ok, err := detectDefaultChainTarget(proxyName, regionMatchers, chainTargetNames)
 			if err != nil {
 				return Stage2Init{}, newInternalResponseError(
 					"failed to detect default chain target",
-					fmt.Errorf("detect default chain target for %q: %w", landing.Name, err),
+					fmt.Errorf("detect default chain target for %q: %w", proxyName, err),
 				)
 			}
 			if ok {

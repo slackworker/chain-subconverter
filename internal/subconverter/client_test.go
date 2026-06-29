@@ -259,9 +259,6 @@ func TestConvert_PropagatesExplicitFalseBooleanQueryParameters(t *testing.T) {
 
 	for i, requestURL := range got {
 		query := requestURL.Query()
-		if query.Get("emoji") != "false" {
-			t.Fatalf("request %d should propagate emoji=false, got %q", i, query.Get("emoji"))
-		}
 		if query.Get("udp") != "false" {
 			t.Fatalf("request %d should propagate udp=false, got %q", i, query.Get("udp"))
 		}
@@ -294,7 +291,7 @@ func TestConvert_OmitsUnsetBooleanQueryParameters(t *testing.T) {
 
 	for i, requestURL := range got {
 		query := requestURL.Query()
-		if query.Has("emoji") || query.Has("udp") || query.Has("scv") {
+		if query.Has("udp") || query.Has("scv") {
 			t.Fatalf("request %d should omit unset boolean options, got %q", i, requestURL.RawQuery)
 		}
 	}

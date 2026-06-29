@@ -36,6 +36,7 @@ func TestHappyPathArtifacts_LogOutputs(t *testing.T) {
 		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
 		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
 		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
+		TemplateConfig:       defaultRegionConfig,
 	}
 
 	stage1Response, err := BuildStage1ConvertResponse(stage1Request.Stage1Input, fixtures)

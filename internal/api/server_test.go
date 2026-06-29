@@ -916,7 +916,7 @@ func TestSubscriptionHandler_DownloadDisposition(t *testing.T) {
 	}
 }
 
-func TestSubscriptionHandler_CompatibleOuterQueryOverridesDecodedPayload(t *testing.T) {
+func TestSubscriptionHandler_CompatibleOuterQueryEmojiOverrideNotForwardedToSubconverter(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var generateResponse service.GenerateResponse
@@ -932,8 +932,11 @@ func TestSubscriptionHandler_CompatibleOuterQueryOverridesDecodedPayload(t *test
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
 	}
-	if source.gotRequest.Options.Emoji == nil || *source.gotRequest.Options.Emoji {
-		t.Fatalf("expected emoji override to propagate as false, got %+v", source.gotRequest.Options.Emoji)
+	if source.gotRequest.Options.Emoji != nil {
+		t.Fatalf("emoji should not be forwarded to subconverter request, got %+v", source.gotRequest.Options.Emoji)
+	}
+	if got := source.gotRequest.ExtraQuery.Get("emoji"); got != "" {
+		t.Fatalf("emoji query should not passthrough to subconverter, got %q", got)
 	}
 }
 

@@ -16,21 +16,11 @@ func TestPreprocessTemplateEmojiByRegion_InjectsRulesWhenEmojiEnabled(t *testing
 
 	processed, messages := preprocessTemplateEmojiByRegion(templateConfig, AdvancedOptions{Emoji: &enabled})
 
+	if processed != templateConfig {
+		t.Fatalf("preprocess should not rewrite template:\n--- got ---\n%s\n--- want ---\n%s", processed, templateConfig)
+	}
 	if len(messages) != 0 {
 		t.Fatalf("messages = %v, want none", messages)
-	}
-	for _, expected := range []string{
-		"add_emoji=true",
-		"remove_old_emoji=true",
-		"emoji=(TW|Taiwan),🇼🇸",
-		"emoji=!!import:snippets/emoji.txt",
-	} {
-		if !strings.Contains(processed, expected) {
-			t.Fatalf("processed template missing %q:\n%s", expected, processed)
-		}
-	}
-	if strings.Index(processed, "emoji=(TW|Taiwan),🇼🇸") > strings.Index(processed, "emoji=!!import:snippets/emoji.txt") {
-		t.Fatalf("region rule should appear before default import:\n%s", processed)
 	}
 }
 
@@ -68,11 +58,8 @@ func TestPreprocessTemplateEmojiByRegion_RespectsExistingConflictingEmojiRule(t 
 
 	processed, messages := preprocessTemplateEmojiByRegion(templateConfig, AdvancedOptions{Emoji: &enabled})
 
-	if strings.Contains(processed, "emoji=(TW|Taiwan),🇼🇸") {
-		t.Fatalf("should keep template emoji rule on conflict:\n%s", processed)
-	}
-	if !strings.Contains(processed, "emoji=(TW|Taiwan),🇨🇳") {
-		t.Fatalf("existing template emoji rule missing:\n%s", processed)
+	if processed != templateConfig {
+		t.Fatalf("preprocess should not rewrite template:\n--- got ---\n%s\n--- want ---\n%s", processed, templateConfig)
 	}
 	if len(messages) != 1 {
 		t.Fatalf("messages length = %d, want 1", len(messages))

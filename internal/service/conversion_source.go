@@ -446,7 +446,6 @@ func toSubconverterRequest(stage1Input Stage1Input) subconverter.Request {
 		LandingRawText: stage1Input.LandingRawText,
 		TransitRawText: stage1Input.TransitRawText,
 		Options: subconverter.AdvancedOptions{
-			Emoji:          stage1Input.AdvancedOptions.Emoji,
 			UDP:            stage1Input.AdvancedOptions.UDP,
 			SkipCertVerify: stage1Input.AdvancedOptions.SkipCertVerify,
 			Config:         stage1Input.AdvancedOptions.Config,

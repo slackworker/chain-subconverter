@@ -98,6 +98,14 @@ relay-b.example.com:8443
 
 ## 验收
 
+- emoji 名称链路（阶段 1 实现）：
+  - Stage1 调用 subconverter 时不传 `emoji` 参数。
+  - subconverter 返回后，由 chain 在进入 Stage2 前按 [spec/04 §0.2.3](../spec/04-business-rules.md#023-chain-侧-emoji-统一处理) 统一处理节点名称。
+  - Stage2 若手工改名，最终输出以 Stage2 名称为准，不再被地域规则二次覆盖。
+- 快速自检建议：
+  - 打开转换结果后，先核对 Stage2 默认名称是否已按规则带上 emoji。
+  - 任意手工改名一条（例如 `🇸🇬 Alpha-SS-SG-Custom`）并生成，校对最终 YAML 的 `proxies.name` 与 Stage2 完全一致。
+
 - short ID 金样：`53jjNSsNYZw`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
 
 - long URL payload 金样（`/sub?data=…`；scheme/host 随部署变化，同一份可见配置应得到一致 payload）：

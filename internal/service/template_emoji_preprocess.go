@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
+
+	"github.com/dlclark/regexp2"
 )
 
 type regionEmojiRule struct {
@@ -18,76 +21,177 @@ type parsedEmojiRule struct {
 	emoji string
 }
 
+type compiledEmojiRule struct {
+	regex   string
+	emoji   string
+	pattern *regexp2.Regexp
+}
+
+type chainEmojiProcessor struct {
+	enabled        bool
+	removeOldEmoji bool
+	addEmoji       bool
+	rules          []compiledEmojiRule
+}
+
 func preprocessTemplateEmojiByRegion(templateConfig string, options AdvancedOptions) (string, []Message) {
 	if !shouldPreprocessTemplateEmoji(options) {
 		return templateConfig, nil
 	}
-
 	normalized := normalizeInputNewlines(templateConfig)
 	regionRules := collectRegionEmojiRules(normalized)
-	if len(regionRules) == 0 {
-		return templateConfig, nil
+	_, _, templateRules := collectTemplateEmojiConfigState(normalized)
+	_, messages := mergeEmojiRules(regionRules, templateRules)
+	return templateConfig, messages
+}
+
+func buildChainEmojiProcessor(templateConfig string, options AdvancedOptions) (chainEmojiProcessor, []Message, error) {
+	if !shouldPreprocessTemplateEmoji(options) {
+		return chainEmojiProcessor{}, nil, nil
+	}
+	normalized := normalizeInputNewlines(templateConfig)
+	if strings.TrimSpace(normalized) == "" {
+		normalized = defaultRegionConfig
+	}
+	regionRules := collectRegionEmojiRules(normalized)
+	addEmoji, removeOldEmoji, templateRules := collectTemplateEmojiConfigState(normalized)
+	mergedRules, messages := mergeEmojiRules(regionRules, templateRules)
+	compiledRules := make([]compiledEmojiRule, 0, len(mergedRules))
+	for _, rule := range mergedRules {
+		pattern, err := regexp2.Compile(rule.regex, 0)
+		if err != nil {
+			return chainEmojiProcessor{}, nil, fmt.Errorf("compile emoji matcher %q: %w", rule.regex, err)
+		}
+		compiledRules = append(compiledRules, compiledEmojiRule{
+			regex:   rule.regex,
+			emoji:   rule.emoji,
+			pattern: pattern,
+		})
+	}
+	return chainEmojiProcessor{
+		enabled:        true,
+		removeOldEmoji: removeOldEmoji,
+		addEmoji:       addEmoji,
+		rules:          compiledRules,
+	}, messages, nil
+}
+
+func (processor chainEmojiProcessor) Apply(name string) (string, error) {
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" || !processor.enabled {
+		return trimmedName, nil
 	}
 
-	existingAddEmoji, existingRemoveOldEmoji, existingEmojiRules, hasEmojiImport := collectTemplateEmojiConfigState(normalized)
-	existingEmojiByRegex := make(map[string]parsedEmojiRule, len(existingEmojiRules))
-	for _, rule := range existingEmojiRules {
-		existingEmojiByRegex[rule.regex] = rule
+	currentEmoji, currentBase, hasCurrentEmoji := splitLeadingFlagEmoji(trimmedName)
+	if !processor.removeOldEmoji {
+		currentBase = trimmedName
 	}
 
+	matchInput := trimmedName
+	if hasCurrentEmoji {
+		matchInput = currentBase
+	}
+	if processor.removeOldEmoji {
+		matchInput = currentBase
+	}
+
+	if !processor.addEmoji || len(processor.rules) == 0 {
+		if processor.removeOldEmoji && hasCurrentEmoji {
+			return currentBase, nil
+		}
+		return trimmedName, nil
+	}
+
+	targetEmoji, matched, err := processor.matchEmoji(matchInput)
+	if err != nil {
+		return "", err
+	}
+	if !matched {
+		if processor.removeOldEmoji && hasCurrentEmoji {
+			return currentBase, nil
+		}
+		return trimmedName, nil
+	}
+
+	// Keep explicit existing leading emoji when remove_old_emoji=false.
+	if hasCurrentEmoji && !processor.removeOldEmoji {
+		if currentEmoji == targetEmoji {
+			return targetEmoji + " " + strings.TrimSpace(currentBase), nil
+		}
+		return trimmedName, nil
+	}
+
+	base := strings.TrimSpace(currentBase)
+	if base == "" {
+		return targetEmoji, nil
+	}
+	return targetEmoji + " " + base, nil
+}
+
+func (processor chainEmojiProcessor) matchEmoji(name string) (string, bool, error) {
+	for _, rule := range processor.rules {
+		matched, err := rule.pattern.MatchString(name)
+		if err != nil {
+			return "", false, fmt.Errorf("match emoji regex %q: %w", rule.regex, err)
+		}
+		if matched {
+			return rule.emoji, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+func splitLeadingFlagEmoji(name string) (string, string, bool) {
+	trimmed := strings.TrimSpace(name)
+	runes := []rune(trimmed)
+	if len(runes) < 2 {
+		return "", trimmed, false
+	}
+	if !isRegionalIndicatorRune(runes[0]) || !isRegionalIndicatorRune(runes[1]) {
+		return "", trimmed, false
+	}
+	remainderRunes := runes[2:]
+	if len(remainderRunes) > 0 && !unicode.IsSpace(remainderRunes[0]) {
+		return "", trimmed, false
+	}
+	remainder := strings.TrimSpace(string(remainderRunes))
+	return string(runes[:2]), remainder, true
+}
+
+func mergeEmojiRules(regionRules []regionEmojiRule, templateRules []parsedEmojiRule) ([]parsedEmojiRule, []Message) {
+	templateRulesByRegex := make(map[string]parsedEmojiRule, len(templateRules))
+	for _, rule := range templateRules {
+		templateRulesByRegex[rule.regex] = rule
+	}
+
+	merged := append([]parsedEmojiRule{}, templateRules...)
 	messages := make([]Message, 0)
-	pending := make([]regionEmojiRule, 0, len(regionRules))
 	for _, regionRule := range regionRules {
-		existingRule, exists := existingEmojiByRegex[regionRule.regex]
-		if !exists {
-			pending = append(pending, regionRule)
+		if existingRule, exists := templateRulesByRegex[regionRule.regex]; exists {
+			if existingRule.emoji != regionRule.emoji {
+				messages = append(messages, Message{
+					Level:   "warning",
+					Code:    "TEMPLATE_EMOJI_RULE_CONFLICT",
+					Message: fmt.Sprintf("模板已显式声明地域组 %q 对应节点 emoji，保留模板原规则", regionRule.groupName),
+					Context: map[string]any{
+						"groupName":      regionRule.groupName,
+						"matcherRegex":   regionRule.regex,
+						"templateEmoji":  existingRule.emoji,
+						"expectedEmoji":  regionRule.emoji,
+						"managedByChain": true,
+					},
+				})
+			}
 			continue
 		}
-		if existingRule.emoji == regionRule.emoji {
-			continue
-		}
-		messages = append(messages, Message{
-			Level:   "warning",
-			Code:    "TEMPLATE_EMOJI_RULE_CONFLICT",
-			Message: fmt.Sprintf("模板已显式声明地域组 %q 对应节点 emoji，保留模板原规则", regionRule.groupName),
-			Context: map[string]any{
-				"groupName":      regionRule.groupName,
-				"matcherRegex":   regionRule.regex,
-				"templateEmoji":  existingRule.emoji,
-				"expectedEmoji":  regionRule.emoji,
-				"managedByChain": false,
-			},
+
+		merged = append(merged, parsedEmojiRule{
+			regex: regionRule.regex,
+			emoji: regionRule.emoji,
 		})
 	}
 
-	if len(pending) == 0 {
-		return templateConfig, messages
-	}
-
-	lines := make([]string, 0, 2+len(pending))
-	if !existingAddEmoji {
-		lines = append(lines, "add_emoji=true")
-	}
-	if !existingRemoveOldEmoji {
-		lines = append(lines, "remove_old_emoji=true")
-	}
-	for _, rule := range pending {
-		lines = append(lines, "emoji="+rule.regex+","+rule.emoji)
-	}
-	if len(existingEmojiRules) == 0 && !hasEmojiImport {
-		// Keep default emoji behavior while allowing region overrides to take precedence.
-		lines = append(lines, "emoji=!!import:snippets/emoji.txt")
-	}
-
-	var builder strings.Builder
-	builder.WriteString(strings.TrimRight(normalized, "\n"))
-	builder.WriteString("\n")
-	for _, line := range lines {
-		builder.WriteString(line)
-		builder.WriteString("\n")
-	}
-
-	return strings.TrimSpace(builder.String()), messages
+	return merged, messages
 }
 
 func shouldPreprocessTemplateEmoji(options AdvancedOptions) bool {
@@ -138,12 +242,12 @@ func collectRegionEmojiRules(rawConfig string) []regionEmojiRule {
 	return rules
 }
 
-func collectTemplateEmojiConfigState(rawConfig string) (bool, bool, []parsedEmojiRule, bool) {
+func collectTemplateEmojiConfigState(rawConfig string) (bool, bool, []parsedEmojiRule) {
 	scanner := bufio.NewScanner(strings.NewReader(rawConfig))
-	hasAddEmoji := false
-	hasRemoveOldEmoji := false
+	addEmoji := true
+	removeOldEmoji := true
 	emojiRules := make([]parsedEmojiRule, 0)
-	hasEmojiImport := false
+	seenRegex := make(map[string]struct{})
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -153,19 +257,26 @@ func collectTemplateEmojiConfigState(rawConfig string) (bool, bool, []parsedEmoj
 
 		switch {
 		case strings.HasPrefix(line, "add_emoji="):
-			hasAddEmoji = true
+			if value, ok := parseEmojiBoolean(strings.TrimSpace(strings.TrimPrefix(line, "add_emoji="))); ok {
+				addEmoji = value
+			}
 		case strings.HasPrefix(line, "remove_old_emoji="):
-			hasRemoveOldEmoji = true
+			if value, ok := parseEmojiBoolean(strings.TrimSpace(strings.TrimPrefix(line, "remove_old_emoji="))); ok {
+				removeOldEmoji = value
+			}
 		case strings.HasPrefix(line, "emoji="):
 			payload := strings.TrimSpace(strings.TrimPrefix(line, "emoji="))
-			if strings.HasPrefix(payload, "!!import:") {
-				hasEmojiImport = true
+			if payload == "" || strings.HasPrefix(payload, "!!import:") {
 				continue
 			}
 			regex, emoji, ok := parseEmojiRegexRule(payload)
 			if !ok {
 				continue
 			}
+			if _, exists := seenRegex[regex]; exists {
+				continue
+			}
+			seenRegex[regex] = struct{}{}
 			emojiRules = append(emojiRules, parsedEmojiRule{
 				regex: regex,
 				emoji: emoji,
@@ -173,7 +284,18 @@ func collectTemplateEmojiConfigState(rawConfig string) (bool, bool, []parsedEmoj
 		}
 	}
 
-	return hasAddEmoji, hasRemoveOldEmoji, emojiRules, hasEmojiImport
+	return addEmoji, removeOldEmoji, emojiRules
+}
+
+func parseEmojiBoolean(value string) (bool, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true":
+		return true, true
+	case "false":
+		return false, true
+	default:
+		return false, false
+	}
 }
 
 func parseEmojiRegexRule(payload string) (string, string, bool) {
