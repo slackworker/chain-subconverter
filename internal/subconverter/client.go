@@ -28,7 +28,7 @@ type ConvertPlan struct {
 
 func DefaultConvertPlan() ConvertPlan {
 	return ConvertPlan{
-		TransitDiscoveryList: true,
+		TransitDiscoveryList: false,
 		IncludeFullBase:      true,
 	}
 }

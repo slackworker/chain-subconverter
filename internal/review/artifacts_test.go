@@ -181,7 +181,7 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 				YAML:       "proxies:\n- {name: DE Landing, type: ss}\n",
 			},
 			TransitDiscovery: subconverter.PassResult{
-				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
+				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
 				YAML:       "proxies:\n- {name: transit-de, type: ss}\n",
 			},
 			FullBase: subconverter.PassResult{
@@ -235,7 +235,7 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 				YAML:       "proxies:\n- {name: HK Landing, type: ss}\n",
 			},
 			TransitDiscovery: subconverter.PassResult{
-				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true",
+				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub",
 				YAML:       "proxies:\n- {name: transit-hk, type: ss}\n",
 			},
 			FullBase: subconverter.PassResult{

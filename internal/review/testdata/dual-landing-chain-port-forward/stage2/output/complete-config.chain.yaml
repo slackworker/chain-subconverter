@@ -955,7 +955,7 @@ proxy-groups:
     type: select
     proxies:
       - DIRECT
-  - name: 🇸🇬 Alpha-Reality-SG 2
+  - name: 🇸🇬 198.51.100.10
     type: fallback
     url: https://cp.cloudflare.com/generate_204
     interval: 60
