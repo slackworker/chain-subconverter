@@ -428,6 +428,18 @@ func (source *reviewFixtureSource) Convert(_ context.Context, _ subconverter.Req
 	return source.result, nil
 }
 
+func (source *reviewFixtureSource) ConvertWithPlan(_ context.Context, _ subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	result := source.result
+	if !plan.IncludeFullBase {
+		result.FullBase = subconverter.PassResult{}
+	}
+	return result, nil
+}
+
+func (source *reviewFixtureSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string) (string, error) {
+	return source.result.FullBase.YAML, nil
+}
+
 func (source *reviewFixtureSource) PrepareConversion(_ context.Context, stage1Input service.Stage1Input) (service.PreparedConversion, error) {
 	normalized := service.NormalizeStage1Input(stage1Input)
 	return service.PreparedConversion{

@@ -400,6 +400,13 @@ func stage1InitFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
 		)
 	}
+	if _, err := parseProxyGroups(fixtures.TransitDiscoveryYAML); err != nil {
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse transit-discovery result proxy-groups",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
+		)
+	}
 
 	return fixtures, nil
 }

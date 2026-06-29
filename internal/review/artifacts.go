@@ -76,16 +76,18 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 }
 
 func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, testCase Case, publicBaseURL string, maxLongURLLength int) (ArtifactBundle, error) {
-	_, fixtures, err := loadFullConversionResult(ctx, source, testCase.Stage1Input)
-	if err != nil {
-		return ArtifactBundle{}, err
-	}
-
 	request := service.GenerateRequest{
 		Stage1Input:    testCase.Stage1Input,
 		Stage2Snapshot: testCase.Stage2Input,
 	}
-	response, err := service.BuildGenerateResponse(publicBaseURL, request, fixtures, maxLongURLLength)
+	response, err := service.BuildGenerateResponseFromSource(
+		ctx,
+		publicBaseURL,
+		source,
+		request,
+		maxLongURLLength,
+		service.InputLimits{},
+	)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -105,7 +107,13 @@ func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, 
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
-	renderedConfig, err := service.RenderCompleteConfig(testCase.Stage1Input, testCase.Stage2Input, fixtures)
+	renderedConfig, err := service.RenderCompleteConfigFromSource(
+		ctx,
+		source,
+		testCase.Stage1Input,
+		testCase.Stage2Input,
+		service.InputLimits{},
+	)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -146,10 +154,6 @@ func loadStage1InitResult(ctx context.Context, source service.ConversionSource, 
 	if _, ok := source.(service.PlannedConversionSource); ok {
 		return service.ExecuteStage1InitConversion(ctx, source, stage1Input, service.InputLimits{})
 	}
-	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
-}
-
-func loadFullConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
 	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
 }
 

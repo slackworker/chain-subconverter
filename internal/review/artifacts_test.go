@@ -44,6 +44,52 @@ func (source *fakeTemplatePreparingSource) Convert(_ context.Context, request su
 	return source.result, source.err
 }
 
+type fakeManagedSnapshotSource struct {
+	result                  subconverter.ThreePassResult
+	templateConfig          string
+	gotPlans                []subconverter.ConvertPlan
+	renderManagedPass3Calls int
+}
+
+func (source *fakeManagedSnapshotSource) PrepareConversion(_ context.Context, stage1Input service.Stage1Input) (service.PreparedConversion, error) {
+	normalized := service.NormalizeStage1Input(stage1Input)
+	return service.PreparedConversion{
+		Request: subconverter.Request{
+			LandingRawText: normalized.LandingRawText,
+			TransitRawText: normalized.TransitRawText,
+			Options: subconverter.AdvancedOptions{
+				Emoji:          normalized.AdvancedOptions.Emoji,
+				UDP:            normalized.AdvancedOptions.UDP,
+				SkipCertVerify: normalized.AdvancedOptions.SkipCertVerify,
+				Config:         normalized.AdvancedOptions.Config,
+				Include:        append([]string(nil), normalized.AdvancedOptions.Include...),
+				Exclude:        append([]string(nil), normalized.AdvancedOptions.Exclude...),
+			},
+		},
+		TemplateConfig:       source.templateConfig,
+		EffectiveTemplateURL: "https://template-source.example/config.ini",
+		ManagedTemplateURL:   "http://managed-template.invalid/internal/templates/test.ini",
+	}, nil
+}
+
+func (source *fakeManagedSnapshotSource) Convert(_ context.Context, _ subconverter.Request) (subconverter.ThreePassResult, error) {
+	return source.result, nil
+}
+
+func (source *fakeManagedSnapshotSource) ConvertWithPlan(_ context.Context, _ subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	source.gotPlans = append(source.gotPlans, plan)
+	result := source.result
+	if !plan.IncludeFullBase {
+		result.FullBase = subconverter.PassResult{}
+	}
+	return result, nil
+}
+
+func (source *fakeManagedSnapshotSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string) (string, error) {
+	source.renderManagedPass3Calls++
+	return source.result.FullBase.YAML, nil
+}
+
 func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	testCase, err := LoadCase(filepath.Join("testdata", "3pass-ss2022-test-subscription"))
 	if err != nil {
@@ -146,6 +192,37 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/short-links.response.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.response.json")))
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/long-url.payload.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "long-url.payload.json")))
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml")))
+}
+
+func TestBuildStage2Artifacts_UsesManagedPass3SourcePathWhenAvailable(t *testing.T) {
+	testCase, err := LoadCase(filepath.Join("testdata", "dual-landing-chain-port-forward"))
+	if err != nil {
+		t.Fatalf("LoadCase() error = %v", err)
+	}
+	testCase.Stage2Input.ServerAggregationGroups = nil
+
+	fixtureDir := filepath.Join("testdata", "dual-landing-chain-port-forward")
+	source := &fakeManagedSnapshotSource{
+		result:         loadThreePassResult(t, fixtureDir),
+		templateConfig: dualLandingChainPortForwardTemplateConfig(t),
+	}
+
+	_, err = BuildStage2Artifacts(context.Background(), source, testCase, "http://localhost:11200", 0)
+	if err != nil {
+		t.Fatalf("BuildStage2Artifacts() error = %v", err)
+	}
+
+	if source.renderManagedPass3Calls < 2 {
+		t.Fatalf("renderManagedPass3Calls = %d, want >= 2", source.renderManagedPass3Calls)
+	}
+	if len(source.gotPlans) == 0 {
+		t.Fatal("gotPlans is empty, want Stage1InitConvertPlan calls")
+	}
+	for _, plan := range source.gotPlans {
+		if plan != subconverter.Stage1InitConvertPlan() {
+			t.Fatalf("unexpected convert plan = %+v, want %+v", plan, subconverter.Stage1InitConvertPlan())
+		}
+	}
 }
 
 func dualLandingChainPortForwardTemplateConfig(t *testing.T) string {
