@@ -66,6 +66,7 @@
     "serverAggregationGroups": [
       {
         "server": "landing.example.com",
+        "groupName": "HK 手动分组",
         "enabled": true,
         "strategy": "fallback",
         "memberRowIds": ["HK 01", "HK 01 2"]
@@ -92,6 +93,9 @@
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
 - `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
 - `serverAggregationGroups[]` 可选；字段形状见上文示例；业务语义、校验、命名与渲染规则见 [04 §2.7](04-business-rules.md) 与 [04 §3.3.2](04-business-rules.md)
+- `serverAggregationGroups[].server` 是组稳定标识，表达“该聚合组对应哪个落地 server”；同一 `stage2Snapshot` 内唯一
+- `serverAggregationGroups[].groupName` 为可选字符串，表达用户显式编辑后的聚合组名；缺失或空字符串都表示“当前未设置自定义组名，应回退到默认命名规则”
+- `serverAggregationGroups[].groupName` 只承载聚合组命名语义，不得改变任何 `rows[]` 的 `proxyName`、`landingNodeName`、`rowId` 或 `sourceLandingNodeName`
 - 渲染出的聚合组是最终 YAML 产物，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
 - `chainProxyTargetGroupSwitchOptimizationEnabled` 为可选布尔值；开启后对所有 `mode = chain` 且 `targetName` 为 `kind = proxy-groups` 的行统一应用节点切换优化（`url-test` 覆写）；适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
 
@@ -420,6 +424,7 @@
     "serverAggregationGroups": [
       {
         "server": "landing.example.com",
+        "groupName": "HK 手动分组",
         "enabled": true,
         "strategy": "fallback",
         "memberRowIds": ["HK 01", "HK 02"]
@@ -733,6 +738,7 @@
     "serverAggregationGroups": [
       {
         "server": "landing.example.com",
+        "groupName": "HK 手动分组",
         "enabled": true,
         "strategy": "fallback",
         "memberRowIds": ["HK 01", "HK 02"]

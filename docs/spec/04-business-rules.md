@@ -356,22 +356,29 @@
 
 - `serverAggregationGroups[]` 表达“按 server 分组的显式聚合策略组配置”
 - `serverAggregationGroups[].server` 必须非空，且同一 `stage2Snapshot` 内唯一
-- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback` 或 `url-test`
+- `serverAggregationGroups[].groupName` 为可选字段；仅表达该聚合组的用户自定义名称
+- `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback`、`url-test`、`select` 或 `load-balance`
 - `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`；数组顺序承载组内成员顺序，去重时保留首次出现的位置
 - `enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
 - `enabled = true` 时，每个成员行对应的 `rows[].server` 必须与组 `server` 一致；跨 server 入组必须阻断
 - `enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
 - 该聚合配置只影响最终 YAML 产物，不回写阶段 2 链式候选；`rows[].targetName` 在 `mode = chain` 下仍只允许引用 `chainTargets[].name`
+- `serverAggregationGroups[].groupName` 与任何成员行的 `proxyName`、`landingNodeName`、`sourceLandingNodeName` 都是不同语义；实现不得把“编辑组名”降级为“编辑某个成员节点名”
 
 #### 聚合组 YAML 名称推导
 
-聚合组无独立 `groupName` 字段；最终 YAML 策略组名由 **`memberRowIds[]` 去重后第一个成员**（锚点行）的 `proxyName` 推导：
+聚合组最终 YAML 名称必须按以下顺序推导：
 
-1. 若锚点行 `proxyName` 非空、不等于其 `sourceLandingNodeName`、且不以 `srv` + 空白 + `:` / `：` 前缀开头，则聚合组名 = 该 `proxyName`
+1. 若 `serverAggregationGroups[].groupName` 非空，则聚合组名 = 该 `groupName`
 2. 否则使用默认展示名：`国旗 emoji + server`（组内源行行名前缀国旗一致时取该 emoji；无法确定单一国旗时仅 `server`）
 3. 若推导名与既有 `proxy-groups` 或同批待写入聚合组重名，按 `基名 2`、`基名 3`…递增直至唯一
 
-前端 Stage 2 聚合树中 server 分组节点的可编辑名称与上述锚点行 `proxyName` 保持同步；用户编辑组名即编辑锚点行 `proxyName`。
+补充规则：
+
+- 默认展示名的基底是 `serverAggregationGroups[].server`，不是任何成员行的节点名
+- 用户编辑聚合组名时，只允许写入 `serverAggregationGroups[].groupName`
+- 用户编辑任一成员行 `proxyName` 时，只影响该行最终 YAML 节点名；不得改变聚合组默认名或自定义组名
+- 当 `groupName` 被清空后，展示与 YAML 命名都必须回退到默认展示名规则，而不是回退到某个成员节点名
 
 ---
 
@@ -423,7 +430,8 @@
 - 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
 - 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
 - 若 `serverAggregationGroups[]` 中某启用组违反 `2.7` 校验规则（未知成员 `rowId`、跨 server 入组、成员数不足 2 等），则视为不可重放
-- 启用组成员仅因 `proxyName` 变化导致聚合组 YAML 名变化，不单独判为不可重放；只要成员 `rowId` 与 `server` 引用仍有效即可
+- 启用组成员仅因 `proxyName` 变化，不得单独导致聚合组 YAML 名变化；只要成员 `rowId` 与 `server` 引用仍有效，即不因此判为不可重放
+- `groupName` 缺失时，默认名按当前 `server` 与统一国旗判定重新计算；`groupName` 存在时，只要该字段仍可按契约解析，就不得因成员 `proxyName` 变化而判为不可重放
 - `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
 
 ### 3.3 快照应用（Pass 3 前）
