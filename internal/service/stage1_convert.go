@@ -212,19 +212,17 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	if err != nil {
 		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture: %w", err)
 	}
+	transitDiscoveryGroups, err := parseProxyGroups(fixtures.TransitDiscoveryYAML)
+	if err != nil {
+		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
+	}
 
 	useFullBase := strings.TrimSpace(fixtures.FullBaseYAML) != ""
 
 	var (
-		fullBaseGroups         map[string]proxyGroup
-		transitDiscoveryGroups map[string]proxyGroup
 		resolvedLandingProxies []resolvedLandingProxy
 	)
 	if useFullBase {
-		fullBaseGroups, err = parseProxyGroups(fixtures.FullBaseYAML)
-		if err != nil {
-			return Stage2Init{}, fmt.Errorf("parse full-base fixture: %w", err)
-		}
 		fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
 		if err != nil {
 			return Stage2Init{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
@@ -235,10 +233,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 			return Stage2Init{}, err
 		}
 	} else {
-		transitDiscoveryGroups, err = parseProxyGroups(fixtures.TransitDiscoveryYAML)
-		if err != nil {
-			return Stage2Init{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
-		}
 		resolvedLandingProxies, err = resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies)
 		if err != nil {
 			return Stage2Init{}, err
@@ -255,17 +249,9 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		return Stage2Init{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
 
-	var chainTargets []ChainTarget
-	if useFullBase {
-		chainTargets, err = buildChainTargets(regionMatchers, landingNames, transitProxies, fullBaseGroups)
-		if err != nil {
-			return Stage2Init{}, err
-		}
-	} else {
-		chainTargets, err = buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups)
-		if err != nil {
-			return Stage2Init{}, err
-		}
+	chainTargets, err := buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups)
+	if err != nil {
+		return Stage2Init{}, err
 	}
 
 	forwardRelays, err := parseForwardRelays(stage1Input)

@@ -36,7 +36,7 @@ func TestRenderCompleteConfig_PortForwardRewritesServerAndPort(t *testing.T) {
 func TestRenderCompleteConfig_NoneModeRemovesDialerProxy(t *testing.T) {
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
-		TransitDiscoveryYAML: "proxies:\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, nil),
 		FullBaseYAML: strings.Join([]string{
 			"proxies:",
 			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",
@@ -141,7 +141,7 @@ func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
 	chainTarget := "🇭🇰 香港节点"
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
-		TransitDiscoveryYAML: "proxies:\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, nil),
 		FullBaseYAML: strings.Join([]string{
 			"proxies:",
 			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",
@@ -225,7 +225,9 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationOverrides(t *testing.T) {
 	chainTarget := "🇭🇰 香港节点"
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
-		TransitDiscoveryYAML: "proxies:\n- {name: transit-a, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-a, type: ss}"}, map[string]string{
+			"🇭🇰 香港节点": "transit-a",
+		}),
 		FullBaseYAML: strings.Join([]string{
 			"proxies:",
 			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
@@ -333,7 +335,7 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationAndServerAggregation(t *t
 	chainTarget := "🇭🇰 香港节点"
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
-		TransitDiscoveryYAML: "proxies:\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, nil),
 		FullBaseYAML: strings.Join([]string{
 			"proxies:",
 			"- {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",

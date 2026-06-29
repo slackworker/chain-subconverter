@@ -182,7 +182,16 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 			},
 			TransitDiscovery: subconverter.PassResult{
 				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
-				YAML:       "proxies:\n- {name: transit-de, type: ss}\n",
+				YAML: strings.Join([]string{
+					"proxies:",
+					"- {name: transit-de, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇩🇪 德国节点",
+					"    type: fallback",
+					"    proxies:",
+					"      - transit-de",
+					"",
+				}, "\n"),
 			},
 			FullBase: subconverter.PassResult{
 				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub%7Chttps%3A%2F%2Ftransit.example%2Fsub&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
@@ -236,7 +245,16 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 			},
 			TransitDiscovery: subconverter.PassResult{
 				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub",
-				YAML:       "proxies:\n- {name: transit-hk, type: ss}\n",
+				YAML: strings.Join([]string{
+					"proxies:",
+					"- {name: transit-hk, type: ss}",
+					"proxy-groups:",
+					"  - name: Missing HK Group",
+					"    type: fallback",
+					"    proxies:",
+					"      - transit-hk",
+					"",
+				}, "\n"),
 			},
 			FullBase: subconverter.PassResult{
 				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub%7Chttps%3A%2F%2Ftransit.example%2Fsub",
@@ -273,7 +291,7 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 	assertArtifactContains(t, bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
 	assertArtifactContains(t, bundle.Files, "stage1/output/full-base.yaml", "Missing HK Group")
 	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "missing recognized region proxy-group")
-	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "managed template")
+	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "transit-discovery result")
 	if _, ok := findArtifactOK(bundle.Files, "stage1/output/stage1-convert.response.json"); ok {
 		t.Fatal("stage1/output/stage1-convert.response.json should be absent when Stage 1 auto-fill fails")
 	}

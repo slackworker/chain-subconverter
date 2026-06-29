@@ -513,7 +513,7 @@ func dualLandingFixture(firstLandingName string, secondLandingName string) Conve
 			inlineLandingFixtureLine(secondLandingName, "ss", false),
 			"",
 		}, "\n"),
-		TransitDiscoveryYAML: "proxies:\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, nil),
 		FullBaseYAML: strings.Join(append([]string{
 			"proxies:",
 			inlineLandingFixtureLine(firstLandingName, "ss", true),

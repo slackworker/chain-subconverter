@@ -17,3 +17,28 @@ proxies:
   - {name: 🇭🇰 Transit-B-HongKong-SSR-01, server: hk-b-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-b-hk-02-secret, udp: true}
   - {name: 🇺🇸 Transit-B-UnitedStates-Trojan-01, server: us-b-02.example.test, port: 443, type: trojan, password: transit-b-us-02-secret, sni: us-b-02.example.test, udp: true}
   - {name: 🇸🇬 Transit-B-Singapore-SS-01, server: 198.51.100.123, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-b-sg-02-secret, udp: true}
+proxy-groups:
+  - name: 🇭🇰 香港节点
+    type: url-test
+    proxies:
+      - 🇭🇰 Transit-A-HongKong-SS-01
+  - name: 🇺🇸 美国节点
+    type: url-test
+    proxies:
+      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
+  - name: 🇯🇵 日本节点
+    type: url-test
+    proxies:
+      - 🇯🇵 Transit-A-Japan-Trojan-01
+  - name: 🇸🇬 新加坡节点
+    type: url-test
+    proxies:
+      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
+  - name: 🇼🇸 台湾节点
+    type: url-test
+    proxies:
+      - 🇨🇳 Transit-A-Taiwan-TUIC-01
+  - name: 🇰🇷 韩国节点
+    type: url-test
+    proxies:
+      - 🇰🇷 Transit-A-Korea-AnyTLS-01

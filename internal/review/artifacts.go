@@ -26,7 +26,7 @@ type ArtifactBundle struct {
 const managedTemplateArtifactURLPlaceholder = "http://managed-template.invalid/internal/templates/managed-template.ini"
 
 func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, testCase Case) (ArtifactBundle, error) {
-	result, fixtures, err := loadConversionResult(ctx, source, testCase.Stage1Input)
+	result, fixtures, err := loadStage1InitResult(ctx, source, testCase.Stage1Input)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -76,7 +76,7 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 }
 
 func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, testCase Case, publicBaseURL string, maxLongURLLength int) (ArtifactBundle, error) {
-	_, fixtures, err := loadConversionResult(ctx, source, testCase.Stage1Input)
+	_, fixtures, err := loadFullConversionResult(ctx, source, testCase.Stage1Input)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -142,7 +142,14 @@ func snapshotRowsFromInit(rows []service.Stage2InitRow) []service.Stage2Row {
 	return snapshotRows
 }
 
-func loadConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
+func loadStage1InitResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
+	if _, ok := source.(service.PlannedConversionSource); ok {
+		return service.ExecuteStage1InitConversion(ctx, source, stage1Input, service.InputLimits{})
+	}
+	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
+}
+
+func loadFullConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
 	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
 }
 

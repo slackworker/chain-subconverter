@@ -36,6 +36,10 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	for _, landing := range resolvedLandingProxies {
 		landingByName[landing.Name] = landing
 	}
+	fullBaseProxyGroupTargets, err := fullBaseProxyGroupTargetsByName(fixtures, resolvedLandingProxies)
+	if err != nil {
+		return nil, err
+	}
 
 	rowsBySourceLanding := make(map[string][]Stage2Row, len(stage2Snapshot.Rows))
 	rowsByProxyName := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
@@ -97,9 +101,15 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 					cause := fmt.Errorf("unknown chain target %q for proxy %q", targetName, rowProxyName)
 					return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", rowErrorRef, "targetName", cause)
 				}
-				if target.Kind == "proxy-groups" && target.IsEmpty {
-					cause := fmt.Errorf("chain target %q for proxy %q is empty", targetName, rowProxyName)
-					return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", rowErrorRef, "targetName", cause)
+				if target.Kind == "proxy-groups" {
+					isEmpty := target.IsEmpty
+					if fullBaseTarget, ok := fullBaseProxyGroupTargets[targetName]; ok {
+						isEmpty = fullBaseTarget.IsEmpty
+					}
+					if isEmpty {
+						cause := fmt.Errorf("chain target %q for proxy %q is empty", targetName, rowProxyName)
+						return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", rowErrorRef, "targetName", cause)
+					}
 				}
 			case "port_forward":
 				targetName, err := requireTargetName(row)
@@ -146,6 +156,40 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	}
 
 	return resolvedLandingProxies, nil
+}
+
+func fullBaseProxyGroupTargetsByName(fixtures ConversionFixtures, resolvedLandingProxies []resolvedLandingProxy) (map[string]ChainTarget, error) {
+	if strings.TrimSpace(fixtures.FullBaseYAML) == "" {
+		return nil, nil
+	}
+	transitProxies, err := parseInlineProxyList(fixtures.TransitDiscoveryYAML)
+	if err != nil {
+		return nil, fmt.Errorf("parse transit discovery fixture: %w", err)
+	}
+	fullBaseGroups, err := parseProxyGroups(fixtures.FullBaseYAML)
+	if err != nil {
+		return nil, fmt.Errorf("parse full-base fixture: %w", err)
+	}
+	regionMatchers, err := loadRegionMatchers(fixtures.TemplateConfig)
+	if err != nil {
+		return nil, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
+	}
+	landingNames := make(map[string]struct{}, len(resolvedLandingProxies))
+	for _, proxy := range resolvedLandingProxies {
+		landingNames[proxy.Name] = struct{}{}
+	}
+	chainTargets, err := buildChainTargets(regionMatchers, landingNames, transitProxies, fullBaseGroups)
+	if err != nil {
+		return nil, err
+	}
+	targetsByName := make(map[string]ChainTarget, len(chainTargets))
+	for _, target := range chainTargets {
+		if target.Kind != "proxy-groups" {
+			continue
+		}
+		targetsByName[target.Name] = target
+	}
+	return targetsByName, nil
 }
 
 func validateServerAggregationGroups(
