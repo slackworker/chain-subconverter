@@ -260,7 +260,7 @@ describe("useAppWorkflow.state", () => {
 		expect(result.snapshot.serverAggregationGroups).toEqual([
 			{
 				server: "hk.example.com",
-				enabled: true,
+				enabled: false,
 				strategy: "fallback",
 				memberRowIds: ["landing-hk"],
 			},
@@ -269,7 +269,63 @@ describe("useAppWorkflow.state", () => {
 			droppedDerivedRows: 1,
 			resetModes: 1,
 			filteredAggregationMembers: 1,
-			disabledAggregationGroups: 0,
+			disabledAggregationGroups: 1,
+		});
+	});
+
+	it("disables stale server aggregation groups when all members are filtered out", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "legacy-1",
+						sourceLandingNodeName: "legacy-1",
+						proxyName: "legacy-1",
+						landingNodeName: "legacy-1",
+						mode: "chain",
+						targetName: "Legacy Group",
+					},
+				],
+				serverAggregationGroups: [
+					{
+						server: "*.*.xyz",
+						enabled: true,
+						strategy: "fallback",
+						memberRowIds: ["legacy-1"],
+					},
+				],
+			},
+		};
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain"],
+			chainTargets: [],
+			forwardRelays: [],
+			rows: [{
+				rowId: "landing-new",
+				sourceLandingNodeName: "landing-new",
+				proxyName: "landing-new",
+				landingNodeName: "landing-new",
+				landingNodeType: "ss",
+				server: "198.51.100.10",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+
+		const result = mergeStage2SnapshotAfterConvert(current, stage2Init);
+
+		expect(result.snapshot.serverAggregationGroups).toEqual([
+			{
+				server: "*.*.xyz",
+				enabled: false,
+				strategy: "fallback",
+				memberRowIds: [],
+			},
+		]);
+		expect(result.report).toMatchObject({
+			filteredAggregationMembers: 1,
+			disabledAggregationGroups: 1,
 		});
 	});
 

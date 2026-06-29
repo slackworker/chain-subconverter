@@ -314,9 +314,13 @@ export function mergeStage2SnapshotAfterConvert(
 			return getRowServerFromStage2Init(row, stage2InitRowsBySource) === server;
 		});
 		report.filteredAggregationMembers += Math.max(0, existingMemberRowIds.length - memberRowIds.length);
+		const shouldDisableGroup = group.enabled && memberRowIds.length < 2;
+		if (shouldDisableGroup) {
+			report.disabledAggregationGroups += 1;
+		}
 		nextServerAggregationGroups.push({
 			server,
-			enabled: group.enabled,
+			enabled: shouldDisableGroup ? false : group.enabled,
 			strategy: group.strategy,
 			memberRowIds,
 		});
