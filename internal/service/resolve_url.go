@@ -46,8 +46,9 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	}
 
 	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
+	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
 
-	fixtures, err := LoadConversionFixtures(ctx, source, payload.Stage1Input, limits)
+	fixtures, err := loadGenerateValidationFixtures(ctx, source, payload.Stage1Input, payload.Stage2Snapshot, limits)
 	if err != nil {
 		if restoreStatus, messages, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
 			return ResolveURLResponse{
@@ -57,6 +58,21 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 				Stage1Input:    payload.Stage1Input,
 				Stage2Snapshot: payload.Stage2Snapshot,
 				Messages:       messages,
+				BlockingErrors: []BlockingError{},
+			}, nil
+		}
+		if isRestoreConflictError(err) {
+			return ResolveURLResponse{
+				LongURL:        resolved,
+				ShortURL:       shortURL,
+				RestoreStatus:  "conflicted",
+				Stage1Input:    payload.Stage1Input,
+				Stage2Snapshot: payload.Stage2Snapshot,
+				Messages: []Message{{
+					Level:   "warning",
+					Code:    "RESTORE_CONFLICT",
+					Message: restoreConflictMessage(err),
+				}},
 				BlockingErrors: []BlockingError{},
 			}, nil
 		}

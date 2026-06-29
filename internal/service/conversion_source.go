@@ -42,11 +42,21 @@ func BuildStage1ConvertResponseFromSource(ctx context.Context, source Conversion
 
 func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int, limits InputLimits) (GenerateResponse, error) {
 	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, request.Stage1Input, limits)
+	request.Stage2Snapshot = NormalizeStage2Snapshot(request.Stage2Snapshot)
+	fixtures, err := loadGenerateValidationFixtures(ctx, source, request.Stage1Input, request.Stage2Snapshot, limits)
 	if err != nil {
 		return GenerateResponse{}, err
 	}
 	return BuildGenerateResponse(publicBaseURL, request, fixtures, maxLongURLLength)
+}
+
+func loadGenerateValidationFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (ConversionFixtures, error) {
+	stage1Input = NormalizeStage1Input(stage1Input)
+	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
+	if snapshotSource, ok := source.(SnapshotPass3RenderingSource); ok {
+		return loadManagedPass3ValidationFixtures(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits, nil)
+	}
+	return LoadConversionFixtures(ctx, source, stage1Input, limits)
 }
 
 func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (string, error) {
@@ -142,6 +152,72 @@ func renderCompleteConfigViaManagedPass3(
 		return "", err
 	}
 	return unescapeYAMLUnicodeEscapes(rendered), nil
+}
+
+func loadManagedPass3ValidationFixtures(
+	ctx context.Context,
+	source ConversionSource,
+	snapshotSource SnapshotPass3RenderingSource,
+	stage1Input Stage1Input,
+	stage2Snapshot Stage2Snapshot,
+	limits InputLimits,
+	extraQuery url.Values,
+) (ConversionFixtures, error) {
+	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
+		return ConversionFixtures{}, err
+	}
+
+	prepared, err := prepareConversion(ctx, source, stage1Input)
+	if err != nil {
+		return ConversionFixtures{}, err
+	}
+	if prepared.Cleanup != nil {
+		defer prepared.Cleanup()
+	}
+	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
+
+	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, subconverter.Stage1InitConvertPlan())
+	if err != nil {
+		return ConversionFixtures{}, err
+	}
+
+	fixtures, err := stage1InitFixturesFromResult(result)
+	if err != nil {
+		return ConversionFixtures{}, err
+	}
+	fixtures.TemplateConfig = prepared.TemplateConfig
+	fixtures.EffectiveTemplateURL = prepared.EffectiveTemplateURL
+	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
+	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
+	fixtures.Messages = append([]Message(nil), prepared.Messages...)
+
+	// 先复用现有 snapshot 校验，保证冲突场景返回既有业务错误码。
+	if _, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures); err != nil {
+		return ConversionFixtures{}, err
+	}
+
+	managedLandingYAML, err := buildManagedLandingConfigYAML(fixtures.LandingDiscoveryYAML, stage2Snapshot.Rows)
+	if err != nil {
+		return ConversionFixtures{}, newInternalResponseError("failed to build managed landing config", err)
+	}
+
+	fullBaseYAML, err := snapshotSource.RenderManagedPass3(ctx, prepared, managedLandingYAML)
+	if err != nil {
+		return ConversionFixtures{}, err
+	}
+	result.FullBase = subconverter.PassResult{
+		YAML: fullBaseYAML,
+	}
+	managedFixtures, err := ConversionFixturesFromResult(result)
+	if err != nil {
+		return ConversionFixtures{}, err
+	}
+	managedFixtures.TemplateConfig = fixtures.TemplateConfig
+	managedFixtures.EffectiveTemplateURL = fixtures.EffectiveTemplateURL
+	managedFixtures.ManagedTemplateURL = fixtures.ManagedTemplateURL
+	managedFixtures.RecognizedRegionGroupNames = append([]string(nil), fixtures.RecognizedRegionGroupNames...)
+	managedFixtures.Messages = append([]Message(nil), fixtures.Messages...)
+	return managedFixtures, nil
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {

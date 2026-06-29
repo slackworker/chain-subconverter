@@ -556,6 +556,106 @@ func TestResolveURLFromSource_DowngradesTemplateConfigFieldErrorToConflicted(t *
 	}
 }
 
+func TestResolveURLFromSource_UsesManagedLandingPass3ForRestoreValidation(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	forwardRelay := "relay.example.com:7443"
+	stage1Input := stage1InputWithTemplate(Stage1Input{
+		LandingRawText:      "https://landing.example/sub",
+		TransitRawText:      "https://transit.example/sub",
+		ForwardRelayItems:   []string{forwardRelay},
+		AdvancedOptions:     AdvancedOptions{},
+	})
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				LandingNodeName:       "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &chainTarget,
+			},
+			{
+				RowID:                 "hk-2",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing Copy",
+				LandingNodeName:       "HK Landing Copy",
+				Mode:                  "port_forward",
+				TargetName:            &forwardRelay,
+			},
+		},
+	}
+	longURL, err := EncodeLongURL("http://localhost:11200", BuildLongURLPayload(stage1Input, snapshot), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request: subconverter.Request{
+					LandingRawText: stage1Input.LandingRawText,
+					TransitRawText: stage1Input.TransitRawText,
+					Options: subconverter.AdvancedOptions{
+						Config: stage1Input.AdvancedOptions.Config,
+					},
+				},
+				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: HK Landing Copy, type: ss, server: relay.example.com, port: 7443}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing",
+			"      - HK Landing Copy",
+			"      - transit-a",
+			"",
+		}, "\n"),
+	}
+
+	response, err := ResolveURLFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		nil,
+		longURL,
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("ResolveURLFromSource() error = %v", err)
+	}
+	if response.RestoreStatus != "replayable" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
+	}
+	if source.gotPlan == nil || *source.gotPlan != subconverter.Stage1InitConvertPlan() {
+		t.Fatalf("got plan = %+v, want %+v", source.gotPlan, subconverter.Stage1InitConvertPlan())
+	}
+}
+
 func TestParseResolveURLInput(t *testing.T) {
 	tests := []struct {
 		name      string
