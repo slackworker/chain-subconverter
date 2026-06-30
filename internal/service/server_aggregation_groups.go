@@ -10,7 +10,7 @@ import (
 
 const (
 	serverAggregationGroupURL            = "https://cp.cloudflare.com/generate_204"
-	serverAggregationGroupInterval       = "60"
+	serverAggregationGroupInterval       = "300"
 	serverAggregationGroupTimeout        = "500"
 	serverAggregationGroupMaxFailedTimes = "1"
 )
@@ -238,19 +238,31 @@ func isRegionalIndicatorRune(value rune) bool {
 	return value >= 0x1F1E6 && value <= 0x1F1FF
 }
 
+func serverAggregationGroupNeedsHealthCheckFields(groupType string) bool {
+	switch groupType {
+	case "fallback", "url-test", "load-balance":
+		return true
+	default:
+		return false
+	}
+}
+
 func renderManagedServerAggregationGroupLines(groups []managedServerAggregationGroup) []string {
 	lines := make([]string, 0, len(groups)*8)
 	for _, group := range groups {
 		lines = append(lines,
 			"  - name: "+group.Name,
 			"    type: "+group.Type,
-			"    url: "+serverAggregationGroupURL,
-			"    interval: "+serverAggregationGroupInterval,
-			"    timeout: "+serverAggregationGroupTimeout,
-			"    lazy: false",
-			"    max-failed-times: "+serverAggregationGroupMaxFailedTimes,
-			"    proxies:",
 		)
+		if serverAggregationGroupNeedsHealthCheckFields(group.Type) {
+			lines = append(lines,
+				"    url: "+serverAggregationGroupURL,
+				"    interval: "+serverAggregationGroupInterval,
+				"    timeout: "+serverAggregationGroupTimeout,
+				"    max-failed-times: "+serverAggregationGroupMaxFailedTimes,
+			)
+		}
+		lines = append(lines, "    proxies:")
 		for _, member := range group.Members {
 			lines = append(lines, "      - "+member)
 		}

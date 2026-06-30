@@ -824,11 +824,11 @@ func TestRenderCompleteConfigFromSource_AppliesSwitchOptimizationOnManagedPass3P
 		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
 	}
 
-	if !strings.Contains(renderedConfig, "    type: url-test") {
-		t.Fatalf("rendered config should override proxy-group type on managed pass3 path:\n%s", renderedConfig)
-	}
-	if !strings.Contains(renderedConfig, "    max-failed-times: 1") || !strings.Contains(renderedConfig, "    lazy: false") {
+	if !strings.Contains(renderedConfig, "    timeout: 500") || !strings.Contains(renderedConfig, "    max-failed-times: 1") {
 		t.Fatalf("rendered config should include switch optimization fields on managed pass3 path:\n%s", renderedConfig)
+	}
+	if strings.Contains(renderedConfig, "    lazy: false") {
+		t.Fatalf("rendered config should not override lazy on managed pass3 path:\n%s", renderedConfig)
 	}
 	if strings.Contains(renderedConfig, "      - HK Landing\n") {
 		t.Fatalf("rendered config should still strip landing node from the target region group:\n%s", renderedConfig)

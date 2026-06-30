@@ -200,7 +200,7 @@
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 | `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
-| `chainProxyTargetGroupSwitchOptimizationEnabled` | `boolean` | 全局开关；开启后对所有符合条件的 `proxy-groups` 目标统一应用节点切换优化（`url-test` 覆写） |
+| `chainProxyTargetGroupSwitchOptimizationEnabled` | `boolean` | 全局开关；开启后对所有符合条件的 `proxy-groups` 目标统一覆写 `timeout` 与 `max-failed-times` |
 
 ### 2.2 共享业务槽位
 

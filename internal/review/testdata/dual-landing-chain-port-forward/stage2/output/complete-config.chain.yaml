@@ -891,9 +891,8 @@ proxy-groups:
   - name: 🇭🇰 香港节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
-    interval: 60
+    interval: 300
     tolerance: 50
-    lazy: false
     timeout: 500
     max-failed-times: 1
     proxies:
@@ -913,9 +912,8 @@ proxy-groups:
   - name: 🇯🇵 日本节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
-    interval: 60
+    interval: 300
     tolerance: 50
-    lazy: false
     timeout: 500
     max-failed-times: 1
     proxies:
@@ -925,9 +923,8 @@ proxy-groups:
   - name: 🇸🇬 新加坡节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
-    interval: 60
+    interval: 300
     tolerance: 50
-    lazy: false
     timeout: 500
     max-failed-times: 1
     proxies:
@@ -958,9 +955,8 @@ proxy-groups:
   - name: 🇸🇬 198.51.100.10
     type: fallback
     url: https://cp.cloudflare.com/generate_204
-    interval: 60
+    interval: 300
     timeout: 500
-    lazy: false
     max-failed-times: 1
     proxies:
       - 🇸🇬 Alpha-Reality-SG 2

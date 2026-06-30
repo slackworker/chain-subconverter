@@ -7,7 +7,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const switchOptimizationHealthCheckURL = "https://cp.cloudflare.com/generate_204"
+const (
+	switchOptimizationTimeout        = "500"
+	switchOptimizationMaxFailedTimes = "1"
+)
 
 func renderCompleteConfigYAML(
 	fullBaseYAML string,
@@ -272,23 +275,14 @@ func proxyGroupChainTargetNameSet(stage2Init Stage2Init) map[string]struct{} {
 }
 
 var switchOptimizationFieldOrder = []string{
-	"type",
-	"url",
-	"interval",
-	"lazy",
 	"timeout",
 	"max-failed-times",
-	"tolerance",
 }
 
 func switchOptimizationPatch() map[string]string {
 	return map[string]string{
-		"type":             "url-test",
-		"url":              switchOptimizationHealthCheckURL,
-		"interval":         "60",
-		"lazy":             "false",
-		"timeout":          "500",
-		"max-failed-times": "1",
+		"timeout":          switchOptimizationTimeout,
+		"max-failed-times": switchOptimizationMaxFailedTimes,
 	}
 }
 

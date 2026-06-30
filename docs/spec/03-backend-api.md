@@ -97,7 +97,7 @@
 - `serverAggregationGroups[].groupName` 为可选字符串，表达用户显式编辑后的聚合组名；缺失或空字符串都表示“当前未设置自定义组名，应回退到默认命名规则”
 - `serverAggregationGroups[].groupName` 只承载聚合组命名语义，不得改变任何 `rows[]` 的 `proxyName`、`rowId` 或 `sourceLandingNodeName`
 - 渲染出的聚合组是最终 YAML 产物，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
-- `chainProxyTargetGroupSwitchOptimizationEnabled` 为可选布尔值；开启后对所有 `mode = chain` 且 `targetName` 为 `kind = proxy-groups` 的行统一应用节点切换优化（`url-test` 覆写）；适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
+- `chainProxyTargetGroupSwitchOptimizationEnabled` 为可选布尔值；开启后对所有 `mode = chain` 且 `targetName` 为 `kind = proxy-groups` 的行统一覆写 `timeout` 与 `max-failed-times`；适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
 
 ### 3. 阶段 2 初始化数据
 

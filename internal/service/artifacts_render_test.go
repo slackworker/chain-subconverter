@@ -222,8 +222,8 @@ func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
 	if !strings.Contains(rendered, "      - HK Landing\n      - HK Landing Copy") {
 		t.Fatalf("rendered config is missing server aggregation group members:\n%s", rendered)
 	}
-	if !strings.Contains(rendered, "    lazy: false\n    max-failed-times: 1") {
-		t.Fatalf("rendered config is missing server aggregation profile:\n%s", rendered)
+	if !strings.Contains(rendered, "    timeout: 500\n    max-failed-times: 1") {
+		t.Fatalf("rendered config is missing server aggregation fast-fail profile:\n%s", rendered)
 	}
 }
 
@@ -292,10 +292,7 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationOverrides(t *testing.T) {
 	}
 
 	for _, want := range []string{
-		"    type: url-test",
-		"    url: https://cp.cloudflare.com/generate_204",
-		"    interval: 60",
-		"    lazy: false",
+		"    interval: 300",
 		"    timeout: 500",
 		"    max-failed-times: 1",
 		"    tolerance: 50",
@@ -303,6 +300,17 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationOverrides(t *testing.T) {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("rendered config is missing switch optimization override %q:\n%s", want, rendered)
 		}
+	}
+	for _, absent := range []string{
+		"    interval: 60",
+		"    lazy: false",
+	} {
+		if strings.Contains(rendered, absent) {
+			t.Fatalf("rendered config should not include switch optimization field %q:\n%s", absent, rendered)
+		}
+	}
+	if !strings.Contains(rendered, "    url: https://example.com/original") {
+		t.Fatalf("rendered config should preserve template health check url:\n%s", rendered)
 	}
 }
 
@@ -419,22 +427,28 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationAndServerAggregation(t *t
 
 	for _, want := range []string{
 		"  - name: 🇭🇰 香港节点",
-		"    type: url-test",
-		"    url: https://cp.cloudflare.com/generate_204",
-		"    interval: 60",
-		"    lazy: false",
+		"    interval: 300",
 		"    timeout: 500",
 		"    max-failed-times: 1",
 		"    tolerance: 50",
 		"  - name: landing.example.com",
 		"    type: fallback",
-		"    lazy: false",
+		"    interval: 300",
+		"    timeout: 500",
 		"    max-failed-times: 1",
 		"      - HK Landing",
 		"      - HK Landing Copy",
 	} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("rendered config is missing expected content %q:\n%s", want, rendered)
+		}
+	}
+	for _, absent := range []string{
+		"    interval: 60",
+		"    lazy: false",
+	} {
+		if strings.Contains(rendered, absent) {
+			t.Fatalf("rendered config should not include removed managed field %q:\n%s", absent, rendered)
 		}
 	}
 
