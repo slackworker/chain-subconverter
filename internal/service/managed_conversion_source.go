@@ -143,7 +143,7 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		applog.TemplateCacheUsed(effectiveTemplateURL)
 	}
 	templateEmojiMessages := make([]Message, 0)
-	templateConfig, templateEmojiMessages, err = preprocessTemplateEmojiByRegion(templateConfig, stage1Input.AdvancedOptions)
+	_, templateEmojiMessages, err = preprocessTemplateEmojiByRegion(templateConfig, stage1Input.AdvancedOptions)
 	if err != nil {
 		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
 	}
@@ -152,7 +152,8 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
 	}
 
-	id, err := source.templateStore.Save(templateConfig)
+	managedTemplateConfig := sanitizeManagedTemplateConfigForSubconverter(templateConfig)
+	id, err := source.templateStore.Save(managedTemplateConfig)
 	if err != nil {
 		return PreparedConversion{}, newInternalResponseError("failed to persist managed template", err)
 	}

@@ -737,8 +737,9 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 	for i := 0; i < 2; i++ {
 		select {
 		case got := <-seenConfig:
-			if got != strings.TrimSpace(templateConfig) {
-				t.Fatalf("managed template mismatch: got %q want %q", got, strings.TrimSpace(templateConfig))
+			want := sanitizeManagedTemplateConfigForSubconverter(strings.TrimSpace(templateConfig))
+			if got != want {
+				t.Fatalf("managed template mismatch: got %q want %q", got, want)
 			}
 		case <-time.After(2 * time.Second):
 			t.Fatalf("timed out waiting for managed template fetch %d", i)

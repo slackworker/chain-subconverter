@@ -97,8 +97,14 @@
 
 - `emoji = false` 或未开启时：chain 不做节点 emoji 处理
 - `emoji = true` 时：chain 基于模板中已声明的 `add_emoji`、`remove_old_emoji` 与 `emoji=` 规则，结合地域策略组识别结果构建统一处理器
-- 模板显式 `emoji=` 规则优先于地域组推导规则；发生冲突时保留模板显式规则，并返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
+- 规则来源按节点名 **first-match** 分层尝试，优先级从高到低：
+  1. 模板显式 `emoji=` 行（含 `emoji=!!import:snippets/emoji.txt` / `snippets/emoji.toml`；chain 将其展开为内置 `default_emoji.txt` 规则，归入本层而非默认兜底层）
+  2. 地域策略组 `custom_proxy_group` 推导（组名前缀国旗 + 组内 matcher regex）
+  3. 内置 `default_emoji.txt` 默认规则（仅当前两层均未命中 regex 时参与匹配）
+- 模板显式 `emoji=` 规则优先于地域组推导规则；同 regex 发生冲突时保留模板显式规则，并返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
+- `remove_old_emoji` / `add_emoji` 的处理顺序对齐 subconverter：先按 UTF-8 `0xF0 0x9F` 前缀循环剥离旧 emoji（`remove_old_emoji=true` 时），再按上述规则表匹配并前缀新 emoji（`add_emoji=true` 时）；剥离后若名为空则回退原名
 - chain 处理器只改节点名称，不改模板文本；不得向模板补写 `add_emoji`、`remove_old_emoji` 或 `emoji=...`
+- 写入 subconverter 托管模板副本时，必须强制 `add_emoji=false`、`remove_old_emoji=false`（可覆盖模板原值），以确保 subconverter 不再执行 emoji pipeline；`emoji=` 行保留供 chain 读取。`PreparedConversion.TemplateConfig` 仍保留用户原始模板快照
 - chain 处理对象 = Pass 1 `proxies[]` + Pass 2 `proxies[]`（仅节点 `name`；不改 `proxy-groups` 结构）
 - `chainTargets[].name`（`kind = proxies`）= emoji 处理后的 transit 名
 - `chainTargets[].name`（`kind = proxy-groups`）= 模板识别名（已有 emoji 前缀）

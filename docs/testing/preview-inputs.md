@@ -102,6 +102,8 @@ relay-b.example.com:8443
   - Stage1 调用 subconverter 时不传 `emoji` 参数。
   - subconverter 返回后，由 chain 在进入 Stage2 前按 [spec/04 §0.2.3](../spec/04-business-rules.md#023-chain-侧-emoji-统一处理) 统一处理节点名称。
   - Stage2 若手工改名，最终输出以 Stage2 名称为准，不再被地域规则二次覆盖。
+  - 模板未覆盖的地域（如德国节点 `Frankfurt-DE`）应命中内置 `default_emoji.txt` 默认规则（例如 `🇩🇪 Frankfurt-DE`）。
+  - 节点名已带国旗 emoji 且与目标地域紧邻（如 `🇭🇰Alpha`）或存在多重前缀（如 `🇭🇰🇸🇬 Alpha`）时，处理后不得出现双重国旗（例如应变为 `🇸🇬 Alpha`）。
 - 快速自检建议：
   - 打开转换结果后，先核对 Stage2 默认名称是否已按规则带上 emoji。
   - 任意手工改名一条（例如 `🇸🇬 Alpha-SS-SG-Custom`）并生成，校对最终 YAML 的 `proxies.name` 与 Stage2 完全一致。
