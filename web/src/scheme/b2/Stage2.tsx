@@ -7,6 +7,7 @@ import {
 	getStage2TargetDisplayLabel,
 	isStage2SourceRow,
 } from "../../lib/stage2";
+import { formatModeReason } from "../../lib/mode-reason";
 import { NoticeRenderer } from "./Notice";
 import { AlertTriangleIcon } from "./Icons";
 import type { ColorMode } from "./theme";
@@ -156,7 +157,7 @@ function Stage2RowItem({
 	const isSnapshotOnly = workflow.state.stage2Init === null;
 	const modeOptions = getStage2DisplayModeOptions(workflow.state.stage2Init, row.mode);
 	const targetDisplayLabel = getStage2TargetDisplayLabel(workflow.state.stage2Init, workflow.stage2Rows, row);
-	const modeWarningText = meta?.modeWarnings?.[row.mode]?.reasonText;
+	const modeWarningText = formatModeReason(meta?.modeWarnings?.[row.mode]);
 	const dark = isDark(colorMode);
 
 	const renderTargetSelector = () => {
@@ -286,8 +287,13 @@ function Stage2RowItem({
 							const warning = meta?.modeWarnings?.[mode];
 							const label = MODE_LABELS[mode] ?? mode;
 							return (
-								<option key={mode} value={mode} disabled={Boolean(restriction)} title={warning?.reasonText}>
-									{restriction ? `${label}（${restriction.reasonText}）` : label}
+								<option
+									key={mode}
+									value={mode}
+									disabled={Boolean(restriction)}
+									title={warning ? formatModeReason(warning) : undefined}
+								>
+									{restriction ? `${label}（${formatModeReason(restriction)}）` : label}
 								</option>
 							);
 						})}

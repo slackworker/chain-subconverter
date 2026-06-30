@@ -7,6 +7,7 @@ import {
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
 } from "../../lib/stage2";
+import { formatModeReason } from "../../lib/mode-reason";
 import { NoticeRenderer } from "./Notice";
 import { AlertTriangleIcon } from "./Icons";
 import { LOCALES, translate, type Locale } from "./locales";
@@ -246,7 +247,7 @@ function Stage2RowItem({
 		return null;
 	};
 
-	const modeWarningText = meta?.modeWarnings?.[row.mode]?.reasonText;
+	const modeWarningText = formatModeReason(meta?.modeWarnings?.[row.mode], locale);
 
 	return (
 		<>
@@ -316,7 +317,7 @@ function Stage2RowItem({
 							const isRestricted = !!meta?.restrictedModes?.[m];
 							const isWarning = !!meta?.modeWarnings?.[m];
 							const text = getModeText(m);
-							const reason = meta?.restrictedModes?.[m]?.reasonText;
+							const reason = formatModeReason(meta?.restrictedModes?.[m], locale);
 							return (
 								<option key={m} value={m} disabled={isRestricted}>
 									{text} {isRestricted ? `(${reason})` : isWarning ? `(${locale === "zh" ? "不推荐" : "discouraged"})` : ""}

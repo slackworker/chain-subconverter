@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import { Tooltip } from "../../lib/Tooltip";
+import { formatModeReason } from "../../lib/mode-reason";
 import {
 	getStage2DisplayModeOptions,
 	getStage2RowEditableName,
@@ -379,15 +380,16 @@ export function Stage2RowModeCell({
 	const meta = getStage2RowMeta(rowKey);
 	const displayModeOptions = getStage2DisplayModeOptions(stage2Init, row.mode);
 	const activeModeWarning = meta?.modeWarnings?.[row.mode];
+	const activeModeWarningText = activeModeWarning ? formatModeReason(activeModeWarning, locale) : "";
 	const modeSelectOptions = displayModeOptions.map((mode) => {
 		const restriction = meta?.restrictedModes?.[mode];
 		const modeWarn = meta?.modeWarnings?.[mode];
 		const label = getModeLabel(mode, locale, copy);
 		return {
 			value: mode,
-			label: restriction ? `${label}（${restriction.reasonText}）` : label,
+			label: restriction ? `${label}（${formatModeReason(restriction, locale)}）` : label,
 			disabled: Boolean(restriction),
-			title: modeWarn && !restriction ? modeWarn.reasonText : undefined,
+			title: modeWarn && !restriction ? formatModeReason(modeWarn, locale) : undefined,
 		};
 	});
 	const modeDisplayLabel = getModeLabel(row.mode, locale, copy);
@@ -417,9 +419,9 @@ export function Stage2RowModeCell({
 				{activeModeWarning ? (
 					<>
 						<span id={modeWarnId} className="a-sr-only">
-							{activeModeWarning.reasonText}
+							{activeModeWarningText}
 						</span>
-						<Tooltip content={activeModeWarning.reasonText} placement="top">
+						<Tooltip content={activeModeWarningText} placement="top">
 							<span className="a-mode-warning-hint" aria-hidden="true">
 								<svg
 									xmlns="http://www.w3.org/2000/svg"

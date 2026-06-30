@@ -9,6 +9,7 @@ import {
 	getStage2TargetDisplayLabel,
 	isStage2SourceRow,
 } from "../../lib/stage2";
+import { formatModeReason } from "../../lib/mode-reason";
 import type { Stage2Row } from "../../types/api";
 import {
 	getModeLabel,
@@ -68,7 +69,7 @@ export function Stage2FlatTable({
 				const modeOptionLabels = displayModeOptions.map((mode) => {
 					const restriction = meta?.restrictedModes?.[mode];
 					const label = getModeLabel(mode, locale, copy);
-					return restriction ? `${label}（${restriction.reasonText}）` : label;
+					return restriction ? `${label}（${formatModeReason(restriction, locale)}）` : label;
 				});
 				const targetLabel =
 					getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??

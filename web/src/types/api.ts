@@ -44,9 +44,9 @@ export interface Stage1Input {
 	advancedOptions: AdvancedOptions;
 }
 
-export interface RestrictedMode {
+export interface ModeReason {
 	reasonCode: string;
-	reasonText: string;
+	reasonArgs?: Record<string, unknown>;
 }
 
 export interface Stage2Row {
@@ -69,8 +69,8 @@ export interface ServerAggregationGroup {
 export interface Stage2InitRow extends Stage2Row {
 	landingNodeType: string;
 	server: string;
-	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
-	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
+	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", ModeReason>>;
+	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", ModeReason>>;
 }
 
 export interface ChainTarget {

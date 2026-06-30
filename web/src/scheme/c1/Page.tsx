@@ -11,6 +11,7 @@ import {
 	setPortForwardEnabled,
 	type ManualSocks5FormState,
 } from "../../lib/stage1";
+import { formatModeReason } from "../../lib/mode-reason";
 import {
 	getStage2RowEditableName,
 	getStage2RowDisplayName,
@@ -232,8 +233,8 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		const restricted = meta?.restrictedModes?.[mode];
 		return {
 			disabled: unsupported || restricted !== undefined || !workflow.isStage2Editable,
-			reasonText: restricted?.reasonText,
-			warningText: meta?.modeWarnings?.[mode]?.reasonText,
+			reasonText: formatModeReason(restricted),
+			warningText: formatModeReason(meta?.modeWarnings?.[mode]),
 		};
 	}
 
@@ -685,9 +686,10 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										</div>
 										<div className="c-row-target">{renderTargetSelect(row, meta)}</div>
 									</div>
-									{meta?.modeWarnings?.[row.mode]?.reasonText ? (
-										<p className="c-row-hint">⚠ {meta.modeWarnings[row.mode]?.reasonText}</p>
-									) : null}
+									{(() => {
+										const warningText = formatModeReason(meta?.modeWarnings?.[row.mode]);
+										return warningText ? <p className="c-row-hint">⚠ {warningText}</p> : null;
+									})()}
 									<ErrorBlock errors={rowErrors} />
 								</div>
 							);

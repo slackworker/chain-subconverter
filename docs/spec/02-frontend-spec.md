@@ -195,8 +195,8 @@
 | `rows[].landingNodeName` | string | 兼容字段，等同 `proxyName` |
 | `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
 | `rows[].server` | string | 落地 server；只读，用于按 server 分组；见 [03](03-backend-api.md) / [04 §2.1](04-business-rules.md) |
-| `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因；缺失表示该行无额外限制 |
-| `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因；缺失表示该行无额外提示 |
+| `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因（`reasonCode` / `reasonArgs`）；缺失表示该行无额外限制 |
+| `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因（`reasonCode` / `reasonArgs`）；缺失表示该行无额外提示 |
 | `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
 | `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
 | `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
@@ -226,9 +226,9 @@
 - `none`：不修改该落地节点
 - `chain`：第四列从 `stage2Init.chainTargets[]` 中选择
 - `port_forward`：第四列从 `stage2Init.forwardRelays[]` 中选择
-- 模式可用性、行级限制、warning 与对应原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes`、`modeWarnings` 与 `reasonText`
-- 前端按后端返回结果渲染可选项、禁用态与 warning，不自行补算额外规则
-- 前端不得自行解析落地节点协议、端口或其他隐藏字段去补算 `modeWarnings`；若后端已将多个 warning 原因合并到同一个 `modeWarnings.chain`，前端必须原样展示 `reasonText`
+- 模式可用性、行级限制、warning 与对应原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes`、`modeWarnings` 及其 `reasonCode` / `reasonArgs`
+- 前端按后端返回的 `reasonCode` 与 `reasonArgs` 本地映射展示文案，不自行补算额外规则
+- 前端不得自行解析落地节点协议、端口或其他隐藏字段去补算 `modeWarnings`；若后端已将多个 warning 原因合并到同一个 `modeWarnings.chain`，前端须基于合并后的 `reasonCode` / `reasonArgs` 映射展示
 - `restrictedModes` 表示该模式不可选；`modeWarnings` 表示该模式仍可选，但必须展示 warning 提示
 - 当某行的 `chain` 同时存在于 `availableModes` 且 `modeWarnings.chain` 已返回时，前端不得禁用该模式，也不得阻止用户提交；只允许以 Tooltip、辅助文案或等价方式提示“不推荐”原因
 
