@@ -169,9 +169,23 @@ export function findStage2RowByKey(rows: Stage2SnapshotRows, rowKey: string) {
 	return rows.find((row) => matchesStage2RowKey(row, rowKey)) ?? null;
 }
 
-export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
-	const baseName = sourceLandingNodeName.trim();
-	if (baseName === "") {
+export function getStage2DerivedProxyNameBase(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
+	const trimmedSource = sourceLandingNodeName.trim();
+	if (trimmedSource === "") {
+		return "";
+	}
+	const sourceRow = rows.find(
+		(row) => getStage2RowSourceLandingName(row) === trimmedSource && isStage2SourceRow(row),
+	);
+	if (sourceRow !== undefined) {
+		return getStage2RowDisplayName(sourceRow);
+	}
+	return trimmedSource;
+}
+
+export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, baseName: string) {
+	const trimmedBaseName = baseName.trim();
+	if (trimmedBaseName === "") {
 		return "";
 	}
 
@@ -180,15 +194,15 @@ export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, sourceLanding
 			.map((row) => getStage2RowDisplayName(row).trim())
 			.filter((value) => value !== ""),
 	);
-	if (!usedNames.has(baseName)) {
-		return baseName;
+	if (!usedNames.has(trimmedBaseName)) {
+		return trimmedBaseName;
 	}
 
 	let suffix = 2;
-	while (usedNames.has(`${baseName} ${suffix}`)) {
+	while (usedNames.has(`${trimmedBaseName} ${suffix}`)) {
 		suffix += 1;
 	}
-	return `${baseName} ${suffix}`;
+	return `${trimmedBaseName} ${suffix}`;
 }
 
 function getSelectedForwardRelays(rows: Stage2SnapshotRows) {

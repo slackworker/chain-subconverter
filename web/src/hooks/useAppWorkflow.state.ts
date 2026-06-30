@@ -12,6 +12,7 @@ import {
 	getStage2RowKey,
 	getServerAggregationGroup,
 	getServerAggregationStrategy,
+	getStage2DerivedProxyNameBase,
 	getStage2RowSourceLandingName,
 	isStage2SourceRow,
 	matchesStage2RowKey,
@@ -782,7 +783,8 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string, 
 	}
 
 	const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-	const clonedProxyName = pickNextDerivedProxyName(current.stage2Snapshot.rows, sourceLandingNodeName);
+	const derivedNameBase = getStage2DerivedProxyNameBase(current.stage2Snapshot.rows, sourceLandingNodeName);
+	const clonedProxyName = pickNextDerivedProxyName(current.stage2Snapshot.rows, derivedNameBase);
 	const clonedRow: Stage2Row = {
 		...matchedRow,
 		rowId: rowID,

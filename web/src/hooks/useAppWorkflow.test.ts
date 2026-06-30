@@ -1020,6 +1020,53 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		});
 	});
 
+	it("clones rows with emoji proxy names when sourceLandingNodeName differs from proxyName", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "🇭🇰 香港节点", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "Alpha-SS-SG",
+					sourceLandingNodeName: "Alpha-SS-SG",
+					proxyName: "🇸🇬 Alpha-SS-SG",
+					landingNodeName: "🇸🇬 Alpha-SS-SG",
+					landingNodeType: "ss",
+					server: "198.51.100.10",
+					mode: "chain",
+					targetName: "🇭🇰 香港节点",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+		expect(workflow.current.stage2Rows[1]).toMatchObject({
+			sourceLandingNodeName: "Alpha-SS-SG",
+			proxyName: "🇸🇬 Alpha-SS-SG 2",
+			landingNodeName: "🇸🇬 Alpha-SS-SG 2",
+		});
+	});
+
 	it("configures server aggregation strategy by source group across source and derived rows", async () => {
 		const workflow = renderWorkflow();
 		const stage1Input = buildStage1Input({

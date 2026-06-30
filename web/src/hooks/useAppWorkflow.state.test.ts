@@ -14,6 +14,7 @@ import {
 	applyShortURLPreferenceToggleState,
 	applyStage1ConvertSuccessState,
 	clearServerAggregationGroupsState,
+	cloneStage2RowState,
 	completeWorkflowRequestState,
 	mergeStage2SnapshotAfterConvert,
 	startShortURLCreationState,
@@ -883,5 +884,36 @@ it("inserts newly checked members by stage2 row order", () => {
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([]);
 		expect(next.generatedUrls).toBeNull();
 		expect(next.stage3Expired).toBe(true);
+	});
+
+	it("clones derived rows using the source row proxyName as the naming base", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "Alpha-SS-SG",
+						sourceLandingNodeName: "Alpha-SS-SG",
+						proxyName: "🇸🇬 Alpha-SS-SG",
+						landingNodeName: "🇸🇬 Alpha-SS-SG",
+						mode: "chain",
+						targetName: "🇭🇰 香港节点",
+					},
+				],
+				serverAggregationGroups: [],
+			},
+		};
+
+		const next = cloneStage2RowState(current, "rowId:Alpha-SS-SG", "alpha-ss-sg-copy-1");
+
+		expect(next.stage2Snapshot.rows).toHaveLength(2);
+		expect(next.stage2Snapshot.rows[1]).toMatchObject({
+			rowId: "alpha-ss-sg-copy-1",
+			sourceLandingNodeName: "Alpha-SS-SG",
+			proxyName: "🇸🇬 Alpha-SS-SG 2",
+			landingNodeName: "🇸🇬 Alpha-SS-SG 2",
+			mode: "chain",
+			targetName: "🇭🇰 香港节点",
+		});
 	});
 });

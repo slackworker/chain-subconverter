@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	getForwardRelayChoices,
+	getStage2DerivedProxyNameBase,
 	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowStrictKey,
@@ -180,6 +181,22 @@ describe("stage2 target helpers", () => {
 		];
 
 		expect(pickNextDerivedProxyName(rows, "landing-a")).toBe("landing-a 3");
+	});
+
+	it("picks the next derived proxy name from emoji display names", () => {
+		const rows: Stage2Row[] = [
+			{
+				rowId: "Alpha-SS-SG",
+				sourceLandingNodeName: "Alpha-SS-SG",
+				proxyName: "🇸🇬 Alpha-SS-SG",
+				landingNodeName: "🇸🇬 Alpha-SS-SG",
+				mode: "none",
+				targetName: null,
+			},
+		];
+
+		expect(getStage2DerivedProxyNameBase(rows, "Alpha-SS-SG")).toBe("🇸🇬 Alpha-SS-SG");
+		expect(pickNextDerivedProxyName(rows, "🇸🇬 Alpha-SS-SG")).toBe("🇸🇬 Alpha-SS-SG 2");
 	});
 
 	it("uses strict row keys to distinguish source and derived rows that share the same source landing name", () => {
