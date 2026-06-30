@@ -85,7 +85,7 @@ func (source *fakeManagedSnapshotSource) ConvertWithPlan(_ context.Context, _ su
 	return result, nil
 }
 
-func (source *fakeManagedSnapshotSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string) (string, error) {
+func (source *fakeManagedSnapshotSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string, _ string) (string, error) {
 	source.renderManagedPass3Calls++
 	return source.result.FullBase.YAML, nil
 }

@@ -57,13 +57,15 @@ func (source *fakeConversionSource) PrepareConversion(_ context.Context, stage1I
 
 type fakeSnapshotRenderingSource struct {
 	fakeConversionSource
-	gotManagedLandingYAML string
-	renderedFullBaseYAML  string
-	renderErr             error
+	gotManagedLandingYAML        string
+	gotManagedTransitProxiesYAML string
+	renderedFullBaseYAML         string
+	renderErr                    error
 }
 
-func (source *fakeSnapshotRenderingSource) RenderManagedPass3(_ context.Context, _ PreparedConversion, managedLandingYAML string) (string, error) {
+func (source *fakeSnapshotRenderingSource) RenderManagedPass3(_ context.Context, _ PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error) {
 	source.gotManagedLandingYAML = managedLandingYAML
+	source.gotManagedTransitProxiesYAML = managedTransitProxiesYAML
 	if source.renderErr != nil {
 		return "", source.renderErr
 	}
@@ -348,6 +350,9 @@ func TestBuildGenerateResponseFromSource_UsesManagedLandingPass3ForValidation(t 
 	}
 	if !strings.Contains(source.gotManagedLandingYAML, "  - {name: HK Landing Copy, server: relay.example.com, port: 7443, type: ss}") {
 		t.Fatalf("managed landing is missing derived row:\n%s", source.gotManagedLandingYAML)
+	}
+	if !strings.Contains(source.gotManagedTransitProxiesYAML, "proxies:") || !strings.Contains(source.gotManagedTransitProxiesYAML, "name: transit-a") {
+		t.Fatalf("managed transit proxies YAML mismatch:\n%s", source.gotManagedTransitProxiesYAML)
 	}
 }
 

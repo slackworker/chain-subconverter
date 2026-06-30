@@ -43,35 +43,12 @@ func BuildStage2ResetResponseFromSource(ctx context.Context, source ConversionSo
 		)
 	}
 
-	fixtures, err := LoadStage1InitFixtures(ctx, source, request.Stage1Input, limits)
-	if err != nil {
-		return Stage2ResetResponse{}, err
-	}
-	stage2Init, err := BuildStage2Init(request.Stage1Input, fixtures)
-	if err != nil {
-		return Stage2ResetResponse{}, err
-	}
-
-	initialSnapshot := stage2InitToSnapshot(stage2Init)
-	nextSnapshot := initialSnapshot
-	switch resetScope {
-	case "all":
-		nextSnapshot = initialSnapshot
-	case "row":
-		nextSnapshot, err = resetSingleStage2Row(request.Stage2Snapshot, stage2Init, strings.TrimSpace(request.Reset.RowID))
-		if err != nil {
-			return Stage2ResetResponse{}, err
-		}
-	}
-
-	messages := append([]Message{}, fixtures.Messages...)
-	messages = append(messages, stage2ResetWorkflowMessage(resetScope))
-	return Stage2ResetResponse{
-		Stage2Init:     stage2Init,
-		Stage2Snapshot: nextSnapshot,
-		Messages:       messages,
-		BlockingErrors: []BlockingError{},
-	}, nil
+	return NewCorePipeline(ctx, source, request.Stage1Input, limits).
+		WithStage2Snapshot(request.Stage2Snapshot).
+		BuildStage2ResetResponse(Stage2ResetAction{
+			Scope: resetScope,
+			RowID: strings.TrimSpace(request.Reset.RowID),
+		})
 }
 
 func stage2InitToSnapshot(stage2Init Stage2Init) Stage2Snapshot {

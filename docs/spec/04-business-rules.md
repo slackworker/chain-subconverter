@@ -32,7 +32,7 @@
 - 三个 pass 的 `target` 都必须传 `clash`
 - `landing-discovery pass`：`url` 只传落地节点信息，传 `list=true`
 - `transit-discovery pass`：`url` 只传中转节点信息，**不传** `list`
-- `full-base pass`（即第 3 个 pass）：`url` 传托管 landing 短链 + 中转节点信息（`|` 拼接），不传 `list`；落地正文由 Pass 3 前按 `stage2Snapshot` 合并生成，不再把原始落地 URI 列表直接塞入 `url`
+- `full-base pass`（即第 3 个 pass）：`url` 传托管 landing 短链（`stage2Snapshot` 合并后）+ 托管 transit proxies 短链（`|` 拼接），不传 `list`；两侧均不得含 `list` 或 `emoji` 查询参数；落地正文由 Pass 3 前按 `stage2Snapshot` 合并生成，中转侧由 Pass 2 emoji 处理后的 `proxies[]` 片段托管生成，**不得**把原始 `transitRawText` 直接塞入 `url`
 - 当同一字段存在多条订阅 URL、节点 URI 或 `data:text/plain,<base64文本>` 时，传给 `subconverter` 的单个 `url` 查询参数前必须先用 `|` 拼接，再整体 URL 编码
 - 输入区中的换行只承担编辑态分条语义；不得把换行字面量直接传给上游 `url` 参数
 - 输入区分条时，`LF`、`CRLF` 与单独 `CR` 都必须按换行等价处理
@@ -87,7 +87,7 @@
 - **对内由 chain 拦截并统一执行**：`emoji` 不再作为上游 `GET /sub` 查询参数透传，也不在模板文本中注入 `add_emoji` / `remove_old_emoji` / `emoji=` 以驱动 `subconverter` 侧 emoji pipeline。
 - **拦截原因（与其他能力协同）**：
   - Stage2 支持用户显式改名；若 `subconverter` 在转换阶段再次执行 emoji 规则，会与 Stage2 展示名及最终 YAML 输出产生不可控覆写。
-  - 本项目采用 snapshot-first 三 pass 与托管 landing 合并；节点名需在 Stage1 输出后、Stage2 初始化前确定，并在后续生成/订阅读取中保持所见即所得。
+  - 本项目采用 snapshot-first Pipeline 与双托管 Pass 3（托管 landing + 托管 transit proxies）；节点名需在 `buildStage2Init` 前确定，并在后续生成/订阅读取中保持所见即所得。
   - 模板 emoji 规则仍需参与命名，但应作为 **chain 内部规则来源** 读取，而非改写模板后再交给 `subconverter` 执行，避免“模板注入 + 上游 emoji pipeline + Stage2 改名”三重叠加。
 - **权威定义位置**：本节是 emoji 处理时机、规则来源与命名权威的唯一业务定义；[03-backend-api](03-backend-api.md) 只描述接口字段，[05-tech-stack](05-tech-stack.md) 只描述分层职责。
 
@@ -99,9 +99,12 @@
 - `emoji = true` 时：chain 基于模板中已声明的 `add_emoji`、`remove_old_emoji` 与 `emoji=` 规则，结合地域策略组识别结果构建统一处理器
 - 模板显式 `emoji=` 规则优先于地域组推导规则；发生冲突时保留模板显式规则，并返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
 - chain 处理器只改节点名称，不改模板文本；不得向模板补写 `add_emoji`、`remove_old_emoji` 或 `emoji=...`
+- chain 处理对象 = Pass 1 `proxies[]` + Pass 2 `proxies[]`（仅节点 `name`；不改 `proxy-groups` 结构）
+- `chainTargets[].name`（`kind = proxies`）= emoji 处理后的 transit 名
+- `chainTargets[].name`（`kind = proxy-groups`）= 模板识别名（已有 emoji 前缀）
 - chain 处理必须满足幂等性：同一节点名重复处理结果保持一致
-- Stage2 初始 `rows[].proxyName` 必须来自 chain 处理后的名称；`rows[].sourceLandingNodeName` 继续保留 discovery 原始身份名
-- Stage2 后续编辑仍以 `proxyName` 为最终权威；生成/订阅读取阶段不得再做二次 emoji 重写，保证所见即所得
+- Stage2 初始 `rows[].proxyName` 必须来自 Pass 1 chain 处理后的名称；`rows[].sourceLandingNodeName` 继续保留 discovery 原始身份名
+- Stage2 后续编辑仍以 `proxyName` 为最终权威；Pass 3 及之后禁止二次 emoji 改写，保证所见即所得
 
 ---
 
@@ -125,29 +128,29 @@
 
 ### 1.1.1 统一转换 Pipeline（hard-break 权威口径）
 
-一次请求必须复用同一条 3-pass Pipeline。不存在旧版分支、旁路校验或跨 pass 结果拼接。
+一次请求必须复用同一条 Pipeline。不存在旧版分支、旁路校验或跨 pass 结果拼接。
 
-`0.2` 只定义上游调用契约；本节只定义 Pipeline 的业务输入、输出与顺序。
+`0.2` 只定义上游调用契约；本节只定义 Pipeline 的业务步骤、输入、输出与顺序。
 
-1. `landing-discovery pass`（Pass 1）
-   - 输入：仅落地侧 URL 集合
-   - 产物：落地身份集合（`sourceLandingNodeName` 与连接参数来源）
-   - 形态：`list=true` 的结构化节点列表
-2. `transit-discovery pass`（Pass 2）
-   - 输入：仅中转侧 URL 集合
-   - 产物：中转 `proxy` 候选与模板组交集判定基础数据
-   - 形态：中转候选发现所需最小结果
-3. `full-base pass`（Pass 3）
-   - 输入：托管 landing 短链 + 中转 URL 集合
-   - 产物：`baseCompleteConfig`（仅后端内部使用）
-   - 形态：完整 YAML（随后进入出组和后处理）
+| 步骤 | 输入 | 输出 | convert | generate / sub / resolve |
+|------|------|------|---------|--------------------------|
+| `prepareTemplate` | `stage1Input` | 托管模板 URL、`regionMatchers`、`emojiProcessor` | Y | Y |
+| `pass1Discover` | `landingRawText` | `LandingDiscoveryYAML` | Y | Y |
+| `pass2Discover` | `transitRawText` | `TransitDiscoveryYAML` | Y | Y |
+| `applyEmoji` | Pass 1/2 `proxies[]` | 改名后 YAML 片段 | Y | Y |
+| `buildStage2Init` | 上步 + `forwardRelays` | `stage2Init` | Y | Y（内部） |
+| `mergeManagedLanding` | `stage2Snapshot` + Pass 1 | `ManagedLandingYAML` | — | Y |
+| `hostManagedTransit` | Pass 2 `proxies[]` 片段 | `ManagedTransitProxiesURL` | — | Y |
+| `pass3FullBase` | 两个托管 URL + 模板 | `baseCompleteConfig` | — | Y |
+| `postProcess` | `baseCompleteConfig` + `stage2Snapshot` | `completeConfig` | — | Y |
 
 统一约束：
 
-- Pass 1/2/3 共享同一份高级选项快照与模板托管结果
-- 任一必需 pass 失败，当前请求整体失败；不得降级、不得复用旧结果
+- 所有步骤共享同一份高级选项快照与模板托管结果
+- 任一必需步骤失败，当前请求整体失败；不得降级、不得复用旧结果
 - Pass 1/2 发现的身份必须能在 Pass 3 产物中完成一致性校验；失败即按 pass 失败处理
-- 节点 emoji 处理发生在 Pass 1/2 之后、`stage2Init` 组装之前；Pass 3 与订阅读取不再做二次 emoji 改写
+- `applyEmoji` 发生在 Pass 1/2 之后、`buildStage2Init` 之前；Pass 3 与订阅读取不再做二次 emoji 改写
+- `stage1Input.transitRawText` 仍保留在载荷中，供每次 Pass 2 discovery 重拉订阅；Pass 3 **永不**直接使用原始 transit URL
 
 ### 1.1.2 端口转发服务输入校验（权威口径）
 
@@ -169,14 +172,17 @@
 - 前端可复用本节同一语法与规范化口径做录入期预校验，但不得以 UI 预校验替代后端在阶段 1 的最终裁决
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 
-### 1.1.3 pass 调用范围
+### 1.1.3 入口子集
 
-同一条 Pipeline 在不同入口执行的子集固定如下：
+同一条 Pipeline 在不同入口执行的子集固定如下（步骤定义见 `1.1.1`）：
 
-- `POST /api/stage1/convert`：只执行 Pass 1 + Pass 2；不执行 Pass 3
-- `POST /api/generate`：执行 Pass 1 + Pass 2 + Pass 3，并完成生成前阻断校验
-- `POST /api/resolve-url`：先解码载荷，再执行与 `generate` 同口径校验；成功后返回 `replayable` 或 `conflicted`
-- `GET /sub?...` 与 `GET /sub/<id>`：执行完整 Pass 1 + Pass 2 + Pass 3，并即时渲染 `completeConfig`
+| 入口 | 执行步骤 |
+|------|----------|
+| `POST /api/stage1/convert` | `prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Init` |
+| `POST /api/stage2/reset` | 同上；随后按请求范围重置 `stage2Snapshot` |
+| `POST /api/generate` | 完整 Pipeline（至 `postProcess` 前的校验口径）；编码 `statePayload v4` |
+| `POST /api/resolve-url` | 先解码载荷，再执行与 `generate` 同口径 Pipeline 与校验；成功后返回 `replayable` 或 `conflicted` |
+| `GET /sub?...` 与 `GET /sub/<id>` | 完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig` |
 
 硬约束：
 
@@ -293,13 +299,14 @@
 处理规则：
 
 1. 对区域策略组：按模板识别结果收集组名并写入候选，`kind = proxy-groups`
-2. 对单个 `proxy` 候选：读取 `transit-discovery pass` 的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点，`kind = proxies`
+2. 对单个 `proxy` 候选：读取 Pass 2 emoji 处理后的 Clash YAML `proxies[]`，按每个 `proxy.name` 收集中转节点，`kind = proxies`
 3. `kind` 仅用于前端分组展示
 4. `chainTargets[]` 只返回 `name`、`kind` 与 `isEmpty`
 5. `stage1/convert` 阶段允许省略 `isEmpty`（未知即留空）；`EMPTY_CHAIN_TARGET` 的最终裁决在生成/订阅校验链路完成 Pass 3 后执行
 6. `chainTargets[].name` 在同一次转换内必须全局唯一；它既是阶段 2 下拉选项值，也是 `stage2Snapshot.rows[].targetName` 的序列化值
-7. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
-8. 按 `2.7` 渲染出的 `serverAggregationGroups` 聚合组属于最终 YAML 衍生产物，不参与 `chainTargets[]` 收集
+7. `chainTargets[].name`（`kind = proxies`）固定为 Pass 2 emoji 处理后的 transit 名；`kind = proxy-groups` 固定为模板识别名（已有 emoji 前缀）
+8. 若任一中转 `proxy.name` 与任一地域策略组重名，或任意两个中转 `proxy` 重名，必须以 `CHAIN_TARGET_NAME_CONFLICT` 直接阻断本次请求
+9. 按 `2.7` 渲染出的 `serverAggregationGroups` 聚合组属于最终 YAML 衍生产物，不参与 `chainTargets[]` 收集
 
 ### 2.4 收集端口转发候选
 
@@ -414,7 +421,7 @@
 
 ### 3.2 生成前校验
 
-- 生成、恢复判定与订阅读取都必须先根据 `stage1Input` 重跑 Pass 1+2，再按 `3.5` 执行 Pass 3 与出组
+- 生成、恢复判定与订阅读取都必须先根据 `stage1Input` 重跑 `pass1Discover` + `pass2Discover` + `applyEmoji`，再按 `3.3` 双托管与 `3.5` 执行 `pass3FullBase` 与出组
 - 若任一必需 pass 失败，必须直接阻断
 - `stage2Snapshot` 须满足 `2.1.2` 行集规则；`proxyName` 重复为 `DUPLICATE_PROXY_NAME`
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
@@ -442,7 +449,8 @@
 
 - 上游订阅内容变化导致引用仍有效时，恢复结果保持 `replayable`
 - `targetName` 引用 `proxy-groups` 候选时，只要该候选仍存在即允许重放，不因成员变化单独判冲突
-- `targetName` 引用 `proxies` 候选时，该 `proxy.name` 必须仍存在，否则判冲突
+- `targetName` 引用 `proxies` 候选时，该 Pass 2 emoji 处理后的 `proxy.name` 必须仍能在当前 `chainTargets[]` 中定位，否则判冲突（`reasonCode = TARGET_NOT_FOUND`）
+- 上游 transit 订阅变化导致 Pass 2 emoji 后某 transit proxy 消失时，凡 `targetName` 引用该 `kind = proxies` 候选的行均判 `conflicted`
 - `targetName` 引用端口转发服务时，该规范化 `server:port` 必须仍存在于 `forwardRelays[]`，否则判冲突
 - 若某行 `sourceLandingNodeName` 缺失、`proxyName` 冲突或 `targetName` 引用失效，则判冲突
 - 若 `serverAggregationGroups[]` 中启用组违反 `2.7` 校验（未知成员 `rowId`、跨 server 入组、成员数不足 2 等），则判冲突
@@ -450,12 +458,21 @@
 
 ### 3.3 快照应用（Pass 3 前）
 
-订阅渲染主路径在 `full-base pass` 之前完成 snapshot 语义：
+订阅渲染主路径在 `pass3FullBase` 之前完成 snapshot 语义：
+
+#### 托管 landing（`mergeManagedLanding`）
 
 - 按 `sourceLandingNodeName` 从 Pass 1 取连接参数，按 `proxyName` 展开托管 landing 的 `proxies[]`
 - `mode = chain`：写入 `dialer-proxy: <targetName>`
 - `mode = port_forward`：将 `targetName` 解析为 `server` 与 `port` 并替换
-- Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing 行语义只通过 Pass 3 前的托管 landing 输入生效
+
+#### 托管 transit proxies（`hostManagedTransit`）
+
+- 从 Pass 2 emoji 处理后的 YAML 提取 `proxies[]` 片段；仅托管 `proxies:` 段，**不含** `proxy-groups`
+- 地域 `proxy-groups` 由托管模板 config 提供，不写入托管 transit
+- 每次 render 均：Pass 2 → `applyEmoji` → 托管 proxies → Pass 3；不得复用历史 transit 中间产物或直接向 Pass 3 透传原始 `transitRawText`
+
+Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing 行语义只通过 Pass 3 前的托管 landing 输入生效
 
 ### 3.3.1 既有地域策略组覆写（Pass 3 后）
 
@@ -495,8 +512,8 @@
 ### 3.5 最终配置交付时机
 
 - 订阅打开/下载时即时生成 `completeConfig`
-- 流程：重跑 Pass 1+2 → `3.3` 合并托管 landing → Pass 3 full-base → `1.3` 出组 → `3.3.1` 既有地域策略组覆写 + `3.3.2` server 聚合组追加 → 返回
-- 任一必需 pass 失败则订阅渲染失败
+- 流程：重跑 `pass1Discover` + `pass2Discover` → `applyEmoji` → `mergeManagedLanding` + `hostManagedTransit` → `pass3FullBase` → `1.3` 出组 → `3.3.1` 既有地域策略组覆写 + `3.3.2` server 聚合组追加 → 返回
+- 任一必需步骤失败则订阅渲染失败
 
 ## 4. 共享通知生命周期
 

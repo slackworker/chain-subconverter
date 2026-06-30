@@ -540,18 +540,18 @@ func TestBuildStage2Init_AppliesChainEmojiAfterStage1(t *testing.T) {
 	enabled := true
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: Alpha-SS-sdgfa, type: ss}\n",
-		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-sg, type: ss}"}, map[string]string{
-			"🇸🇬 新加坡节点": "transit-sg",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: Alpha-transit-sdgfa, type: ss, server: transit.example.com, port: 443}"}, map[string]string{
+			"🇸🇬 新加坡节点": "Alpha-transit-sdgfa",
 		}),
 		FullBaseYAML: strings.Join([]string{
 			"proxies:",
 			"- {name: Alpha-SS-sdgfa, type: ss, server: landing.example.com, port: 443}",
-			"- {name: transit-sg, type: ss, server: transit.example.com, port: 443}",
+			"- {name: Alpha-transit-sdgfa, type: ss, server: transit.example.com, port: 443}",
 			"proxy-groups:",
 			"  - name: 🇸🇬 新加坡节点",
 			"    type: fallback",
 			"    proxies:",
-			"      - transit-sg",
+			"      - Alpha-transit-sdgfa",
 			"",
 		}, "\n"),
 		TemplateConfig: "custom_proxy_group=🇸🇬 新加坡节点`fallback`(SG|Singapore|Alpha)\n",
@@ -576,6 +576,38 @@ func TestBuildStage2Init_AppliesChainEmojiAfterStage1(t *testing.T) {
 	}
 	if row.Mode != "chain" {
 		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
+	}
+}
+
+func TestBuildStage2Init_AppliesEmojiToTransitProxyChainTargets(t *testing.T) {
+	enabled := true
+	stage2Init, err := BuildStage2Init(Stage1Input{
+		AdvancedOptions: AdvancedOptions{Emoji: &enabled},
+	}, ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: Alpha-SS-sdgfa, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: Alpha-transit-sg, type: ss}"}, map[string]string{
+			"🇸🇬 新加坡节点": "Alpha-transit-sg",
+		}),
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: Alpha-SS-sdgfa, type: ss, server: landing.example.com, port: 443}",
+			"- {name: Alpha-transit-sg, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - Alpha-transit-sg",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇸🇬 新加坡节点`fallback`(SG|Singapore|Alpha)\n",
+	})
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇸🇬 Alpha-transit-sg", "proxies"); !ok {
+		t.Fatalf("expected emoji-renamed transit proxy chain target, got %v", stage2Init.ChainTargets)
+	} else if target.IsEmpty {
+		t.Fatalf("expected non-empty transit proxy chain target")
 	}
 }
 

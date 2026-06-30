@@ -35,4 +35,19 @@ describe("formatModeReason", () => {
 	it("falls back to reasonCode for unknown codes", () => {
 		expect(formatModeReason({ reasonCode: "CUSTOM_REASON" })).toBe("CUSTOM_REASON");
 	});
+
+	it("prefers reasonCode mapping over legacy reasonText", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "DISCOURAGED_BY_LANDING_PROTOCOL",
+				reasonText: "legacy text",
+			}),
+		).toContain("Reality/ShadowTLS");
+	});
+
+	it("falls back to legacy reasonText when reasonCode is absent", () => {
+		expect(formatModeReason({ reasonText: "legacy restriction message" })).toBe(
+			"legacy restriction message",
+		);
+	});
 });

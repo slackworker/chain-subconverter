@@ -157,10 +157,10 @@
 - `rows[].server`：落地节点 server 展示值（用于按 server 分组与聚合配置）；必填且不能为空字符串
 - `stage2Init.rows[]` 不暴露切换优化字段；开关由 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 全局承载（见 §2）
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
-- `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
+- `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码；文案由前端基于 `reasonCode` 与 `reasonArgs` 本地映射
 - `rows[].restrictedModes.<mode>.reasonArgs`：禁用原因参数对象（可选）
 - `rows[].modeWarnings`：当前行的模式 warning 映射；出现条件见 [04-business-rules](04-business-rules.md)
-- `rows[].modeWarnings.<mode>.reasonCode`：warning 原因码
+- `rows[].modeWarnings.<mode>.reasonCode`：warning 原因码；文案由前端基于 `reasonCode` 与 `reasonArgs` 本地映射
 - `rows[].modeWarnings.<mode>.reasonArgs`：warning 原因参数对象（可选）
 - `modeWarnings.chain.reasonCode` 在当前规格中允许为 `DISCOURAGED_BY_LANDING_PROTOCOL`、`DISCOURAGED_BY_LANDING_PORT` 或 `DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT`
 - 当同一行同时命中多条 `chain` warning 条件时，后端必须合并为单个 `modeWarnings.chain` 项，并在 `reasonArgs` 中返回组合原因参数
@@ -217,8 +217,8 @@
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `messages[]` 可选返回 `reasonArgs`；若返回则必须是对象，由前端基于 `code` 本地映射文案
 - `blockingErrors[]` 只承载阻断当前请求的错误
-- `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`
-- `blockingErrors[]` 可选返回 `reasonArgs`；若返回则必须是对象
+- `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`；`code` 与 `restoreConflicts[].reasonCode` 共享同一稳定原因码命名空间（如 `TARGET_NOT_FOUND`）
+- `blockingErrors[]` 可选返回 `reasonArgs`；若返回则必须是对象；前端基于 `code` 与 `reasonArgs` 本地映射 `message` 之外的补充文案
 - `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
 - `scope` 只能是 `global`、`stage1_field`、`stage2_row`、`stage3_field` 或 `stage3_action`
 - `scope` 只定义共享层必须稳定的业务定位语义，不规定前端的具体布局、视觉样式或组件形态
@@ -232,7 +232,7 @@
 - `scope = stage3_field` 时，`context.field` 必填；当前前端默认使用 `currentLinkInput` 作为 Stage 3 当前链接输入框的稳定字段键
 - `scope = stage3_action` 时，`context.action` 为可选字段；若返回，则其值必须只承担动作来源说明，不得替代 `originStage`
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
-- `restoreConflicts[]` 只在 `restoreStatus = conflicted` 的成功响应中返回；每个元素都必须包含 `reasonCode`，`reasonArgs` 可选
+- `restoreConflicts[]` 只在 `restoreStatus = conflicted` 的成功响应中返回；每个元素都必须包含 `reasonCode`，`reasonArgs` 可选；`reasonCode` 与 `blockingErrors[].code` 共享同一稳定原因码命名空间
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE.message` 必须是面向最终用户的业务化提示，不得出现 pass 名称、容器主机名、内部请求 URL、查询串或原始技术错误串
@@ -392,7 +392,7 @@
 
 - 本接口不返回 `completeConfig` 或 `baseCompleteConfig`
 - `stage2Init` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md)
-- 本接口固定只执行 Pass 1（landing-discovery）与 Pass 2（transit-discovery）；不执行 Pass 3
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：`prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Init`；不执行 `pass3FullBase` 及之后步骤
 - 多条完全一致的落地 URI 不得被静默去重
 - `proxyName` 的具体命名与重名处理由转换服务和 chain 侧命名流程共同决定；前端只消费接口返回结果，不得自行猜测
 - `advancedOptions.config` 虽保留历史字段名 `config`，但其业务语义始终是“模板 URL”；阻断错误中的 `context.field = config` 也对应这一字段
@@ -451,7 +451,7 @@
 
 - 请求体不包含 `completeConfig`
 - 本接口返回规范化长链接；生成前校验规则见 [04-business-rules](04-business-rules.md)
-- 本接口必须执行完整 Pass 1/2/3 Pipeline，并按 hard-break 规则编码 `statePayload v4`
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess` 前的校验口径；并按 hard-break 规则编码 `statePayload v4`
 - 本接口不返回 YAML 文本
 
 成功响应：
@@ -559,6 +559,7 @@
 - `scope = all`：`stage2Snapshot` 必须恢复为当前 `stage1Input` 对应的初始快照（`rows` 来自 `stage2Init.rows`，`serverAggregationGroups = []`，切换优化开关为 `false`）
 - `scope = row`：仅恢复指定行的 `proxyName`、`mode` 与 `targetName`；其他行与聚合组保持不变
 - `scope = row` 时，行定位以 `rowId` 为准；若找不到对应行，接口失败
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：`prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Init`；随后按 `reset` 范围重置 `stage2Snapshot`
 
 最小失败语义：
 
@@ -665,7 +666,7 @@
 - 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理
 - 若传入长链接携带 `data` 与可选 `download=1` 之外的 query，必须返回 `INVALID_LONG_URL`
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
-- 本接口必须执行与 `POST /api/generate` 同口径的 Pipeline 与校验，不得走兼容分支
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，至 `postProcess` 前的校验；不得走兼容分支或旧版载荷解码路径
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
@@ -688,6 +689,7 @@
 规则：
 
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig`
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
 - 本入口只接受短链路径参数与可选 `download=1`；不接受状态覆写或透传 query
@@ -704,6 +706,7 @@
 - `data` 必须可逆编码 `stage1Input` 与 `stage2Snapshot`
 - 长链接编码必须 URL-safe 且具确定性；编码规范见下文“长链接编码规范”
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig`
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
 - 除 `data` 与可选 `download=1` 外，不接受任何其他 query；否则必须返回 `INVALID_LONG_URL`
@@ -773,7 +776,7 @@
 
 规则：
 
-- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 4`
+- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 4`；不接受 `v = 1/2/3` 或缺失 `v` 的兼容解码
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
 - `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 属于规范长链接状态的一部分
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接

@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -161,6 +162,42 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	}
 
 	return resolvedLandingProxies, nil
+}
+
+// DetermineRestoreStatus validates the restored snapshot against current fixtures
+// and returns replayable or conflicted per spec 04-business-rules §3.2.1.
+func DetermineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, error) {
+	_, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
+	if err == nil {
+		return "replayable", []Message{}, nil
+	}
+
+	if !IsRestoreConflictError(err) {
+		if responseErr, ok := AsResponseError(err); ok && responseErr.StatusCode() < http.StatusInternalServerError {
+			return "", nil, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
+		}
+		return "", nil, err
+	}
+	return "conflicted", []Message{{
+		Level:   "warning",
+		Code:    "RESTORE_CONFLICT",
+		Message: restoreConflictMessage(err),
+	}}, nil
+}
+
+// IsRestoreConflictError reports whether an error represents a soft restore conflict.
+func IsRestoreConflictError(err error) bool {
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		return false
+	}
+
+	switch responseErr.BlockingError().Code {
+	case "STAGE2_ROWSET_MISMATCH", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND", "SERVER_AGGREGATION_MEMBER_NOT_FOUND", "SERVER_AGGREGATION_GROUP_TOO_SMALL", "SERVER_AGGREGATION_SERVER_MISMATCH":
+		return true
+	default:
+		return false
+	}
 }
 
 func fullBaseProxyGroupTargetsByName(fixtures ConversionFixtures, resolvedLandingProxies []resolvedLandingProxy) (map[string]ChainTarget, error) {

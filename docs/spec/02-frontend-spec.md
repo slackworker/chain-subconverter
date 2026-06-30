@@ -227,8 +227,9 @@
 - `chain`：第四列从 `stage2Init.chainTargets[]` 中选择
 - `port_forward`：第四列从 `stage2Init.forwardRelays[]` 中选择
 - 模式可用性、行级限制、warning 与对应原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes`、`modeWarnings` 及其 `reasonCode` / `reasonArgs`
-- 前端按后端返回的 `reasonCode` 与 `reasonArgs` 本地映射展示文案，不自行补算额外规则
+- 前端必须基于 `reasonCode` 与 `reasonArgs` 本地映射展示文案（含 `restrictedModes` 禁用原因与 `modeWarnings` 不推荐提示）；不得依赖后端返回人类可读 `reasonText` 字段，也不得自行补算额外规则
 - 前端不得自行解析落地节点协议、端口或其他隐藏字段去补算 `modeWarnings`；若后端已将多个 warning 原因合并到同一个 `modeWarnings.chain`，前端须基于合并后的 `reasonCode` / `reasonArgs` 映射展示
+- `restoreConflicts[]` 的 `reasonCode` / `reasonArgs` 与 `blockingErrors[].code` / `reasonArgs` 共用同一映射表；只读冲突态下前端基于 `restoreConflicts[]` 展示失效原因
 - `restrictedModes` 表示该模式不可选；`modeWarnings` 表示该模式仍可选，但必须展示 warning 提示
 - 当某行的 `chain` 同时存在于 `availableModes` 且 `modeWarnings.chain` 已返回时，前端不得禁用该模式，也不得阻止用户提交；只允许以 Tooltip、辅助文案或等价方式提示“不推荐”原因
 

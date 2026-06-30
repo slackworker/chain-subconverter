@@ -63,7 +63,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 				BlockingErrors: []BlockingError{},
 			}, nil
 		}
-		if isRestoreConflictError(err) {
+		if IsRestoreConflictError(err) {
 			return ResolveURLResponse{
 				LongURL:        resolved,
 				ShortURL:       shortURL,
@@ -81,7 +81,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		return ResolveURLResponse{}, err
 	}
 
-	restoreStatus, messages, err := determineRestoreStatus(payload.Stage1Input, payload.Stage2Snapshot, fixtures)
+	restoreStatus, messages, err := pipeline.DetermineRestoreStatus(fixtures)
 	if err != nil {
 		return ResolveURLResponse{}, err
 	}
@@ -181,45 +181,6 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 	}
 
 	return canonicalLongURL, shortURL, payload, nil
-}
-
-// determineRestoreStatus runs the generate-phase validation against the
-// restored snapshot and current fixtures to decide replayable vs conflicted.
-//
-// Per spec 04-business-rules §3.2.1:
-//   - If every row passes validation -> "replayable"
-//   - If any row has an invalid reference -> "conflicted" + RESTORE_CONFLICT message
-func determineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, error) {
-	_, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
-	if err == nil {
-		return "replayable", []Message{}, nil
-	}
-
-	if !isRestoreConflictError(err) {
-		if responseErr, ok := AsResponseError(err); ok && responseErr.StatusCode() < http.StatusInternalServerError {
-			return "", nil, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
-		}
-		return "", nil, err
-	}
-	return "conflicted", []Message{{
-		Level:   "warning",
-		Code:    "RESTORE_CONFLICT",
-		Message: restoreConflictMessage(err),
-	}}, nil
-}
-
-func isRestoreConflictError(err error) bool {
-	responseErr, ok := AsResponseError(err)
-	if !ok {
-		return false
-	}
-
-	switch responseErr.BlockingError().Code {
-	case "STAGE2_ROWSET_MISMATCH", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND", "SERVER_AGGREGATION_MEMBER_NOT_FOUND", "SERVER_AGGREGATION_GROUP_TOO_SMALL", "SERVER_AGGREGATION_SERVER_MISMATCH":
-		return true
-	default:
-		return false
-	}
 }
 
 func parseResolveURLInput(rawURL string) (resolveURLInput, error) {

@@ -253,7 +253,7 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		return Stage2Init{}, newInternalResponseError("failed to build chain emoji processor", fmt.Errorf("build chain emoji processor: %w", err))
 	}
 
-	chainTargets, err := buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups)
+	chainTargets, err := buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups, emojiProcessor)
 	if err != nil {
 		return Stage2Init{}, err
 	}
@@ -369,10 +369,11 @@ func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]s
 				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
 			)
 		},
+		chainEmojiProcessor{},
 	)
 }
 
-func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, transitGroups map[string]proxyGroup) ([]ChainTarget, error) {
+func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, transitGroups map[string]proxyGroup, emojiProcessor chainEmojiProcessor) ([]ChainTarget, error) {
 	return buildChainTargetsFromGroups(
 		regionMatchers,
 		landingNames,
@@ -388,6 +389,7 @@ func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landi
 				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
 			)
 		},
+		emojiProcessor,
 	)
 }
 
@@ -397,6 +399,7 @@ func buildChainTargetsFromGroups(
 	transitProxies []inlineProxy,
 	groups map[string]proxyGroup,
 	missingGroupError func(string) error,
+	emojiProcessor chainEmojiProcessor,
 ) ([]ChainTarget, error) {
 	seen := make(map[string]struct{})
 	chainTargets := make([]ChainTarget, 0, len(regionMatchers)+len(transitProxies))
@@ -445,15 +448,22 @@ func buildChainTargetsFromGroups(
 	}
 
 	for _, proxy := range transitProxies {
-		if _, exists := seen[proxy.Name]; exists {
-			cause := fmt.Errorf("chain target name conflict: %q", proxy.Name)
+		displayName, err := transitProxyDisplayName(proxy.Name, emojiProcessor)
+		if err != nil {
+			return nil, newInternalResponseError(
+				"failed to apply chain emoji rules",
+				fmt.Errorf("apply chain emoji rules for transit proxy %q: %w", proxy.Name, err),
+			)
+		}
+		if _, exists := seen[displayName]; exists {
+			cause := fmt.Errorf("chain target name conflict: %q", displayName)
 			return nil, newGlobalValidationError("CHAIN_TARGET_NAME_CONFLICT", "chain target name conflict", cause)
 		}
 		chainTargets = append(chainTargets, ChainTarget{
-			Name: proxy.Name,
+			Name: displayName,
 			Kind: "proxies",
 		})
-		seen[proxy.Name] = struct{}{}
+		seen[displayName] = struct{}{}
 	}
 
 	return chainTargets, nil

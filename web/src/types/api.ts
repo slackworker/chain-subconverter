@@ -45,8 +45,10 @@ export interface Stage1Input {
 }
 
 export interface ModeReason {
-	reasonCode: string;
+	reasonCode?: string;
 	reasonArgs?: Record<string, unknown>;
+	/** Transitional fallback when backend still emits legacy reasonText. */
+	reasonText?: string;
 }
 
 export interface Stage2Row {

@@ -87,20 +87,32 @@ func (source *ManagedConversionSource) ConvertWithPlan(ctx context.Context, requ
 	return source.client.ConvertWithPlan(ctx, request, plan)
 }
 
-func (source *ManagedConversionSource) RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string) (string, error) {
-	id, err := source.templateStore.Save(managedLandingYAML)
+func (source *ManagedConversionSource) RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error) {
+	landingID, err := source.templateStore.Save(managedLandingYAML)
 	if err != nil {
 		return "", newInternalResponseError("failed to persist managed landing", err)
 	}
-	defer source.templateStore.Delete(id)
+	defer source.templateStore.Delete(landingID)
 
-	managedLandingURL, err := source.buildManagedTemplateURL(id)
+	managedLandingURL, err := source.buildManagedTemplateURL(landingID)
 	if err != nil {
 		return "", newInternalResponseError("failed to build managed landing URL", err)
 	}
 
+	transitID, err := source.templateStore.Save(managedTransitProxiesYAML)
+	if err != nil {
+		return "", newInternalResponseError("failed to persist managed transit proxies", err)
+	}
+	defer source.templateStore.Delete(transitID)
+
+	managedTransitURL, err := source.buildManagedTemplateURL(transitID)
+	if err != nil {
+		return "", newInternalResponseError("failed to build managed transit proxies URL", err)
+	}
+
 	request := prepared.Request
 	request.LandingRawText = managedLandingURL
+	request.TransitRawText = managedTransitURL
 
 	result, err := source.client.ConvertWithPlan(ctx, request, subconverter.ConvertPlan{
 		TransitDiscoveryList: false,

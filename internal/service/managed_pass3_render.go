@@ -8,7 +8,7 @@ import (
 )
 
 type SnapshotPass3RenderingSource interface {
-	RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string) (string, error)
+	RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error)
 }
 
 func buildManagedLandingConfigYAML(landingDiscoveryYAML string, rows []Stage2Row) (string, error) {

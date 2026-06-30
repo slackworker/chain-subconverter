@@ -35,11 +35,14 @@ export function formatModeReason(
 	reason: ModeReason | undefined | null,
 	locale: ModeReasonLocale = "zh",
 ): string {
-	if (!reason?.reasonCode) {
+	if (!reason) {
 		return "";
 	}
 
-	const { reasonCode, reasonArgs } = reason;
+	const { reasonCode, reasonArgs, reasonText } = reason;
+	if (!reasonCode) {
+		return reasonText ?? "";
+	}
 
 	switch (reasonCode) {
 		case "DISCOURAGED_BY_LANDING_PROTOCOL":
