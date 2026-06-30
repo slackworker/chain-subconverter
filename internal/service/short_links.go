@@ -187,20 +187,11 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 	rows := make([]Stage2Row, len(payload.Stage2Snapshot.Rows))
 	copy(rows, payload.Stage2Snapshot.Rows)
 
-	rowIDByOriginal := make(map[string]string, len(rows)*2)
 	for index, row := range rows {
-		originalRowID := strings.TrimSpace(row.rowIDOrFallback())
-		canonicalRowID := strings.TrimSpace(row.proxyNameOrFallback())
-		if canonicalRowID == "" {
-			canonicalRowID = originalRowID
-		}
-		rows[index].RowID = canonicalRowID
-		if originalRowID != "" {
-			rowIDByOriginal[originalRowID] = canonicalRowID
-		}
-		if canonicalRowID != "" {
-			rowIDByOriginal[canonicalRowID] = canonicalRowID
-		}
+		rows[index].RowID = strings.TrimSpace(row.rowIDOrFallback())
+		rows[index].SourceLandingNodeName = strings.TrimSpace(row.sourceLandingNodeNameOrFallback())
+		rows[index].ProxyName = strings.TrimSpace(row.proxyNameOrFallback())
+		rows[index].LandingNodeName = rows[index].ProxyName
 	}
 
 	sort.Slice(rows, func(left, right int) bool {
@@ -212,19 +203,15 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 		memberRowIDs := make([]string, 0, len(group.MemberRowIDs))
 		seen := make(map[string]struct{}, len(group.MemberRowIDs))
 		for _, memberRowID := range group.MemberRowIDs {
-			memberKey := strings.TrimSpace(memberRowID)
-			if memberKey == "" {
+			memberRowID = strings.TrimSpace(memberRowID)
+			if memberRowID == "" {
 				continue
 			}
-			canonicalMemberRowID := strings.TrimSpace(rowIDByOriginal[memberKey])
-			if canonicalMemberRowID == "" {
-				canonicalMemberRowID = memberKey
-			}
-			if _, exists := seen[canonicalMemberRowID]; exists {
+			if _, exists := seen[memberRowID]; exists {
 				continue
 			}
-			seen[canonicalMemberRowID] = struct{}{}
-			memberRowIDs = append(memberRowIDs, canonicalMemberRowID)
+			seen[memberRowID] = struct{}{}
+			memberRowIDs = append(memberRowIDs, memberRowID)
 		}
 		if shouldCanonicalizeServerAggregationMemberOrder(group.Strategy) {
 			sort.Strings(memberRowIDs)
@@ -251,12 +238,14 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 
 func compareStage2RowCanonicalOrder(left Stage2Row, right Stage2Row) int {
 	leftFields := []string{
+		strings.TrimSpace(left.rowIDOrFallback()),
 		strings.TrimSpace(left.sourceLandingNodeNameOrFallback()),
 		strings.TrimSpace(left.proxyNameOrFallback()),
 		strings.TrimSpace(left.Mode),
 		normalizeOptionalStringValue(left.TargetName),
 	}
 	rightFields := []string{
+		strings.TrimSpace(right.rowIDOrFallback()),
 		strings.TrimSpace(right.sourceLandingNodeNameOrFallback()),
 		strings.TrimSpace(right.proxyNameOrFallback()),
 		strings.TrimSpace(right.Mode),

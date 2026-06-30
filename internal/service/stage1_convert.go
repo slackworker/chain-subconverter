@@ -145,8 +145,8 @@ type Stage2InitRow struct {
 }
 
 type ModeRestriction struct {
-	ReasonCode string `json:"reasonCode"`
-	ReasonText string `json:"reasonText"`
+	ReasonCode string         `json:"reasonCode"`
+	ReasonArgs map[string]any `json:"reasonArgs,omitempty"`
 }
 
 type ChainTarget struct {
@@ -342,27 +342,15 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 }
 
 func (row Stage2Row) rowIDOrFallback() string {
-	if id := strings.TrimSpace(row.RowID); id != "" {
-		return id
-	}
-	if proxyName := row.proxyNameOrFallback(); proxyName != "" {
-		return proxyName
-	}
-	return strings.TrimSpace(row.LandingNodeName)
+	return stage2RowIdentityFromRow(row).RowID
 }
 
 func (row Stage2Row) sourceLandingNodeNameOrFallback() string {
-	if sourceName := strings.TrimSpace(row.SourceLandingNodeName); sourceName != "" {
-		return sourceName
-	}
-	return strings.TrimSpace(row.LandingNodeName)
+	return stage2RowIdentityFromRow(row).SourceLandingNodeName
 }
 
 func (row Stage2Row) proxyNameOrFallback() string {
-	if proxyName := strings.TrimSpace(row.ProxyName); proxyName != "" {
-		return proxyName
-	}
-	return strings.TrimSpace(row.LandingNodeName)
+	return stage2RowIdentityFromRow(row).ProxyName
 }
 
 func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {
@@ -533,31 +521,40 @@ func buildModeWarnings(landingProtocolType string, landingPort int, availableMod
 	if !containsString(availableModes, "chain") {
 		return nil
 	}
-	reasonCode, reasonText := buildChainModeWarning(landingProtocolType, landingPort)
+	reasonCode, reasonArgs := buildChainModeWarning(landingProtocolType, landingPort)
 	if reasonCode == "" {
 		return nil
 	}
 	return map[string]ModeRestriction{
 		"chain": {
 			ReasonCode: reasonCode,
-			ReasonText: reasonText,
+			ReasonArgs: reasonArgs,
 		},
 	}
 }
 
-func buildChainModeWarning(landingProtocolType string, landingPort int) (string, string) {
+func buildChainModeWarning(landingProtocolType string, landingPort int) (string, map[string]any) {
 	protocolWarning := isDiscouragedChainLandingProtocol(landingProtocolType)
 	portWarning := landingPort > recommendedChainLandingPortMax
 
 	switch {
 	case protocolWarning && portWarning:
-		return "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT", protocolChainWarningText() + "；" + chainHighPortWarningText(landingPort)
+		return "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT", map[string]any{
+			"landingProtocolType": landingProtocolType,
+			"landingPort":         landingPort,
+			"recommendedPortMax":  recommendedChainLandingPortMax,
+		}
 	case protocolWarning:
-		return "DISCOURAGED_BY_LANDING_PROTOCOL", protocolChainWarningText()
+		return "DISCOURAGED_BY_LANDING_PROTOCOL", map[string]any{
+			"landingProtocolType": landingProtocolType,
+		}
 	case portWarning:
-		return "DISCOURAGED_BY_LANDING_PORT", chainHighPortWarningText(landingPort)
+		return "DISCOURAGED_BY_LANDING_PORT", map[string]any{
+			"landingPort":        landingPort,
+			"recommendedPortMax": recommendedChainLandingPortMax,
+		}
 	default:
-		return "", ""
+		return "", nil
 	}
 
 }

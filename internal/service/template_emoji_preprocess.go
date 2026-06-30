@@ -34,15 +34,15 @@ type chainEmojiProcessor struct {
 	rules          []compiledEmojiRule
 }
 
-func preprocessTemplateEmojiByRegion(templateConfig string, options AdvancedOptions) (string, []Message) {
+func preprocessTemplateEmojiByRegion(templateConfig string, options AdvancedOptions) (string, []Message, error) {
 	if !shouldPreprocessTemplateEmoji(options) {
-		return templateConfig, nil
+		return templateConfig, nil, nil
 	}
-	normalized := normalizeInputNewlines(templateConfig)
-	regionRules := collectRegionEmojiRules(normalized)
-	_, _, templateRules := collectTemplateEmojiConfigState(normalized)
-	_, messages := mergeEmojiRules(regionRules, templateRules)
-	return templateConfig, messages
+	_, messages, err := buildChainEmojiProcessor(templateConfig, options)
+	if err != nil {
+		return "", nil, err
+	}
+	return templateConfig, messages, nil
 }
 
 func buildChainEmojiProcessor(templateConfig string, options AdvancedOptions) (chainEmojiProcessor, []Message, error) {

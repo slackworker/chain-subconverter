@@ -381,19 +381,13 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 		writeBlockingError(writer, request, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
 	}
-	payload.Stage1Input, err = service.ApplyLongURLCompatibleQueryOverrides(payload.Stage1Input, request.URL.Query())
-	if err != nil {
-		writeBlockingError(writer, request, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
-		return
-	}
 
-	renderedConfig, err := service.RenderCompleteConfigFromSourceWithExtraQuery(
+	renderedConfig, err := service.RenderCompleteConfigFromSource(
 		request.Context(),
 		handler.source,
 		payload.Stage1Input,
 		payload.Stage2Snapshot,
 		handler.inputLimits,
-		service.ExtractSubscriptionPassthroughQuery(request.URL.Query()),
 	)
 	if err != nil {
 		if subconverter.IsUnavailable(err) {

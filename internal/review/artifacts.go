@@ -142,9 +142,12 @@ func snapshotRowsFromInit(rows []service.Stage2InitRow) []service.Stage2Row {
 	snapshotRows := make([]service.Stage2Row, 0, len(rows))
 	for _, row := range rows {
 		snapshotRows = append(snapshotRows, service.Stage2Row{
-			LandingNodeName: row.LandingNodeName,
-			Mode:            row.Mode,
-			TargetName:      row.TargetName,
+			RowID:                 row.RowID,
+			SourceLandingNodeName: row.SourceLandingNodeName,
+			ProxyName:             row.ProxyName,
+			LandingNodeName:       row.LandingNodeName,
+			Mode:                  row.Mode,
+			TargetName:            row.TargetName,
 		})
 	}
 	return snapshotRows

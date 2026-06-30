@@ -134,7 +134,9 @@
         "modeWarnings": {
           "chain": {
             "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+            "reasonArgs": {
+              "landingProtocolType": "vless-reality"
+            }
           }
         }
       },
@@ -160,7 +162,9 @@
         "modeWarnings": {
           "chain": {
             "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+            "reasonArgs": {
+              "landingProtocolType": "vless-reality"
+            }
           }
         }
       },

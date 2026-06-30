@@ -916,52 +916,42 @@ func TestSubscriptionHandler_DownloadDisposition(t *testing.T) {
 	}
 }
 
-func TestSubscriptionHandler_CompatibleOuterQueryEmojiOverrideNotForwardedToSubconverter(t *testing.T) {
+func TestSubscriptionHandler_RejectsUnsupportedOuterQueryEmojiOverride(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var generateResponse service.GenerateResponse
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
-	source := &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}
-	handler := mustNewTestHandler(t, source)
+	handler := mustNewTestHandler(t, &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)})
 
 	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL+"&emoji=false", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
-	}
-	if source.gotRequest.Options.Emoji != nil {
-		t.Fatalf("emoji should not be forwarded to subconverter request, got %+v", source.gotRequest.Options.Emoji)
-	}
-	if got := source.gotRequest.ExtraQuery.Get("emoji"); got != "" {
-		t.Fatalf("emoji query should not passthrough to subconverter, got %q", got)
-	}
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: `validate long URL query: unsupported query parameter "emoji"`,
+		Scope:   "global",
+	})
 }
 
-func TestSubscriptionHandler_PassesThroughExtraQueryToSubconverter(t *testing.T) {
+func TestSubscriptionHandler_RejectsUnsupportedExtraQuery(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var generateResponse service.GenerateResponse
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
-	source := &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}
-	handler := mustNewTestHandler(t, source)
+	handler := mustNewTestHandler(t, &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)})
 
 	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL+"&tfo=true", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
-	}
-	if got := source.gotRequest.ExtraQuery.Get("tfo"); got != "true" {
-		t.Fatalf("expected passthrough query tfo=true, got %q", got)
-	}
-	if source.gotRequest.ExtraQuery.Get("download") != "" {
-		t.Fatalf("download query must not passthrough, got %+v", source.gotRequest.ExtraQuery)
-	}
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: `validate long URL query: unsupported query parameter "tfo"`,
+		Scope:   "global",
+	})
 }
 
 func TestSubscriptionHandler_MapsConnectionFailureToBusinessMessage(t *testing.T) {
@@ -971,9 +961,12 @@ func TestSubscriptionHandler_MapsConnectionFailureToBusinessMessage(t *testing.T
 			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "none",
-					TargetName:      nil,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					LandingNodeName:       "HK 01",
+					Mode:                  "none",
+					TargetName:            nil,
 				}},
 			},
 		),
@@ -1405,7 +1398,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"missing-row","sourceLandingNodeName":"missing-row","proxyName":"missing-row","landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -1477,7 +1470,7 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 		result: singleLandingResult("Unknown Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"Unknown Landing","sourceLandingNodeName":"Unknown Landing","proxyName":"Unknown Landing","landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -1489,7 +1482,6 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 			"rowId":                 "Unknown Landing",
 			"sourceLandingNodeName": "Unknown Landing",
 			"proxyName":             "Unknown Landing",
-			"landingNodeName":       "Unknown Landing",
 			"field":                 "targetName",
 		},
 	})
@@ -1508,9 +1500,12 @@ func TestSubscriptionHandler_RejectsLandingWithoutServerField(t *testing.T) {
 			},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				}},
 			},
 		),
@@ -1590,9 +1585,12 @@ func TestSubscriptionHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *test
 			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "none",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					LandingNodeName:       "HK 01",
+					Mode:                  "none",
+					TargetName:            &targetName,
 				}},
 			},
 		),
@@ -1622,8 +1620,11 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "unsupported",
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					LandingNodeName:       "HK 01",
+					Mode:                  "unsupported",
 				}},
 			},
 		),
@@ -2020,7 +2021,7 @@ func singleLandingResult(landingName string, landingType string, omitServer bool
 			"      - " + landingName,
 			"",
 		}, "\n")},
-		FullBase:         subconverter.PassResult{YAML: fullBaseYAML},
+		FullBase: subconverter.PassResult{YAML: fullBaseYAML},
 	}
 }
 

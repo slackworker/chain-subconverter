@@ -633,11 +633,11 @@ func TestBuildStage2Init_HighLandingPortEmitsChainWarning(t *testing.T) {
 	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PORT" {
 		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
 	}
-	if !strings.Contains(warning.ReasonText, "10001") {
-		t.Fatalf("ReasonText should mention current landing port, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["landingPort"]; got != 10001 {
+		t.Fatalf("landingPort mismatch: got %#v want %d", got, 10001)
 	}
-	if !strings.Contains(warning.ReasonText, "10000 以内端口") {
-		t.Fatalf("ReasonText should include recommended port range, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["recommendedPortMax"]; got != recommendedChainLandingPortMax {
+		t.Fatalf("recommendedPortMax mismatch: got %#v want %d", got, recommendedChainLandingPortMax)
 	}
 }
 
@@ -658,11 +658,11 @@ func TestBuildStage2Init_HighLandingPortAndProtocolMergeChainWarnings(t *testing
 	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT" {
 		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
 	}
-	if !strings.Contains(warning.ReasonText, "建议 SS（AEAD）或 VMess") {
-		t.Fatalf("ReasonText should retain protocol guidance, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["landingProtocolType"]; got != "vless-reality" {
+		t.Fatalf("landingProtocolType mismatch: got %#v want %q", got, "vless-reality")
 	}
-	if !strings.Contains(warning.ReasonText, "12000") {
-		t.Fatalf("ReasonText should mention current landing port, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["landingPort"]; got != 12000 {
+		t.Fatalf("landingPort mismatch: got %#v want %d", got, 12000)
 	}
 }
 

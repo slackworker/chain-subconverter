@@ -88,7 +88,6 @@
 - `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
 - `rowId` 为行稳定 ID（全表唯一，必填）；`proxyName` 为 YAML 节点名（全表唯一）；`sourceLandingNodeName` 为 Pass 1 原始落地名；数组顺序不承载语义；字段语义见 [04 §2.1.2](04-business-rules.md)
 - 每个当前落地身份至少一行；允许多行共享同一 `sourceLandingNodeName`（复制）
-- 兼容字段 `landingNodeName` 等同 `proxyName`
 - `mode` 只能是 `none`、`chain`、`port_forward`
 - `mode = none` 时，`targetName` 必须为空或 `null`
 - `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
@@ -96,7 +95,7 @@
 - `serverAggregationGroups[]` 可选；字段形状见上文示例；业务语义、校验、命名与渲染规则见 [04 §2.7](04-business-rules.md) 与 [04 §3.3.2](04-business-rules.md)
 - `serverAggregationGroups[].server` 是组稳定标识，表达“该聚合组对应哪个落地 server”；同一 `stage2Snapshot` 内唯一
 - `serverAggregationGroups[].groupName` 为可选字符串，表达用户显式编辑后的聚合组名；缺失或空字符串都表示“当前未设置自定义组名，应回退到默认命名规则”
-- `serverAggregationGroups[].groupName` 只承载聚合组命名语义，不得改变任何 `rows[]` 的 `proxyName`、`landingNodeName`、`rowId` 或 `sourceLandingNodeName`
+- `serverAggregationGroups[].groupName` 只承载聚合组命名语义，不得改变任何 `rows[]` 的 `proxyName`、`rowId` 或 `sourceLandingNodeName`
 - 渲染出的聚合组是最终 YAML 产物，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
 - `chainProxyTargetGroupSwitchOptimizationEnabled` 为可选布尔值；开启后对所有 `mode = chain` 且 `targetName` 为 `kind = proxy-groups` 的行统一应用节点切换优化（`url-test` 覆写）；适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
 
@@ -118,7 +117,6 @@
         "rowId": "HK 01",
         "sourceLandingNodeName": "HK 01",
         "proxyName": "HK 01",
-        "landingNodeName": "HK 01",
         "landingNodeType": "SS",
         "server": "landing.example.com",
         "mode": "chain",
@@ -128,13 +126,12 @@
         "rowId": "Reality 01",
         "sourceLandingNodeName": "Reality 01",
         "proxyName": "Reality 01",
-        "landingNodeName": "Reality 01",
         "landingNodeType": "Reality",
         "server": "edge.reality.example",
         "modeWarnings": {
           "chain": {
             "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-            "reasonText": "落地节点若无特殊需求勿选 UDP 类（Hy2/TUIC/WireGuard）与 TLS 伪装（Reality/ShadowTLS），订阅可能无法贯通；建议 SS（AEAD）或 VMess"
+            "reasonArgs": { "protocolClass": "udp_or_tls_obfuscated" }
           }
         },
         "mode": "chain",
@@ -161,12 +158,12 @@
 - `stage2Init.rows[]` 不暴露切换优化字段；开关由 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 全局承载（见 §2）
 - `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码
-- `rows[].restrictedModes.<mode>.reasonText`：禁用原因文案
+- `rows[].restrictedModes.<mode>.reasonArgs`：禁用原因参数对象（可选）
 - `rows[].modeWarnings`：当前行的模式 warning 映射；出现条件见 [04-business-rules](04-business-rules.md)
 - `rows[].modeWarnings.<mode>.reasonCode`：warning 原因码
-- `rows[].modeWarnings.<mode>.reasonText`：warning 文案
+- `rows[].modeWarnings.<mode>.reasonArgs`：warning 原因参数对象（可选）
 - `modeWarnings.chain.reasonCode` 在当前规格中允许为 `DISCOURAGED_BY_LANDING_PROTOCOL`、`DISCOURAGED_BY_LANDING_PORT` 或 `DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT`
-- 当同一行同时命中多条 `chain` warning 条件时，后端必须合并为单个 `modeWarnings.chain` 项，并在 `reasonText` 中保留所有适用提示
+- 当同一行同时命中多条 `chain` warning 条件时，后端必须合并为单个 `modeWarnings.chain` 项，并在 `reasonArgs` 中返回组合原因参数
 
 ### 4. 消息与错误模型
 
@@ -200,6 +197,17 @@
 ]
 ```
 
+`restoreConflicts[]`（仅 `POST /api/resolve-url` 成功响应可返回）：
+
+```json
+[
+  {
+    "reasonCode": "TARGET_NOT_FOUND",
+    "reasonArgs": { "rowId": "HK 02", "field": "targetName" }
+  }
+]
+```
+
 约束：
 
 - `messages[]` 只承载 `info` 与 `warning`
@@ -207,8 +215,10 @@
 - 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`STAGE2_RESET`、`STAGE2_ROW_RESET`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
 - `messages[]` 不承诺字段级或行级定位语义，也不单独决定前端展示位置
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
+- `messages[]` 可选返回 `reasonArgs`；若返回则必须是对象，由前端基于 `code` 本地映射文案
 - `blockingErrors[]` 只承载阻断当前请求的错误
 - `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`
+- `blockingErrors[]` 可选返回 `reasonArgs`；若返回则必须是对象
 - `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
 - `scope` 只能是 `global`、`stage1_field`、`stage2_row`、`stage3_field` 或 `stage3_action`
 - `scope` 只定义共享层必须稳定的业务定位语义，不规定前端的具体布局、视觉样式或组件形态
@@ -218,10 +228,11 @@
 - `POST /api/resolve-url` 与 `POST /api/short-links` 的失败响应允许使用 `stage3_field` 或 `stage3_action`；仅当错误属于存储、依赖或未知内部异常时使用 `scope = global`
 - 前端仍可在展示层派生 Stage 3 来源标签，但该标签不替代 `stage3_*` 的局部定位职责
 - `scope = stage1_field` 时，`context.field` 必填
-- `scope = stage2_row` 时，`context.rowId` 必填；`context.proxyName` 建议同时返回；可兼容 `landingNodeName`（等同 `proxyName`）；列级错误须含 `context.field`
+- `scope = stage2_row` 时，`context.rowId` 必填；`context.proxyName` 建议同时返回；列级错误须含 `context.field`
 - `scope = stage3_field` 时，`context.field` 必填；当前前端默认使用 `currentLinkInput` 作为 Stage 3 当前链接输入框的稳定字段键
 - `scope = stage3_action` 时，`context.action` 为可选字段；若返回，则其值必须只承担动作来源说明，不得替代 `originStage`
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
+- `restoreConflicts[]` 只在 `restoreStatus = conflicted` 的成功响应中返回；每个元素都必须包含 `reasonCode`，`reasonArgs` 可选
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE.message` 必须是面向最终用户的业务化提示，不得出现 pass 名称、容器主机名、内部请求 URL、查询串或原始技术错误串
@@ -381,8 +392,9 @@
 
 - 本接口不返回 `completeConfig` 或 `baseCompleteConfig`
 - `stage2Init` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md)
+- 本接口固定只执行 Pass 1（landing-discovery）与 Pass 2（transit-discovery）；不执行 Pass 3
 - 多条完全一致的落地 URI 不得被静默去重
-- `landingNodeName` 的具体命名与重名处理由转换服务负责；前端只消费接口返回结果，不得自行猜测
+- `proxyName` 的具体命名与重名处理由转换服务和 chain 侧命名流程共同决定；前端只消费接口返回结果，不得自行猜测
 - `advancedOptions.config` 虽保留历史字段名 `config`，但其业务语义始终是“模板 URL”；阻断错误中的 `context.field = config` 也对应这一字段
 
 最小失败语义：
@@ -439,6 +451,7 @@
 
 - 请求体不包含 `completeConfig`
 - 本接口返回规范化长链接；生成前校验规则见 [04-business-rules](04-business-rules.md)
+- 本接口必须执行完整 Pass 1/2/3 Pipeline，并按 hard-break 规则编码 `statePayload v4`
 - 本接口不返回 YAML 文本
 
 成功响应：
@@ -544,7 +557,7 @@
 规则：
 
 - `scope = all`：`stage2Snapshot` 必须恢复为当前 `stage1Input` 对应的初始快照（`rows` 来自 `stage2Init.rows`，`serverAggregationGroups = []`，切换优化开关为 `false`）
-- `scope = row`：仅恢复指定行的 `proxyName`、`landingNodeName`、`mode` 与 `targetName`；其他行与聚合组保持不变
+- `scope = row`：仅恢复指定行的 `proxyName`、`mode` 与 `targetName`；其他行与聚合组保持不变
 - `scope = row` 时，行定位以 `rowId` 为准；若找不到对应行，接口失败
 
 最小失败语义：
@@ -599,7 +612,7 @@
 - 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
 - 对同一份规范状态的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；即使 `USER_FACING_BASE_URL` 或请求入口变化导致规范化 `longUrl` 的 scheme / host / base path 变化，只要状态载荷相同，`shortUrl` 中的 `<id>` 也必须保持一致。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
-- 若输入 `longUrl` 带有额外兼容 query，后端必须先按本文“长链接编码规范”完成解码与规范化；成功响应中的 `longUrl` 只保留规范状态载荷，不保留仅用于本次订阅读取的额外透传参数
+- `longUrl` 必须是规范长链接（仅包含 `data`）；若携带其他 query，必须返回 `INVALID_LONG_URL`
 - 成功响应的 `messages[]` 可包含短链接存储淘汰相关 warning
 
 最小失败语义：
@@ -628,7 +641,13 @@
 {
   "longUrl": "https://example.com/sub?data=...",
   "shortUrl": "https://example.com/sub/7NpK2mQx9a",
-  "restoreStatus": "replayable",
+  "restoreStatus": "conflicted",
+  "restoreConflicts": [
+    {
+      "reasonCode": "TARGET_NOT_FOUND",
+      "reasonArgs": { "rowId": "HK 02", "field": "targetName" }
+    }
+  ],
   "stage1Input": { "...": "结构同 POST /api/stage1/convert 请求中的 stage1Input" },
   "stage2Snapshot": { "...": "结构同本文“2. 阶段 2 配置快照”" },
   "messages": [],
@@ -639,16 +658,19 @@
 规则：
 
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
+- `restoreConflicts[]` 为可选数组；`restoreStatus = replayable` 时可省略或返回空数组，`restoreStatus = conflicted` 时必须非空
 - 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
 - 传入短链接或裸 `shortID` 时，先解析为长链接，再解码同一份快照
 - 传入短链接或裸 `shortID` 且解析成功时，成功响应必须额外返回规范化 `shortUrl`；传入长链接时不返回该字段
 - 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理
-- 若传入长链接带有额外兼容 query，成功响应中的 `longUrl` 必须是折叠共享状态覆写后的规范长链接，不保留仅用于本次订阅读取的额外透传参数
+- 若传入长链接携带 `data` 与可选 `download=1` 之外的 query，必须返回 `INVALID_LONG_URL`
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
+- 本接口必须执行与 `POST /api/generate` 同口径的 Pipeline 与校验，不得走兼容分支
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
-- `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input` 与 `stage2Snapshot`
+- `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input`、`stage2Snapshot` 与 `restoreConflicts[]`
+- `restoreConflicts[].reasonCode` 必填；`reasonArgs` 可选且必须是对象
 - `restoreStatus = conflicted` 时，`messages[]` 必须包含 `RESTORE_CONFLICT`，供前端进入只读冲突态
 
 最小失败语义：
@@ -668,7 +690,7 @@
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
-- 除 `download=1` 外，本入口额外 query 的兼容覆写与透传规则与长链接入口一致；统一见下文“长链接编码规范”
+- 本入口只接受短链路径参数与可选 `download=1`；不接受状态覆写或透传 query
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
 - 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`429` `RATE_LIMITED`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`429` 与 `503` 可返回 `retryable = true`
 
@@ -684,9 +706,9 @@
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
-- 除 `data` 与 `download=1` 外，解析端允许接受额外 query；额外 query 的兼容覆写与透传规则统一见下文“长链接编码规范”
+- 除 `data` 与可选 `download=1` 外，不接受任何其他 query；否则必须返回 `INVALID_LONG_URL`
 - HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`
-- 增量失败语义（下表以「解码管线」指 `query parse → data(base64url → gunzip → JSON parse) → 兼容参数解析 / 覆写 → schema 结构校验 → 输入上限校验`）：
+- 增量失败语义（下表以「解码管线」指 `query parse → data(base64url → gunzip → JSON parse) → schema 结构校验 → 输入上限校验`）：
   - `400` `INVALID_REQUEST`：`data` 参数缺失
   - `429` `RATE_LIMITED`：命中服务端读接口限速；`scope = global`
   - `422` `INVALID_LONG_URL`：解码管线任一步骤失败；`scope = global`
@@ -711,7 +733,7 @@
 
 ```json
 {
-  "v": 3,
+  "v": 4,
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -751,23 +773,20 @@
 
 规则：
 
-- `v` 是长链接编码版本字段；后端编码端当前写出 `v = 3`，解码端按兼容策略接受 `v = 2` 与 `v = 3`（用于恢复与短链解析）
+- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 4`
 - 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
 - `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 属于规范长链接状态的一部分
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
-- 解码时若 `v` 缺失、不是整数、或超出当前实现支持范围，必须视为无效长链接
+- 解码时若 `v` 缺失、不是整数、或不等于 `4`，必须视为无效长链接
 
-### 3. 额外 query 兼容层
+### 3. query 约束（hard-break）
 
-规范长链接由后端生成时，查询参数只包含 `data`；解析端在订阅读取、`resolve-url` 与 `short-links` 校验时可额外接受 `data` 之外的 query，规则如下：
+规范长链接由后端生成时，查询参数只包含 `data`。解析端在订阅读取、`resolve-url` 与 `short-links` 校验时必须遵循以下规则：
 
-- `download=1` 仅是订阅消费时的辅助查询参数，不属于状态载荷；解码与规范化时必须忽略，并在重编码时移除
-- 外层 `emoji`、`udp`、`scv`、`config`、`include`、`exclude` 视为兼容覆写参数；若出现，则必须先覆盖 `data` 内恢复出的对应阶段 1 值，再参与后续恢复、校验与订阅渲染
-- 外层 `include`、`exclude` 的值沿用上游 query 语义：多项按输入顺序用 `|` 拼接；解析端需按该规则还原为数组
-- 若外层与 `data` 内同时存在同名兼容覆写参数，必须以外层显式值为准
-- 除 `data`、`download`、兼容覆写参数与后端固定管理的上游参数外，解析端可接受额外 query；这类参数不进入共享状态快照，只在本次订阅读取请求中透传给上游 `subconverter`
-- `url`、`target`、`list`、`expand`、`classic` 等由后端固定管理的上游参数不得被外层 query 覆写；这些键不进入共享状态，也不得作为透传参数转发
-- `POST /api/resolve-url` 与 `POST /api/short-links` 的规范化重编码结果，不得保留仅用于本次订阅读取的额外透传参数
+- `download=1` 仅是消费侧的下载辅助参数，不属于状态载荷；出现在 `resolve-url` 与 `short-links` 输入时也必须被忽略而非写回状态
+- `resolve-url` 与 `short-links` 请求中，只允许 `data` 与可选 `download=1`
+- `GET /sub?...` 请求中，只允许 `data` 与可选 `download=1`；出现其他 query 必须返回 `INVALID_LONG_URL`
+- 后端重编码规范长链接时只保留 `data`
 
 ### 4. 规范编码算法
 
@@ -794,8 +813,8 @@ gzip 规则：
 
 ### 5. 解码与错误处理
 
-- 后端解码长链接时，必须执行 `query parse -> data(base64url -> gunzip -> JSON parse) -> 兼容参数解析 / 覆写 -> schema 结构校验 -> 输入上限校验`
-- 解码管线包含以下步骤：query 解析、`data` 的 `base64url` 解码、`gunzip` 解压、JSON parse、兼容参数解析 / 覆写、schema 结构校验、输入上限校验；任一步骤失败都必须返回 `INVALID_LONG_URL`
+- 后端解码长链接时，必须执行 `query parse -> data(base64url -> gunzip -> JSON parse) -> schema 结构校验 -> 输入上限校验`
+- 解码管线包含以下步骤：query 解析、`data` 的 `base64url` 解码、`gunzip` 解压、JSON parse、schema 结构校验、输入上限校验；任一步骤失败都必须返回 `INVALID_LONG_URL`
 - `INVALID_LONG_URL` 的覆盖范围严格限定于解码管线失败；解码成功后的业务处理（包括 subconverter 调用、YAML 渲染）不属于 `INVALID_LONG_URL` 语义范畴
 - `POST /api/resolve-url` 与 `POST /api/short-links` 对解码管线失败须一致返回 `INVALID_LONG_URL`
 
@@ -804,7 +823,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
 - 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
-- 当前编码默认写出 `v = 3` 时，后端在内部仍会生成可逆的 canonical `longUrl`；若其长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- 当前编码固定写出 `v = 4`；若 canonical `longUrl` 长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
@@ -814,12 +833,12 @@ gzip 规则：
 - 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
 - 长链接必须可逆，能恢复页面状态
 - 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
-- 长链接编码版本必须显式包含在 `data` 载荷中；编码端默认写出当前版本 `v = 3`，解码端按兼容策略处理受支持版本
+- 长链接编码版本必须显式包含在 `data` 载荷中；编码与解码都固定使用 `v = 4`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址
 - 长链接公开路径固定为 `/sub?...`
 - 后端生成的规范长链接查询参数只包含 `data`
-- 订阅读取时可额外附加兼容 query；其中共享状态覆写会被折叠回规范长链接，非共享状态的透传参数不进入规范长链接
+- 订阅读取只允许附加 `download=1`；其他 query 一律视为无效长链接
 - 长链接是唯一规范化状态源
 - 短链接是长链接的不透明别名，不单独承载状态源语义
 - 短链接公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀

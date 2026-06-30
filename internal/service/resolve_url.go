@@ -48,7 +48,9 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
 	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
 
-	fixtures, err := loadGenerateValidationFixtures(ctx, source, payload.Stage1Input, payload.Stage2Snapshot, limits)
+	pipeline := NewCorePipeline(ctx, source, payload.Stage1Input, limits).
+		WithStage2Snapshot(payload.Stage2Snapshot)
+	fixtures, err := pipeline.LoadGenerateValidationFixtures()
 	if err != nil {
 		if restoreStatus, messages, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
 			return ResolveURLResponse{

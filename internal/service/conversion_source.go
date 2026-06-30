@@ -32,29 +32,20 @@ type TemplatePreparingSource interface {
 }
 
 func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (Stage1ConvertResponse, error) {
-	stage1Input = NormalizeStage1Input(stage1Input)
-	fixtures, err := LoadStage1InitFixtures(ctx, source, stage1Input, limits)
-	if err != nil {
-		return Stage1ConvertResponse{}, err
-	}
-	return BuildStage1ConvertResponse(stage1Input, fixtures)
+	return NewCorePipeline(ctx, source, stage1Input, limits).BuildStage1ConvertResponse()
 }
 
 func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int, limits InputLimits) (GenerateResponse, error) {
-	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
-	request.Stage2Snapshot = NormalizeStage2Snapshot(request.Stage2Snapshot)
-	fixtures, err := loadGenerateValidationFixtures(ctx, source, request.Stage1Input, request.Stage2Snapshot, limits)
-	if err != nil {
-		return GenerateResponse{}, err
-	}
-	return BuildGenerateResponse(publicBaseURL, request, fixtures, maxLongURLLength)
+	return NewCorePipeline(ctx, source, request.Stage1Input, limits).
+		WithStage2Snapshot(request.Stage2Snapshot).
+		BuildGenerateResponse(publicBaseURL, maxLongURLLength)
 }
 
 func loadGenerateValidationFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (ConversionFixtures, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
 	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
 	if snapshotSource, ok := source.(SnapshotPass3RenderingSource); ok {
-		return loadManagedPass3ValidationFixtures(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits, nil)
+		return loadManagedPass3ValidationFixtures(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits)
 	}
 	return LoadConversionFixtures(ctx, source, stage1Input, limits)
 }
@@ -64,16 +55,12 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 }
 
 func RenderCompleteConfigFromSourceWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits, extraQuery url.Values) (string, error) {
-	stage1Input = NormalizeStage1Input(stage1Input)
-	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
-	if snapshotSource, ok := source.(SnapshotPass3RenderingSource); ok {
-		return renderCompleteConfigViaManagedPass3(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits, extraQuery)
+	if len(extraQuery) > 0 {
+		return "", fmt.Errorf("subscription extra query overrides are not supported")
 	}
-	fixtures, err := LoadConversionFixturesWithExtraQuery(ctx, source, stage1Input, limits, extraQuery)
-	if err != nil {
-		return "", err
-	}
-	return RenderCompleteConfig(stage1Input, stage2Snapshot, fixtures)
+	return NewCorePipeline(ctx, source, stage1Input, limits).
+		WithStage2Snapshot(stage2Snapshot).
+		RenderCompleteConfig()
 }
 
 func renderCompleteConfigViaManagedPass3(
@@ -83,7 +70,6 @@ func renderCompleteConfigViaManagedPass3(
 	stage1Input Stage1Input,
 	stage2Snapshot Stage2Snapshot,
 	limits InputLimits,
-	extraQuery url.Values,
 ) (string, error) {
 	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
 		return "", err
@@ -96,7 +82,6 @@ func renderCompleteConfigViaManagedPass3(
 	if prepared.Cleanup != nil {
 		defer prepared.Cleanup()
 	}
-	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
 
 	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, subconverter.Stage1InitConvertPlan())
 	if err != nil {
@@ -111,8 +96,12 @@ func renderCompleteConfigViaManagedPass3(
 	fixtures.EffectiveTemplateURL = prepared.EffectiveTemplateURL
 	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
 	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
+	fixturesForSnapshotValidation := fixtures
+	// Managed pass3 rewrites landing proxy names based on stage2 rows.
+	// Snapshot validation must keep Stage1 discovery identity as source of truth.
+	fixturesForSnapshotValidation.FullBaseYAML = ""
 
-	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
+	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixturesForSnapshotValidation)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +121,7 @@ func renderCompleteConfigViaManagedPass3(
 		return "", err
 	}
 
-	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
+	stage2Init, err := BuildStage2Init(stage1Input, fixturesForSnapshotValidation)
 	if err != nil {
 		return "", newInternalResponseError("failed to build stage2 init", fmt.Errorf("build stage2 init: %w", err))
 	}
@@ -161,7 +150,6 @@ func loadManagedPass3ValidationFixtures(
 	stage1Input Stage1Input,
 	stage2Snapshot Stage2Snapshot,
 	limits InputLimits,
-	extraQuery url.Values,
 ) (ConversionFixtures, error) {
 	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
 		return ConversionFixtures{}, err
@@ -174,7 +162,6 @@ func loadManagedPass3ValidationFixtures(
 	if prepared.Cleanup != nil {
 		defer prepared.Cleanup()
 	}
-	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
 
 	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, subconverter.Stage1InitConvertPlan())
 	if err != nil {
@@ -190,9 +177,13 @@ func loadManagedPass3ValidationFixtures(
 	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
 	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
 	fixtures.Messages = append([]Message(nil), prepared.Messages...)
+	fixturesForSnapshotValidation := fixtures
+	// Managed pass3 rewrites landing proxy names based on stage2 rows.
+	// Snapshot validation must keep Stage1 discovery identity as source of truth.
+	fixturesForSnapshotValidation.FullBaseYAML = ""
 
 	// 先复用现有 snapshot 校验，保证冲突场景返回既有业务错误码。
-	if _, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures); err != nil {
+	if _, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixturesForSnapshotValidation); err != nil {
 		return ConversionFixtures{}, err
 	}
 
@@ -201,23 +192,13 @@ func loadManagedPass3ValidationFixtures(
 		return ConversionFixtures{}, newInternalResponseError("failed to build managed landing config", err)
 	}
 
-	fullBaseYAML, err := snapshotSource.RenderManagedPass3(ctx, prepared, managedLandingYAML)
-	if err != nil {
-		return ConversionFixtures{}, err
-	}
-
-	// managed pass3 会使用 stage2Snapshot 的最终代理名重建 landing；
-	// 这里用该“最终态 landing”校验 full-base 结构有效，避免再拿 discovery 初始名做同名硬匹配。
-	validationResult := result
-	validationResult.LandingDiscovery = subconverter.PassResult{YAML: managedLandingYAML}
-	validationResult.FullBase = subconverter.PassResult{YAML: fullBaseYAML}
-	if _, err := ConversionFixturesFromResult(validationResult); err != nil {
+	if _, err := snapshotSource.RenderManagedPass3(ctx, prepared, managedLandingYAML); err != nil {
 		return ConversionFixtures{}, err
 	}
 
 	// generate/resolve 的 snapshot 校验必须基于 discovery 初始身份名与 sourceLandingNodeName，
 	// 因此继续返回 stage1 init fixtures（不回灌 managed full-base 名称）。
-	return fixtures, nil
+	return fixturesForSnapshotValidation, nil
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {

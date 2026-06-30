@@ -86,9 +86,12 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	snapshot := Stage2Snapshot{
 		Rows: []Stage2Row{{
-			LandingNodeName: "HK 01",
-			Mode:            "chain",
-			TargetName:      &targetName,
+			RowID:                 "hk-1",
+			SourceLandingNodeName: "HK 01",
+			ProxyName:             "HK 01",
+			LandingNodeName:       "HK 01",
+			Mode:                  "chain",
+			TargetName:            &targetName,
 		}},
 	}
 
@@ -560,10 +563,10 @@ func TestResolveURLFromSource_UsesManagedLandingPass3ForRestoreValidation(t *tes
 	chainTarget := "🇭🇰 香港节点"
 	forwardRelay := "relay.example.com:7443"
 	stage1Input := stage1InputWithTemplate(Stage1Input{
-		LandingRawText:      "https://landing.example/sub",
-		TransitRawText:      "https://transit.example/sub",
-		ForwardRelayItems:   []string{forwardRelay},
-		AdvancedOptions:     AdvancedOptions{},
+		LandingRawText:    "https://landing.example/sub",
+		TransitRawText:    "https://transit.example/sub",
+		ForwardRelayItems: []string{forwardRelay},
+		AdvancedOptions:   AdvancedOptions{},
 	})
 	snapshot := Stage2Snapshot{
 		Rows: []Stage2Row{
@@ -791,6 +794,6 @@ func singleLandingThreePassResult(landingName string, landingType string) subcon
 			"      - DIRECT",
 			"",
 		}, "\n")},
-		FullBase:         subconverter.PassResult{YAML: fullBaseYAML},
+		FullBase: subconverter.PassResult{YAML: fullBaseYAML},
 	}
 }

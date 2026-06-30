@@ -42,9 +42,20 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	}
 
 	rowsBySourceLanding := make(map[string][]Stage2Row, len(stage2Snapshot.Rows))
+	rowsByRowID := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
 	rowsByProxyName := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
 	for _, row := range stage2Snapshot.Rows {
 		rowErrorRef := stage2RowValidationErrorRef(row)
+		rowID := row.rowIDOrFallback()
+		if rowID == "" {
+			cause := fmt.Errorf("rowId must not be empty")
+			return nil, newStage2RowInvalidRequestError("rowId must not be empty", rowErrorRef, "rowId", cause)
+		}
+		if _, exists := rowsByRowID[rowID]; exists {
+			cause := fmt.Errorf("duplicate rowId %q", rowID)
+			return nil, newStage2RowValidationError("DUPLICATE_ROW_ID", "duplicate rowId", rowErrorRef, "rowId", cause)
+		}
+		rowsByRowID[rowID] = row
 		sourceLandingName := row.sourceLandingNodeNameOrFallback()
 		if sourceLandingName == "" {
 			cause := fmt.Errorf("sourceLandingNodeName must not be empty")
@@ -137,21 +148,15 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			cause := fmt.Errorf("unknown source landing node %q in stage2 snapshot", sourceLandingName)
 			rowErrorRef := stage2RowErrorRef{
 				SourceLandingNodeName: sourceLandingName,
-				LegacyLandingNodeName: sourceLandingName,
 			}
 			if len(rows) > 0 {
 				rowErrorRef = stage2RowValidationErrorRef(rows[0])
 				rowErrorRef.SourceLandingNodeName = sourceLandingName
-				rowErrorRef.LegacyLandingNodeName = sourceLandingName
 			}
 			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowErrorRef, "", cause)
 		}
 	}
-	rowsByID := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
-	for _, row := range stage2Snapshot.Rows {
-		rowsByID[row.rowIDOrFallback()] = row
-	}
-	if err := validateServerAggregationGroups(stage2Snapshot.ServerAggregationGroups, rowsByID, landingByName); err != nil {
+	if err := validateServerAggregationGroups(stage2Snapshot.ServerAggregationGroups, rowsByRowID, landingByName); err != nil {
 		return nil, err
 	}
 
@@ -277,7 +282,6 @@ func stage2RowValidationErrorRef(row Stage2Row) stage2RowErrorRef {
 		RowID:                 row.rowIDOrFallback(),
 		SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
 		ProxyName:             proxyName,
-		LegacyLandingNodeName: proxyName,
 	}
 }
 

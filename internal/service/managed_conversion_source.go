@@ -131,7 +131,10 @@ func (source *ManagedConversionSource) PrepareConversion(ctx context.Context, st
 		applog.TemplateCacheUsed(effectiveTemplateURL)
 	}
 	templateEmojiMessages := make([]Message, 0)
-	templateConfig, templateEmojiMessages = preprocessTemplateEmojiByRegion(templateConfig, stage1Input.AdvancedOptions)
+	templateConfig, templateEmojiMessages, err = preprocessTemplateEmojiByRegion(templateConfig, stage1Input.AdvancedOptions)
+	if err != nil {
+		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)
+	}
 	regionMatchers, err := parseRegionMatchers(templateConfig)
 	if err != nil {
 		return PreparedConversion{}, newStage1FieldValidationError("INVALID_TEMPLATE_CONFIG", "template content is invalid", "config", err)

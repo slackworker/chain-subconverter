@@ -106,7 +106,7 @@ relay-b.example.com:8443
   - 打开转换结果后，先核对 Stage2 默认名称是否已按规则带上 emoji。
   - 任意手工改名一条（例如 `🇸🇬 Alpha-SS-SG-Custom`）并生成，校对最终 YAML 的 `proxies.name` 与 Stage2 完全一致。
 
-- short ID 金样：`53jjNSsNYZw`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
+- short ID 金样：`FEt4SdWBl9L`（Stage3 反向解析；同一份可见配置应得到一致 short ID）
 
 - long URL payload 金样（`/sub?data=…`；scheme/host 随部署变化，同一份可见配置应得到一致 payload）：
 

@@ -8,15 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 )
 
 const (
 	defaultLongURLMaxLength = 8192
-	longURLSchemaVersion    = 3
-	longURLSchemaMinVersion = 2
+	longURLSchemaVersion    = 4
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -127,6 +125,9 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 	if err != nil {
 		return LongURLPayload{}, fmt.Errorf("parse long URL: %w", err)
 	}
+	if err := validateLongURLDecodeQuery(parsedURL.Query()); err != nil {
+		return LongURLPayload{}, fmt.Errorf("validate long URL query: %w", err)
+	}
 
 	data, err := parseRequiredStringQueryValue(parsedURL.Query(), longURLParamData)
 	if err != nil {
@@ -143,15 +144,11 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 		return LongURLPayload{}, fmt.Errorf("unmarshal long URL payload: %w", err)
 	}
 
-	payload.Stage1Input, err = ApplyLongURLCompatibleQueryOverrides(payload.Stage1Input, parsedURL.Query())
-	if err != nil {
-		return LongURLPayload{}, fmt.Errorf("apply long URL query overrides: %w", err)
-	}
 	if err := validateLongURLPayloadSchema(payload); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate long URL payload schema: %w", err)
 	}
 
-	// Canonicalize decoded payload to the latest in-memory schema version.
+	// Canonicalize decoded payload to the current in-memory schema version.
 	payload.V = longURLSchemaVersion
 	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
 
@@ -160,88 +157,6 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 	}
 
 	return payload, nil
-}
-
-func ApplyLongURLCompatibleQueryOverrides(stage1Input Stage1Input, query url.Values) (Stage1Input, error) {
-	stage1Input = NormalizeStage1Input(stage1Input)
-
-	emoji, ok, err := parseExplicitBoolQueryOverride(query, longURLParamEmoji)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Emoji = emoji
-	}
-
-	udp, ok, err := parseExplicitBoolQueryOverride(query, longURLParamUDP)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.UDP = udp
-	}
-
-	skipCertVerify, ok, err := parseExplicitBoolQueryOverride(query, longURLParamSkipCertVerify)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.SkipCertVerify = skipCertVerify
-	}
-
-	config, ok, err := parseExplicitStringQueryOverride(query, longURLParamConfig)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Config = config
-	}
-
-	include, ok, err := parseExplicitStringListQueryOverride(query, longURLParamInclude)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Include = include
-	}
-
-	exclude, ok, err := parseExplicitStringListQueryOverride(query, longURLParamExclude)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Exclude = exclude
-	}
-
-	return NormalizeStage1Input(stage1Input), nil
-}
-
-func ExtractSubscriptionPassthroughQuery(query url.Values) url.Values {
-	if len(query) == 0 {
-		return nil
-	}
-
-	passthrough := make(url.Values)
-	for name, values := range query {
-		if isReservedSubscriptionQueryName(name) {
-			continue
-		}
-		trimmedName := strings.TrimSpace(name)
-		if trimmedName == "" {
-			continue
-		}
-		for _, value := range values {
-			trimmedValue := strings.TrimSpace(value)
-			if trimmedValue == "" {
-				continue
-			}
-			passthrough.Add(trimmedName, trimmedValue)
-		}
-	}
-	if len(passthrough) == 0 {
-		return nil
-	}
-	return passthrough
 }
 
 func encodeCompressedData(payload []byte) (string, error) {
@@ -350,7 +265,7 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
-	if !isSupportedLongURLPayloadVersion(payload.V) {
+	if payload.V != longURLSchemaVersion {
 		return fmt.Errorf("unsupported long URL payload version %d", payload.V)
 	}
 
@@ -372,12 +287,17 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		return fmt.Errorf("advancedOptions.config must include host")
 	}
 
+	rowsByID := make(map[string]Stage2Row, len(payload.Stage2Snapshot.Rows))
 	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
 	for _, row := range payload.Stage2Snapshot.Rows {
 		rowID := strings.TrimSpace(row.rowIDOrFallback())
 		if rowID == "" {
 			return fmt.Errorf("rowId must not be empty")
 		}
+		if _, exists := rowsByID[rowID]; exists {
+			return fmt.Errorf("duplicate rowId %q", rowID)
+		}
+		rowsByID[rowID] = row
 		sourceLandingNodeName := strings.TrimSpace(row.sourceLandingNodeNameOrFallback())
 		if sourceLandingNodeName == "" {
 			return fmt.Errorf("sourceLandingNodeName must not be empty")
@@ -412,11 +332,6 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		default:
 			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
 		}
-	}
-
-	rowsByID := make(map[string]Stage2Row, len(payload.Stage2Snapshot.Rows))
-	for _, row := range payload.Stage2Snapshot.Rows {
-		rowsByID[row.rowIDOrFallback()] = row
 	}
 
 	seenServerGroups := make(map[string]struct{}, len(payload.Stage2Snapshot.ServerAggregationGroups))
@@ -457,10 +372,6 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	return nil
 }
 
-func isSupportedLongURLPayloadVersion(version int) bool {
-	return version >= longURLSchemaMinVersion && version <= longURLSchemaVersion
-}
-
 func joinSubURL(publicBaseURL string, encodedData string) (string, error) {
 	parsedURL, err := url.Parse(publicBaseURL)
 	if err != nil {
@@ -477,32 +388,31 @@ func joinSubURL(publicBaseURL string, encodedData string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-func isReservedSubscriptionQueryName(name string) bool {
-	switch strings.TrimSpace(name) {
-	case "",
-		longURLParamData,
-		longURLParamDownload,
-		longURLParamEmoji,
-		longURLParamUDP,
-		longURLParamSkipCertVerify,
-		longURLParamConfig,
-		longURLParamInclude,
-		longURLParamExclude,
-		longURLParamTarget,
-		longURLParamURL,
-		longURLParamList,
-		longURLParamExpand,
-		longURLParamClassic,
-		longURLParamVersion,
-		longURLParamLanding,
-		longURLParamTransit,
-		longURLParamRelay,
-		longURLParamPortForward,
-		longURLParamChain:
-		return true
-	default:
-		return false
+func validateLongURLDecodeQuery(query url.Values) error {
+	for rawName, values := range query {
+		name := strings.TrimSpace(rawName)
+		switch name {
+		case longURLParamData:
+			if len(values) > 1 {
+				return fmt.Errorf("duplicate %s query parameter", longURLParamData)
+			}
+		case longURLParamDownload:
+			if len(values) > 1 {
+				return fmt.Errorf("duplicate %s query parameter", longURLParamDownload)
+			}
+			if len(values) == 1 {
+				value := strings.TrimSpace(values[0])
+				if value != "1" {
+					return fmt.Errorf("invalid %s query parameter %q", longURLParamDownload, value)
+				}
+			}
+		case "":
+			return fmt.Errorf("empty query parameter name is not allowed")
+		default:
+			return fmt.Errorf("unsupported query parameter %q", name)
+		}
 	}
+	return nil
 }
 
 func parseRequiredStringQueryValue(query url.Values, name string) (string, error) {
@@ -518,61 +428,6 @@ func parseRequiredStringQueryValue(query url.Values, name string) (string, error
 		return "", fmt.Errorf("missing %s query parameter", name)
 	}
 	return trimmed, nil
-}
-
-func parseExplicitBoolQueryOverride(query url.Values, name string) (*bool, bool, error) {
-	values, ok := query[name]
-	if !ok {
-		return nil, false, nil
-	}
-	if len(values) != 1 {
-		return nil, false, fmt.Errorf("duplicate %s query parameter", name)
-	}
-	trimmed := strings.TrimSpace(values[0])
-	if trimmed == "" {
-		return nil, false, fmt.Errorf("invalid %s query parameter \"\"", name)
-	}
-	value, err := strconv.ParseBool(trimmed)
-	if err != nil {
-		return nil, false, fmt.Errorf("invalid %s query parameter %q", name, trimmed)
-	}
-	return &value, true, nil
-}
-
-func parseExplicitStringQueryOverride(query url.Values, name string) (*string, bool, error) {
-	values, ok := query[name]
-	if !ok {
-		return nil, false, nil
-	}
-	if len(values) != 1 {
-		return nil, false, fmt.Errorf("duplicate %s query parameter", name)
-	}
-	trimmed := strings.TrimSpace(values[0])
-	if trimmed == "" {
-		return nil, true, nil
-	}
-	return &trimmed, true, nil
-}
-
-func parseExplicitStringListQueryOverride(query url.Values, name string) ([]string, bool, error) {
-	values, ok := query[name]
-	if !ok {
-		return nil, false, nil
-	}
-	parts := make([]string, 0, len(values))
-	for _, value := range values {
-		for _, part := range strings.Split(value, "|") {
-			trimmed := strings.TrimSpace(part)
-			if trimmed == "" {
-				continue
-			}
-			parts = append(parts, trimmed)
-		}
-	}
-	if len(parts) == 0 {
-		return nil, true, nil
-	}
-	return parts, true, nil
 }
 
 func marshalCanonicalLongURLPayload(payload LongURLPayload) ([]byte, error) {

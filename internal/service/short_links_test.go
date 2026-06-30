@@ -93,7 +93,7 @@ func TestBuildShortLinkResponse_KeepsShortIDStableAcrossBaseURLs(t *testing.T) {
 	}
 }
 
-func TestCanonicalShortLinkStateKey_IgnoresRowIDNoiseAndStage2RowOrder(t *testing.T) {
+func TestCanonicalShortLinkStateKey_ChangesWhenRowIdentityChanges(t *testing.T) {
 	stage1 := stage1InputWithTemplate(Stage1Input{
 		LandingRawText: "landing",
 		TransitRawText: "transit",
@@ -174,11 +174,11 @@ func TestCanonicalShortLinkStateKey_IgnoresRowIDNoiseAndStage2RowOrder(t *testin
 		t.Fatalf("CanonicalShortLinkStateKey() second error = %v", err)
 	}
 
-	if firstKey != secondKey {
-		t.Fatalf("CanonicalShortLinkStateKey() mismatch after row order/id noise: %q != %q", firstKey, secondKey)
+	if firstKey == secondKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should change when row identity changes")
 	}
-	if DeterministicShortID(firstKey) != DeterministicShortID(secondKey) {
-		t.Fatalf("DeterministicShortID() mismatch after row order/id noise")
+	if DeterministicShortID(firstKey) == DeterministicShortID(secondKey) {
+		t.Fatalf("DeterministicShortID() should change when row identity changes")
 	}
 }
 

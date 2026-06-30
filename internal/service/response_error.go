@@ -15,7 +15,6 @@ type stage2RowErrorRef struct {
 	RowID                 string
 	SourceLandingNodeName string
 	ProxyName             string
-	LegacyLandingNodeName string
 }
 
 func (err *ResponseError) Error() string {
@@ -105,17 +104,6 @@ func newStage2RowErrorContext(ref stage2RowErrorRef, field string) map[string]an
 	}
 	if ref.ProxyName != "" {
 		context["proxyName"] = ref.ProxyName
-	}
-	legacyLandingNodeName := ref.LegacyLandingNodeName
-	if legacyLandingNodeName == "" {
-		if ref.ProxyName != "" {
-			legacyLandingNodeName = ref.ProxyName
-		} else {
-			legacyLandingNodeName = ref.SourceLandingNodeName
-		}
-	}
-	if legacyLandingNodeName != "" {
-		context["landingNodeName"] = legacyLandingNodeName
 	}
 	if field != "" {
 		context["field"] = field

@@ -25,6 +25,7 @@
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应或不可解析结果，均视为该 pass 失败
 - `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
 - 若本次有效模板已识别出某地域策略组，但该地域策略组在同一条转换管线的 `full-base pass` 产物（经 `1.3` 后处理后的 `baseCompleteConfig`）中完全不存在，必须视为 `full-base pass` 失败；不得按空组静默降级
+- 长链接状态载荷固定为 `statePayload v4`；`resolve-url`、`short-links` 与 `GET /sub?...` 不再接受外层 query 的状态覆写
 
 ### 0.2.1 pass 级参数约束
 
@@ -82,9 +83,9 @@
 
 #### 设计意图
 
-- **对外仍兼容 subconverter 参数模型**：阶段 1 快照、长链接载荷与兼容 query 覆写层继续保留 `emoji` 字段名与 `true | false | null` 三态语义；前端高级选项仍表现为“是否启用节点 emoji”，用户无需感知实现迁移。
+- **对外字段保持稳定**：阶段 1 快照与 `statePayload v4` 保留 `emoji` 字段名与 `true | false | null` 三态语义；前端高级选项保持“是否启用节点 emoji”。
 - **对内由 chain 拦截并统一执行**：`emoji` 不再作为上游 `GET /sub` 查询参数透传，也不在模板文本中注入 `add_emoji` / `remove_old_emoji` / `emoji=` 以驱动 `subconverter` 侧 emoji pipeline。
-- **拦截原因（与其他功能的兼容）**：
+- **拦截原因（与其他能力协同）**：
   - Stage2 支持用户显式改名；若 `subconverter` 在转换阶段再次执行 emoji 规则，会与 Stage2 展示名及最终 YAML 输出产生不可控覆写。
   - 本项目采用 snapshot-first 三 pass 与托管 landing 合并；节点名需在 Stage1 输出后、Stage2 初始化前确定，并在后续生成/订阅读取中保持所见即所得。
   - 模板 emoji 规则仍需参与命名，但应作为 **chain 内部规则来源** 读取，而非改写模板后再交给 `subconverter` 执行，避免“模板注入 + 上游 emoji pipeline + Stage2 改名”三重叠加。
@@ -99,7 +100,7 @@
 - 模板显式 `emoji=` 规则优先于地域组推导规则；发生冲突时保留模板显式规则，并返回 warning `TEMPLATE_EMOJI_RULE_CONFLICT`（见 [03-backend-api](03-backend-api.md)）
 - chain 处理器只改节点名称，不改模板文本；不得向模板补写 `add_emoji`、`remove_old_emoji` 或 `emoji=...`
 - chain 处理必须满足幂等性：同一节点名重复处理结果保持一致
-- Stage2 初始 `rows[].proxyName` 与 `rows[].landingNodeName` 必须来自 chain 处理后的名称；`rows[].sourceLandingNodeName` 继续保留 discovery 原始身份名
+- Stage2 初始 `rows[].proxyName` 必须来自 chain 处理后的名称；`rows[].sourceLandingNodeName` 继续保留 discovery 原始身份名
 - Stage2 后续编辑仍以 `proxyName` 为最终权威；生成/订阅读取阶段不得再做二次 emoji 重写，保证所见即所得
 
 ---
@@ -108,55 +109,45 @@
 
 ### 1.1 输入
 
-统一转换管线使用以下输入：
+统一 Pipeline 使用以下输入：
 
-- 落地节点信息
-- 中转节点信息
-- `config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
-- 端口转发服务信息（`forwardRelayItems[]`）
+- `stage1Input.landingRawText`
+- `stage1Input.transitRawText`
+- `stage1Input.advancedOptions`（含模板 URL）
+- `stage1Input.forwardRelayItems[]`
 
-其中：
+补充规则：
 
-- `subconverter` 使用落地节点信息、中转节点信息、`config`（外部配置/模板 URL）与其他 `subconverter` 配置参数
-- `config` 的用户输入只用于确定本次有效模板来源；模板内容由 `chain-subconverter` 拉取、校验并托管后，再供 `subconverter` 使用
-- 端口转发服务信息作为阶段 2 与订阅渲染阶段的附加输入保留
-- `forwardRelayItems = []` 时，流程仍视为“未提供任何端口转发服务项”；允许继续转换，但不会产出任何 `forwardRelays[]` 候选
-- `transitRawText` 支持三种输入项：订阅 URL、节点 URI、`data:text/plain,<base64文本>`
-- `data:text/plain,<base64文本>` 在业务语义上视为订阅 URL，不单独引入“内联原始订阅文本”输入类型
+- `config` 的业务语义固定为模板 URL；模板内容必须先由后端拉取、校验并托管，再供 `subconverter` 使用
+- `forwardRelayItems = []` 表示未录入端口转发服务；不会阻断转换，但 `forwardRelays[]` 为空
+- `transitRawText` 支持订阅 URL、节点 URI、`data:text/plain,<base64文本>` 三类输入；第三类按订阅 URL 语义处理
+- 同一请求内，所有 pass 与后续校验必须复用同一份归一化后的 `stage1Input`
 
-### 1.1.1 统一转换管线（权威口径）
+### 1.1.1 统一转换 Pipeline（hard-break 权威口径）
 
-一次“转换”必须复用同一条 3-pass 转换管线。
+一次请求必须复用同一条 3-pass Pipeline。不存在旧版分支、旁路校验或跨 pass 结果拼接。
 
-`0.2` 是该管线的唯一调用契约定义位置；`1.1.1` 只定义每个 pass 的输入职责与产物，不重复定义 HTTP 路径、查询参数或公共 `subconverter` 参数复用规则。
+`0.2` 只定义上游调用契约；本节只定义 Pipeline 的业务输入、输出与顺序。
 
-1. `landing-discovery pass`
-   - 只使用落地节点输入
-   - 产出落地身份集合
-   - 输出形态以节点列表为主
-2. `transit-discovery pass`
-   - 只使用中转节点输入
-   - 产出中转身份集合与阶段 2 所需的链式候选基础数据
-   - 输出形态以中转候选发现所需的最小结果为主
-3. `full-base pass`
-   - 同时使用落地节点输入与中转节点输入
-   - 产出后续校验与订阅渲染所需的基底配置
+1. `landing-discovery pass`（Pass 1）
+   - 输入：仅落地侧 URL 集合
+   - 产物：落地身份集合（`sourceLandingNodeName` 与连接参数来源）
+   - 形态：`list=true` 的结构化节点列表
+2. `transit-discovery pass`（Pass 2）
+   - 输入：仅中转侧 URL 集合
+   - 产物：中转 `proxy` 候选与模板组交集判定基础数据
+   - 形态：中转候选发现所需最小结果
+3. `full-base pass`（Pass 3）
+   - 输入：托管 landing 短链 + 中转 URL 集合
+   - 产物：`baseCompleteConfig`（仅后端内部使用）
+   - 形态：完整 YAML（随后进入出组和后处理）
 
-具体 HTTP 路径、查询参数约束与 discovery/full-base 的一致性要求，统一以 `0.2` 为准。
+统一约束：
 
-复用范围：
-
-- 阶段 1 的“转换并自动填充”复用该管线定义，但只执行前两个 discovery pass（见 `1.1.3`）
-- `POST /api/generate` 的生成前校验必须复用该 3-pass 管线
-- `POST /api/resolve-url` 的恢复可重放性判定必须复用该 3-pass 管线
-- 订阅链接实际被打开或下载时的 YAML 渲染必须复用该 3-pass 管线
-
-### 1.1.3 pass 调用范围
-
-三个 pass 同属一条管线，但各入口执行的 pass 不同：
-
-- `POST /api/stage1/convert`：只执行 `landing-discovery pass` 与 `transit-discovery pass`；不执行 `full-base pass`，不产出 `baseCompleteConfig`
-- `POST /api/generate`、`POST /api/resolve-url` 校验、订阅打开/下载：执行完整三 pass；`full-base pass` 的落地侧为按 `stage2Snapshot` 合并后的托管 landing 短链
+- Pass 1/2/3 共享同一份高级选项快照与模板托管结果
+- 任一必需 pass 失败，当前请求整体失败；不得降级、不得复用旧结果
+- Pass 1/2 发现的身份必须能在 Pass 3 产物中完成一致性校验；失败即按 pass 失败处理
+- 节点 emoji 处理发生在 Pass 1/2 之后、`stage2Init` 组装之前；Pass 3 与订阅读取不再做二次 emoji 改写
 
 ### 1.1.2 端口转发服务输入校验（权威口径）
 
@@ -178,18 +169,35 @@
 - 前端可复用本节同一语法与规范化口径做录入期预校验，但不得以 UI 预校验替代后端在阶段 1 的最终裁决
 - 具体失败响应语义见 [03-backend-api](03-backend-api.md)
 
+### 1.1.3 pass 调用范围
+
+同一条 Pipeline 在不同入口执行的子集固定如下：
+
+- `POST /api/stage1/convert`：只执行 Pass 1 + Pass 2；不执行 Pass 3
+- `POST /api/generate`：执行 Pass 1 + Pass 2 + Pass 3，并完成生成前阻断校验
+- `POST /api/resolve-url`：先解码载荷，再执行与 `generate` 同口径校验；成功后返回 `replayable` 或 `conflicted`
+- `GET /sub?...` 与 `GET /sub/<id>`：执行完整 Pass 1 + Pass 2 + Pass 3，并即时渲染 `completeConfig`
+
+硬约束：
+
+- `resolve` 不得使用“仅结构校验”的降级路径
+- 订阅读取不得跳过 Pass 1/2 直接复用历史中间产物
+- 以上入口全部走同一条核心编排主干，差异仅在“返回什么”
+
 ### 1.2 输出
 
-统一转换管线存在两类结果语义：
+统一 Pipeline 对外与对内结果语义如下：
 
-- `stage2Init`：阶段 1 对前端暴露的初始化数据
-- `baseCompleteConfig`：`full-base pass` 生成并经后端后处理后的基底完整配置，供后端校验与订阅渲染使用；不得与模板内容混称为“配置文件”
+- `stage2Init`：`convert` 对前端暴露的初始化数据
+- `baseCompleteConfig`：Pass 3 产出的内部基底配置，供后端校验与订阅渲染使用
+- `completeConfig`：`GET /sub*` 返回给客户端的最终 YAML
 
 补充规则：
 
-- 阶段 1 对外返回 `stage2Init`
-- `POST /api/generate` 返回校验通过后的链接
-- 面向用户消费的最终 `completeConfig` 在订阅链接被打开或下载时即时生成并返回；面向用户时可称“最终订阅 YAML”
+- `convert` 只返回 `stage2Init`
+- `generate` 只返回链接，不返回 YAML
+- `resolve` 返回恢复快照与恢复裁决，不返回 YAML
+- `completeConfig` 只在订阅读取时生成并返回
 
 ### 1.3 落地节点出组后处理
 
@@ -223,22 +231,21 @@
 
 ### 2.1.1 落地节点命名与身份边界（`stage2Init`）
 
-- `stage2Init` 中 `sourceLandingNodeName` 来源于 `landing-discovery pass` 的 `proxy.name`
-- 当 `emoji = true` 时，`stage2Init.proxyName/landingNodeName` 来源于 chain 在 Stage1 输出后的统一 emoji 处理结果；当 `emoji = false` 时，沿用 discovery 名称
+- `sourceLandingNodeName` 来源于 Pass 1 的 `proxy.name`，作为落地身份键且不可编辑
+- `emoji = true` 时，`stage2Init.proxyName` 来源于 chain 在 Stage1 输出后的统一 emoji 处理结果；`emoji = false` 时沿用 discovery 名称
 - `landingNodeType` 只承担展示语义，不进入快照定位键
 - 连接参数在 Pass 3 前从 Pass 1 按 `sourceLandingNodeName` 读取；快照行模型见 `2.1.2`
-- 落地节点原始名称产出、重名处理与相关实现细节由 `subconverter` 服务负责；但阶段 2 展示/编辑名称由 chain 在 Stage1 输出后统一处理并写入
-- 前端初始化时消费 `stage2Init.landingNodeName`；`stage2Snapshot.proxyName` 的编辑/复制规则见 `2.1.2` 与 [02](02-frontend-spec.md)
-- 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按名定位，按 3.2.1 判定为 `conflicted`
+- 落地节点原始名称产出与重名处理由 `subconverter` 负责；阶段 2 展示/编辑名称由 chain 在 Stage1 输出后统一写入 `proxyName`
+- 稳定性保证范围为“同一后端实现 + 同一输入快照”；跨后端版本或实现细节变化不承诺名称完全一致，若导致旧快照无法按身份定位，按 `3.2.1` 判定为 `conflicted`
 
 ### 2.1.2 `stage2Snapshot` 行身份
 
-- `stage2Init`：每 Pass 1 落地一行；`landingNodeName` 只读；同时返回 `rowId`、`sourceLandingNodeName`、`proxyName`（`sourceLandingNodeName` 固定为 Pass 1 名，`proxyName/landingNodeName` 为 chain emoji 处理后的展示名）
+- `stage2Init`：每 Pass 1 落地一行；同时返回 `rowId`、`sourceLandingNodeName`、`proxyName`（`sourceLandingNodeName` 固定为 Pass 1 名，`proxyName` 为 chain emoji 处理后的展示名）
 - `rowId`：行稳定 ID（全表唯一）；复制行须新生成，不与 `proxyName` 绑定
 - `proxyName`：最终 YAML `proxies[].name`（全表唯一，可改名）
 - `sourceLandingNodeName`：Pass 1 原始 `proxy.name`（连接参数键；复制行可共享）
 - 复制：共享 `sourceLandingNodeName`；新 `rowId`；`proxyName` 默认 `原名 2`、`原名 3`…
-- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；`landingNodeName` 仅作为 `proxyName` 兼容字段，不承担回退定位语义
+- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；行定位主键始终是 `rowId`，不是数组顺序
 - 行集：每个落地身份至少一行；不得引用未知 `sourceLandingNodeName`
 
 ### 2.2 判断全局可用模式与行级限制
@@ -263,10 +270,10 @@
 - 某行的最终可选模式 = `stage2Init.availableModes` 扣除当前行 `restrictedModes` 中出现的模式键
 - `rows[].restrictedModes` 为可选字段；缺失表示该行无额外模式限制
 - `rows[].restrictedModes` 中的模式键必须属于 `stage2Init.availableModes`
-- `rows[].restrictedModes.<mode>.reasonCode` 与 `reasonText` 都必须返回；`reasonText` 面向用户展示
+- `rows[].restrictedModes.<mode>.reasonCode` 必填；`reasonArgs` 可选且必须是对象
 - `rows[].modeWarnings` 为可选字段；缺失表示该行无额外 warning
 - `rows[].modeWarnings` 中的模式键必须属于 `stage2Init.availableModes`
-- `rows[].modeWarnings.<mode>.reasonCode` 与 `reasonText` 都必须返回；`reasonText` 面向用户展示
+- `rows[].modeWarnings.<mode>.reasonCode` 必填；`reasonArgs` 可选且必须是对象
 - 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点协议属于“链式代理不推荐”集合，则该行必须返回 `modeWarnings.chain`
 - 若 `chain` 已出现在 `stage2Init.availableModes` 中，且某落地节点当前使用端口大于 `10000`，则该行必须返回 `modeWarnings.chain`，提示建议改用 `10000` 以内端口，避免部分机场屏蔽高位端口导致不通
 - 前端不得自行识别落地端口并补算该 warning；落地端口识别与 warning 组装都属于后端阶段 2 初始化职责
@@ -373,7 +380,7 @@
 - `enabled = true` 时，每个成员行对应的 `rows[].server` 必须与组 `server` 一致；跨 server 入组必须阻断
 - `enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
 - 该聚合配置只影响最终 YAML 产物，不回写阶段 2 链式候选；`rows[].targetName` 在 `mode = chain` 下仍只允许引用 `chainTargets[].name`
-- `serverAggregationGroups[].groupName` 与任何成员行的 `proxyName`、`landingNodeName`、`sourceLandingNodeName` 都是不同语义；实现不得把“编辑组名”降级为“编辑某个成员节点名”
+- `serverAggregationGroups[].groupName` 与任何成员行的 `proxyName`、`sourceLandingNodeName` 都是不同语义；实现不得把“编辑组名”降级为“编辑某个成员节点名”
 
 #### 聚合组 YAML 名称推导
 
@@ -407,7 +414,7 @@
 
 ### 3.2 生成前校验
 
-- 生成/订阅/恢复判定时必须先根据 `stage1Input` 重跑 Pass 1+2，再按 `3.5` 执行 Pass 3 与出组
+- 生成、恢复判定与订阅读取都必须先根据 `stage1Input` 重跑 Pass 1+2，再按 `3.5` 执行 Pass 3 与出组
 - 若任一必需 pass 失败，必须直接阻断
 - `stage2Snapshot` 须满足 `2.1.2` 行集规则；`proxyName` 重复为 `DUPLICATE_PROXY_NAME`
 - 任一行若 `mode != none` 且 `targetName` 为空，必须阻断生成
@@ -421,28 +428,25 @@
 
 ### 3.2.1 恢复链接时的可重放性判定
 
-本节是 `POST /api/resolve-url` 判断 `restoreStatus` 的权威口径。判定目标是“恢复快照中的目标引用是否仍然有效”。`resolve-url` 的校验必须复用本章定义的生成前校验口径。
+本节是 `POST /api/resolve-url` 判断 `restoreStatus` 的唯一权威口径。判定目标是“恢复快照是否还能在当前环境重放”。
 
 判定规则：
 
-- 后端必须基于恢复出的 `stage1Input` 重跑 Pass 1+2，并按 `3.5` 与生成阶段一致的校验口径判定可重放性
-- 若任一必需 pass 失败，`resolve-url` 直接返回失败响应；`restoreStatus` 只用于解码与校验成功后的可重放性结果
+- 后端必须基于恢复出的 `stage1Input` 执行与生成阶段同口径的 Pipeline 与校验
+- 若任一必需 pass 失败，`resolve-url` 返回失败响应；`restoreStatus` 只用于“解码成功且校验过程可完成”的请求
 - 后端必须用恢复出的 `stage2Snapshot` 执行与生成阶段一致的逐行校验
-- 只要每一行满足 `2.1.2` 行集规则且 `mode` / `targetName` 仍可在当前候选集合中解析，则视为可重放
-- 任一行只要出现引用失效，即应判定整个恢复快照不可重放，并返回 `restoreStatus = conflicted`
+- 只要所有行满足 `2.1.2` 行集规则且 `mode` / `targetName` 仍可在当前候选集合中解析，则视为 `replayable`
+- 任一行或任一聚合组出现引用失效，即判定 `restoreStatus = conflicted`，并返回结构化 `restoreConflicts[]`
 
 补充规则：
 
-- 上游订阅内容变化导致引用仍有效时，恢复结果保持可重放；导致任一引用失效时，恢复结果为不可重放
-- 若 `targetName` 引用的是 `proxy-groups` 候选，只要该候选在当前候选集合中仍存在且可用，即使其成员节点发生变化，也应允许恢复并继续生成
-- 若 `chainProxyTargetGroupSwitchOptimizationEnabled = true`，只要当前 `proxy-groups` 候选仍存在，即不因组成员变化而判为冲突
-- 若 `targetName` 引用的是 `proxies` 候选，则该 `proxy.name` 必须仍存在于当前候选集合中，否则视为引用失效
-- 若 `targetName` 引用的是端口转发服务，则该规范化 `server:port` 字面量必须仍存在于当前 `forwardRelays[]` 中，否则视为引用失效
-- 若某行的 `sourceLandingNodeName` 已不在当前落地集合，或 `proxyName` / `targetName` 引用失效，则视为不可重放
-- 若 `serverAggregationGroups[]` 中某启用组违反 `2.7` 校验规则（未知成员 `rowId`、跨 server 入组、成员数不足 2 等），则视为不可重放
-- 启用组成员仅因 `proxyName` 变化，不得单独导致聚合组 YAML 名变化；只要成员 `rowId` 与 `server` 引用仍有效，即不因此判为不可重放
-- `groupName` 缺失时，默认名按当前 `server` 与统一国旗判定重新计算；`groupName` 存在时，只要该字段仍可按契约解析，就不得因成员 `proxyName` 变化而判为不可重放
-- `restoreStatus = conflicted` 时，响应必须附带冲突提示消息；具体消息语义见 [03-backend-api](03-backend-api.md)
+- 上游订阅内容变化导致引用仍有效时，恢复结果保持 `replayable`
+- `targetName` 引用 `proxy-groups` 候选时，只要该候选仍存在即允许重放，不因成员变化单独判冲突
+- `targetName` 引用 `proxies` 候选时，该 `proxy.name` 必须仍存在，否则判冲突
+- `targetName` 引用端口转发服务时，该规范化 `server:port` 必须仍存在于 `forwardRelays[]`，否则判冲突
+- 若某行 `sourceLandingNodeName` 缺失、`proxyName` 冲突或 `targetName` 引用失效，则判冲突
+- 若 `serverAggregationGroups[]` 中启用组违反 `2.7` 校验（未知成员 `rowId`、跨 server 入组、成员数不足 2 等），则判冲突
+- `restoreStatus = conflicted` 时仍返回恢复出的 `stage1Input` 与 `stage2Snapshot`；前端必须进入只读冲突态，不得继续生成
 
 ### 3.3 快照应用（Pass 3 前）
 

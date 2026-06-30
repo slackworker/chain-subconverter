@@ -28,9 +28,12 @@ func TestValidateGenerateSnapshot_RejectsTargetForNoneMode(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Landing",
-					Mode:            "none",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "none",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -53,9 +56,12 @@ func TestValidateGenerateSnapshot_AllowsChainForReality(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Reality",
-					Mode:            "chain",
-					TargetName:      &targetName,
+					RowID:                 "hk-reality-1",
+					SourceLandingNodeName: "HK Reality",
+					ProxyName:             "HK Reality",
+					LandingNodeName:       "HK Reality",
+					Mode:                  "chain",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -78,9 +84,12 @@ func TestValidateGenerateSnapshot_RejectsEmptyChainTarget(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "Unknown Landing",
-					Mode:            "chain",
-					TargetName:      &targetName,
+					RowID:                 "unknown-1",
+					SourceLandingNodeName: "Unknown Landing",
+					ProxyName:             "Unknown Landing",
+					LandingNodeName:       "Unknown Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -113,14 +122,20 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				},
 				{
-					LandingNodeName: "US Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "us-1",
+					SourceLandingNodeName: "US Landing",
+					ProxyName:             "US Landing",
+					LandingNodeName:       "US Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -151,8 +166,10 @@ func TestValidateGenerateSnapshot_AllowsGlobalSwitchOptimization(t *testing.T) {
 		Stage2Snapshot{
 			ChainProxyTargetGroupSwitchOptimizationEnabled: true,
 			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
+				LandingNodeName:       "HK Landing",
 				Mode:                  "chain",
 				TargetName:            &targetName,
 			}},
@@ -173,14 +190,18 @@ func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *test
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &targetName,
 				},
 				{
+					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing 2",
+					LandingNodeName:       "HK Landing 2",
 					Mode:                  "none",
 				},
 			},
@@ -395,14 +416,18 @@ func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &targetName,
 				},
 				{
+					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
 					Mode:                  "none",
 				},
 			},
@@ -424,10 +449,9 @@ func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "DUPLICATE_PROXY_NAME")
 	}
 	wantContext := map[string]any{
-		"rowId":                 "HK Landing",
+		"rowId":                 "hk-2",
 		"sourceLandingNodeName": "HK Landing",
 		"proxyName":             "HK Landing",
-		"landingNodeName":       "HK Landing",
 		"field":                 "proxyName",
 	}
 	if !mapsEqual(blockingError.Context, wantContext) {
@@ -444,8 +468,10 @@ func TestValidateGenerateSnapshot_RejectsUnknownSourceLandingWithDerivedRowConte
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &targetName,
 				},
@@ -475,7 +501,6 @@ func TestValidateGenerateSnapshot_RejectsUnknownSourceLandingWithDerivedRowConte
 		"rowId":                 "hk-derived-1",
 		"sourceLandingNodeName": "Missing Landing",
 		"proxyName":             "HK Landing Copy",
-		"landingNodeName":       "Missing Landing",
 	}
 	if !mapsEqual(blockingError.Context, wantContext) {
 		t.Fatalf("BlockingError.Context mismatch: got %#v want %#v", blockingError.Context, wantContext)

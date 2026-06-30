@@ -16,9 +16,12 @@ func TestRenderCompleteConfig_PortForwardRewritesServerAndPort(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -74,8 +77,11 @@ func TestRenderCompleteConfig_NoneModeRemovesDialerProxy(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Landing",
-					Mode:            "none",
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "none",
 				},
 			},
 		},
@@ -313,8 +319,11 @@ func TestRenderCompleteConfig_UnescapesYAMLUnicodeEscapesInRenderedOutput(t *tes
 		Stage1Input{},
 		Stage2Snapshot{
 			Rows: []Stage2Row{{
-				LandingNodeName: "US Landing",
-				Mode:            "none",
+				RowID:                 "us-1",
+				SourceLandingNodeName: "US Landing",
+				ProxyName:             "US Landing",
+				LandingNodeName:       "US Landing",
+				Mode:                  "none",
 			}},
 		},
 		fixtures,

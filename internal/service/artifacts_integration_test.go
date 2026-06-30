@@ -134,8 +134,11 @@ func TestDecodeLongURLPayload_RejectsUnsupportedMode(t *testing.T) {
 			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "unsupported",
+					RowID:                 "HK 01",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					LandingNodeName:       "HK 01",
+					Mode:                  "unsupported",
 				}},
 			},
 		),
@@ -162,9 +165,12 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "none",
-					TargetName:      &targetName,
+					RowID:                 "HK 01",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					LandingNodeName:       "HK 01",
+					Mode:                  "none",
+					TargetName:            &targetName,
 				}},
 			},
 		),
@@ -290,7 +296,7 @@ func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) 
 	}
 }
 
-func TestDecodeLongURLPayload_AcceptsCompatiblePayloadVersionAndCanonicalizes(t *testing.T) {
+func TestDecodeLongURLPayload_RejectsLegacyPayloadVersion(t *testing.T) {
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
 		BuildLongURLPayload(
@@ -331,12 +337,12 @@ func TestDecodeLongURLPayload_AcceptsCompatiblePayloadVersionAndCanonicalizes(t 
 		t.Fatalf("joinSubURL() error = %v", err)
 	}
 
-	payload, err := DecodeLongURLPayload(mutatedLongURL, InputLimits{})
-	if err != nil {
-		t.Fatalf("DecodeLongURLPayload() error = %v", err)
+	_, err = DecodeLongURLPayload(mutatedLongURL, InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
-	if payload.V != longURLSchemaVersion {
-		t.Fatalf("expected payload version to be canonicalized to %d, got %d", longURLSchemaVersion, payload.V)
+	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 2") {
+		t.Fatalf("error mismatch: got %v", err)
 	}
 }
 
@@ -385,12 +391,12 @@ func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 4") {
+	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version") {
 		t.Fatalf("error mismatch: got %v", err)
 	}
 }
 
-func TestDecodeLongURLPayload_AppliesCompatibleOuterQueryOverride(t *testing.T) {
+func TestDecodeLongURLPayload_RejectsUnsupportedOuterQuery(t *testing.T) {
 	emoji := true
 	longURL, err := EncodeLongURL(
 		"http://localhost:11200",
@@ -404,27 +410,30 @@ func TestDecodeLongURLPayload_AppliesCompatibleOuterQueryOverride(t *testing.T) 
 		t.Fatalf("EncodeLongURL() error = %v", err)
 	}
 
-	payload, err := DecodeLongURLPayload(longURL+"&emoji=false", InputLimits{})
-	if err != nil {
-		t.Fatalf("DecodeLongURLPayload() error = %v", err)
+	_, err = DecodeLongURLPayload(longURL+"&emoji=false", InputLimits{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
-	if payload.Stage1Input.AdvancedOptions.Emoji == nil || *payload.Stage1Input.AdvancedOptions.Emoji {
-		t.Fatalf("expected outer emoji=false to override payload, got %+v", payload.Stage1Input.AdvancedOptions.Emoji)
+	if !strings.Contains(err.Error(), "validate long URL query: unsupported query parameter \"emoji\"") {
+		t.Fatalf("error mismatch: got %v", err)
 	}
 }
 
-func TestExtractSubscriptionPassthroughQuery_StripsReservedNames(t *testing.T) {
-	query := mustParseQuery(t, "data=payload&emoji=false&download=1&tfo=true&foo=bar&classic=false")
-	passthrough := ExtractSubscriptionPassthroughQuery(query)
+func TestDecodeLongURLPayload_AcceptsDownloadQuery(t *testing.T) {
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(
+			stage1InputWithTemplate(Stage1Input{}),
+			Stage2Snapshot{},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
 
-	if got := passthrough.Get("tfo"); got != "true" {
-		t.Fatalf("tfo mismatch: got %q", got)
-	}
-	if got := passthrough.Get("foo"); got != "bar" {
-		t.Fatalf("foo mismatch: got %q", got)
-	}
-	if passthrough.Get("emoji") != "" || passthrough.Get("data") != "" || passthrough.Get("download") != "" || passthrough.Get("classic") != "" {
-		t.Fatalf("reserved params leaked into passthrough: %+v", passthrough)
+	if _, err := DecodeLongURLPayload(longURL+"&download=1", InputLimits{}); err != nil {
+		t.Fatalf("DecodeLongURLPayload() error = %v", err)
 	}
 }
 
@@ -475,7 +484,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}],"serverAggregationGroups":[{"server":"landing.example.com","enabled":true,"strategy":"fallback","memberRowIds":["HK 01"]}]},"v":3}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}],"serverAggregationGroups":[{"server":"landing.example.com","enabled":true,"strategy":"fallback","memberRowIds":["HK 01"]}]},"v":4}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}
@@ -492,12 +501,3 @@ func mustMarshalIndented(t *testing.T, value any) string {
 	return string(data)
 }
 
-func mustParseQuery(t *testing.T, rawQuery string) url.Values {
-	t.Helper()
-
-	values, err := url.ParseQuery(rawQuery)
-	if err != nil {
-		t.Fatalf("url.ParseQuery() error = %v", err)
-	}
-	return values
-}

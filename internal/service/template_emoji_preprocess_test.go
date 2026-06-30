@@ -14,7 +14,10 @@ func TestPreprocessTemplateEmojiByRegion_InjectsRulesWhenEmojiEnabled(t *testing
 	}, "\n")
 	enabled := true
 
-	processed, messages := preprocessTemplateEmojiByRegion(templateConfig, AdvancedOptions{Emoji: &enabled})
+	processed, messages, err := preprocessTemplateEmojiByRegion(templateConfig, AdvancedOptions{Emoji: &enabled})
+	if err != nil {
+		t.Fatalf("preprocessTemplateEmojiByRegion() error = %v", err)
+	}
 
 	if processed != templateConfig {
 		t.Fatalf("preprocess should not rewrite template:\n--- got ---\n%s\n--- want ---\n%s", processed, templateConfig)
@@ -37,7 +40,10 @@ func TestPreprocessTemplateEmojiByRegion_SkipsWhenEmojiDisabled(t *testing.T) {
 		{Emoji: &disabled},
 	}
 	for _, options := range cases {
-		processed, messages := preprocessTemplateEmojiByRegion(templateConfig, options)
+		processed, messages, err := preprocessTemplateEmojiByRegion(templateConfig, options)
+		if err != nil {
+			t.Fatalf("preprocessTemplateEmojiByRegion() error = %v", err)
+		}
 		if processed != templateConfig {
 			t.Fatalf("processed template changed when emoji disabled:\n--- got ---\n%s\n--- want ---\n%s", processed, templateConfig)
 		}
@@ -56,7 +62,10 @@ func TestPreprocessTemplateEmojiByRegion_RespectsExistingConflictingEmojiRule(t 
 	}, "\n")
 	enabled := true
 
-	processed, messages := preprocessTemplateEmojiByRegion(templateConfig, AdvancedOptions{Emoji: &enabled})
+	processed, messages, err := preprocessTemplateEmojiByRegion(templateConfig, AdvancedOptions{Emoji: &enabled})
+	if err != nil {
+		t.Fatalf("preprocessTemplateEmojiByRegion() error = %v", err)
+	}
 
 	if processed != templateConfig {
 		t.Fatalf("preprocess should not rewrite template:\n--- got ---\n%s\n--- want ---\n%s", processed, templateConfig)
