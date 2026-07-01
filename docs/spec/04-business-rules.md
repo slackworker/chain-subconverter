@@ -438,7 +438,7 @@
 - `serverAggregationGroups[].groupName` 为可选字段；仅表达该聚合组的用户自定义名称
 - `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback`、`url-test`、`select` 或 `load-balance`
 - `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`；数组顺序承载组内成员顺序，去重时保留首次出现的位置
-- 组内成员顺序的 UI 配置入口为阶段 2 聚合树 server 行的「成员顺序」面板；用户拖拽后的顺序写入 `memberRowIds[]`
+- 前端若提供成员顺序编辑能力，写回的唯一结果就是 `memberRowIds[]` 的顺序
 - 外层 `serverAggregationGroups[]` 数组本身的顺序**不承载展示语义**；组按 `server` 字段唯一定位；聚合树 server 块的先后顺序见 `2.1.3`
 - `enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
 - `enabled = true` 时，每个成员行对应的 `rows[].server` 必须与组 `server` 一致；跨 server 入组必须阻断

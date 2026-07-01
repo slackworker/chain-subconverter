@@ -290,7 +290,7 @@
 - `maxPublicLongURLLength` 表示当前部署对外公开 longUrl 的预算上限；当前 Web 前端必须据此决定何时自动切换为短链接展示
 - 该接口不承载鉴权、转换、模板拉取或健康检查语义
 
-### 1b. `GET /api/runtime-status`
+### 2. `GET /api/runtime-status`
 
 用途：返回部署运行态摘要（应用版本、subconverter 探测结果、短链存储用量）。
 
@@ -339,7 +339,7 @@
 - 与 `GET /healthz` 职责分离：本接口用于运行态展示，不替代存活探测
 - 不并入 `GET /api/runtime-config`
 
-### 2. `POST /api/stage1/convert`
+### 3. `POST /api/stage1/convert`
 
 用途：接收阶段 1 输入，并返回本次转换得到的 `stage2Init`。
 
@@ -411,7 +411,7 @@
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 3. `POST /api/generate`
+### 4. `POST /api/generate`
 
 用途：接收阶段 1 快照与阶段 2 快照，完成最终校验并返回可消费的长链接。
 
@@ -507,7 +507,7 @@
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 2b. `POST /api/stage2/reset`
+### 5. `POST /api/stage2/reset`
 
 用途：基于当前 `stage1Input` 重新计算 Stage 2 初始配置，并按指定范围恢复 `stage2Snapshot`。
 
@@ -571,7 +571,7 @@
 - `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 4. `POST /api/short-links`
+### 6. `POST /api/short-links`
 
 用途：为既有 `longUrl` 创建或获取其确定性短链接。
 
@@ -626,7 +626,7 @@
 - `503`：`SHORT_LINK_STORE_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 5. `POST /api/resolve-url`
+### 7. `POST /api/resolve-url`
 
 用途：输入长链接、短链接或短链接 `shortID`，返回规范化长链接、页面恢复所需快照，以及该快照当前是否允许继续编辑和继续生成。
 
@@ -684,7 +684,7 @@
 - `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 6. `GET /sub/<id>`
+### 8. `GET /sub/<id>`
 
 用途：供 Mihomo 客户端拉取 YAML。
 
@@ -698,7 +698,7 @@
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
 - 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`429` `RATE_LIMITED`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`429` 与 `503` 可返回 `retryable = true`
 
-### 7. `GET /sub?...`
+### 9. `GET /sub?...`
 
 用途：长链接对应的订阅资源地址；访问时返回 YAML。
 
@@ -835,18 +835,11 @@ gzip 规则：
 
 ## 长短链接语义
 
-- 长链接必须编码 `stage1Input` 和 `stage2Snapshot`
-- 长链接必须可逆，能恢复页面状态
-- 长链接编码必须 URL-safe 且具确定性；同一份规范化状态载荷必须生成相同的 `data`
-- 长链接编码版本必须显式包含在 `data` 载荷中；编码与解码都固定使用 `v = 4`
+- 本节只定义长链接与短链接的关系、索引与存储语义；编码结构、query 约束与错误处理见上一节“长链接编码规范”
+- 长链接是唯一规范化状态源：编码 `stage1Input` 与 `stage2Snapshot`，可逆、URL-safe、具确定性，并显式固定 `v = 4`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
-- 长链接本身也是订阅资源地址
-- 长链接公开路径固定为 `/sub?...`
-- 后端生成的规范长链接查询参数只包含 `data`
-- 订阅读取只允许附加 `download=1`；其他 query 一律视为无效长链接
-- 长链接是唯一规范化状态源
-- 短链接是长链接的不透明别名，不单独承载状态源语义
-- 短链接公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
+- 长链接本身也是订阅资源地址；公开路径固定为 `/sub?...`
+- 短链接是长链接的不透明别名，不单独承载状态源语义；公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
 - 短链接 ID 必须由**规范状态键**通过确定性算法生成；规范状态键由规范化状态载荷唯一导出，等价于与公开基地址无关的 canonical data key；同一份规范状态必须得到同一个 `<id>`
 - 短链 `canonicalStateKey` **必须保留** `rows[]` presentation order；仅做字段 trim/归一化，**不得**对 `rows[]` 重排序；长链接 `data` 编码亦必须保留 presentation order（见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
 - 当前默认短链接 ID 生成算法为：对规范状态键计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符

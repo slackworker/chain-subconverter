@@ -41,9 +41,8 @@
 - 方案层可以通过注入或装配的方式提供 Stage 容器、notice renderer、status display、target chooser 等 UI 实现，但不得改变共享业务语义
 - A/B/C 方案应以 `0 UI` 为起点独立开发，不以任一既有页面壳层作为继承前提
 - 共享层严格限定为业务契约与状态语义，不包含任何 UI 壳、页面骨架或视觉容器实现
-- `web/src/scheme/default` 是默认发布入口的冻结目录，不作为实验方案的共享基类；`web/src/scheme/b1|b2|c1|c2` 才是 `dev` 分支上的持续演进方案目录
-- 每个 scheme 目录必须保持自包含：至少由本地 `Page.tsx` 导出统一入口 `SchemePage`，并由本地 `index.ts` 声明 scheme 元数据；不得让 `default` 运行时直接 import 实验 scheme 的页面实现
-- 当需要把某个实验方案提升为默认入口时，权威动作是把该 scheme 目录整体复制到 `web/src/scheme/default`，然后仅重写 `default/index.ts` 的默认元数据；不得把 `default` 改成某个实验方案的运行时别名
+- 默认发布方案与探索性方案必须保持运行时解耦；不得把默认方案降级为某个实验方案的运行时别名
+- 每个方案入口必须保持自包含，并通过稳定的共享业务层接口接入；不得让默认发布方案在运行时直接依赖实验方案页面实现
 
 ### 方案分级：发布基线与探索性
 
@@ -204,8 +203,8 @@
 
 - 行序由 `rows[]` presentation order 决定；聚合组成员序由 `memberRowIds[]` 决定（三顺序域见 [04 §2.1.2a](04-business-rules.md)）
 - 平铺表与聚合树均按 `stage2Snapshot.rows[]` presentation order 渲染（业务规则见 [04 §2.1.3](04-business-rules.md)）
-- 聚合组内成员顺序不来自 `rows[]` 顺序，而来自 `serverAggregationGroups[].memberRowIds[]`；`strategy = fallback` 时通过聚合树 server 行「成员顺序」下拉面板拖拽写入（与 [`Stage2ServerMemberOrderCell`](../../web/src/scheme/default/Stage2RowCells.tsx) / [`Stage2MemberOrderList`](../../web/src/scheme/default/Stage2MemberOrderList.tsx) 行为一致）
-- 行级拖拽（预留）：未来通过重排 `rows[]` 写入 presentation order，语义见 [04 §2.1.4](04-business-rules.md)；状态变换由 `reorderStage2RowsState` 承载（见 [`useAppWorkflow.state.ts`](../../web/src/hooks/useAppWorkflow.state.ts)）
+- 聚合组内成员顺序不来自 `rows[]` 顺序，而来自 `serverAggregationGroups[].memberRowIds[]`
+- 行级拖拽若未来启用，只能通过重排 `rows[]` 写入 presentation order；语义见 [04 §2.1.4](04-business-rules.md)
 
 ### 2.2 共享业务槽位
 
@@ -259,7 +258,7 @@
 ### 2.6.2 线路聚合模式（基线路由 UI）
 
 - 表格上方 toolbar 提供「线路聚合模式」开关；开启后平铺表 ↔ 聚合树切换（非高级选项内）
-- 关闭聚合模式时清空 `serverAggregationGroups[]`（与 [`Stage2Section.handleAggregationModeToggle`](../../web/src/scheme/default/Stage2Section.tsx) 行为一致）
+- 关闭聚合模式时清空 `serverAggregationGroups[]`
 - 聚合组配置写入 `serverAggregationGroups[]`；渲染语义见 [04 §2.7 / §3.3.2](04-business-rules.md)
 - 组内成员顺序（`memberRowIds[]`）与 `rows[]` presentation order 是独立顺序域：前者由聚合树「成员顺序」面板配置，后者决定平铺表行序与聚合树 server 块顺序（见 [04 §2.1.3 / §2.7](04-business-rules.md)）
 - 不自动为所有 server 批量建组；用户须在聚合树内显式启用
