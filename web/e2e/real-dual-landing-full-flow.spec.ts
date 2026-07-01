@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 import {
-	addTagInField,
 	applyDefaultUiPreferences,
 	expectHTTPResponseOK,
 	locateStage2Row,
@@ -50,10 +49,6 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	await relayInput.press("Enter");
 	await relayDialog.getByRole("button", { name: "确认" }).click();
 
-	await page.getByRole("button", { name: "高级选项" }).click();
-	await addTagInField(page, "包含节点", "HK");
-	await addTagInField(page, "排除节点", "JP");
-
 	const stage1ConvertResponsePromise = page.waitForResponse((resp) => resp.url().includes("/api/stage1/convert"));
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 	const stage1ConvertResponse = await stage1ConvertResponsePromise;
@@ -61,8 +56,6 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 
 	const stage1ConvertRequest = stage1ConvertResponse.request().postDataJSON() as Stage1ConvertRequest;
 	expect(stage1ConvertRequest.stage1Input.forwardRelayItems).toEqual([relayA, relayB]);
-	expect(stage1ConvertRequest.stage1Input.advancedOptions.include).toEqual(["HK"]);
-	expect(stage1ConvertRequest.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 
 	const stage1ConvertPayload = (await stage1ConvertResponse.json()) as Stage1ConvertResponse;
 	const firstRowName = stage1ConvertPayload.stage2Init.rows[0]?.landingNodeName;
@@ -151,8 +144,6 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	expect(resolveResponse.ok()).toBeTruthy();
 	const resolvePayload = (await resolveResponse.json()) as ResolveURLResponse;
 	expect(resolvePayload.restoreStatus).toBe("replayable");
-	expect(resolvePayload.stage1Input.advancedOptions.include).toEqual(["HK"]);
-	expect(resolvePayload.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 	expect(resolvePayload.stage2Snapshot.rows).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({

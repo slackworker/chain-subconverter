@@ -55,5 +55,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 待 vps-01/02 + Koyeb 拉取 **`beta-latest`** @ `v3.2.0-beta.1`（`a339f86`）后跑 `real-smoke` + `real-full`；上一轮 2026-06-26 @ `v3.1.0-beta.1` 见 [deployments.md](testing/deployments.md) |
+| **第三方部署** | 2026-07-01：vps-01/02 + Koyeb 已切 **`beta-latest`** @ `v3.2.0-beta.1`（`a339f86`）；`real-smoke` + `real-full` **通过**（`real-full` 已与 canonical / [preview-inputs.md](testing/preview-inputs.md) 对齐，不含 include/exclude；过滤回归仍由 `mock-dual-landing-filters` 承担）— 见 [deployments.md](testing/deployments.md) |
 | **本地自动化基线** | 2026-07-01：push `dev`/`beta` CI、`go test ./...`、`npm run test`、`test:e2e:mock:all`、全 scheme build **通过**；见 [runbook.md](testing/runbook.md) |

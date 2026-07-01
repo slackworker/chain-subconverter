@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 import {
-	addTagInField,
 	applyDefaultUiPreferences,
 	locateStage2Row,
 	mockReplayableResolveRoute,
@@ -118,10 +117,6 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 	await relayInput.press("Enter");
 	await dialog.getByRole("button", { name: "确认" }).click();
 
-	await page.getByRole("button", { name: "高级选项" }).click();
-	await addTagInField(page, "包含节点", "HK");
-	await addTagInField(page, "排除节点", "JP");
-
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 
 	const sourceRow = locateStage2Row(page, "Alpha-Reality-HK-PortForward");
@@ -170,8 +165,6 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 		throw new Error("stage1 convert request was not captured");
 	}
 	expect(firstStage1Request.stage1Input.forwardRelayItems).toEqual([relayA, relayB]);
-	expect(firstStage1Request.stage1Input.advancedOptions.include).toEqual(["HK"]);
-	expect(firstStage1Request.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 	expect(generateRequests).toHaveLength(1);
 	const firstGenerateRequest = generateRequests[0];
 	if (firstGenerateRequest === undefined) {

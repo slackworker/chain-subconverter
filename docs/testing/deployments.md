@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前正式 Beta 线**：[`v3.2.0-beta.1`](../../RELEASES.md#v320-beta1) @ `beta-latest`（`a339f86`；镜像已发布，**第三方设备待拉取复验**）。上一轮 3.1 记录保留至覆盖写入。
+> **当前正式 Beta 线**：[`v3.2.0-beta.1`](../../RELEASES.md#v320-beta1) @ `beta-latest`（`a339f86`；三台设备已拉取，**smoke + real-full 通过**；`real-full` 已与 canonical / [preview-inputs.md](preview-inputs.md) 对齐，不含 include/exclude）。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
@@ -21,50 +21,50 @@
 
 | 形态 | 设备 / 平台 | 最近回归 | 结果 |
 |------|-------------|----------|------|
-| **内网一体化** | vps-01（LAN Compose） | 2026-06-26 | **通过** |
-| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-06-26 | **通过** |
-| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-06-26 | **通过**（`beta-latest`） |
+| **内网一体化** | vps-01（LAN Compose） | 2026-07-01 | **smoke + full 通过** |
+| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-07-01 | **smoke + full 通过** |
+| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-07-01 | **smoke + full 通过** |
 
 外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
 
 ---
 
-## 内网一体化 — vps-01（2026-06-26，`beta-latest`）
+## 内网一体化 — vps-01（2026-07-01，`beta-latest`）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:73230aa37f761750a0d0cc8099d3e8fc3ef408af958cc92c8f7140c64b336dd6`，tag `v3.1.0-beta.1` / `beta` @ `6a8f93a`）；`subconverter:integration-chain-subconverter`（`/version` = `v0.9.2-c7b26b5-...`，本轮未换 digest）
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:e0cd23fcba323f05c52ff90faae44ce40386658a41b7f482ca2a2c31f70fbb30`，tag `v3.2.0-beta.1` / `beta` @ `a339f86`）；`subconverter:integration-chain-subconverter`（`/version` = `v0.9.2-c7b26b5-...`，本轮未换 digest）
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`（compose 已切 `beta-latest`）
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)）
-- **回归**：`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`
-- **结果**：**通过**
-- **关键发现**：`v3.1.0-beta.1` 正式 tag 后一体化形态复验通过；此前 `dev-latest` @ `cf820c2` 预演已覆盖三形态
+- **回归**：`docker compose pull && up -d --force-recreate app`；WSL `third-party-smoke.sh`（`real-smoke` + `real-full`）**通过**
+- **结果**：**smoke + full 通过**
+- **关键发现**：此前 `real-full` 失败系 E2E spec 误含 include/exclude（与 canonical / [preview-inputs.md](preview-inputs.md) 不一致）；对齐高级选项后 dual-landing full 在本机 WSL 复验通过
 - **细节**：SSH、入口 URL、smoke 命令见本地文件
 
 ---
 
-## 公网 HTTPS 一体化 — vps-02（2026-06-26，`beta-latest`）
+## 公网 HTTPS 一体化 — vps-02（2026-07-01，`beta-latest`）
 
-- **镜像 tag**：与 vps-01 同 digest（`beta-latest`，tag `v3.1.0-beta.1`）；`subconverter:integration-chain-subconverter` 同 vps-01
+- **镜像 tag**：与 vps-01 同 digest（`beta-latest`，tag `v3.2.0-beta.1` @ `a339f86`）；`subconverter:integration-chain-subconverter` 同 vps-01
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`
 - **DEFAULT_TEMPLATE_URL**：同 vps-01
-- **回归**：公网 HTTPS；`docker compose pull && up -d --force-recreate app`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`
-- **结果**：**通过**
-- **关键发现**：与 vps-01 同轮 `beta-latest` 复验；HTTPS 入口与 resolve 回放均正常
+- **回归**：公网 HTTPS；`docker compose pull && up -d --force-recreate app`；WSL `third-party-smoke.sh` **通过**
+- **结果**：**smoke + full 通过**
+- **关键发现**：与 vps-01 同轮 `beta-latest`；HTTPS 入口与 dual-landing full 回放均正常
 - **细节**：SSH、域名、smoke 命令见本地文件
 
 ---
 
-## 双 Docker 分离 — Koyeb + vps-02（2026-06-26，`beta-latest`）
+## 双 Docker 分离 — Koyeb + vps-02（2026-07-01，`beta-latest`）
 
 - **部署形态**：`app`（Koyeb）与 `subconverter`（vps-02 独立 Compose）分属两套 Docker；`UPSTREAM` / `FACING` 跨公网互访
 - **chain-subconverter 入口**（**demo preview**）：Koyeb `https://chain-subconverter.koyeb.app/`
 - **subconverter 入口**：vps-02 独立 Compose（`GET /version` → `subconverter v0.9.2-c7b26b5-mihomo-integration-chain-subconverter backend`）
-- **镜像 tag**：Koyeb app `beta-latest`（digest 同 vps-01/02，`v3.1.0-beta.1` @ `6a8f93a`）；subconverter `integration-chain-subconverter`
-- **回归**：Koyeb `koyeb service update … --docker …:beta-latest`；WSL `test:e2e:real:smoke` + `test:e2e:real:full`；subconverter `/version`
-- **结果**：**通过**
-- **关键发现**：demo preview 已与 vps 一体化同轮切 `beta-latest` 并复验通过
+- **镜像 tag**：Koyeb app `beta-latest`（digest 同 vps-01/02，`v3.2.0-beta.1` @ `a339f86`）；subconverter `integration-chain-subconverter`
+- **回归**：Koyeb `koyeb service update … --docker …:beta-latest`；WSL `third-party-smoke.sh` **通过**；subconverter `/version` 正常
+- **结果**：**smoke + full 通过**
+- **关键发现**：Koyeb 已从 `dev-latest` @ `0d1c3b8` 切至 `v3.2.0-beta.1`；跨网 subconverter 健康；dual-landing full 与一体化形态一致通过
 - **细节**：subconverter 地址、Compose 路径、smoke 命令见本地文件
 
 ---
