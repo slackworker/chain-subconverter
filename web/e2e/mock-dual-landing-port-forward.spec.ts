@@ -197,6 +197,7 @@ test("mock dual-landing port-forward modal keeps draft relay tags", async ({ pag
 
 	const dialog = page.getByRole("dialog", { name: "添加端口转发服务" });
 	const forwardInput = dialog.getByPlaceholder("输入 server:port ，按 Enter 添加多个");
+	await expect(forwardInput).toBeFocused();
 	await forwardInput.fill(relayA);
 	await forwardInput.press("Enter");
 
@@ -205,6 +206,8 @@ test("mock dual-landing port-forward modal keeps draft relay tags", async ({ pag
 
 	await addRelayButton.click();
 	const reopenedDialog = page.getByRole("dialog", { name: "添加端口转发服务" });
+	const reopenedForwardInput = reopenedDialog.getByPlaceholder("输入 server:port ，按 Enter 添加多个");
+	await expect(reopenedForwardInput).toBeFocused();
 	await expect(reopenedDialog.getByText(relayA, { exact: true })).toBeVisible();
 
 	await reopenedDialog.getByRole("button", { name: "确认" }).click();

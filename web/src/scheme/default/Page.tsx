@@ -1378,6 +1378,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							ref={portForwardTagFieldRef}
 							label={copy.forwardInfo}
 							values={portForwardDraftTags}
+							autoFocus
 							autoNormalizeFullWidthColon
 							splitByDelimiters
 							onChange={(next) => {

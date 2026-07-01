@@ -35,6 +35,8 @@ interface TagFieldProps {
 	/** 开启后可在单次输入中按空白/逗号/分号批量拆分标签。 */
 	splitByDelimiters?: boolean;
 	onReject?: (reject: TagFieldReject) => void;
+	/** 挂载后将焦点置于输入框（如 modal 内单一录入场景）。 */
+	autoFocus?: boolean;
 }
 
 function rejectFromAppend(result: Extract<AppendTagResult, { ok: false }>): TagFieldReject | null {
@@ -74,6 +76,7 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 		existingTags,
 		splitByDelimiters = false,
 		onReject,
+		autoFocus = false,
 	},
 	ref,
 ) {
@@ -167,6 +170,7 @@ export const TagField = forwardRef<TagFieldHandle, TagFieldProps>(function TagFi
 						}}
 						disabled={disabled}
 						placeholder={placeholder}
+						autoFocus={autoFocus}
 					/>
 					<button
 						type="button"
