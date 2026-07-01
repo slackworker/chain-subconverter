@@ -186,8 +186,8 @@
 |------|----------|
 | `POST /api/stage1/convert` | `prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Init` |
 | `POST /api/stage2/reset` | 同上；随后按请求范围重置 `stage2Snapshot` |
-| `POST /api/generate` | 完整 Pipeline（至 `postProcess` 前的校验口径）；编码 `statePayload v4` |
-| `POST /api/resolve-url` | 先解码载荷，再执行与 `generate` 同口径 Pipeline 与校验；成功后返回 `replayable` 或 `conflicted` |
+| `POST /api/generate` | 完整 Pipeline 至 `postProcess` 的内部 dry-run 校验；编码 `statePayload v4`，但不返回 `completeConfig` |
+| `POST /api/resolve-url` | 先解码载荷，再执行与 `generate` 同口径的完整内部校验；成功后返回 `replayable` 或 `conflicted` |
 | `GET /sub?...` 与 `GET /sub/<id>` | 完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig` |
 
 硬约束：
@@ -207,7 +207,7 @@
 补充规则：
 
 - `convert` 只返回 `stage2Init`
-- `generate` 只返回链接，不返回 YAML
+- `generate` 只返回链接，不返回 YAML；但服务端必须在返回前完成至 `postProcess` 的内部 dry-run 校验
 - `resolve` 返回恢复快照与恢复裁决，不返回 YAML
 - `completeConfig` 只在订阅读取时生成并返回
 

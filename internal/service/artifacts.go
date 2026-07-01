@@ -141,6 +141,9 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	if err != nil {
 		return "", err
 	}
+	if err := validatePostProcessedChainTargets(rendered, stage2Snapshot, proxyGroupChainTargetNameSet(stage2Init)); err != nil {
+		return "", err
+	}
 	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
 	if err != nil {
 		return "", err

@@ -51,7 +51,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 
 	pipeline := NewCorePipeline(ctx, source, payload.Stage1Input, limits).
 		WithStage2Snapshot(payload.Stage2Snapshot)
-	fixtures, err := pipeline.LoadGenerateValidationFixtures()
+	validationMessages, err := pipeline.ValidateGenerateDryRun()
 	if err != nil {
 		if restoreStatus, messages, restoreConflicts, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
 			return ResolveURLResponse{
@@ -84,22 +84,17 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		return ResolveURLResponse{}, err
 	}
 
-	restoreStatus, messages, restoreConflicts, err := pipeline.DetermineRestoreStatus(fixtures)
-	if err != nil {
-		return ResolveURLResponse{}, err
-	}
-	baseMessages := append([]Message{}, fixtures.Messages...)
-	baseMessages = append(baseMessages, restoreWorkflowMessages(restoreStatus)...)
-	messages = append(baseMessages, messages...)
-
 	return ResolveURLResponse{
 		LongURL:          resolved,
 		ShortURL:         shortURL,
-		RestoreStatus:    restoreStatus,
-		RestoreConflicts: restoreConflicts,
+		RestoreStatus:    "replayable",
+		RestoreConflicts: nil,
 		Stage1Input:      payload.Stage1Input,
 		Stage2Snapshot:   payload.Stage2Snapshot,
-		Messages:         messages,
+		Messages: append(
+			append([]Message{}, validationMessages...),
+			restoreWorkflowMessages("replayable")...,
+		),
 		BlockingErrors:   []BlockingError{},
 	}, nil
 }

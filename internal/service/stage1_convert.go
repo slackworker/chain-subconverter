@@ -163,6 +163,7 @@ type ConversionFixtures struct {
 	LandingDiscoveryYAML       string
 	TransitDiscoveryYAML       string
 	FullBaseYAML               string
+	ValidationFullBaseYAML     string
 	TemplateConfig             string
 	EffectiveTemplateURL       string
 	ManagedTemplateURL         string

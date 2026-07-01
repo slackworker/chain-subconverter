@@ -103,7 +103,55 @@ func TestValidateGenerateSnapshot_RejectsEmptyChainTarget(t *testing.T) {
 	}
 	responseErr, ok := AsResponseError(err)
 	if !ok {
-		t.Fatalf("expected response error, got %T", err)
+		t.Fatalf("expected response error, got %T: %v", err, err)
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "EMPTY_CHAIN_TARGET" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "EMPTY_CHAIN_TARGET")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsEmptyChainTargetFromValidationFullBaseYAML(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+	fixtures.FullBaseYAML = ""
+	fixtures.TemplateConfig = "custom_proxy_group=🇭🇰 香港节点`select`HK\n"
+	fixtures.LandingDiscoveryYAML = strings.Join([]string{
+		"proxies:",
+		"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"",
+	}, "\n")
+	fixtures.ValidationFullBaseYAML = strings.Join([]string{
+		"proxies:",
+		"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+		"proxy-groups:",
+		"  - name: 🇭🇰 香港节点",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"",
+	}, "\n")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				LandingNodeName:       "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &targetName,
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want empty chain target rejection from validation full-base")
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T: %v", err, err)
 	}
 	blockingError := responseErr.BlockingError()
 	if blockingError.Code != "EMPTY_CHAIN_TARGET" {

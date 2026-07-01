@@ -33,6 +33,35 @@ func renderCompleteConfigYAML(
 	})
 }
 
+func validatePostProcessedChainTargets(renderedYAML string, snapshot Stage2Snapshot, proxyGroupChainTargetNames map[string]struct{}) error {
+	if len(proxyGroupChainTargetNames) == 0 {
+		return nil
+	}
+	proxyGroups, err := parseProxyGroups(renderedYAML)
+	if err != nil {
+		return fmt.Errorf("parse post-processed proxy-groups: %w", err)
+	}
+	for _, row := range snapshot.Rows {
+		if row.Mode != "chain" || row.TargetName == nil {
+			continue
+		}
+		targetName := strings.TrimSpace(*row.TargetName)
+		if targetName == "" {
+			continue
+		}
+		if _, ok := proxyGroupChainTargetNames[targetName]; !ok {
+			continue
+		}
+		group, ok := proxyGroups[targetName]
+		if !ok || len(group.Proxies) > 0 {
+			continue
+		}
+		cause := fmt.Errorf("chain target %q for proxy %q is empty after postProcess", targetName, row.proxyNameOrFallback())
+		return newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", stage2RowValidationErrorRef(row), "targetName", cause)
+	}
+	return nil
+}
+
 func stripLandingNodesFromCompleteConfigYAML(
 	fullBaseYAML string,
 	snapshot Stage2Snapshot,

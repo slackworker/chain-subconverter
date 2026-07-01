@@ -54,14 +54,24 @@ func (pipeline *CorePipeline) BuildGenerateResponse(publicBaseURL string, maxLon
 	if !pipeline.hasStage2Snapshot {
 		return GenerateResponse{}, fmt.Errorf("stage2 snapshot is required for generate pipeline")
 	}
-	fixtures, err := pipeline.LoadGenerateValidationFixtures()
+	messages, err := pipeline.ValidateGenerateDryRun()
 	if err != nil {
 		return GenerateResponse{}, err
 	}
-	return BuildGenerateResponse(publicBaseURL, GenerateRequest{
-		Stage1Input:    pipeline.stage1Input,
-		Stage2Snapshot: pipeline.stage2Snapshot,
-	}, fixtures, maxLongURLLength)
+	longURL, err := EncodeLongURL(
+		publicBaseURL,
+		BuildLongURLPayload(pipeline.stage1Input, pipeline.stage2Snapshot),
+		maxLongURLLength,
+	)
+	if err != nil {
+		return GenerateResponse{}, err
+	}
+	messages = append(messages, generateWorkflowMessages()...)
+	return GenerateResponse{
+		LongURL:        longURL,
+		Messages:       messages,
+		BlockingErrors: []BlockingError{},
+	}, nil
 }
 
 func (pipeline *CorePipeline) BuildStage2ResetResponse(reset Stage2ResetAction) (Stage2ResetResponse, error) {
@@ -113,6 +123,44 @@ func (pipeline *CorePipeline) LoadGenerateValidationFixtures() (ConversionFixtur
 		return pipeline.loadManagedPass3ValidationFixtures(snapshotSource)
 	}
 	return LoadConversionFixtures(pipeline.ctx, pipeline.source, pipeline.stage1Input, pipeline.limits)
+}
+
+func (pipeline *CorePipeline) ValidateGenerateDryRun() ([]Message, error) {
+	if !pipeline.hasStage2Snapshot {
+		return nil, fmt.Errorf("stage2 snapshot is required for validation pipeline")
+	}
+	if snapshotSource, ok := pipeline.source.(SnapshotPass3RenderingSource); ok {
+		preparedRender, err := pipeline.prepareManagedPass3Render()
+		if err != nil {
+			return nil, err
+		}
+		if preparedRender.prepared.Cleanup != nil {
+			defer preparedRender.prepared.Cleanup()
+		}
+
+		fullBaseYAML, err := snapshotSource.RenderManagedPass3(
+			pipeline.ctx,
+			preparedRender.prepared,
+			preparedRender.managedLandingYAML,
+			preparedRender.managedTransitProxiesYAML,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := pipeline.renderManagedPass3CompleteConfig(preparedRender, fullBaseYAML); err != nil {
+			return nil, err
+		}
+		return append([]Message{}, preparedRender.fixtures.Messages...), nil
+	}
+
+	fixtures, err := LoadConversionFixtures(pipeline.ctx, pipeline.source, pipeline.stage1Input, pipeline.limits)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := RenderCompleteConfig(pipeline.stage1Input, pipeline.stage2Snapshot, fixtures); err != nil {
+		return nil, err
+	}
+	return append([]Message{}, fixtures.Messages...), nil
 }
 
 func (pipeline *CorePipeline) RenderCompleteConfig() (string, error) {
@@ -222,15 +270,17 @@ func (pipeline *CorePipeline) loadManagedPass3ValidationFixtures(snapshotSource 
 		defer preparedRender.prepared.Cleanup()
 	}
 
-	if _, err := snapshotSource.RenderManagedPass3(
+	fullBaseYAML, err := snapshotSource.RenderManagedPass3(
 		pipeline.ctx,
 		preparedRender.prepared,
 		preparedRender.managedLandingYAML,
 		preparedRender.managedTransitProxiesYAML,
-	); err != nil {
+	)
+	if err != nil {
 		return ConversionFixtures{}, err
 	}
 
+	preparedRender.fixturesForSnapshotValidation.ValidationFullBaseYAML = fullBaseYAML
 	return preparedRender.fixturesForSnapshotValidation, nil
 }
 
@@ -253,6 +303,10 @@ func (pipeline *CorePipeline) renderCompleteConfigViaManagedPass3(snapshotSource
 		return "", err
 	}
 
+	return pipeline.renderManagedPass3CompleteConfig(preparedRender, fullBaseYAML)
+}
+
+func (pipeline *CorePipeline) renderManagedPass3CompleteConfig(preparedRender managedPass3Prepared, fullBaseYAML string) (string, error) {
 	regionGroupNames, err := recognizedRegionGroupSet(preparedRender.fixtures)
 	if err != nil {
 		return "", err
@@ -271,6 +325,9 @@ func (pipeline *CorePipeline) renderCompleteConfigViaManagedPass3(snapshotSource
 		proxyGroupChainTargetNameSet(stage2Init),
 	)
 	if err != nil {
+		return "", err
+	}
+	if err := validatePostProcessedChainTargets(rendered, pipeline.stage2Snapshot, proxyGroupChainTargetNameSet(stage2Init)); err != nil {
 		return "", err
 	}
 	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, pipeline.stage2Snapshot)

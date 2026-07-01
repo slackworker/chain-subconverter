@@ -164,6 +164,13 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	return resolvedLandingProxies, nil
 }
 
+func validationFullBaseYAML(fixtures ConversionFixtures) string {
+	if strings.TrimSpace(fixtures.ValidationFullBaseYAML) != "" {
+		return fixtures.ValidationFullBaseYAML
+	}
+	return fixtures.FullBaseYAML
+}
+
 // DetermineRestoreStatus validates the restored snapshot against current fixtures
 // and returns replayable or conflicted per spec 04-business-rules §3.2.1.
 func DetermineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, []RestoreConflict, error) {
@@ -201,14 +208,15 @@ func IsRestoreConflictError(err error) bool {
 }
 
 func fullBaseProxyGroupTargetsByName(fixtures ConversionFixtures, resolvedLandingProxies []resolvedLandingProxy) (map[string]ChainTarget, error) {
-	if strings.TrimSpace(fixtures.FullBaseYAML) == "" {
+	fullBaseYAML := validationFullBaseYAML(fixtures)
+	if strings.TrimSpace(fullBaseYAML) == "" {
 		return nil, nil
 	}
 	transitProxies, err := parseInlineProxyList(fixtures.TransitDiscoveryYAML)
 	if err != nil {
 		return nil, fmt.Errorf("parse transit discovery fixture: %w", err)
 	}
-	fullBaseGroups, err := parseProxyGroups(fixtures.FullBaseYAML)
+	fullBaseGroups, err := parseProxyGroups(fullBaseYAML)
 	if err != nil {
 		return nil, fmt.Errorf("parse full-base fixture: %w", err)
 	}

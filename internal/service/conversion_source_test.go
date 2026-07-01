@@ -356,6 +356,81 @@ func TestBuildGenerateResponseFromSource_UsesManagedLandingPass3ForValidation(t 
 	}
 }
 
+func TestBuildGenerateResponseFromSource_RejectsEmptyChainTargetFromManagedPass3(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request: subconverter.Request{
+					LandingRawText: "https://landing.example/sub",
+					TransitRawText: "https://transit.example/sub",
+				},
+				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing",
+			"",
+		}, "\n"),
+	}
+
+	_, err := BuildGenerateResponseFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		GenerateRequest{
+			Stage1Input: Stage1Input{},
+			Stage2Snapshot: Stage2Snapshot{
+				Rows: []Stage2Row{{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				}},
+			},
+		},
+		0,
+		InputLimits{},
+	)
+	if err == nil {
+		t.Fatal("BuildGenerateResponseFromSource() error = nil, want EMPTY_CHAIN_TARGET")
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "EMPTY_CHAIN_TARGET" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "EMPTY_CHAIN_TARGET")
+	}
+}
+
 func TestBuildGenerateResponseFromSource_ManagedPass3AllowsRenamedPrimaryLanding(t *testing.T) {
 	chainTarget := "🇭🇰 香港节点"
 	renamedLanding := "HK Landing Final"
@@ -428,6 +503,72 @@ func TestBuildGenerateResponseFromSource_ManagedPass3AllowsRenamedPrimaryLanding
 	}
 	if !strings.Contains(source.gotManagedLandingYAML, "  - {name: HK Landing Final, server: landing.example.com, port: 443, type: ss, dialer-proxy: 🇭🇰 香港节点}") {
 		t.Fatalf("managed landing should keep renamed primary row:\n%s", source.gotManagedLandingYAML)
+	}
+}
+
+func TestBuildGenerateResponseFromSource_FailsWhenManagedPostProcessDryRunFails(t *testing.T) {
+	chainTarget := "🇭🇰 香港节点"
+	source := &fakeSnapshotRenderingSource{
+		fakeConversionSource: fakeConversionSource{
+			usePrepared: true,
+			prepared: PreparedConversion{
+				Request: subconverter.Request{
+					LandingRawText: "https://landing.example/sub",
+					TransitRawText: "https://transit.example/sub",
+				},
+				TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`select`HK\n",
+			},
+			plannedResult: subconverter.ThreePassResult{
+				LandingDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: HK Landing, server: landing.example.com, port: 443, type: ss}",
+					"",
+				}, "\n")},
+				TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+					"proxies:",
+					"  - {name: transit-a, server: transit.example.com, port: 443, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇭🇰 香港节点",
+					"    type: select",
+					"    proxies:",
+					"      - transit-a",
+					"",
+				}, "\n")},
+			},
+		},
+		renderedFullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+			"  - {name: transit-a, type: ss, server: transit.example.com, port: 443}",
+			"",
+		}, "\n"),
+	}
+
+	_, err := BuildGenerateResponseFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		GenerateRequest{
+			Stage1Input: Stage1Input{},
+			Stage2Snapshot: Stage2Snapshot{
+				Rows: []Stage2Row{{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					LandingNodeName:       "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &chainTarget,
+				}},
+			},
+		},
+		0,
+		InputLimits{},
+	)
+	if err == nil {
+		t.Fatal("BuildGenerateResponseFromSource() error = nil, want postProcess dry-run failure")
+	}
+	if !strings.Contains(err.Error(), "proxy-groups") {
+		t.Fatalf("expected postProcess dry-run error mentioning proxy-groups, got %v", err)
 	}
 }
 

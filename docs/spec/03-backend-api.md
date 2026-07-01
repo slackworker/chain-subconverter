@@ -453,7 +453,7 @@
 
 - 请求体不包含 `completeConfig`
 - 本接口返回规范化长链接；生成前校验规则见 [04-business-rules](04-business-rules.md)
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess` 前的校验口径；并按 hard-break 规则编码 `statePayload v4`
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess` 的内部 dry-run 校验；并按 hard-break 规则编码 `statePayload v4`
 - 本接口不返回 YAML 文本
 
 成功响应：
@@ -668,7 +668,7 @@
 - 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理
 - 若传入长链接携带 `data` 与可选 `download=1` 之外的 query，必须返回 `INVALID_LONG_URL`
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，至 `postProcess` 前的校验；不得走兼容分支或旧版载荷解码路径
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，完成至 `postProcess` 的内部校验；不得走兼容分支或旧版载荷解码路径
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
