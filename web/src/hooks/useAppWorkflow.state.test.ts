@@ -202,6 +202,76 @@ describe("useAppWorkflow.state", () => {
 		});
 	});
 
+	it("preserves Stage 2 snapshot row order when stage2Init row order changes on reconvert", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "landing-hk",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk",
+						landingNodeName: "landing-hk",
+						mode: "chain",
+						targetName: "HK Relay Group",
+					},
+					{
+						rowId: "landing-hk-2",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk 2",
+						landingNodeName: "landing-hk 2",
+						mode: "none",
+						targetName: null,
+					},
+					{
+						rowId: "landing-jp",
+						sourceLandingNodeName: "landing-jp",
+						proxyName: "landing-jp",
+						landingNodeName: "landing-jp",
+						mode: "none",
+						targetName: null,
+					},
+				],
+				serverAggregationGroups: [],
+			},
+		};
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [],
+			rows: [
+				{
+					rowId: "landing-jp",
+					sourceLandingNodeName: "landing-jp",
+					proxyName: "landing-jp",
+					landingNodeName: "landing-jp",
+					landingNodeType: "vmess",
+					server: "jp.example.com",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeName: "landing-hk",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		const result = mergeStage2SnapshotAfterConvert(current, stage2Init);
+
+		expect(result.snapshot.rows.map((row) => row.rowId)).toEqual([
+			"landing-hk",
+			"landing-hk-2",
+			"landing-jp",
+		]);
+	});
+
 	it("downgrades invalid Stage 2 snapshot fields during merge after reconvert", () => {
 		const current: AppState = {
 			...initialAppState,

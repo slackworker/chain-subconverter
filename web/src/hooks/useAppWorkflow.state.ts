@@ -175,6 +175,23 @@ function getAllowedModes(
 	return stage2Init.availableModes.filter((mode) => restrictedModes[mode] === undefined);
 }
 
+function mergeSourceSnapshotRow(baseRow: Stage2Row, existingSourceRow: Stage2Row | undefined): Stage2Row {
+	if (existingSourceRow === undefined) {
+		return baseRow;
+	}
+	const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
+	const mergedProxyName = existingSourceRow.proxyName ?? existingSourceRow.landingNodeName;
+	return {
+		...baseRow,
+		rowId: existingSourceRow.rowId ?? baseRow.rowId,
+		sourceLandingNodeName: existingSourceRow.sourceLandingNodeName ?? sourceLandingNodeName,
+		proxyName: mergedProxyName,
+		landingNodeName: existingSourceRow.landingNodeName ?? mergedProxyName ?? baseRow.landingNodeName,
+		mode: existingSourceRow.mode,
+		targetName: existingSourceRow.targetName,
+	};
+}
+
 export function mergeStage2SnapshotAfterConvert(
 	current: AppState,
 	stage2Init: Stage2Init,
@@ -205,37 +222,53 @@ export function mergeStage2SnapshotAfterConvert(
 		}
 	}
 
-	const mergedRows: Stage2Row[] = baseRows.map((baseRow) => {
+	const baseRowsBySource = new Map<string, Stage2Row>();
+	for (const baseRow of baseRows) {
 		const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
-		const existingSourceRow = existingSourceRows.get(sourceLandingNodeName);
-		if (existingSourceRow === undefined) {
-			return baseRow;
-		}
-		const mergedProxyName = existingSourceRow.proxyName ?? existingSourceRow.landingNodeName;
-		return {
-			...baseRow,
-			rowId: existingSourceRow.rowId ?? baseRow.rowId,
-			sourceLandingNodeName: existingSourceRow.sourceLandingNodeName ?? sourceLandingNodeName,
-			proxyName: mergedProxyName,
-			landingNodeName: existingSourceRow.landingNodeName ?? mergedProxyName ?? baseRow.landingNodeName,
-			mode: existingSourceRow.mode,
-			targetName: existingSourceRow.targetName,
-		};
-	});
-
-	for (const row of current.stage2Snapshot.rows) {
-		if (isStage2SourceRow(row)) {
+		if (sourceLandingNodeName === "" || baseRowsBySource.has(sourceLandingNodeName)) {
 			continue;
 		}
+		baseRowsBySource.set(sourceLandingNodeName, baseRow);
+	}
+
+	const mergedSourceLandingNames = new Set<string>();
+	const mergedRows: Stage2Row[] = [];
+	for (const row of current.stage2Snapshot.rows) {
 		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-		if (sourceLandingNodeName === "" || !stage2InitRowsBySource.has(sourceLandingNodeName)) {
-			report.droppedDerivedRows += 1;
+		if (sourceLandingNodeName === "") {
+			continue;
+		}
+		if (!stage2InitRowsBySource.has(sourceLandingNodeName)) {
+			if (!isStage2SourceRow(row)) {
+				report.droppedDerivedRows += 1;
+			}
+			continue;
+		}
+		if (isStage2SourceRow(row)) {
+			if (mergedSourceLandingNames.has(sourceLandingNodeName)) {
+				continue;
+			}
+			const baseRow = baseRowsBySource.get(sourceLandingNodeName);
+			if (baseRow === undefined) {
+				continue;
+			}
+			mergedSourceLandingNames.add(sourceLandingNodeName);
+			mergedRows.push(mergeSourceSnapshotRow(baseRow, existingSourceRows.get(sourceLandingNodeName) ?? row));
 			continue;
 		}
 		mergedRows.push({
 			...row,
 			sourceLandingNodeName: row.sourceLandingNodeName ?? sourceLandingNodeName,
 		});
+	}
+
+	for (const baseRow of baseRows) {
+		const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
+		if (sourceLandingNodeName === "" || mergedSourceLandingNames.has(sourceLandingNodeName)) {
+			continue;
+		}
+		mergedSourceLandingNames.add(sourceLandingNodeName);
+		mergedRows.push(mergeSourceSnapshotRow(baseRow, existingSourceRows.get(sourceLandingNodeName)));
 	}
 
 	const validatedRows = mergedRows.map((row) => {
