@@ -87,8 +87,7 @@
 
 - `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
 - `rowId` 为行稳定 ID（全表唯一，必填）；`proxyName` 为 YAML 节点名（全表唯一）；`sourceLandingNodeName` 为 Pass 1 原始落地名；字段语义见 [04 §2.1.2](04-business-rules.md)
-- `rows[]` 数组顺序承载 **presentation order**（展示域；见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
-- `serverAggregationGroups[].memberRowIds[]` 数组顺序承载 **聚合组内成员顺序**（见 [04 §2.7](04-business-rules.md)）
+- `rows[]` 数组顺序与 `serverAggregationGroups[].memberRowIds[]` 数组顺序都属于稳定契约的一部分；具体语义见 [04 §2.1.2a / §2.1.3 / §2.7](04-business-rules.md)
 - 每个当前落地身份至少一行；允许多行共享同一 `sourceLandingNodeName`（复制）
 - `mode` 只能是 `none`、`chain`、`port_forward`
 - `mode = none` 时，`targetName` 必须为空或 `null`
