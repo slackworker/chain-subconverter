@@ -1,17 +1,18 @@
 # 项目状态
 
-> 最近更新：2026-06-26 · **3.1 Beta 线** 正式 tag [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1) 已发布 · **3.0 线** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（`main` 尚未同步稳定线）
+> 最近更新：2026-07-01 · **3.2 Beta 线** 待发 [`v3.2.0-beta.1`](../RELEASES.md#v320-beta1)（`dev` 已收口）· **3.1 线** 止于 [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1) · **3.0 线** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（`main` 尚未同步稳定线）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.1 Beta 线已发布**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（聚合组、切换优化、emoji 预处理、长链 v3、default UI）；镜像 `beta-latest`
+- **3.2 Beta 线待发版**：[`v3.2.0-beta.1`](../RELEASES.md#v320-beta1)（Pipeline hard-break、长链 v4、恢复冲突、`generate` dry-run、行序保持）；待合并 `beta`、打 tag 与第三方回归
+- **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1；当前线上 `beta-latest`）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
-- **Phase 0–4 已完成**；维护期以 3.1 Beta 收口、回归与测试/文档债为主
+- **Phase 0–4 已完成**；维护期以 3.2 Beta 发版收口、回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
-- 契约与实现边界： [spec/02–05](spec/)（含 snapshot-first 三 pass、stage2 复制/改名、server 聚合，见 [04 §1.1.3 / §2.1.2 / §2.7](spec/04-business-rules.md)）
+- 契约与实现边界： [spec/02–05](spec/)（含 Pipeline hard-break、长链 v4、恢复冲突、snapshot-first 三 pass、stage2 复制/改名/行序、server 聚合，见 [04 §1.1.3 / §2.1.2 / §2.7 / §3.2.1](spec/04-business-rules.md)）
 
 ## 分支与提交流程
 
@@ -55,4 +56,4 @@
 | 类别 | 摘要 |
 |------|------|
 | **第三方部署** | 2026-06-26 vps-01/02 + Koyeb demo **`beta-latest`** @ `v3.1.0-beta.1`（`6a8f93a`）`real-smoke` + `real-full` **通过**（见 [deployments.md](testing/deployments.md)） |
-| **本地自动化基线** | 2026-06-26：`go test ./...`、`test:e2e:mock:all`、push `dev` CI **通过**；完整 runbook 清单见 [runbook.md](testing/runbook.md) |
+| **本地自动化基线** | 2026-07-01：`go test ./...`、`npm run test`、`test:e2e:mock:all`、`build:default` **通过**；发版前完整 runbook 与 push `dev` CI 待跑，见 [runbook.md](testing/runbook.md) |

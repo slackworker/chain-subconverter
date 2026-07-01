@@ -13,7 +13,68 @@
 说明：
 
 - `CI` 不再在 tag push 上重复执行；Docker 发布会等待同 SHA 的 `CI` 成功（`Publish Validation`）。
-- `beta-latest` 与版本 tag（如 `v3.1.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
+- `beta-latest` 与版本 tag（如 `v3.2.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
+
+---
+
+## v3.2.0-beta.1
+
+**Tag:** `v3.2.0-beta.1`（待发）  
+**日期:** 2026-07-01（文档收口；镜像 tag 待合并 `beta` 后发布）  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.1.0-beta.1](#v310-beta1) 基础上，引入 **Pipeline hard-break**、**长链接 `statePayload v4`**、**结构化恢复冲突裁决**与 **Stage 2 快照行序保持**。**不兼容** 3.1 及更早长链接载荷（v2/v3）；已分享链接须用 3.2 重新生成。
+
+### 变更摘要
+
+#### Pipeline 与校验（核心）
+
+- **统一 Pipeline（hard-break）**：`convert` 只执行至 `buildStage2Init`；`generate`、`resolve-url` 与 `GET /sub*` 走同一条完整 Pipeline（含双托管 Pass 3 与 `postProcess`）；步骤表见 [spec 04 §1.1.3](docs/spec/04-business-rules.md)。
+- **`generate` 内部 dry-run**：返回链接前必须完成至 `postProcess` 的完整内部校验，坏配置在生成阶段即失败（见 [spec 04 §1.1.1 / §1.2](docs/spec/04-business-rules.md)）。
+- **`resolve-url` 同口径校验**：不得使用「仅结构校验」降级路径；成功后返回 `replayable` 或 `conflicted`（见 [spec 01](docs/spec/01-overview.md)、[spec 03 §resolve-url](docs/spec/03-backend-api.md)）。
+
+#### 恢复冲突
+
+- **`restoreConflicts[]`**：`restoreStatus = conflicted` 时返回结构化 `reasonCode` / `reasonArgs`；前端进入只读冲突态，不得继续生成（见 [spec 04 §3.2.1](docs/spec/04-business-rules.md)、[spec 02 §恢复](docs/spec/02-frontend-spec.md)）。
+- **默认 `/` UI**：`RestoreConflictBanner` 与 `mode-reason` 展示失效原因。
+
+#### 长链接 / 短链
+
+- **长链接 payload `v=4`**（3.1 为 `v=3`）：**仅接受 v4**；v2/v3 及外层 query 状态覆写均不再支持。
+- 短链 `canonicalStateKey` 与 v4 快照语义一致；旧短链若指向 v2/v3 载荷，升级后无法恢复。
+
+#### Stage 2 与其他
+
+- **快照行序**：`stage2Snapshot.rows[]` 持久化顺序在阶段 1 重转换时保持；新勾选成员按行序插入（见 [spec 04 §2.1.2](docs/spec/04-business-rules.md)）。
+- **托管落地校验**：`generate` / `resolve-url` 在完整 Pipeline 中校验 managed landing 与 postProcess 一致性。
+- **Spec / 治理**：`00` 权威顺序与 `01–04` 契约与实现对齐（通知生命周期、入口子集表等）。
+
+#### 测试
+
+- 单测与 mock E2E 覆盖 restore conflict、行序保持、dry-run 失败路径；发版前须完成 runbook 完整检查与第三方 `real-smoke` / `real-full`。
+
+### 自部署
+
+打 tag 后将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.2.0-beta.1"
+```
+
+### 从 3.1 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。
+2. **长链接**：**3.1 生成的 v2/v3 链接无法解码恢复**；须在 3.2 界面重新配置并生成 v4 链接后再分享。
+3. **`resolve-url`**：若上游订阅变化导致目标失效，将返回 `conflicted` 与 `restoreConflicts[]`，页面只读展示，不可直接继续生成。
+4. 探索性 `/ui/b1|b2|c1|c2` 非发布门禁（见 [runbook](docs/testing/runbook.md)）。
+
+### Beta 说明
+
+仍属预发布；安全与部署注意同 [v3.0.0-beta.1](#v300-beta1) 下文「Beta 说明」与 [SECURITY.md](SECURITY.md)。本轮发版仅更新 `beta` 分支；镜像通过 `v3.2.0-beta.1` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
 
 ---
 
