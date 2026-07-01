@@ -436,10 +436,6 @@ func (source *reviewFixtureSource) ConvertWithPlan(_ context.Context, _ subconve
 	return result, nil
 }
 
-func (source *reviewFixtureSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string, _ string) (string, error) {
-	return source.result.FullBase.YAML, nil
-}
-
 func (source *reviewFixtureSource) PrepareConversion(_ context.Context, stage1Input service.Stage1Input) (service.PreparedConversion, error) {
 	normalized := service.NormalizeStage1Input(stage1Input)
 	return service.PreparedConversion{

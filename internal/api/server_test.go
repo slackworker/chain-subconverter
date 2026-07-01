@@ -1649,7 +1649,7 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 }
 
 func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
-	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
+	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\nadd_emoji=false\nremove_old_emoji=false\n"
 	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		_, _ = writer.Write([]byte(templateConfig))
 	}))
