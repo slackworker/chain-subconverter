@@ -202,6 +202,11 @@
 | `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
 | `chainProxyTargetGroupSwitchOptimizationEnabled` | `boolean` | 全局开关；开启后对所有符合条件的 `proxy-groups` 目标统一覆写 `timeout` 与 `max-failed-times` |
 
+- 行序由 `rows[]` presentation order 决定；聚合组成员序由 `memberRowIds[]` 决定（三顺序域见 [04 §2.1.2a](04-business-rules.md)）
+- 平铺表与聚合树均按 `stage2Snapshot.rows[]` presentation order 渲染（业务规则见 [04 §2.1.3](04-business-rules.md)）
+- 聚合组内成员顺序不来自 `rows[]` 顺序，而来自 `serverAggregationGroups[].memberRowIds[]`；`strategy = fallback` 时通过聚合树 server 行「成员顺序」下拉面板拖拽写入（与 [`Stage2ServerMemberOrderCell`](../../web/src/scheme/default/Stage2RowCells.tsx) / [`Stage2MemberOrderList`](../../web/src/scheme/default/Stage2MemberOrderList.tsx) 行为一致）
+- 行级拖拽（预留）：未来通过重排 `rows[]` 写入 presentation order，语义见 [04 §2.1.4](04-business-rules.md)；状态变换由 `reorderStage2RowsState` 承载（见 [`useAppWorkflow.state.ts`](../../web/src/hooks/useAppWorkflow.state.ts)）
+
 ### 2.2 共享业务槽位
 
 | 槽位 | 内容 | 交互 |
@@ -256,6 +261,7 @@
 - 表格上方 toolbar 提供「线路聚合模式」开关；开启后平铺表 ↔ 聚合树切换（非高级选项内）
 - 关闭聚合模式时清空 `serverAggregationGroups[]`（与 [`Stage2Section.handleAggregationModeToggle`](../../web/src/scheme/default/Stage2Section.tsx) 行为一致）
 - 聚合组配置写入 `serverAggregationGroups[]`；渲染语义见 [04 §2.7 / §3.3.2](04-business-rules.md)
+- 组内成员顺序（`memberRowIds[]`）与 `rows[]` presentation order 是独立顺序域：前者由聚合树「成员顺序」面板配置，后者决定平铺表行序与聚合树 server 块顺序（见 [04 §2.1.3 / §2.7](04-business-rules.md)）
 - 不自动为所有 server 批量建组；用户须在聚合树内显式启用
 
 ### 2.6.3 两种故障转移能力的分工

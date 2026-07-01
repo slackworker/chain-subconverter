@@ -24,6 +24,7 @@ import {
 	updateServerAggregationGroupState,
 	moveServerAggregationMemberToIndexState,
 	reorderServerAggregationMemberState,
+	reorderStage2RowsState,
 } from "./useAppWorkflow.state";
 
 describe("useAppWorkflow.state", () => {
@@ -866,6 +867,40 @@ it("inserts newly checked members by stage2 row order", () => {
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([
 			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-3"] },
 		]);
+	});
+
+	it("reorders stage 2 rows by rowId without changing server aggregation groups", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", landingNodeName: "SG", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1"] }],
+			},
+		};
+
+		const reordered = reorderStage2RowsState(current, ["sg-1", "hk-1"]);
+		expect(reordered.stage2Snapshot.rows.map((row) => row.rowId)).toEqual(["sg-1", "hk-1"]);
+		expect(reordered.stage2Snapshot.serverAggregationGroups).toEqual(current.stage2Snapshot.serverAggregationGroups);
+	});
+
+	it("rejects incomplete rowId permutations when reordering stage 2 rows", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", landingNodeName: "SG", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [],
+			},
+		};
+
+		expect(reorderStage2RowsState(current, ["hk-1"])).toBe(current);
+		expect(reorderStage2RowsState(current, ["hk-1", "hk-1"])).toBe(current);
+		expect(reorderStage2RowsState(current, ["hk-1", "unknown"])).toBe(current);
 	});
 
 	it("reorders server aggregation members up and down", () => {

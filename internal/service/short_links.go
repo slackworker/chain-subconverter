@@ -194,10 +194,6 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 		rows[index].LandingNodeName = rows[index].ProxyName
 	}
 
-	sort.Slice(rows, func(left, right int) bool {
-		return compareStage2RowCanonicalOrder(rows[left], rows[right]) < 0
-	})
-
 	groups := make([]ServerAggregationGroup, len(payload.Stage2Snapshot.ServerAggregationGroups))
 	for index, group := range payload.Stage2Snapshot.ServerAggregationGroups {
 		memberRowIDs := make([]string, 0, len(group.MemberRowIDs))
@@ -234,24 +230,6 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 		ServerAggregationGroups:       groups,
 	}
 	return canonical
-}
-
-func compareStage2RowCanonicalOrder(left Stage2Row, right Stage2Row) int {
-	leftFields := []string{
-		strings.TrimSpace(left.rowIDOrFallback()),
-		strings.TrimSpace(left.sourceLandingNodeNameOrFallback()),
-		strings.TrimSpace(left.proxyNameOrFallback()),
-		strings.TrimSpace(left.Mode),
-		normalizeOptionalStringValue(left.TargetName),
-	}
-	rightFields := []string{
-		strings.TrimSpace(right.rowIDOrFallback()),
-		strings.TrimSpace(right.sourceLandingNodeNameOrFallback()),
-		strings.TrimSpace(right.proxyNameOrFallback()),
-		strings.TrimSpace(right.Mode),
-		normalizeOptionalStringValue(right.TargetName),
-	}
-	return compareStringFields(leftFields, rightFields)
 }
 
 func compareServerAggregationGroupCanonicalOrder(left ServerAggregationGroup, right ServerAggregationGroup) int {

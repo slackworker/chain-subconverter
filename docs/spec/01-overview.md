@@ -81,6 +81,7 @@ flowchart LR
 
 - 阶段 1 是唯一原始输入入口；阶段 2 不允许自由手填节点或服务
 - `stage2Init` 每落地一行；`stage2Snapshot` 可含复制行，`rowId` 与 `proxyName` 全表唯一
+- `stage2Snapshot` 涉及三个独立顺序域：身份域（`rowId` 定位路由）、展示域（`rows[]` 下标决定 UI 与 YAML 列表写出）、聚合域（`memberRowIds[]` 决定组内 failover 顺序）；权威定义见 [04 §2.1.2a](04-business-rules.md)，细则见 [04 §2.1.3 / §2.7](04-business-rules.md)
 - 端口转发输入独立于中转输入，且不参与 `subconverter`
 - `resolve` 返回 `conflicted` 时，页面必须进入只读冲突态，不得继续 `generate`
 - 规范长链接仅接受 `data`（以及订阅读取时可选 `download=1`），不接受状态覆写 query

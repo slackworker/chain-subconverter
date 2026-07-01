@@ -182,6 +182,64 @@ func TestCanonicalShortLinkStateKey_ChangesWhenRowIdentityChanges(t *testing.T) 
 	}
 }
 
+func TestCanonicalShortLinkStateKey_ChangesWhenRowPresentationOrderChanges(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildPayload := func(rowOrder []string) LongURLPayload {
+		rowByID := map[string]Stage2Row{
+			"row-a": {
+				RowID:                 "row-a",
+				SourceLandingNodeName: "🇸🇬 Alpha",
+				ProxyName:             "🇸🇬 Alpha",
+				LandingNodeName:       "🇸🇬 Alpha",
+				Mode:                  "chain",
+				TargetName:            &targetSG,
+			},
+			"row-b": {
+				RowID:                 "row-b",
+				SourceLandingNodeName: "🇸🇬 Beta",
+				ProxyName:             "🇸🇬 Beta",
+				LandingNodeName:       "🇸🇬 Beta",
+				Mode:                  "none",
+			},
+		}
+		rows := make([]Stage2Row, 0, len(rowOrder))
+		for _, rowID := range rowOrder {
+			rows = append(rows, rowByID[rowID])
+		}
+		return BuildLongURLPayload(stage1, Stage2Snapshot{Rows: rows})
+	}
+
+	firstLongURL, err := EncodeLongURL("https://a.example.com/base", buildPayload([]string{"row-a", "row-b"}), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() first error = %v", err)
+	}
+	secondLongURL, err := EncodeLongURL("https://a.example.com/base", buildPayload([]string{"row-b", "row-a"}), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() second error = %v", err)
+	}
+
+	firstKey, err := CanonicalShortLinkStateKey(firstLongURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() first error = %v", err)
+	}
+	secondKey, err := CanonicalShortLinkStateKey(secondLongURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() second error = %v", err)
+	}
+
+	if firstKey == secondKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should change when row presentation order changes")
+	}
+	if DeterministicShortID(firstKey) == DeterministicShortID(secondKey) {
+		t.Fatalf("DeterministicShortID() should change when row presentation order changes")
+	}
+}
+
 func TestCanonicalShortLinkStateKey_ChangesWhenFallbackMemberOrderChanges(t *testing.T) {
 	stage1 := stage1InputWithTemplate(Stage1Input{
 		LandingRawText: "landing",

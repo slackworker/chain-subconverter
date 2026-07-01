@@ -1019,6 +1019,58 @@ export function updateServerAggregationGroupNameState(
 	};
 }
 
+export function reorderStage2RowsState(
+	current: AppState,
+	orderedRowIds: string[],
+): AppState {
+	const trimmedOrderedRowIds = orderedRowIds.map((rowId) => rowId.trim()).filter(Boolean);
+	const currentRows = current.stage2Snapshot.rows;
+	const currentRowIds = currentRows
+		.map((row) => row.rowId?.trim())
+		.filter((rowId): rowId is string => Boolean(rowId));
+
+	if (trimmedOrderedRowIds.length !== currentRowIds.length || currentRowIds.length === 0) {
+		return current;
+	}
+
+	const currentRowIdSet = new Set(currentRowIds);
+	if (trimmedOrderedRowIds.length !== new Set(trimmedOrderedRowIds).size) {
+		return current;
+	}
+	for (const rowId of trimmedOrderedRowIds) {
+		if (!currentRowIdSet.has(rowId)) {
+			return current;
+		}
+	}
+
+	const rowById = new Map<string, Stage2Row>();
+	for (const row of currentRows) {
+		const rowId = row.rowId?.trim();
+		if (rowId) {
+			rowById.set(rowId, row);
+		}
+	}
+
+	const nextRows = trimmedOrderedRowIds
+		.map((rowId) => rowById.get(rowId))
+		.filter((row): row is Stage2Row => row !== undefined);
+
+	if (nextRows.length !== currentRows.length) {
+		return current;
+	}
+
+	return {
+		...current,
+		...expireGeneratedOutput(current),
+		blockingErrors: clearStage2RowErrors(current),
+		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
+			nextRows,
+			current.stage2Snapshot.serverAggregationGroups,
+			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
+		),
+	};
+}
+
 export function reorderServerAggregationMemberState(
 	current: AppState,
 	server: string,

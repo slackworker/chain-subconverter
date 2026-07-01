@@ -86,7 +86,9 @@
 约束：
 
 - `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
-- `rowId` 为行稳定 ID（全表唯一，必填）；`proxyName` 为 YAML 节点名（全表唯一）；`sourceLandingNodeName` 为 Pass 1 原始落地名；数组顺序不承载语义；字段语义见 [04 §2.1.2](04-business-rules.md)
+- `rowId` 为行稳定 ID（全表唯一，必填）；`proxyName` 为 YAML 节点名（全表唯一）；`sourceLandingNodeName` 为 Pass 1 原始落地名；字段语义见 [04 §2.1.2](04-business-rules.md)
+- `rows[]` 数组顺序承载 **presentation order**（展示域；见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
+- `serverAggregationGroups[].memberRowIds[]` 数组顺序承载 **聚合组内成员顺序**（见 [04 §2.7](04-business-rules.md)）
 - 每个当前落地身份至少一行；允许多行共享同一 `sourceLandingNodeName`（复制）
 - `mode` 只能是 `none`、`chain`、`port_forward`
 - `mode = none` 时，`targetName` 必须为空或 `null`
@@ -804,7 +806,7 @@
 规范化 JSON 规则：
 
 - 对象键必须按字典序递归排序
-- 数组顺序按原语义顺序保留
+- 数组元素顺序按各数组的语义顺序保留；其中 `stage2Snapshot.rows[]` 的 presentation order（见 [04 §2.1.3](04-business-rules.md)）必须在长链接编码中保留
 - JSON 文本不得包含额外空白
 - 布尔值、`null`、数字与字符串必须使用标准 JSON 表示
 - 当前版本的规范编码输出中，不得包含 schema 未定义字段
@@ -846,6 +848,7 @@ gzip 规则：
 - 短链接是长链接的不透明别名，不单独承载状态源语义
 - 短链接公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
 - 短链接 ID 必须由**规范状态键**通过确定性算法生成；规范状态键由规范化状态载荷唯一导出，等价于与公开基地址无关的 canonical data key；同一份规范状态必须得到同一个 `<id>`
+- 短链 `canonicalStateKey` **必须保留** `rows[]` presentation order；仅做字段 trim/归一化，**不得**对 `rows[]` 重排序；长链接 `data` 编码亦必须保留 presentation order（见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
 - 当前默认短链接 ID 生成算法为：对规范状态键计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
 - 规范状态键不得包含 `USER_FACING_BASE_URL`、请求来源 host、scheme 或 base path 等发布入口信息；这些信息只能影响返回给用户的 `longUrl` / `shortUrl` 前缀，不得影响 `<id>`
 - 短链接索引在逻辑上是 `canonicalStateKey ↔ shortId` 的双射子集，并额外维护 `shortId -> longUrl` 的当前反查值：除淘汰导致的失效外，同一 `canonicalStateKey` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`canonicalStateKey` 唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立

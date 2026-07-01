@@ -257,8 +257,57 @@
 - `proxyName`：最终 YAML `proxies[].name`（全表唯一，可改名）
 - `sourceLandingNodeName`：Pass 1 原始 `proxy.name`（连接参数键；复制行可共享）
 - 复制：共享 `sourceLandingNodeName`；新 `rowId`；`proxyName` 默认 `原名 2`、`原名 3`…
-- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；行定位主键始终是 `rowId`，不是数组顺序
+- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；行定位主键始终是 `rowId`；`rows[]` 数组顺序承载展示顺序，见 `2.1.3`
 - 行集：每个落地身份至少一行；不得引用未知 `sourceLandingNodeName`
+
+### 2.1.2a 顺序域总览
+
+阶段 2 快照涉及三个相互独立的**顺序域**；本节为唯一权威定义，他处仅引用：
+
+| 顺序域 | 承载方式 | 影响范围 | 是否参与路由语义 |
+|--------|----------|----------|------------------|
+| 身份域 | `rowId` + 行字段 | `mode` / `targetName` / `dialer-proxy` 定位 | 是 |
+| 展示域（presentation order） | `rows[]` 数组下标 | 平铺表、聚合树 server 块顺序、托管 landing `proxies:` 写出、状态持久化 | 否（路由），是（展示/序列化） |
+| 聚合域 | `memberRowIds[]` | `fallback` 等策略组成员 failover 顺序 | 独立域，见 `2.7` |
+
+- **身份域**：`rowId` 定位行；`sourceLandingNodeName` 绑定连接参数；与数组下标无关
+- **展示域**：`rows[]` 下标顺序；**不参与** dialer-proxy 路由判定，但**参与** UI 渲染、server 块首次出现顺序、托管 landing 列表写出、长短链接状态持久化
+- **聚合域**：`memberRowIds[]`；与 `rows[]` 展示顺序解耦（见 `2.7`）
+
+### 2.1.3 `rows[]` 展示顺序（presentation order）
+
+`stage2Snapshot.rows[]` 的数组下标顺序定义为 **presentation order**（展示顺序），属于 `2.1.2a` 中的展示域。
+
+展示顺序参与以下行为，但不改变行级路由语义（`mode` / `targetName` / `dialer-proxy`）：
+
+- 阶段 2 平铺表的行序
+- 聚合树中 server 块的先后顺序（按 `rows[]` 中各 `server` 的首次出现顺序）
+- 托管 landing YAML 的 `proxies:` 列表写出顺序（仅影响列表排列，不影响 Mihomo 路由）
+- 长链接 `statePayload v4` 与短链 `canonicalStateKey` 中 `stage2Snapshot.rows[]` 的持久化顺序（见 [03](03-backend-api.md)）
+
+**稳定性契约**：
+
+| 操作 | 行序行为 |
+|------|----------|
+| 首次 convert / 空 snapshot | Pass 1 discovery 顺序（`resolvedLandingProxies` 遍历序） |
+| 再次 convert merge | **保留**当前 `rows[]` 顺序；剔除失效行；新落地追加末尾 |
+| reset all | 恢复 `stage2Init.rows[]` 顺序 |
+| reset row | 重置字段，**保留**该行位置 |
+| 复制行 | 插入同一 `sourceLandingNodeName` 组末尾 |
+| 长链接 encode/decode | **往返保留** presentation order |
+| 短链 canonicalStateKey | **包含** presentation order（见 [03](03-backend-api.md) 长短链接语义） |
+| 行级拖拽（预留） | 对 `rows[]` 做 `rowId` 全排列重排；`rowId` 集合不变（见 `2.1.4`） |
+
+补充：用户编辑后的顺序在 reconvert merge 中应稳定；唯一可能「被动变序」的边界是 `reset all` 或首次进入阶段 2（顺序跟随当次 Pass 1 产出）。
+
+### 2.1.4 行级重排（预留）
+
+未来平铺表 / 聚合树行拖拽的状态变换契约（不改 schema）：
+
+- **输入**：完整的 `rowId[]` 排列，必须与当前 `rows[]` 的 `rowId` 集合完全一致（双射）
+- **输出**：按该排列重排 `rows[]` 全文；行对象内容不变
+- **约束**：不得增删 `rowId`；`serverAggregationGroups[].memberRowIds[]` **不随**行级重排自动改写（与聚合域解耦一致，见 `2.7`）
+- **前端入口**（预留）：平铺表 / 聚合树行拖拽；实现前本节只定义语义
 
 ### 2.2 判断全局可用模式与行级限制
 
@@ -389,6 +438,8 @@
 - `serverAggregationGroups[].groupName` 为可选字段；仅表达该聚合组的用户自定义名称
 - `serverAggregationGroups[].enabled = true` 时才参与聚合组渲染；`strategy` 仅允许 `fallback`、`url-test`、`select` 或 `load-balance`
 - `serverAggregationGroups[].memberRowIds[]` 仅允许引用当前 `rows[]` 的 `rowId`；数组顺序承载组内成员顺序，去重时保留首次出现的位置
+- 组内成员顺序的 UI 配置入口为阶段 2 聚合树 server 行的「成员顺序」面板；用户拖拽后的顺序写入 `memberRowIds[]`
+- 外层 `serverAggregationGroups[]` 数组本身的顺序**不承载展示语义**；组按 `server` 字段唯一定位；聚合树 server 块的先后顺序见 `2.1.3`
 - `enabled = true` 时，去重后的 `memberRowIds[]` 至少包含 2 个不同成员；重复 `rowId` 不计入人数
 - `enabled = true` 时，每个成员行对应的 `rows[].server` 必须与组 `server` 一致；跨 server 入组必须阻断
 - `enabled = false` 时，该组不参与渲染，且 `strategy`、`memberRowIds` 不参与校验
@@ -421,7 +472,9 @@
 - `mode = none`：保持原样
 - `mode = chain`：第四列写入 `dialer-proxy`
 - `mode = port_forward`：第四列写入端口转发 `server:port`
-- `rows` 数组顺序不参与生成语义；校验与恢复以 `rowId` 为行定位主键，`sourceLandingNodeName` 仅用于连接参数绑定
+- 行级**路由语义**（`mode` / `targetName` / `dialer-proxy`）按 `rowId` 定位，**不依赖** `rows[]` 下标；校验与恢复以 `rowId` 为行定位主键，`sourceLandingNodeName` 仅用于连接参数绑定
+- 行级**展示与序列化顺序**按 `rows[]` presentation order（`2.1.2a` / `2.1.3`），**参与** UI 与托管 landing `proxies:` 列表写出，**不参与** Mihomo 路由选择逻辑
+- 聚合组 failover 成员顺序见 `2.7` `memberRowIds[]`，与 `rows[]` presentation order **解耦**（`2.1.2a` 聚合域）
 - `serverAggregationGroups[]` 只新增聚合策略组产物，不得覆盖任何行的 `mode/targetName` 语义
 - `chainProxyTargetGroupSwitchOptimizationEnabled` 是全局保存、组级生效的受管配置：开启后，所有 `mode = chain` 且目标为 `proxy-groups` 的行统一应用节点切换优化（覆写 `timeout` 与 `max-failed-times`），不改变该行 `dialer-proxy` 指向的 `targetName`
 
@@ -468,6 +521,7 @@
 
 #### 托管 landing（`mergeManagedLanding`）
 
+- 按 `rows[]` presentation order 迭代（见 `2.1.3`）
 - 按 `sourceLandingNodeName` 从 Pass 1 取连接参数，按 `proxyName` 展开托管 landing 的 `proxies[]`
 - `mode = chain`：写入 `dialer-proxy: <targetName>`
 - `mode = port_forward`：将 `targetName` 解析为 `server` 与 `port` 并替换
