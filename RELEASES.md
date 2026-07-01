@@ -19,9 +19,10 @@
 
 ## v3.2.0-beta.1
 
-**Tag:** `v3.2.0-beta.1`（待发）  
-**日期:** 2026-07-01（文档收口；镜像 tag 待合并 `beta` 后发布）  
-**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+**Tag:** `v3.2.0-beta.1`  
+**日期:** 2026-07-01  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）  
+**提交:** `a339f86`
 
 ### 概述
 

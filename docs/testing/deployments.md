@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前线上 Beta 线**：[`v3.1.0-beta.1`](../../RELEASES.md#v310-beta1) @ `beta-latest`（vps-01/02 一体化 + Koyeb demo 均已复验）。**待发**：[`v3.2.0-beta.1`](../../RELEASES.md#v320-beta1) 合并 `beta` 并打 tag 后须覆盖本节复验。
+> **当前正式 Beta 线**：[`v3.2.0-beta.1`](../../RELEASES.md#v320-beta1) @ `beta-latest`（`a339f86`；镜像已发布，**第三方设备待拉取复验**）。上一轮 3.1 记录保留至覆盖写入。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
