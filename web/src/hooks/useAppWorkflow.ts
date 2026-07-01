@@ -592,6 +592,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					logEntries,
 					messages: restoreResponse.messages,
 					restoredStage1Input,
+					restoreConflicts: restoreResponse.restoreConflicts ?? [],
 					restoreStatus: restoreResponse.restoreStatus,
 					resolvedLongUrl: restoreResponse.longUrl,
 					resolvedShortUrl: restoreResponse.shortUrl,

@@ -17,13 +17,14 @@ type ResolveURLRequest struct {
 
 // ResolveURLResponse is the response payload for POST /api/resolve-url.
 type ResolveURLResponse struct {
-	LongURL        string          `json:"longUrl"`
-	ShortURL       string          `json:"shortUrl,omitempty"`
-	RestoreStatus  string          `json:"restoreStatus"`
-	Stage1Input    Stage1Input     `json:"stage1Input"`
-	Stage2Snapshot Stage2Snapshot  `json:"stage2Snapshot"`
-	Messages       []Message       `json:"messages"`
-	BlockingErrors []BlockingError `json:"blockingErrors"`
+	LongURL          string            `json:"longUrl"`
+	ShortURL         string            `json:"shortUrl,omitempty"`
+	RestoreStatus    string            `json:"restoreStatus"`
+	RestoreConflicts []RestoreConflict `json:"restoreConflicts,omitempty"`
+	Stage1Input      Stage1Input       `json:"stage1Input"`
+	Stage2Snapshot   Stage2Snapshot    `json:"stage2Snapshot"`
+	Messages         []Message         `json:"messages"`
+	BlockingErrors   []BlockingError   `json:"blockingErrors"`
 }
 
 type resolveURLInput struct {
@@ -52,24 +53,26 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		WithStage2Snapshot(payload.Stage2Snapshot)
 	fixtures, err := pipeline.LoadGenerateValidationFixtures()
 	if err != nil {
-		if restoreStatus, messages, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
+		if restoreStatus, messages, restoreConflicts, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
 			return ResolveURLResponse{
-				LongURL:        resolved,
-				ShortURL:       shortURL,
-				RestoreStatus:  restoreStatus,
-				Stage1Input:    payload.Stage1Input,
-				Stage2Snapshot: payload.Stage2Snapshot,
-				Messages:       messages,
-				BlockingErrors: []BlockingError{},
+				LongURL:          resolved,
+				ShortURL:         shortURL,
+				RestoreStatus:    restoreStatus,
+				RestoreConflicts: restoreConflicts,
+				Stage1Input:      payload.Stage1Input,
+				Stage2Snapshot:   payload.Stage2Snapshot,
+				Messages:         messages,
+				BlockingErrors:   []BlockingError{},
 			}, nil
 		}
 		if IsRestoreConflictError(err) {
 			return ResolveURLResponse{
-				LongURL:        resolved,
-				ShortURL:       shortURL,
-				RestoreStatus:  "conflicted",
-				Stage1Input:    payload.Stage1Input,
-				Stage2Snapshot: payload.Stage2Snapshot,
+				LongURL:          resolved,
+				ShortURL:         shortURL,
+				RestoreStatus:    "conflicted",
+				RestoreConflicts: []RestoreConflict{RestoreConflictFromError(err)},
+				Stage1Input:      payload.Stage1Input,
+				Stage2Snapshot:   payload.Stage2Snapshot,
 				Messages: []Message{{
 					Level:   "warning",
 					Code:    "RESTORE_CONFLICT",
@@ -81,7 +84,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		return ResolveURLResponse{}, err
 	}
 
-	restoreStatus, messages, err := pipeline.DetermineRestoreStatus(fixtures)
+	restoreStatus, messages, restoreConflicts, err := pipeline.DetermineRestoreStatus(fixtures)
 	if err != nil {
 		return ResolveURLResponse{}, err
 	}
@@ -90,37 +93,39 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	messages = append(baseMessages, messages...)
 
 	return ResolveURLResponse{
-		LongURL:        resolved,
-		ShortURL:       shortURL,
-		RestoreStatus:  restoreStatus,
-		Stage1Input:    payload.Stage1Input,
-		Stage2Snapshot: payload.Stage2Snapshot,
-		Messages:       messages,
-		BlockingErrors: []BlockingError{},
+		LongURL:          resolved,
+		ShortURL:         shortURL,
+		RestoreStatus:    restoreStatus,
+		RestoreConflicts: restoreConflicts,
+		Stage1Input:      payload.Stage1Input,
+		Stage2Snapshot:   payload.Stage2Snapshot,
+		Messages:         messages,
+		BlockingErrors:   []BlockingError{},
 	}, nil
 }
 
-func downgradeRestoreTemplateFixtureError(err error) (string, []Message, bool) {
+func downgradeRestoreTemplateFixtureError(err error) (string, []Message, []RestoreConflict, bool) {
 	responseErr, ok := AsResponseError(err)
 	if !ok {
-		return "", nil, false
+		return "", nil, nil, false
 	}
 	blockingError := responseErr.BlockingError()
+	restoreConflict := RestoreConflictFromError(err)
 	if blockingError.Code == "TEMPLATE_CONFIG_UNAVAILABLE" {
 		return "conflicted", []Message{{
 			Level:   "warning",
 			Code:    "RESTORE_CONFLICT",
 			Message: "当前快照使用的模板 URL 暂时不可用，已恢复输入与快照供参考；请更新模板 URL 后重新转换。",
-		}}, true
+		}}, []RestoreConflict{restoreConflict}, true
 	}
 	if blockingError.Scope == "stage1_field" && fmt.Sprint(blockingError.Context["field"]) == "config" {
 		return "conflicted", []Message{{
 			Level:   "warning",
 			Code:    "RESTORE_CONFLICT",
 			Message: "当前快照使用的模板 URL 已失效或不再可用，已恢复输入与快照供参考；请更新模板 URL 后重新转换。",
-		}}, true
+		}}, []RestoreConflict{restoreConflict}, true
 	}
-	return "", nil, false
+	return "", nil, nil, false
 }
 
 func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, error) {

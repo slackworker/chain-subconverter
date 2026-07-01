@@ -17,6 +17,7 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 			{
 				landingNodeName: "landing-happy",
 				landingNodeType: "ss",
+			server: "landing-happy.example.com",
 				mode: "none",
 				targetName: null,
 			},
@@ -149,6 +150,9 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 				longUrl: longURL,
 				shortUrl: shortURL,
 				restoreStatus: "conflicted",
+				restoreConflicts: [
+					{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } },
+				],
 				stage1Input: {
 					landingRawText: landingInput,
 					transitRawText: transitInput,
@@ -186,6 +190,7 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 	await page.getByRole("button", { name: "反向解析" }).click();
 
 	await expect(page.getByText("当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。", { exact: true })).toBeVisible();
+	await expect(page.getByText("行「HK 01」：引用的目标在当前模板中不存在", { exact: true })).toBeVisible();
 	await expect(page.getByLabel("落地信息")).toHaveValue(landingInput);
 	await expect(page.getByLabel("中转信息")).toHaveValue(transitInput);
 	await expect(currentLink).toHaveValue(shortURL);

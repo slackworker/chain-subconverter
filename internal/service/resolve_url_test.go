@@ -121,6 +121,12 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 	if response.RestoreStatus != "conflicted" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "conflicted")
 	}
+	if len(response.RestoreConflicts) != 1 {
+		t.Fatalf("expected 1 restore conflict, got %d: %v", len(response.RestoreConflicts), response.RestoreConflicts)
+	}
+	if response.RestoreConflicts[0].ReasonCode != "STAGE2_ROWSET_MISMATCH" {
+		t.Fatalf("restore conflict reasonCode mismatch: got %q want %q", response.RestoreConflicts[0].ReasonCode, "STAGE2_ROWSET_MISMATCH")
+	}
 	if len(response.Messages) != 1 {
 		t.Fatalf("expected 1 message, got %d: %v", len(response.Messages), response.Messages)
 	}
@@ -489,6 +495,9 @@ func TestResolveURLFromSource_DowngradesTemplateUnavailableToConflicted(t *testi
 	if len(response.Messages) != 1 || response.Messages[0].Code != "RESTORE_CONFLICT" {
 		t.Fatalf("messages mismatch: got %v", response.Messages)
 	}
+	if len(response.RestoreConflicts) != 1 || response.RestoreConflicts[0].ReasonCode != "TEMPLATE_CONFIG_UNAVAILABLE" {
+		t.Fatalf("restoreConflicts mismatch: got %v", response.RestoreConflicts)
+	}
 }
 
 func TestResolveURLFromSource_DowngradesTemplateConfigFieldErrorToConflicted(t *testing.T) {
@@ -556,6 +565,12 @@ func TestResolveURLFromSource_DowngradesTemplateConfigFieldErrorToConflicted(t *
 	}
 	if len(response.Messages) != 1 || response.Messages[0].Code != "RESTORE_CONFLICT" {
 		t.Fatalf("messages mismatch: got %v", response.Messages)
+	}
+	if len(response.RestoreConflicts) != 1 || response.RestoreConflicts[0].ReasonCode != "INVALID_REQUEST" {
+		t.Fatalf("restoreConflicts mismatch: got %v", response.RestoreConflicts)
+	}
+	if response.RestoreConflicts[0].ReasonArgs["field"] != "config" {
+		t.Fatalf("restore conflict field mismatch: got %#v", response.RestoreConflicts[0].ReasonArgs)
 	}
 }
 

@@ -32,6 +32,24 @@ describe("formatModeReason", () => {
 		expect(text).toContain("44333");
 	});
 
+	it("formats restore conflict reasons with row context", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "TARGET_NOT_FOUND",
+				reasonArgs: { rowId: "HK 02", field: "targetName" },
+			}),
+		).toBe("行「HK 02」：引用的目标在当前模板中不存在");
+	});
+
+	it("formats template config restore conflicts", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "INVALID_REQUEST",
+				reasonArgs: { field: "config" },
+			}),
+		).toBe("当前快照使用的模板 URL 已失效或不再可用");
+	});
+
 	it("falls back to reasonCode for unknown codes", () => {
 		expect(formatModeReason({ reasonCode: "CUSTOM_REASON" })).toBe("CUSTOM_REASON");
 	});

@@ -1841,6 +1841,15 @@
 	font-size: 0.9rem;
 }
 
+.a-conflict-banner__list {
+	margin: 0.65rem 0 0;
+	padding-left: 1.15rem;
+}
+
+.a-conflict-banner__list li + li {
+	margin-top: 0.35rem;
+}
+
 .a-table-wrap {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;

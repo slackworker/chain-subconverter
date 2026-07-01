@@ -31,6 +31,71 @@ function formatPortDiscouragedText(reasonArgs: Record<string, unknown> | undefin
 		: `For chain mode, prefer ports up to ${recommendedPortMax}.`;
 }
 
+function formatRowRef(reasonArgs: Record<string, unknown> | undefined, locale: ModeReasonLocale): string {
+	const rowId = typeof reasonArgs?.rowId === "string" ? reasonArgs.rowId.trim() : "";
+	const proxyName = typeof reasonArgs?.proxyName === "string" ? reasonArgs.proxyName.trim() : "";
+	const label = rowId || proxyName;
+	if (!label) {
+		return "";
+	}
+	return locale === "zh" ? `行「${label}」` : `Row "${label}"`;
+}
+
+function formatRestoreConflictReason(
+	reasonCode: string,
+	reasonArgs: Record<string, unknown> | undefined,
+	locale: ModeReasonLocale,
+): string {
+	const rowRef = formatRowRef(reasonArgs, locale);
+	const rowPrefix = rowRef ? `${rowRef}：` : "";
+
+	switch (reasonCode) {
+		case "TARGET_NOT_FOUND":
+			return locale === "zh"
+				? `${rowPrefix}引用的目标在当前模板中不存在`
+				: `${rowPrefix}references a target that no longer exists in the current template`;
+		case "LANDING_NODE_NOT_FOUND":
+			return locale === "zh"
+				? `${rowPrefix}引用的落地节点在当前环境中不存在`
+				: `${rowPrefix}references a landing node that no longer exists in the current environment`;
+		case "EMPTY_CHAIN_TARGET":
+			return locale === "zh"
+				? `${rowPrefix}引用的链式目标当前不可用`
+				: `${rowPrefix}references a chain target that is currently unavailable`;
+		case "STAGE2_ROWSET_MISMATCH":
+			return locale === "zh"
+				? "恢复的配置与当前可生成的 Stage 2 行集合不一致"
+				: "The restored configuration no longer matches the current Stage 2 row set";
+		case "SERVER_AGGREGATION_MEMBER_NOT_FOUND":
+			return locale === "zh"
+				? "恢复的配置引用了当前环境中不存在的聚合成员行"
+				: "The restored configuration references an aggregation member row that no longer exists";
+		case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
+			return locale === "zh"
+				? "恢复的配置引用的聚合组已不满足最小成员数量"
+				: "A restored aggregation group no longer meets the minimum member count";
+		case "SERVER_AGGREGATION_SERVER_MISMATCH":
+			return locale === "zh"
+				? "恢复的配置存在跨 server 聚合成员不一致"
+				: "The restored configuration has aggregation members from mismatched servers";
+		case "TEMPLATE_CONFIG_UNAVAILABLE":
+			return locale === "zh"
+				? "当前快照使用的模板 URL 暂时不可用"
+				: "The template URL used by this snapshot is temporarily unavailable";
+		case "INVALID_REQUEST":
+			if (reasonArgs?.field === "config") {
+				return locale === "zh"
+					? "当前快照使用的模板 URL 已失效或不再可用"
+					: "The template URL used by this snapshot is invalid or no longer available";
+			}
+			return locale === "zh"
+				? "恢复的配置包含当前无法复用的输入"
+				: "The restored configuration contains input that can no longer be reused";
+		default:
+			return reasonCode;
+	}
+}
+
 export function formatModeReason(
 	reason: ModeReason | undefined | null,
 	locale: ModeReasonLocale = "zh",
@@ -54,6 +119,16 @@ export function formatModeReason(
 			const portText = formatPortDiscouragedText(reasonArgs, locale);
 			return locale === "zh" ? `${protocolText}；${portText}` : `${protocolText} ${portText}`;
 		}
+		case "TARGET_NOT_FOUND":
+		case "LANDING_NODE_NOT_FOUND":
+		case "EMPTY_CHAIN_TARGET":
+		case "STAGE2_ROWSET_MISMATCH":
+		case "SERVER_AGGREGATION_MEMBER_NOT_FOUND":
+		case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
+		case "SERVER_AGGREGATION_SERVER_MISMATCH":
+		case "TEMPLATE_CONFIG_UNAVAILABLE":
+		case "INVALID_REQUEST":
+			return formatRestoreConflictReason(reasonCode, reasonArgs, locale);
 		default:
 			return reasonCode;
 	}

@@ -522,6 +522,7 @@ describe("useAppWorkflow", () => {
 			longUrl: "https://public.example.com/sub?data=restore-conflicted",
 			shortUrl,
 			restoreStatus: "conflicted",
+			restoreConflicts: [{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "landing-hk", field: "targetName" } }],
 			stage1Input: {
 				landingRawText: "ss://restored-landing",
 				transitRawText: "https://example.com/restored-transit.txt",
@@ -576,6 +577,7 @@ describe("useAppWorkflow", () => {
 		});
 		expect(workflow.current.state.currentLinkInput).toBe(shortUrl);
 		expect(workflow.current.state.restoreStatus).toBe("conflicted");
+		expect(workflow.current.state.restoreConflicts).toEqual(restoreResponse.restoreConflicts);
 		expect(workflow.current.state.stage2Stale).toBe(false);
 		expect(workflow.current.isConflictReadonly).toBe(true);
 		expect(workflow.current.isStage2Editable).toBe(false);

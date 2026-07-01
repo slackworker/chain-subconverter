@@ -129,7 +129,7 @@ func (pipeline *CorePipeline) RenderCompleteConfig() (string, error) {
 	return RenderCompleteConfig(pipeline.stage1Input, pipeline.stage2Snapshot, fixtures)
 }
 
-func (pipeline *CorePipeline) DetermineRestoreStatus(fixtures ConversionFixtures) (string, []Message, error) {
+func (pipeline *CorePipeline) DetermineRestoreStatus(fixtures ConversionFixtures) (string, []Message, []RestoreConflict, error) {
 	return DetermineRestoreStatus(pipeline.stage1Input, pipeline.stage2Snapshot, fixtures)
 }
 

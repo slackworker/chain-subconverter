@@ -20,6 +20,13 @@ type BlockingError struct {
 	Context   map[string]any `json:"context,omitempty"`
 }
 
+// RestoreConflict describes one structured restore validation failure for
+// POST /api/resolve-url when restoreStatus = conflicted.
+type RestoreConflict struct {
+	ReasonCode string         `json:"reasonCode"`
+	ReasonArgs map[string]any `json:"reasonArgs,omitempty"`
+}
+
 type Stage1ConvertResponse struct {
 	Stage2Init     Stage2Init      `json:"stage2Init"`
 	Messages       []Message       `json:"messages"`

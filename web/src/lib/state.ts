@@ -1,4 +1,4 @@
-import type { BlockingError, Message, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
+import type { BlockingError, Message, RestoreConflict, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
 
 export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
 export type WorkflowLogLevel = Message["level"] | "success" | "error";
@@ -29,6 +29,7 @@ export interface AppState {
 	stage3Expired: boolean;
 	stage2Stale: boolean;
 	restoreStatus: "idle" | "replayable" | "conflicted";
+	restoreConflicts: RestoreConflict[];
 	responseOriginStage: ResponseOriginStage | null;
 	messages: Message[];
 	workflowLog: WorkflowLogEntry[];
@@ -99,6 +100,7 @@ export const initialAppState: AppState = {
 	stage3Expired: false,
 	stage2Stale: false,
 	restoreStatus: "idle",
+	restoreConflicts: [],
 	responseOriginStage: null,
 	messages: [],
 	workflowLog: [],

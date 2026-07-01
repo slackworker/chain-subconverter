@@ -51,6 +51,11 @@ export interface ModeReason {
 	reasonText?: string;
 }
 
+export interface RestoreConflict {
+	reasonCode: string;
+	reasonArgs?: Record<string, unknown>;
+}
+
 export interface Stage2Row {
 	rowId?: string;
 	sourceLandingNodeName?: string;
@@ -146,6 +151,7 @@ export interface ResolveURLResponse {
 	longUrl: string;
 	shortUrl?: string;
 	restoreStatus: "replayable" | "conflicted";
+	restoreConflicts?: RestoreConflict[];
 	stage1Input: Stage1InputPayload;
 	stage2Snapshot: Stage2Snapshot;
 	messages: Message[];

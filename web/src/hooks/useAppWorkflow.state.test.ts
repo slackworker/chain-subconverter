@@ -509,9 +509,11 @@ describe("useAppWorkflow.state", () => {
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-conflicted",
 			resolvedShortUrl: "https://public.example.com/s/conflicted-short",
 			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
+			restoreConflicts: [{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } }],
 		});
 
 		expect(next.restoreStatus).toBe("conflicted");
+		expect(next.restoreConflicts).toEqual([{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } }]);
 		expect(next.stage2Init).toBeNull();
 		expect(next.stage2Stale).toBe(false);
 		expect(next.currentLinkInput).toBe("https://public.example.com/s/conflicted-short");

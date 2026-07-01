@@ -18,7 +18,7 @@ import {
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 } from "../lib/stage2";
-import type { BlockingError, Message, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type { BlockingError, Message, RestoreConflict, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
 
 function expireGeneratedOutput(current: AppState) {
 	return {
@@ -537,6 +537,7 @@ export function applyStage2InitState(
 		stage3Expired: false,
 		stage2Stale: false,
 		restoreStatus: "idle",
+		restoreConflicts: [],
 	};
 }
 
@@ -589,6 +590,7 @@ interface RestoreStateOptions {
 	logEntries: WorkflowLogEntry[];
 	messages: Message[];
 	restoredStage1Input: Stage1Input;
+	restoreConflicts?: RestoreConflict[];
 	restoreStatus: AppState["restoreStatus"];
 	resolvedLongUrl: string;
 	resolvedShortUrl?: string;
@@ -611,6 +613,7 @@ function buildRestorePatch(options: RestoreStateOptions) {
 		},
 		stage3Expired: false,
 		restoreStatus: options.restoreStatus,
+		restoreConflicts: options.restoreConflicts ?? [],
 	};
 }
 

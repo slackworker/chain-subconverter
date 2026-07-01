@@ -5,6 +5,7 @@ import { Tooltip } from "../../lib/Tooltip";
 import { ArrowRightIcon, ChevronDownIcon, ResetIcon } from "./Icons";
 import { Stage2AggregationTree } from "./Stage2AggregationTree";
 import { Stage2FlatTable } from "./Stage2FlatTable";
+import { RestoreConflictBanner } from "./RestoreConflictBanner";
 import {
 	computeChainTargetMenuPanelLayout,
 	MEMBER_ORDER_PANEL_MIN_WIDTH,
@@ -237,7 +238,13 @@ export function Stage2Section({
 				<StatusPill label={localizedStage2Status} tone={stage2StatusTone} />
 			</div>
 
-			{isConflictReadonly ? <p className="a-conflict-banner">{copy.conflictReadonly}</p> : null}
+			{isConflictReadonly ? (
+				<RestoreConflictBanner
+					conflicts={workflow.state.restoreConflicts}
+					summary={copy.conflictReadonly}
+					locale={locale}
+				/>
+			) : null}
 
 			<div className="a-stage2-table-block">
 				{stage2Rows.length > 0 ? (

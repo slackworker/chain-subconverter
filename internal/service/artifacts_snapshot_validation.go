@@ -166,23 +166,23 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 
 // DetermineRestoreStatus validates the restored snapshot against current fixtures
 // and returns replayable or conflicted per spec 04-business-rules §3.2.1.
-func DetermineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, error) {
+func DetermineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, []RestoreConflict, error) {
 	_, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
 	if err == nil {
-		return "replayable", []Message{}, nil
+		return "replayable", []Message{}, nil, nil
 	}
 
 	if !IsRestoreConflictError(err) {
 		if responseErr, ok := AsResponseError(err); ok && responseErr.StatusCode() < http.StatusInternalServerError {
-			return "", nil, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
+			return "", nil, nil, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
 		}
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	return "conflicted", []Message{{
 		Level:   "warning",
 		Code:    "RESTORE_CONFLICT",
 		Message: restoreConflictMessage(err),
-	}}, nil
+	}}, []RestoreConflict{RestoreConflictFromError(err)}, nil
 }
 
 // IsRestoreConflictError reports whether an error represents a soft restore conflict.
