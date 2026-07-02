@@ -83,6 +83,7 @@ export function Stage2FlatTable({
 				});
 
 				return {
+					proxyName: getStage2RowDisplayName(row),
 					landingNodeType: meta?.landingNodeType ?? "--",
 					modeOptionLabels,
 					targetLabel,

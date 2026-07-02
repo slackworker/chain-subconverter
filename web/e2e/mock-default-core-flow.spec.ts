@@ -15,8 +15,11 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 		forwardRelays: [],
 		rows: [
 			{
+				rowId: "landing-happy",
+				sourceLandingNodeName: "landing-happy",
+				proxyName: "landing-happy",
 				landingNodeType: "ss",
-			server: "landing-happy.example.com",
+				server: "landing-happy.example.com",
 				mode: "none",
 				targetName: null,
 			},
@@ -123,6 +126,9 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 	expect(stage1Requests[0]?.stage1Input.transitRawText).toBe(transitInput);
 	expect(generateRequests[0]?.stage2Snapshot.rows).toEqual([
 		{
+			rowId: "landing-happy",
+			sourceLandingNodeName: "landing-happy",
+			proxyName: "landing-happy",
 			mode: "none",
 			targetName: null,
 		},
@@ -167,10 +173,14 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 				stage2Snapshot: {
 					rows: [
 						{
+							rowId: "HK 01",
+							sourceLandingNodeName: "HK 01",
+							proxyName: "HK 01",
 							mode: "chain",
 							targetName: "HK Relay Group",
 						},
 					],
+					serverAggregationGroups: [],
 				},
 				messages: [
 					{ level: "warning", code: "RESTORE_CONFLICT", message: "restore conflict: target not found" },

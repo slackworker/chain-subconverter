@@ -1,12 +1,12 @@
 # 项目状态
 
-> 最近更新：2026-07-01 · **3.2 Beta 线** 正式 tag [`v3.2.0-beta.1`](../RELEASES.md#v320-beta1) 已发布 · **3.1 线** 止于 [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1) · **3.0 线** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（`main` 尚未同步稳定线）
+> 最近更新：2026-07-02 · **3.2 Beta 线** 最新 tag [`v3.2.0-beta.2`](../RELEASES.md#v320-beta2) 已发布 · **3.1 线** 止于 [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1) · **3.0 线** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（`main` 尚未同步稳定线）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.2 Beta 线已发布**：[`v3.2.0-beta.1`](../RELEASES.md#v320-beta1)（Pipeline hard-break、长链 v4、恢复冲突、`generate` dry-run、行序保持）；镜像 `beta-latest` @ `a339f86`
+- **3.2 Beta 线最新 tag**：[`v3.2.0-beta.2`](../RELEASES.md#v320-beta2)（Stage 2 行身份硬切；`rowId` / `proxyName` / `sourceLandingNodeName` 成为唯一快照口径）；本地发版门禁已通过，第三方部署公开记录仍止于 [`v3.2.0-beta.1`](../RELEASES.md#v320-beta1)
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
 - **Phase 0–4 已完成**；维护期以 3.2 Beta 发版收口、回归与测试/文档债为主
@@ -56,4 +56,4 @@
 | 类别 | 摘要 |
 |------|------|
 | **第三方部署** | 2026-07-01：vps-01/02 + Koyeb 已切 **`beta-latest`** @ `v3.2.0-beta.1`（`a339f86`）；`real-smoke` + `real-full` **通过**（`real-full` 已与 canonical / [preview-inputs.md](testing/preview-inputs.md) 对齐，不含 include/exclude；过滤回归仍由 `mock-dual-landing-filters` 承担）— 见 [deployments.md](testing/deployments.md) |
-| **本地自动化基线** | 2026-07-01：push `dev`/`beta` CI、`go test ./...`、`npm run test`、`test:e2e:mock:all`、全 scheme build **通过**；见 [runbook.md](testing/runbook.md) |
+| **本地自动化基线** | 2026-07-02：`go test ./...`、`npm run test`、`test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**；见 [runbook.md](testing/runbook.md) |

@@ -19,11 +19,57 @@
 
 ## Unreleased
 
-**破坏性变更（Stage 2 行身份硬切）：**
+（暂无）
 
-- `stage2Snapshot.rows[]` 与 `stage2Init.rows[]` 不再接受或输出 `landingNodeName`
-- 每行必填：`rowId`、`proxyName`、`sourceLandingNodeName`（非空字符串）
-- 仅含 `landingNodeName` 的旧 v4 长链接载荷将无法恢复；须用新版本重新生成
+---
+
+## v3.2.0-beta.2
+
+**Tag:** `v3.2.0-beta.2`  
+**日期:** 2026-07-02  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.2.0-beta.1](#v320-beta1) 基础上，完成 **Stage 2 行身份硬切**：前后端、长链接/短链编码、恢复校验、fixture 与默认 `/` 交互统一围绕 `rowId` / `proxyName` / `sourceLandingNodeName` 工作；仅含旧字段 `landingNodeName` 的载荷不再兼容。
+
+### 变更摘要
+
+#### Stage 2 行身份（核心）
+
+- **`landingNodeName` 退出快照契约**：`stage2Snapshot.rows[]` 与 `stage2Init.rows[]` 不再接受或输出 `landingNodeName`；每行必须提供 `rowId`、`proxyName`、`sourceLandingNodeName`。
+- **恢复与编码口径收紧**：旧 v4 载荷若仍只含 `landingNodeName`，恢复时将视为无效；需在 3.2.0-beta.2 及之后版本重新生成链接。
+- **默认 `/` UI 跟随新身份模型**：Stage 2 行编辑、复制/删除、行 key 匹配与目标选择均以 `rowId` / `proxyName` 为准，不再依赖旧字段名。
+
+#### 测试与 fixture
+
+- golden、canonical scenario、mock/real E2E 以及 Stage 2 相关单测已同步到新行身份契约。
+- 修复默认 `/` adaptive table 的列宽测量输入，恢复 `build:default` 与 mock E2E 发版门禁。
+
+### 测试
+
+- 2026-07-02：`go test ./...`、`cd web && npm run test`、`cd web && npm run test:e2e:mock:all`、`cd web && npm run build:default && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2`、`docker compose -f deploy/docker-compose.yml config` **通过**
+- 第三方 `real-smoke` / `real-full` 公开记录仍止于 [v3.2.0-beta.1](#v320-beta1)；若要更新公开部署结论，需按 runbook 重新覆盖 `deployments.md`
+
+### 自部署
+
+打 tag 后将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.2.0-beta.2"
+```
+
+### 从 v3.2.0-beta.1 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。
+2. **长链接 / 短链恢复**：若链接快照仍依赖旧字段 `landingNodeName`，升级后将无法恢复；请在新版页面重新生成。
+3. 公开第三方部署结论若仍引用 beta.1，需在新镜像上线后按 runbook 重跑 `real-smoke` / `real-full` 并覆盖记录。
+
+### Beta 说明
+
+仍属预发布；安全与部署注意同 [v3.2.0-beta.1](#v320-beta1) 与 [SECURITY.md](SECURITY.md)。本轮版本用于收口 3.2 Beta 线的 Stage 2 行身份契约与相关回归。
 
 ---
 

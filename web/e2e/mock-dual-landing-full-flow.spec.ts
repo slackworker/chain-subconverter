@@ -29,6 +29,7 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 			{
 				rowId: "Alpha-Reality-HK-PortForward",
 				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
+				proxyName: "Alpha-Reality-HK-PortForward",
 				server: "hk.example.com",
 				landingNodeType: "vless",
 				mode: "none",
@@ -37,6 +38,7 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 			{
 				rowId: "Beta-Reality-JP-PortForward",
 				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
+				proxyName: "Beta-Reality-JP-PortForward",
 				server: "jp.example.com",
 				landingNodeType: "vless",
 				mode: "none",
@@ -118,7 +120,7 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
 
 	const sourceRow = locateStage2Row(page, "Alpha-Reality-HK-PortForward");
-	await sourceRow.getByRole("button", { name: "复制" }).click();
+	await sourceRow.locator('button[aria-label="复制"]').click();
 	const replicaLandingNodeName = "Alpha-Reality-HK-PortForward 2";
 	const replicaRow = locateStage2Row(page, replicaLandingNodeName);
 	await expect(replicaRow).toBeVisible();
