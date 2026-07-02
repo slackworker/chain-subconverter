@@ -86,7 +86,7 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 
 	rowsByID := make(map[string]Stage2Row, len(snapshot.Rows))
 	for _, row := range snapshot.Rows {
-		rowsByID[row.rowIDOrFallback()] = row
+		rowsByID[stage2RowID(row)] = row
 	}
 
 	managedGroups := make([]managedServerAggregationGroup, 0, len(snapshot.ServerAggregationGroups))
@@ -108,7 +108,7 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 			if !exists {
 				return nil, fmt.Errorf("server aggregation group member rowId %q is missing from stage2Snapshot.rows", memberRowID)
 			}
-			memberName := row.proxyNameOrFallback()
+			memberName := stage2ProxyName(row)
 			if _, exists := proxyNames[memberName]; !exists {
 				return nil, fmt.Errorf("server aggregation group member proxy %q is missing from complete config", memberName)
 			}
@@ -187,7 +187,7 @@ func detectServerGroupSourceFlagEmoji(rows []Stage2Row) string {
 			continue
 		}
 		foundSourceRow = true
-		currentFlagEmoji := leadingFlagEmoji(row.proxyNameOrFallback())
+		currentFlagEmoji := leadingFlagEmoji(stage2ProxyName(row))
 		if currentFlagEmoji == "" {
 			return ""
 		}
@@ -206,17 +206,11 @@ func detectServerGroupSourceFlagEmoji(rows []Stage2Row) string {
 }
 
 func isServerGroupSourceRow(row Stage2Row) bool {
-	sourceLandingName := row.sourceLandingNodeNameOrFallback()
+	sourceLandingName := stage2SourceLandingNodeName(row)
 	if sourceLandingName == "" {
 		return false
 	}
-	if rowID := strings.TrimSpace(row.RowID); rowID != "" {
-		return rowID == sourceLandingName
-	}
-	if proxyName := strings.TrimSpace(row.ProxyName); proxyName != "" {
-		return proxyName == sourceLandingName
-	}
-	return strings.TrimSpace(row.LandingNodeName) == sourceLandingName
+	return stage2RowID(row) == sourceLandingName
 }
 
 func leadingFlagEmoji(name string) string {

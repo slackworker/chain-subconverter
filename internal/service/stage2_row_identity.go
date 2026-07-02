@@ -2,67 +2,23 @@ package service
 
 import "strings"
 
-type stage2RowIdentity struct {
-	RowID                 string
-	SourceLandingNodeName string
-	ProxyName             string
-	LegacyLandingNodeName string
+func stage2RowID(row Stage2Row) string {
+	return strings.TrimSpace(row.RowID)
 }
 
-func stage2RowIdentityFromRow(row Stage2Row) stage2RowIdentity {
-	rowID := strings.TrimSpace(row.RowID)
-	sourceLandingNodeName := strings.TrimSpace(row.SourceLandingNodeName)
-	proxyName := strings.TrimSpace(row.ProxyName)
-	legacyLandingNodeName := strings.TrimSpace(row.LandingNodeName)
+func stage2SourceLandingNodeName(row Stage2Row) string {
+	return strings.TrimSpace(row.SourceLandingNodeName)
+}
 
-	if sourceLandingNodeName == "" {
-		sourceLandingNodeName = legacyLandingNodeName
-	}
-	if proxyName == "" {
-		proxyName = legacyLandingNodeName
-	}
-	if rowID == "" {
-		// Keep backward-compatibility for legacy snapshots while centralizing
-		// row identity derivation in a single place.
-		switch {
-		case proxyName != "":
-			rowID = proxyName
-		case legacyLandingNodeName != "":
-			rowID = legacyLandingNodeName
-		default:
-			rowID = sourceLandingNodeName
-		}
-	}
-	if legacyLandingNodeName == "" {
-		switch {
-		case proxyName != "":
-			legacyLandingNodeName = proxyName
-		default:
-			legacyLandingNodeName = sourceLandingNodeName
-		}
-	}
-	if sourceLandingNodeName == "" {
-		sourceLandingNodeName = legacyLandingNodeName
-	}
-	if proxyName == "" {
-		proxyName = legacyLandingNodeName
-	}
-
-	return stage2RowIdentity{
-		RowID:                 rowID,
-		SourceLandingNodeName: sourceLandingNodeName,
-		ProxyName:             proxyName,
-		LegacyLandingNodeName: legacyLandingNodeName,
-	}
+func stage2ProxyName(row Stage2Row) string {
+	return strings.TrimSpace(row.ProxyName)
 }
 
 func normalizeStage2RowIdentity(row Stage2Row) Stage2Row {
-	identity := stage2RowIdentityFromRow(row)
 	normalized := row
-	normalized.RowID = identity.RowID
-	normalized.SourceLandingNodeName = identity.SourceLandingNodeName
-	normalized.ProxyName = identity.ProxyName
-	normalized.LandingNodeName = identity.ProxyName
+	normalized.RowID = stage2RowID(row)
+	normalized.SourceLandingNodeName = stage2SourceLandingNodeName(row)
+	normalized.ProxyName = stage2ProxyName(row)
 	if normalized.TargetName != nil {
 		trimmedTargetName := strings.TrimSpace(*normalized.TargetName)
 		if trimmedTargetName == "" {

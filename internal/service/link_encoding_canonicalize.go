@@ -12,15 +12,14 @@ func CanonicalizeStage2SnapshotForLinkEncoding(snapshot Stage2Snapshot) Stage2Sn
 	rowIDToEncoded := make(map[string]string, len(snapshot.Rows))
 	rows := make([]Stage2Row, len(snapshot.Rows))
 	for index, row := range snapshot.Rows {
-		encodedRowID := row.proxyNameOrFallback()
-		oldRowID := row.rowIDOrFallback()
+		encodedRowID := stage2ProxyName(row)
+		oldRowID := stage2RowID(row)
 		rowIDToEncoded[oldRowID] = encodedRowID
 
 		canonicalRow := row
 		canonicalRow.RowID = encodedRowID
 		canonicalRow.ProxyName = encodedRowID
-		canonicalRow.SourceLandingNodeName = row.sourceLandingNodeNameOrFallback()
-		canonicalRow.LandingNodeName = encodedRowID
+		canonicalRow.SourceLandingNodeName = stage2SourceLandingNodeName(row)
 		rows[index] = canonicalRow
 	}
 

@@ -411,42 +411,42 @@ func dualLandingChainPortForwardTemplateConfig(t *testing.T) string {
 	return content
 }
 
-func findStage2InitRow(t *testing.T, stage2Init Stage2Init, landingNodeName string) Stage2InitRow {
+func findStage2InitRow(t *testing.T, stage2Init Stage2Init, proxyName string) Stage2InitRow {
 	t.Helper()
 
 	for _, row := range stage2Init.Rows {
-		if row.LandingNodeName == landingNodeName {
+		if row.ProxyName == proxyName {
 			return row
 		}
 	}
 
-	t.Fatalf("landing node %q not found in stage2 init rows: %v", landingNodeName, stage2Init.Rows)
+	t.Fatalf("proxy %q not found in stage2 init rows: %v", proxyName, stage2Init.Rows)
 	return Stage2InitRow{}
 }
 
-func assertSnapshotRow(t *testing.T, rows []Stage2Row, landingNodeName string, mode string, targetName string) {
+func assertSnapshotRow(t *testing.T, rows []Stage2Row, proxyName string, mode string, targetName string) {
 	t.Helper()
 
 	for _, row := range rows {
-		if row.LandingNodeName != landingNodeName {
+		if row.ProxyName != proxyName {
 			continue
 		}
 		if row.Mode != mode {
-			t.Fatalf("row %q mode = %q, want %q", landingNodeName, row.Mode, mode)
+			t.Fatalf("row %q mode = %q, want %q", proxyName, row.Mode, mode)
 		}
 		if targetName == "" {
 			if row.TargetName != nil {
-				t.Fatalf("row %q targetName = %v, want nil", landingNodeName, row.TargetName)
+				t.Fatalf("row %q targetName = %v, want nil", proxyName, row.TargetName)
 			}
 			return
 		}
 		if row.TargetName == nil || *row.TargetName != targetName {
-			t.Fatalf("row %q targetName = %v, want %q", landingNodeName, row.TargetName, targetName)
+			t.Fatalf("row %q targetName = %v, want %q", proxyName, row.TargetName, targetName)
 		}
 		return
 	}
 
-	t.Fatalf("landing node %q not found in snapshot rows: %v", landingNodeName, rows)
+	t.Fatalf("proxy %q not found in snapshot rows: %v", proxyName, rows)
 }
 
 func assertServerAggregationGroup(

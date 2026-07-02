@@ -122,20 +122,18 @@ type Stage2Init struct {
 }
 
 type Stage2Row struct {
-	RowID                 string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName             string                     `json:"proxyName,omitempty"`
-	LandingNodeName       string                     `json:"landingNodeName"`
+	RowID                 string                     `json:"rowId"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName"`
+	ProxyName             string                     `json:"proxyName"`
 	Mode                  string                     `json:"mode"`
 	TargetName            *string                    `json:"targetName"`
 	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 }
 
 type Stage2InitRow struct {
-	RowID                 string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName             string                     `json:"proxyName,omitempty"`
-	LandingNodeName       string                     `json:"landingNodeName"`
+	RowID                 string                     `json:"rowId"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName"`
+	ProxyName             string                     `json:"proxyName"`
 	LandingNodeType       string                     `json:"landingNodeType"`
 	Server                string                     `json:"server"`
 	Mode                  string                     `json:"mode"`
@@ -299,7 +297,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 			RowID:                 landing.Name,
 			SourceLandingNodeName: landing.Name,
 			ProxyName:             proxyName,
-			LandingNodeName:       proxyName,
 			LandingNodeType:       landing.TypeLabel,
 			Server:                landing.Server,
 			Mode:                  "none",
@@ -340,18 +337,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		ForwardRelays:  forwardRelays,
 		Rows:           rows,
 	}, nil
-}
-
-func (row Stage2Row) rowIDOrFallback() string {
-	return stage2RowIdentityFromRow(row).RowID
-}
-
-func (row Stage2Row) sourceLandingNodeNameOrFallback() string {
-	return stage2RowIdentityFromRow(row).SourceLandingNodeName
-}
-
-func (row Stage2Row) proxyNameOrFallback() string {
-	return stage2RowIdentityFromRow(row).ProxyName
 }
 
 func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {

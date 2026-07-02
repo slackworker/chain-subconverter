@@ -30,7 +30,6 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 				rowId: "Alpha-Reality-HK-PortForward",
 				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
 				server: "hk.example.com",
-				landingNodeName: "Alpha-Reality-HK-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
@@ -39,7 +38,6 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 				rowId: "Beta-Reality-JP-PortForward",
 				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
 				server: "jp.example.com",
-				landingNodeName: "Beta-Reality-JP-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
@@ -173,30 +171,27 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 	expect(firstGenerateRequest.stage2Snapshot.rows).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				landingNodeName: "Alpha-Reality-HK-PortForward",
 				mode: "chain",
 				targetName: "HK Relay Group",
 			}),
 			expect.objectContaining({
-				landingNodeName: replicaLandingNodeName,
 				mode: "port_forward",
 				targetName: relayA,
 			}),
 			expect.objectContaining({
-				landingNodeName: "Beta-Reality-JP-PortForward",
 				mode: "port_forward",
 				targetName: relayB,
 			}),
 		]),
 	);
-	const sourceSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === "Alpha-Reality-HK-PortForward");
-	const replicaSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === replicaLandingNodeName);
+	const sourceSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.proxyName === "Alpha-Reality-HK-PortForward");
+	const replicaSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.proxyName === replicaLandingNodeName);
 	if (sourceSnapshotRow?.rowId === undefined || replicaSnapshotRow?.rowId === undefined) {
 		throw new Error("source/replica row IDs are required for aggregation assertions");
 	}
 	expect(firstGenerateRequest.stage2Snapshot.serverAggregationGroups).toBeInstanceOf(Array);
 	expect(sourceSnapshotRow.rowId).not.toBe(replicaSnapshotRow.rowId);
-	expect(firstGenerateRequest.stage2Snapshot.rows.map((row) => row.landingNodeName)).toEqual([
+	expect(firstGenerateRequest.stage2Snapshot.rows.map((row) => row.proxyName)).toEqual([
 		"Alpha-Reality-HK-PortForward",
 		replicaLandingNodeName,
 		"Beta-Reality-JP-PortForward",

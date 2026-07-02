@@ -1,221 +1,216 @@
-        {
-          "stage2Init": {
-            "availableModes": [
-              "none",
-              "chain",
-              "port_forward"
-            ],
-            "chainTargets": [
-              {
-                "name": "🇭🇰 香港节点",
-                "kind": "proxy-groups"
-              },
-              {
-                "name": "🇺🇸 美国节点",
-                "kind": "proxy-groups"
-              },
-              {
-                "name": "🇯🇵 日本节点",
-                "kind": "proxy-groups"
-              },
-              {
-                "name": "🇸🇬 新加坡节点",
-                "kind": "proxy-groups"
-              },
-              {
-                "name": "🇼🇸 台湾节点",
-                "kind": "proxy-groups"
-              },
-              {
-                "name": "🇰🇷 韩国节点",
-                "kind": "proxy-groups"
-              },
-              {
-                "name": "🇭🇰 Transit-A-HongKong-SS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇯🇵 Transit-A-Japan-Trojan-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇺🇸 Transit-A-UnitedStates-VLESS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇸🇬 Transit-A-Singapore-Hysteria2-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇼🇸 Transit-A-Taiwan-TUIC-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇰🇷 Transit-A-Korea-AnyTLS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇺🇸 Transit-A-UnitedStates-SSR-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇯🇵 Transit-A-Japan-SS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇼🇸 Transit-A-Taiwan-Hysteria2-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇭🇰 Transit-B-HongKong-SS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇯🇵 Transit-B-Japan-Trojan-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇸🇬 Transit-B-Singapore-VLESS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇺🇸 Transit-B-UnitedStates-Hysteria2-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇰🇷 Transit-B-Korea-TUIC-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇼🇸 Transit-B-Taiwan-AnyTLS-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇭🇰 Transit-B-HongKong-SSR-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇺🇸 Transit-B-UnitedStates-Trojan-01",
-                "kind": "proxies"
-              },
-              {
-                "name": "🇸🇬 Transit-B-Singapore-SS-01",
-                "kind": "proxies"
-              }
-            ],
-            "forwardRelays": [
-              {
-                "name": "relay-a.example.com:7443"
-              },
-              {
-                "name": "relay-b.example.com:8443"
-              }
-            ],
-            "rows": [
-              {
-                "rowId": "🇸🇬 Alpha-SS-SG",
-                "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
-                "proxyName": "🇸🇬 Alpha-SS-SG",
-                "landingNodeName": "🇸🇬 Alpha-SS-SG",
-                "landingNodeType": "SS",
-                "server": "198.51.100.10",
-                "mode": "chain",
-                "targetName": "🇸🇬 新加坡节点"
-              },
-              {
-                "rowId": "🇸🇬 Alpha-Reality-SG",
-                "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
-                "proxyName": "🇸🇬 Alpha-Reality-SG",
-                "landingNodeName": "🇸🇬 Alpha-Reality-SG",
-                "landingNodeType": "Reality",
-                "server": "198.51.100.10",
-                "mode": "chain",
-                "targetName": "🇸🇬 新加坡节点",
-                "modeWarnings": {
-                  "chain": {
-                    "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-                    "reasonArgs": {
-                      "landingProtocolType": "vless-reality"
-                    }
-                  }
-                }
-              },
-              {
-                "rowId": "🇯🇵 Beta-SS-JP",
-                "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
-                "proxyName": "🇯🇵 Beta-SS-JP",
-                "landingNodeName": "🇯🇵 Beta-SS-JP",
-                "landingNodeType": "SS",
-                "server": "198.51.100.11",
-                "mode": "chain",
-                "targetName": "🇯🇵 日本节点"
-              },
-              {
-                "rowId": "🇯🇵 Beta-Reality-JP",
-                "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
-                "proxyName": "🇯🇵 Beta-Reality-JP",
-                "landingNodeName": "🇯🇵 Beta-Reality-JP",
-                "landingNodeType": "Reality",
-                "server": "198.51.100.11",
-                "mode": "chain",
-                "targetName": "🇯🇵 日本节点",
-                "modeWarnings": {
-                  "chain": {
-                    "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-                    "reasonArgs": {
-                      "landingProtocolType": "vless-reality"
-                    }
-                  }
-                }
-              },
-              {
-                "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-                "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-                "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-                "landingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-                "landingNodeType": "SOCKS5",
-                "server": "manual-socks-hk.example.test",
-                "mode": "chain",
-                "targetName": "🇭🇰 香港节点"
-              }
-            ]
-          },
-          "messages": [
-            {
-              "level": "info",
-              "code": "STAGE1_CONVERT_SUMMARY",
-              "message": "已识别 5 个落地节点、2 个中继，Stage 2 已初始化 5 行，其中 5 行已自动填入链式目标。"
-            },
-            {
-              "level": "info",
-              "code": "AUTO_CHAIN_TARGET_SELECTED",
-              "message": "已为「🇸🇬 Alpha-SS-SG」自动填入 🇸🇬 新加坡节点"
-            },
-            {
-              "level": "info",
-              "code": "AUTO_CHAIN_TARGET_SELECTED",
-              "message": "已为「🇸🇬 Alpha-Reality-SG」自动填入 🇸🇬 新加坡节点"
-            },
-            {
-              "level": "info",
-              "code": "AUTO_CHAIN_TARGET_SELECTED",
-              "message": "已为「🇯🇵 Beta-SS-JP」自动填入 🇯🇵 日本节点"
-            },
-            {
-              "level": "info",
-              "code": "AUTO_CHAIN_TARGET_SELECTED",
-              "message": "已为「🇯🇵 Beta-Reality-JP」自动填入 🇯🇵 日本节点"
-            },
-            {
-              "level": "info",
-              "code": "AUTO_CHAIN_TARGET_SELECTED",
-              "message": "已为「🇭🇰 Manual-SOCKS5-HK-Fallback」自动填入 🇭🇰 香港节点"
-            },
-            {
-              "level": "warning",
-              "code": "CHAIN_TARGET_REVIEW",
-              "message": "有 2 行建议复核链式目标选择。"
+{
+  "stage2Init": {
+    "availableModes": [
+      "none",
+      "chain",
+      "port_forward"
+    ],
+    "chainTargets": [
+      {
+        "name": "🇭🇰 香港节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇺🇸 美国节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇯🇵 日本节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇸🇬 新加坡节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇼🇸 台湾节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇰🇷 韩国节点",
+        "kind": "proxy-groups"
+      },
+      {
+        "name": "🇭🇰 Transit-A-HongKong-SS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 Transit-A-Japan-Trojan-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-A-UnitedStates-VLESS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 Transit-A-Singapore-Hysteria2-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇼🇸 Transit-A-Taiwan-TUIC-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 Transit-A-Korea-AnyTLS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-A-UnitedStates-SSR-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 Transit-A-Japan-SS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇼🇸 Transit-A-Taiwan-Hysteria2-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 Transit-B-HongKong-SS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇯🇵 Transit-B-Japan-Trojan-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 Transit-B-Singapore-VLESS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-B-UnitedStates-Hysteria2-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇰🇷 Transit-B-Korea-TUIC-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇼🇸 Transit-B-Taiwan-AnyTLS-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇭🇰 Transit-B-HongKong-SSR-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇺🇸 Transit-B-UnitedStates-Trojan-01",
+        "kind": "proxies"
+      },
+      {
+        "name": "🇸🇬 Transit-B-Singapore-SS-01",
+        "kind": "proxies"
+      }
+    ],
+    "forwardRelays": [
+      {
+        "name": "relay-a.example.com:7443"
+      },
+      {
+        "name": "relay-b.example.com:8443"
+      }
+    ],
+    "rows": [
+      {
+        "rowId": "🇸🇬 Alpha-SS-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "proxyName": "🇸🇬 Alpha-SS-SG",
+        "landingNodeType": "SS",
+        "server": "198.51.100.10",
+        "mode": "chain",
+        "targetName": "🇸🇬 新加坡节点"
+      },
+      {
+        "rowId": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "proxyName": "🇸🇬 Alpha-Reality-SG",
+        "landingNodeType": "Reality",
+        "server": "198.51.100.10",
+        "mode": "chain",
+        "targetName": "🇸🇬 新加坡节点",
+        "modeWarnings": {
+          "chain": {
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonArgs": {
+              "landingProtocolType": "vless-reality"
             }
-          ],
-          "blockingErrors": []
+          }
         }
+      },
+      {
+        "rowId": "🇯🇵 Beta-SS-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
+        "proxyName": "🇯🇵 Beta-SS-JP",
+        "landingNodeType": "SS",
+        "server": "198.51.100.11",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点"
+      },
+      {
+        "rowId": "🇯🇵 Beta-Reality-JP",
+        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
+        "proxyName": "🇯🇵 Beta-Reality-JP",
+        "landingNodeType": "Reality",
+        "server": "198.51.100.11",
+        "mode": "chain",
+        "targetName": "🇯🇵 日本节点",
+        "modeWarnings": {
+          "chain": {
+            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+            "reasonArgs": {
+              "landingProtocolType": "vless-reality"
+            }
+          }
+        }
+      },
+      {
+        "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "landingNodeType": "SOCKS5",
+        "server": "manual-socks-hk.example.test",
+        "mode": "chain",
+        "targetName": "🇭🇰 香港节点"
+      }
+    ]
+  },
+  "messages": [
+    {
+      "level": "info",
+      "code": "STAGE1_CONVERT_SUMMARY",
+      "message": "已识别 5 个落地节点、2 个中继，Stage 2 已初始化 5 行，其中 5 行已自动填入链式目标。"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇸🇬 Alpha-SS-SG」自动填入 🇸🇬 新加坡节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇸🇬 Alpha-Reality-SG」自动填入 🇸🇬 新加坡节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇯🇵 Beta-SS-JP」自动填入 🇯🇵 日本节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇯🇵 Beta-Reality-JP」自动填入 🇯🇵 日本节点"
+    },
+    {
+      "level": "info",
+      "code": "AUTO_CHAIN_TARGET_SELECTED",
+      "message": "已为「🇭🇰 Manual-SOCKS5-HK-Fallback」自动填入 🇭🇰 香港节点"
+    },
+    {
+      "level": "warning",
+      "code": "CHAIN_TARGET_REVIEW",
+      "message": "有 2 行建议复核链式目标选择。"
+    }
+  ],
+  "blockingErrors": []
+}

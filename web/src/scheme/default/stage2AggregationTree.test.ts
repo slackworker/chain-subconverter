@@ -27,7 +27,6 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "ss",
-					landingNodeName: "ss",
 					proxyName: "ss",
 					sourceLandingNodeName: "ss",
 					mode: "chain",
@@ -39,7 +38,6 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "hk-2",
-					landingNodeName: "ss 02",
 					proxyName: "ss 02",
 					sourceLandingNodeName: "ss",
 					mode: "chain",
@@ -51,7 +49,6 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "Reality",
-					landingNodeName: "Reality",
 					proxyName: "Reality",
 					sourceLandingNodeName: "Reality",
 					mode: "none",
@@ -96,7 +93,6 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "src-a",
-					landingNodeName: "src-a",
 					proxyName: "src-a",
 					sourceLandingNodeName: "src-a",
 					mode: "none",
@@ -107,7 +103,6 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "derived-a",
-					landingNodeName: "derived-a",
 					proxyName: "derived-a",
 					sourceLandingNodeName: "src-a",
 					mode: "none",
@@ -118,7 +113,6 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "src-b",
-					landingNodeName: "src-b",
 					proxyName: "src-b",
 					sourceLandingNodeName: "src-b",
 					mode: "none",
@@ -144,7 +138,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "node-b",
-					landingNodeName: "node-b",
+					sourceLandingNodeName: "node-b",
+					proxyName: "node-b",
 					mode: "none",
 					targetName: null,
 				},
@@ -153,7 +148,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "node-a",
-					landingNodeName: "node-a",
+					sourceLandingNodeName: "node-a",
+					proxyName: "node-a",
 					mode: "none",
 					targetName: null,
 				},
@@ -174,8 +170,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "solo",
-					landingNodeName: "solo",
 					sourceLandingNodeName: "solo",
+					proxyName: "solo",
 					mode: "none",
 					targetName: null,
 				},
@@ -192,8 +188,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "🇭🇰 A",
-					landingNodeName: "🇭🇰 A",
 					sourceLandingNodeName: "🇭🇰 A",
+					proxyName: "🇭🇰 A",
 					mode: "none",
 					targetName: null,
 				},
@@ -202,8 +198,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "🇭🇰 B",
-					landingNodeName: "🇭🇰 B",
 					sourceLandingNodeName: "🇭🇰 B",
+					proxyName: "🇭🇰 B",
 					mode: "none",
 					targetName: null,
 				},
@@ -212,8 +208,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "No Emoji",
-					landingNodeName: "No Emoji",
 					sourceLandingNodeName: "No Emoji",
+					proxyName: "No Emoji",
 					mode: "none",
 					targetName: null,
 				},
@@ -245,8 +241,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "🇭🇰 A",
-					landingNodeName: "🇭🇰 A",
 					sourceLandingNodeName: "🇭🇰 A",
+					proxyName: "🇭🇰 A",
 					mode: "none",
 					targetName: null,
 				},
@@ -255,8 +251,8 @@ describe("buildStage2AggregationTree", () => {
 			{
 				row: {
 					rowId: "🇯🇵 B",
-					landingNodeName: "🇯🇵 B",
 					sourceLandingNodeName: "🇯🇵 B",
+					proxyName: "🇯🇵 B",
 					mode: "none",
 					targetName: null,
 				},
@@ -289,7 +285,6 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "ss",
-					landingNodeName: "ss",
 					proxyName: "ss",
 					sourceLandingNodeName: "ss",
 					mode: "none",
@@ -300,7 +295,6 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "hk-2",
-					landingNodeName: "ss 02",
 					proxyName: "ss 02",
 					sourceLandingNodeName: "ss",
 					mode: "none",
@@ -331,7 +325,8 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "node-a",
-					landingNodeName: "node-a",
+					sourceLandingNodeName: "node-a",
+					proxyName: "node-a",
 					mode: "none",
 					targetName: null,
 				},
@@ -340,7 +335,8 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "node-b",
-					landingNodeName: "node-b",
+					sourceLandingNodeName: "node-b",
+					proxyName: "node-b",
 					mode: "none",
 					targetName: null,
 				},
@@ -372,7 +368,6 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "ss",
-					landingNodeName: "ss",
 					proxyName: "ss",
 					sourceLandingNodeName: "ss",
 					mode: "none",
@@ -383,7 +378,6 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "hk-2",
-					landingNodeName: "ss 02",
 					proxyName: "ss 02",
 					sourceLandingNodeName: "ss",
 					mode: "none",
@@ -394,7 +388,6 @@ describe("getStage2AggregationTreeRowInlineClassName", () => {
 			{
 				row: {
 					rowId: "other",
-					landingNodeName: "other",
 					proxyName: "other",
 					sourceLandingNodeName: "other",
 					mode: "none",

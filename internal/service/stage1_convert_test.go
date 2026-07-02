@@ -82,8 +82,8 @@ func TestBuildStage2Init_UsesStructuredLandingTypeField(t *testing.T) {
 	}
 
 	row := stage2Init.Rows[0]
-	if row.LandingNodeName != "HK Landing" {
-		t.Fatalf("LandingNodeName mismatch: got %q want %q", row.LandingNodeName, "HK Landing")
+	if row.ProxyName != "HK Landing" {
+		t.Fatalf("ProxyName mismatch: got %q want %q", row.ProxyName, "HK Landing")
 	}
 	if row.LandingNodeType != "SOCKS5" {
 		t.Fatalf("LandingNodeType mismatch: got %q want %q", row.LandingNodeType, "SOCKS5")
@@ -570,9 +570,6 @@ func TestBuildStage2Init_AppliesChainEmojiAfterStage1(t *testing.T) {
 	}
 	if row.ProxyName != "🇸🇬 Alpha-SS-sdgfa" {
 		t.Fatalf("ProxyName = %q, want %q", row.ProxyName, "🇸🇬 Alpha-SS-sdgfa")
-	}
-	if row.LandingNodeName != "🇸🇬 Alpha-SS-sdgfa" {
-		t.Fatalf("LandingNodeName = %q, want %q", row.LandingNodeName, "🇸🇬 Alpha-SS-sdgfa")
 	}
 	if row.Mode != "chain" {
 		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")

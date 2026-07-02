@@ -54,7 +54,7 @@ func TestBuildStage2ResetResponseFromSource_Row(t *testing.T) {
 
 	mutated := generateRequest.Stage2Snapshot
 	mutated.Rows = append([]Stage2Row(nil), generateRequest.Stage2Snapshot.Rows...)
-	originalSource := mutated.Rows[0].sourceLandingNodeNameOrFallback()
+	originalSource := stage2SourceLandingNodeName(mutated.Rows[0])
 	if strings.TrimSpace(mutated.Rows[0].RowID) == "" {
 		mutated.Rows[0].RowID = "row-reset-1"
 	}
@@ -62,14 +62,13 @@ func TestBuildStage2ResetResponseFromSource_Row(t *testing.T) {
 		mutated.Rows[0].SourceLandingNodeName = originalSource
 	}
 	target := mutated.Rows[0]
-	rowID := target.rowIDOrFallback()
+	rowID := stage2RowID(target)
 	if rowID == "" {
 		t.Fatal("fixture first row has empty row id")
 	}
 	mutatedName := "mutated-proxy-name"
 	mutatedTarget := "relay-a.example.com:1080"
 	mutated.Rows[0].ProxyName = mutatedName
-	mutated.Rows[0].LandingNodeName = mutatedName
 	mutated.Rows[0].Mode = "port_forward"
 	mutated.Rows[0].TargetName = &mutatedTarget
 	mutated.ServerAggregationGroups = []ServerAggregationGroup{{

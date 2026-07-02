@@ -224,7 +224,6 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			RowID:                 row.RowID,
 			SourceLandingNodeName: row.SourceLandingNodeName,
 			ProxyName:             row.ProxyName,
-			LandingNodeName:       row.ProxyName,
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
 		}
@@ -292,7 +291,7 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	rowsByID := make(map[string]Stage2Row, len(payload.Stage2Snapshot.Rows))
 	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
 	for _, row := range payload.Stage2Snapshot.Rows {
-		rowID := strings.TrimSpace(row.rowIDOrFallback())
+		rowID := strings.TrimSpace(stage2RowID(row))
 		if rowID == "" {
 			return fmt.Errorf("rowId must not be empty")
 		}
@@ -300,11 +299,11 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			return fmt.Errorf("duplicate rowId %q", rowID)
 		}
 		rowsByID[rowID] = row
-		sourceLandingNodeName := strings.TrimSpace(row.sourceLandingNodeNameOrFallback())
+		sourceLandingNodeName := strings.TrimSpace(stage2SourceLandingNodeName(row))
 		if sourceLandingNodeName == "" {
 			return fmt.Errorf("sourceLandingNodeName must not be empty")
 		}
-		proxyName := strings.TrimSpace(row.proxyNameOrFallback())
+		proxyName := strings.TrimSpace(stage2ProxyName(row))
 		if proxyName == "" {
 			return fmt.Errorf("proxyName must not be empty")
 		}
@@ -452,9 +451,9 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {
 		rows[index] = longURLStage2Row{
-			RowID:                 row.rowIDOrFallback(),
-			SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
-			ProxyName:             row.proxyNameOrFallback(),
+			RowID:                 stage2RowID(row),
+			SourceLandingNodeName: stage2SourceLandingNodeName(row),
+			ProxyName:             stage2ProxyName(row),
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
 		}

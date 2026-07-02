@@ -56,7 +56,7 @@ func validatePostProcessedChainTargets(renderedYAML string, snapshot Stage2Snaps
 		if !ok || len(group.Proxies) > 0 {
 			continue
 		}
-		cause := fmt.Errorf("chain target %q for proxy %q is empty after postProcess", targetName, row.proxyNameOrFallback())
+		cause := fmt.Errorf("chain target %q for proxy %q is empty after postProcess", targetName, stage2ProxyName(row))
 		return newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", stage2RowValidationErrorRef(row), "targetName", cause)
 	}
 	return nil
@@ -166,9 +166,9 @@ func stripLandingNodesFromRegionGroups(root *yaml.Node, landingNames map[string]
 func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []string, replacedLines map[int]string) error {
 	rowsBySourceLanding := make(map[string][]Stage2Row, len(rows))
 	for _, row := range rows {
-		sourceLandingName := row.sourceLandingNodeNameOrFallback()
+		sourceLandingName := stage2SourceLandingNodeName(row)
 		if sourceLandingName == "" {
-			sourceLandingName = row.LandingNodeName
+			return fmt.Errorf("sourceLandingNodeName must not be empty")
 		}
 		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
 	}
@@ -429,7 +429,7 @@ func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fields = upsertInlineProxyField(fields, "name", row.proxyNameOrFallback())
+	fields = upsertInlineProxyField(fields, "name", stage2ProxyName(row))
 
 	switch row.Mode {
 	case "none":

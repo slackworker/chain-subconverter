@@ -964,7 +964,6 @@ func TestSubscriptionHandler_MapsConnectionFailureToBusinessMessage(t *testing.T
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK 01",
 					ProxyName:             "HK 01",
-					LandingNodeName:       "HK 01",
 					Mode:                  "none",
 					TargetName:            nil,
 				}},
@@ -1398,7 +1397,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 		result: loadThreePassResult(t, fixtureDir),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"missing-row","sourceLandingNodeName":"missing-row","proxyName":"missing-row","landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"missing-row","sourceLandingNodeName":"missing-row","proxyName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -1470,7 +1469,7 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 		result: singleLandingResult("Unknown Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"Unknown Landing","sourceLandingNodeName":"Unknown Landing","proxyName":"Unknown Landing","landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"Unknown Landing","sourceLandingNodeName":"Unknown Landing","proxyName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -1503,7 +1502,6 @@ func TestSubscriptionHandler_RejectsLandingWithoutServerField(t *testing.T) {
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
-					LandingNodeName:       "HK Landing",
 					Mode:                  "port_forward",
 					TargetName:            &targetName,
 				}},
@@ -1588,7 +1586,6 @@ func TestSubscriptionHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *test
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK 01",
 					ProxyName:             "HK 01",
-					LandingNodeName:       "HK 01",
 					Mode:                  "none",
 					TargetName:            &targetName,
 				}},
@@ -1623,7 +1620,6 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK 01",
 					ProxyName:             "HK 01",
-					LandingNodeName:       "HK 01",
 					Mode:                  "unsupported",
 				}},
 			},
@@ -1914,7 +1910,7 @@ func assertStage2InitRowsHaveServer(t *testing.T, rows []service.Stage2InitRow) 
 	t.Helper()
 	for _, row := range rows {
 		if strings.TrimSpace(row.Server) == "" {
-			t.Fatalf("stage2Init row %q has empty server", row.LandingNodeName)
+			t.Fatalf("stage2Init row %q has empty server", row.ProxyName)
 		}
 	}
 }

@@ -90,7 +90,6 @@ export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 		rowId: row.rowId,
 		sourceLandingNodeName: row.sourceLandingNodeName,
 		proxyName: row.proxyName,
-		landingNodeName: row.landingNodeName,
 		mode: row.mode,
 		targetName: row.targetName,
 	}));
@@ -180,13 +179,12 @@ function mergeSourceSnapshotRow(baseRow: Stage2Row, existingSourceRow: Stage2Row
 		return baseRow;
 	}
 	const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
-	const mergedProxyName = existingSourceRow.proxyName ?? existingSourceRow.landingNodeName;
+	const mergedProxyName = existingSourceRow.proxyName;
 	return {
 		...baseRow,
-		rowId: existingSourceRow.rowId ?? baseRow.rowId,
+		rowId: existingSourceRow.rowId,
 		sourceLandingNodeName: existingSourceRow.sourceLandingNodeName ?? sourceLandingNodeName,
 		proxyName: mergedProxyName,
-		landingNodeName: existingSourceRow.landingNodeName ?? mergedProxyName ?? baseRow.landingNodeName,
 		mode: existingSourceRow.mode,
 		targetName: existingSourceRow.targetName,
 	};
@@ -792,10 +790,10 @@ export function applySwitchOptimizationState(current: AppState, enabled: boolean
 
 export function updateStage2RowState(
 	current: AppState,
-	landingNodeName: string,
+	rowKey: string,
 	updater: (row: Stage2Row) => Stage2Row,
 ): AppState {
-	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
 	if (matchedRow === null) {
 		return current;
 	}
@@ -805,7 +803,7 @@ export function updateStage2RowState(
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, landingNodeName) ? updater(row) : row)),
+			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, rowKey) ? updater(row) : row)),
 			current.stage2Snapshot.serverAggregationGroups,
 			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
 		),
@@ -825,7 +823,6 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string):
 		...matchedRow,
 		rowId: clonedProxyName,
 		proxyName: clonedProxyName,
-		landingNodeName: clonedProxyName,
 	};
 
 	const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, landingNodeName));

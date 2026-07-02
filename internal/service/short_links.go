@@ -190,10 +190,9 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 	copy(rows, canonical.Stage2Snapshot.Rows)
 
 	for index, row := range rows {
-		rows[index].RowID = strings.TrimSpace(row.rowIDOrFallback())
-		rows[index].SourceLandingNodeName = strings.TrimSpace(row.sourceLandingNodeNameOrFallback())
-		rows[index].ProxyName = strings.TrimSpace(row.proxyNameOrFallback())
-		rows[index].LandingNodeName = rows[index].ProxyName
+		rows[index].RowID = strings.TrimSpace(stage2RowID(row))
+		rows[index].SourceLandingNodeName = strings.TrimSpace(stage2SourceLandingNodeName(row))
+		rows[index].ProxyName = strings.TrimSpace(stage2ProxyName(row))
 	}
 
 	groups := make([]ServerAggregationGroup, len(canonical.Stage2Snapshot.ServerAggregationGroups))

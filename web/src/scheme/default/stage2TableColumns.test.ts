@@ -26,7 +26,7 @@ describe("measureStage2ColumnMins", () => {
 			headers: ["落地节点", "类型", "配置方式", "目标"],
 			rows: [
 				{
-					landingNodeName: "very-long-landing-node-name",
+					proxyName: "very-long-landing-node-name",
 					landingNodeType: "SS",
 					modeOptionLabels: ["链式代理", "端口转发（不推荐）"],
 					targetLabel: "relay-a.example.com:7443",
@@ -60,7 +60,7 @@ describe("measureStage2ColumnMins", () => {
 			headers: ["落地节点", "类型", "配置方式", "目标"],
 			rows: [
 				{
-					landingNodeName: "node-a",
+					proxyName: "landing-node",
 					landingNodeType: "SS",
 					modeOptionLabels: ["链式代理"],
 					targetLabel: "HK",
@@ -81,7 +81,7 @@ describe("measureStage2ColumnMins", () => {
 			headers: ["落地节点", "类型", "配置方式", "目标"],
 			rows: [
 				{
-					landingNodeName: "node-a",
+					proxyName: "landing-node",
 					landingNodeType: "SS",
 					modeOptionLabels: ["链式代理"],
 					targetLabel: "HK",
@@ -135,7 +135,7 @@ describe("resolveStage2ColumnWidthsPx", () => {
 			headers: ["落地节点", "类型", "配置方式", "目标"] as const,
 			rows: [
 				{
-					landingNodeName: "long-name",
+					proxyName: "landing-node",
 					landingNodeType: "SS",
 					modeOptionLabels: ["链式代理"],
 					targetLabel: "relay-a.example.com:7443",
@@ -190,7 +190,7 @@ describe("resolveStage2ColumnCssVars", () => {
 		headers: ["落地节点", "类型", "配置方式", "目标"] as const,
 		rows: [
 			{
-				landingNodeName: "node-a",
+				proxyName: "landing-node",
 				landingNodeType: "SS",
 				modeOptionLabels: ["链式代理"],
 				targetLabel: "group-a",

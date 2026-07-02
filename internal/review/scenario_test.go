@@ -346,7 +346,9 @@ func TestLoadCase_PrefersCanonicalStage1ButKeepsTrackedStage2Snapshot(t *testing
 {
   "rows": [
     {
-      "landingNodeName": "tracked-row",
+      "rowId": "tracked-row",
+      "sourceLandingNodeName": "tracked-row",
+      "proxyName": "tracked-row",
       "mode": "chain",
       "targetName": "tracked-target"
     }
@@ -375,8 +377,8 @@ func TestLoadCase_PrefersCanonicalStage1ButKeepsTrackedStage2Snapshot(t *testing
 	if len(testCase.Stage2Input.Rows) != 1 {
 		t.Fatalf("Stage2Input.Rows length = %d, want 1", len(testCase.Stage2Input.Rows))
 	}
-	if testCase.Stage2Input.Rows[0].LandingNodeName != "tracked-row" {
-		t.Fatalf("Stage2Input.Rows[0].LandingNodeName = %q, want %q", testCase.Stage2Input.Rows[0].LandingNodeName, "tracked-row")
+	if testCase.Stage2Input.Rows[0].ProxyName != "tracked-row" {
+		t.Fatalf("Stage2Input.Rows[0].ProxyName = %q, want %q", testCase.Stage2Input.Rows[0].ProxyName, "tracked-row")
 	}
 }
 

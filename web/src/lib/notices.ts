@@ -72,7 +72,7 @@ export function getStage3FieldErrors(errors: BlockingError[], field: string) {
 function getStage2RowMatchKeys(row: Stage2Row | string) {
 	const values = typeof row === "string"
 		? [row]
-		: [row.rowId, row.proxyName, row.landingNodeName, row.sourceLandingNodeName];
+		: [row.rowId, row.proxyName, row.sourceLandingNodeName];
 	const keys = new Set<string>();
 	for (const value of values) {
 		const trimmed = String(value ?? "").trim();
@@ -91,7 +91,7 @@ function matchesStage2RowError(error: BlockingError, row: Stage2Row | string) {
 	if (keys.size === 0) {
 		return false;
 	}
-	return ["rowId", "proxyName", "landingNodeName", "sourceLandingNodeName"]
+	return ["rowId", "proxyName", "sourceLandingNodeName"]
 		.some((contextKey) => keys.has(String(error.context?.[contextKey] ?? "").trim()));
 }
 

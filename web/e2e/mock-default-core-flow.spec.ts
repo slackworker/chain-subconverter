@@ -15,7 +15,6 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 		forwardRelays: [],
 		rows: [
 			{
-				landingNodeName: "landing-happy",
 				landingNodeType: "ss",
 			server: "landing-happy.example.com",
 				mode: "none",
@@ -124,7 +123,6 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 	expect(stage1Requests[0]?.stage1Input.transitRawText).toBe(transitInput);
 	expect(generateRequests[0]?.stage2Snapshot.rows).toEqual([
 		{
-			landingNodeName: "landing-happy",
 			mode: "none",
 			targetName: null,
 		},
@@ -169,7 +167,6 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 				stage2Snapshot: {
 					rows: [
 						{
-							landingNodeName: "HK 01",
 							mode: "chain",
 							targetName: "HK Relay Group",
 						},

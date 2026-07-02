@@ -15,19 +15,19 @@ const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port
 function semanticStage2SnapshotKey(snapshot: Stage2Snapshot) {
 	return JSON.stringify({
 		rows: snapshot.rows.map((row) => ({
-			proxyName: row.proxyName ?? row.landingNodeName,
+			proxyName: row.proxyName ?? row.proxyName,
 			sourceLandingNodeName: row.sourceLandingNodeName,
 			mode: row.mode,
 			targetName: row.targetName,
 		})),
-		presentationOrder: snapshot.rows.map((row) => row.proxyName ?? row.landingNodeName),
+		presentationOrder: snapshot.rows.map((row) => row.proxyName ?? row.proxyName),
 		groups: (snapshot.serverAggregationGroups ?? []).map((group) => ({
 			server: group.server,
 			enabled: group.enabled,
 			strategy: group.strategy,
 			memberProxyNames: (group.memberRowIds ?? []).map((memberRowId) => {
 				const matchedRow = snapshot.rows.find((row) => row.rowId === memberRowId);
-				return matchedRow?.proxyName ?? matchedRow?.landingNodeName ?? memberRowId;
+				return matchedRow?.proxyName ?? matchedRow?.proxyName ?? memberRowId;
 			}),
 		})),
 		chainProxyTargetGroupSwitchOptimizationEnabled: snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
@@ -49,7 +49,6 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 				rowId: "Alpha-Reality-HK-PortForward",
 				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
 				server: "hk.example.com",
-				landingNodeName: "Alpha-Reality-HK-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
@@ -58,7 +57,6 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 				rowId: "Beta-Reality-JP-PortForward",
 				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
 				server: "jp.example.com",
-				landingNodeName: "Beta-Reality-JP-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
@@ -145,7 +143,7 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 	const secondSemanticKey = semanticStage2SnapshotKey(generateRequests[1]!.stage2Snapshot);
 
 	expect(secondSemanticKey).toBe(firstSemanticKey);
-	expect(generateRequests[1]!.stage2Snapshot.rows.find((row) => row.landingNodeName === replicaLandingNodeName)?.rowId).toBe(
+	expect(generateRequests[1]!.stage2Snapshot.rows.find((row) => row.proxyName === replicaLandingNodeName)?.rowId).toBe(
 		replicaLandingNodeName,
 	);
 });

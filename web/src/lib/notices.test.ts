@@ -27,7 +27,7 @@ const stage2RowError: BlockingError = {
 	code: "INVALID_STAGE2_ROW",
 	message: "invalid stage2 row",
 	scope: "stage2_row",
-	context: { landingNodeName: "HK Landing" },
+	context: { rowId: "HK Landing" },
 };
 
 const stage3ActionError: BlockingError = {

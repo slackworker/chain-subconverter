@@ -125,7 +125,7 @@ function renderStage2Bullets(rows) {
 		.map((row) => {
 			const mode = MODE_LABELS[row.mode] ?? row.mode;
 			const target = formatTarget(row.targetName);
-			return `- ${row.landingNodeName} · ${mode} · ${target}`;
+			return `- ${row.proxyName} · ${mode} · ${target}`;
 		})
 		.join("\n");
 }

@@ -56,7 +56,7 @@
 
 基于当前 3-pass 基线与默认模板规则，这条最小 happy path 当前固定为：
 
-- `landingNodeName = "🇺🇸 SS2022-Test-256-US"`
+- `proxyName = "🇺🇸 SS2022-Test-256-US"`
 - 默认 `mode = chain`
 - 默认 `targetName = "🇺🇸 美国节点"`
 

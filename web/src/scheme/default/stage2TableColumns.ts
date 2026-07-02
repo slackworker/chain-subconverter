@@ -70,7 +70,7 @@ export type Stage2ColumnWidthsPx = readonly [number, number, number, number];
 export type TextMeasurer = (text: string) => number;
 
 export type Stage2ColumnMeasureRow = {
-	landingNodeName: string;
+	proxyName: string;
 	landingNodeType: string;
 	modeOptionLabels: string[];
 	targetLabel: string;
@@ -104,7 +104,7 @@ export function measureStage2ColumnMins(input: Stage2ColumnMeasureInput): Stage2
 	const modeExtra = input.modeExtraPx ?? STAGE2_MODE_EXTRA_PX;
 	const { measureText, measureLandingText = measureText, headers, rows } = input;
 
-	const landingTexts = [headers[0], ...rows.map((row) => row.landingNodeName)];
+	const landingTexts = [headers[0], ...rows.map((row) => row.proxyName)];
 	const typeTexts = [headers[1], ...rows.map((row) => row.landingNodeType)];
 	const modeTexts = [headers[2], ...rows.flatMap((row) => row.modeOptionLabels)];
 	const targetTexts = [

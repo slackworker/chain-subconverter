@@ -26,14 +26,18 @@ const minimalStage2Init: Stage2Init = {
 	],
 	rows: [
 		{
-			landingNodeName: "landing-a",
+			rowId: "landing-a",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a",
 			landingNodeType: "ss",
 			server: "a.example.com",
 			mode: "none",
 			targetName: null,
 		},
 		{
-			landingNodeName: "landing-b",
+			rowId: "landing-b",
+			sourceLandingNodeName: "landing-b",
+			proxyName: "landing-b",
 			landingNodeType: "vless",
 			server: "b.example.com",
 			mode: "none",
@@ -46,18 +50,22 @@ describe("stage2 target helpers", () => {
 	it("disables relays selected by other rows but keeps the current row target selectable", () => {
 		const stage2Rows: Stage2Row[] = [
 			{
-				landingNodeName: "landing-a",
+				rowId: "landing-a",
+				sourceLandingNodeName: "landing-a",
+				proxyName: "landing-a",
 				mode: "port_forward",
 				targetName: "relay-a.example.com:7443",
 			},
 			{
-				landingNodeName: "landing-b",
+				rowId: "landing-b",
+				sourceLandingNodeName: "landing-b",
+				proxyName: "landing-b",
 				mode: "port_forward",
 				targetName: "relay-b.example.com:8443",
 			},
 		];
 
-		expect(getForwardRelayChoices(minimalStage2Init, stage2Rows, "landing-a")).toEqual([
+		expect(getForwardRelayChoices(minimalStage2Init, stage2Rows, "rowId:landing-a")).toEqual([
 			{
 				value: "relay-a.example.com:7443",
 				label: "relay-a.example.com:7443",
@@ -78,24 +86,30 @@ describe("stage2 target helpers", () => {
 		};
 		const stage2Rows: Stage2Row[] = [
 			{
-				landingNodeName: "landing-a",
+				rowId: "landing-a",
+				sourceLandingNodeName: "landing-a",
+				proxyName: "landing-a",
 				mode: "chain",
 				targetName: "HK Auto",
 			},
 		];
 
-		expect(pickNextTarget(stage2Init, stage2Rows, "landing-a", "port_forward", null)).toBeNull();
+		expect(pickNextTarget(stage2Init, stage2Rows, "rowId:landing-a", "port_forward", null)).toBeNull();
 	});
 
 	it("preserves the current relay when it remains valid for the same row", () => {
 		const stage2Rows: Stage2Row[] = [
 			{
-				landingNodeName: "landing-a",
+				rowId: "landing-a",
+				sourceLandingNodeName: "landing-a",
+				proxyName: "landing-a",
 				mode: "port_forward",
 				targetName: "relay-a.example.com:7443",
 			},
 			{
-				landingNodeName: "landing-b",
+				rowId: "landing-b",
+				sourceLandingNodeName: "landing-b",
+				proxyName: "landing-b",
 				mode: "none",
 				targetName: null,
 			},
@@ -105,7 +119,7 @@ describe("stage2 target helpers", () => {
 			pickNextTarget(
 				minimalStage2Init,
 				stage2Rows,
-				"landing-a",
+				"rowId:landing-a",
 				"port_forward",
 				"relay-a.example.com:7443",
 			),
@@ -114,7 +128,7 @@ describe("stage2 target helpers", () => {
 
 	it("clears the target when switching to none", () => {
 		expect(
-			pickNextTarget(minimalStage2Init, [], "landing-a", "none", "relay-a.example.com:7443"),
+			pickNextTarget(minimalStage2Init, [], "rowId:landing-a", "none", "relay-a.example.com:7443"),
 		).toBeNull();
 	});
 
@@ -124,7 +138,9 @@ describe("stage2 target helpers", () => {
 
 	it("falls back to the restored target name when live target metadata is unavailable", () => {
 		const restoredRow: Stage2Row = {
-			landingNodeName: "landing-a",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 			mode: "chain",
 			targetName: "HK Relay Group",
 		};
@@ -137,7 +153,6 @@ describe("stage2 target helpers", () => {
 			rowId: "row-a",
 			sourceLandingNodeName: "landing-a",
 			proxyName: "landing-a 2",
-			landingNodeName: "legacy-a",
 			mode: "none",
 			targetName: null,
 		};
@@ -151,7 +166,6 @@ describe("stage2 target helpers", () => {
 			rowId: "row-a",
 			sourceLandingNodeName: "landing-a",
 			proxyName: "landing-a ",
-			landingNodeName: "landing-a ",
 			mode: "none",
 			targetName: null,
 		};
@@ -166,7 +180,6 @@ describe("stage2 target helpers", () => {
 				rowId: "row-a",
 				sourceLandingNodeName: "landing-a",
 				proxyName: "landing-a",
-				landingNodeName: "landing-a",
 				mode: "none",
 				targetName: null,
 			},
@@ -174,7 +187,6 @@ describe("stage2 target helpers", () => {
 				rowId: "row-b",
 				sourceLandingNodeName: "landing-a",
 				proxyName: "landing-a 2",
-				landingNodeName: "landing-a 2",
 				mode: "none",
 				targetName: null,
 			},
@@ -189,7 +201,6 @@ describe("stage2 target helpers", () => {
 				rowId: "Alpha-SS-SG",
 				sourceLandingNodeName: "Alpha-SS-SG",
 				proxyName: "🇸🇬 Alpha-SS-SG",
-				landingNodeName: "🇸🇬 Alpha-SS-SG",
 				mode: "none",
 				targetName: null,
 			},
@@ -204,7 +215,6 @@ describe("stage2 target helpers", () => {
 			rowId: "landing-a",
 			sourceLandingNodeName: "landing-a",
 			proxyName: "landing-a",
-			landingNodeName: "landing-a",
 			mode: "chain",
 			targetName: "HK Relay Group",
 		};
@@ -212,7 +222,6 @@ describe("stage2 target helpers", () => {
 			rowId: "landing-a-copy",
 			sourceLandingNodeName: "landing-a",
 			proxyName: "landing-a 2",
-			landingNodeName: "landing-a 2",
 			mode: "chain",
 			targetName: "HK Relay Group",
 		};
@@ -220,7 +229,7 @@ describe("stage2 target helpers", () => {
 		expect(getStage2RowStrictKey(sourceRow)).toBe("rowId:landing-a");
 		expect(matchesStage2RowKey(sourceRow, "rowId:landing-a")).toBe(true);
 		expect(matchesStage2RowKey(derivedRow, "rowId:landing-a")).toBe(false);
-		expect(matchesStage2RowKey(derivedRow, "landing-a")).toBe(true);
+		expect(matchesStage2RowKey(derivedRow, "rowId:landing-a-copy")).toBe(true);
 	});
 
 	it("detects original source rows separately from derived rows", () => {
@@ -228,7 +237,6 @@ describe("stage2 target helpers", () => {
 			rowId: "landing-a",
 			sourceLandingNodeName: "landing-a",
 			proxyName: "landing-a",
-			landingNodeName: "landing-a",
 			mode: "none",
 			targetName: null,
 		};
@@ -236,7 +244,6 @@ describe("stage2 target helpers", () => {
 			rowId: "landing-a-copy",
 			sourceLandingNodeName: "landing-a",
 			proxyName: "landing-a 2",
-			landingNodeName: "landing-a 2",
 			mode: "none",
 			targetName: null,
 		};

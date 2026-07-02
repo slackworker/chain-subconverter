@@ -9,7 +9,7 @@
       "skipCertVerify": null,
       "config": "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini",
       "include": null,
-	      "exclude": null
+      "exclude": null
     }
   },
   "stage2Snapshot": {
@@ -18,7 +18,6 @@
         "rowId": "🇺🇸 SS2022-Test-256-US",
         "sourceLandingNodeName": "🇺🇸 SS2022-Test-256-US",
         "proxyName": "🇺🇸 SS2022-Test-256-US",
-        "landingNodeName": "🇺🇸 SS2022-Test-256-US",
         "mode": "chain",
         "targetName": "🇺🇸 美国节点"
       }

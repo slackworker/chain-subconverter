@@ -56,9 +56,7 @@ func stage2InitToSnapshot(stage2Init Stage2Init) Stage2Snapshot {
 	for _, row := range stage2Init.Rows {
 		rows = append(rows, Stage2Row{
 			RowID:                 row.RowID,
-			SourceLandingNodeName: row.SourceLandingNodeName,
 			ProxyName:             row.ProxyName,
-			LandingNodeName:       row.LandingNodeName,
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
 		})
@@ -82,7 +80,7 @@ func resetSingleStage2Row(currentSnapshot Stage2Snapshot, stage2Init Stage2Init,
 	rows := append([]Stage2Row(nil), currentSnapshot.Rows...)
 	targetIndex := -1
 	for index, row := range rows {
-		if strings.TrimSpace(row.rowIDOrFallback()) == rowID {
+		if strings.TrimSpace(stage2RowID(row)) == rowID {
 			targetIndex = index
 			break
 		}
@@ -98,7 +96,7 @@ func resetSingleStage2Row(currentSnapshot Stage2Snapshot, stage2Init Stage2Init,
 	}
 
 	targetRow := rows[targetIndex]
-	sourceLandingName := targetRow.sourceLandingNodeNameOrFallback()
+	sourceLandingName := stage2SourceLandingNodeName(targetRow)
 	if sourceLandingName == "" {
 		return Stage2Snapshot{}, newStage2RowInvalidRequestError(
 			"sourceLandingNodeName must not be empty",
@@ -128,9 +126,7 @@ func resetSingleStage2Row(currentSnapshot Stage2Snapshot, stage2Init Stage2Init,
 
 	rows[targetIndex] = Stage2Row{
 		RowID:                 targetRow.RowID,
-		SourceLandingNodeName: targetRow.SourceLandingNodeName,
 		ProxyName:             baselineRow.ProxyName,
-		LandingNodeName:       baselineRow.LandingNodeName,
 		Mode:                  baselineRow.Mode,
 		TargetName:            baselineRow.TargetName,
 	}

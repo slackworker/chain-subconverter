@@ -88,7 +88,9 @@ describe("useAppWorkflow.state", () => {
 			chainTargets: [],
 			forwardRelays: [],
 			rows: [{
-				landingNodeName: "landing-hk",
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none" as const,
@@ -113,7 +115,7 @@ describe("useAppWorkflow.state", () => {
 		);
 
 		expect(next.stage2Init).toEqual(stage2Init);
-		expect(next.stage2Snapshot.rows).toEqual([{ landingNodeName: "landing-hk", mode: "none", targetName: null }]);
+		expect(next.stage2Snapshot.rows).toEqual([{ rowId: "landing-hk", sourceLandingNodeName: "landing-hk", proxyName: "landing-hk", mode: "none", targetName: null }]);
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([]);
 		expect(next.stage2Stale).toBe(false);
 		expect(next.restoreStatus).toBe("idle");
@@ -131,7 +133,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-hk",
 						sourceLandingNodeName: "landing-hk",
 						proxyName: "landing-hk custom",
-						landingNodeName: "landing-hk custom",
 						mode: "port_forward",
 						targetName: "relay-a.example.com:7443",
 					},
@@ -139,7 +140,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-hk-2",
 						sourceLandingNodeName: "landing-hk",
 						proxyName: "landing-hk 2",
-						landingNodeName: "landing-hk 2",
 						mode: "chain",
 						targetName: "HK Relay Group",
 					},
@@ -162,7 +162,6 @@ describe("useAppWorkflow.state", () => {
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -212,7 +211,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-hk",
 						sourceLandingNodeName: "landing-hk",
 						proxyName: "landing-hk",
-						landingNodeName: "landing-hk",
 						mode: "chain",
 						targetName: "HK Relay Group",
 					},
@@ -220,7 +218,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-hk-2",
 						sourceLandingNodeName: "landing-hk",
 						proxyName: "landing-hk 2",
-						landingNodeName: "landing-hk 2",
 						mode: "none",
 						targetName: null,
 					},
@@ -228,7 +225,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-jp",
 						sourceLandingNodeName: "landing-jp",
 						proxyName: "landing-jp",
-						landingNodeName: "landing-jp",
 						mode: "none",
 						targetName: null,
 					},
@@ -245,7 +241,6 @@ describe("useAppWorkflow.state", () => {
 					rowId: "landing-jp",
 					sourceLandingNodeName: "landing-jp",
 					proxyName: "landing-jp",
-					landingNodeName: "landing-jp",
 					landingNodeType: "vmess",
 					server: "jp.example.com",
 					mode: "none",
@@ -255,7 +250,6 @@ describe("useAppWorkflow.state", () => {
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "chain",
@@ -282,7 +276,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-hk",
 						sourceLandingNodeName: "landing-hk",
 						proxyName: "landing-hk custom",
-						landingNodeName: "landing-hk custom",
 						mode: "port_forward",
 						targetName: "relay-a.example.com:7443",
 					},
@@ -290,7 +283,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "landing-obsolete-2",
 						sourceLandingNodeName: "landing-obsolete",
 						proxyName: "landing-obsolete 2",
-						landingNodeName: "landing-obsolete 2",
 						mode: "chain",
 						targetName: "Obsolete Group",
 					},
@@ -313,7 +305,6 @@ describe("useAppWorkflow.state", () => {
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -354,7 +345,6 @@ describe("useAppWorkflow.state", () => {
 						rowId: "legacy-1",
 						sourceLandingNodeName: "legacy-1",
 						proxyName: "legacy-1",
-						landingNodeName: "legacy-1",
 						mode: "chain",
 						targetName: "Legacy Group",
 					},
@@ -377,7 +367,6 @@ describe("useAppWorkflow.state", () => {
 				rowId: "landing-new",
 				sourceLandingNodeName: "landing-new",
 				proxyName: "landing-new",
-				landingNodeName: "landing-new",
 				landingNodeType: "ss",
 				server: "198.51.100.10",
 				mode: "none",
@@ -410,7 +399,6 @@ describe("useAppWorkflow.state", () => {
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -424,7 +412,6 @@ describe("useAppWorkflow.state", () => {
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					mode: "none",
 					targetName: null,
 				}],
@@ -508,7 +495,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "conflicted",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-conflicted",
 			resolvedShortUrl: "https://public.example.com/s/conflicted-short",
-			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ rowId: "HK 01", sourceLandingNodeName: "HK 01", proxyName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
 			restoreConflicts: [{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } }],
 		});
 
@@ -532,7 +519,9 @@ describe("useAppWorkflow.state", () => {
 			chainTargets: [],
 			forwardRelays: [],
 			rows: [{
-				landingNodeName: "landing-hk",
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "chain" as const,
@@ -548,7 +537,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restored-long",
 			resolvedShortUrl: "https://public.example.com/s/restored-short",
-			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ rowId: "landing-hk", sourceLandingNodeName: "landing-hk", proxyName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.restoreStatus).toBe("replayable");
@@ -574,7 +563,7 @@ describe("useAppWorkflow.state", () => {
 			restoredStage1Input,
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-only",
-			stage2Snapshot: { serverAggregationGroups: [], rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ rowId: "landing-hk", sourceLandingNodeName: "landing-hk", proxyName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.stage2Init).toBeNull();
@@ -590,8 +579,8 @@ describe("useAppWorkflow.state", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "url-test", memberRowIds: ["hk-1", "hk-2"] }],
 			},
@@ -605,8 +594,8 @@ describe("useAppWorkflow.state", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
 			},
@@ -623,13 +612,13 @@ describe("useAppWorkflow.state", () => {
 		]);
 	});
 
-it("clears server aggregation groups when deleting back to a single row", () => {
+	it("clears server aggregation groups when deleting back to a single row", () => {
 		const next = deleteStage2RowState({
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
 			},
@@ -833,20 +822,20 @@ it("clears server aggregation groups when deleting back to a single row", () => 
 		expect(next.messages.map((message) => message.code)).toEqual(["SHORT_LINK_RETRYABLE"]);
 	});
 
-it("inserts newly checked members by stage2 row order", () => {
+	it("inserts newly checked members by stage2 row order", () => {
 		const current: AppState = {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
-					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", landingNodeName: "HK 3", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
 				],
-			serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-3"] }],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-3"] }],
 			},
 		};
 
-	const next = updateServerAggregationGroupState(current, "hk.example.com", true, "fallback", "hk-2", true);
+		const next = updateServerAggregationGroupState(current, "hk.example.com", true, "fallback", "hk-2", true);
 		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([
 			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] },
 		]);
@@ -857,9 +846,9 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
-					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", landingNodeName: "HK 3", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
 			},
@@ -876,8 +865,8 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", landingNodeName: "SG", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1"] }],
 			},
@@ -893,8 +882,8 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", landingNodeName: "SG", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [],
 			},
@@ -910,9 +899,9 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
-					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", landingNodeName: "HK 3", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
 			},
@@ -930,9 +919,9 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
-					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", landingNodeName: "HK 3", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
 			},
@@ -950,8 +939,8 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-2", "hk-1"] }],
 			},
@@ -973,8 +962,8 @@ it("inserts newly checked members by stage2 row order", () => {
 			...initialAppState,
 			stage2Snapshot: {
 				rows: [
-					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", landingNodeName: "HK", mode: "chain", targetName: "HK Relay" },
-					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", landingNodeName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
 				],
 				serverAggregationGroups: [
 					{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] },
@@ -1002,7 +991,6 @@ it("inserts newly checked members by stage2 row order", () => {
 						rowId: "Alpha-SS-SG",
 						sourceLandingNodeName: "Alpha-SS-SG",
 						proxyName: "🇸🇬 Alpha-SS-SG",
-						landingNodeName: "🇸🇬 Alpha-SS-SG",
 						mode: "chain",
 						targetName: "🇭🇰 香港节点",
 					},
@@ -1018,7 +1006,6 @@ it("inserts newly checked members by stage2 row order", () => {
 			rowId: "🇸🇬 Alpha-SS-SG 2",
 			sourceLandingNodeName: "Alpha-SS-SG",
 			proxyName: "🇸🇬 Alpha-SS-SG 2",
-			landingNodeName: "🇸🇬 Alpha-SS-SG 2",
 			mode: "chain",
 			targetName: "🇭🇰 香港节点",
 		});

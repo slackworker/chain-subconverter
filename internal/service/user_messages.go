@@ -23,7 +23,7 @@ func buildStage1ConvertMessages(stage2Init Stage2Init, existing []Message) []Mes
 		messages = append(messages, Message{
 			Level:   "info",
 			Code:    "AUTO_CHAIN_TARGET_SELECTED",
-			Message: fmt.Sprintf("已为「%s」自动填入 %s", row.LandingNodeName, targetName),
+			Message: fmt.Sprintf("已为「%s」自动填入 %s", row.ProxyName, targetName),
 		})
 	}
 

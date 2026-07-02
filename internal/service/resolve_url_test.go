@@ -89,7 +89,6 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 			RowID:                 "hk-1",
 			SourceLandingNodeName: "HK 01",
 			ProxyName:             "HK 01",
-			LandingNodeName:       "HK 01",
 			Mode:                  "chain",
 			TargetName:            &targetName,
 		}},
@@ -137,7 +136,7 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 		t.Fatalf("restore conflict message should be business-facing, got %q", response.Messages[0].Message)
 	}
 	// Original snapshot should still be returned.
-	if len(response.Stage2Snapshot.Rows) != 1 || response.Stage2Snapshot.Rows[0].LandingNodeName != "HK 01" {
+	if len(response.Stage2Snapshot.Rows) != 1 || response.Stage2Snapshot.Rows[0].ProxyName != "HK 01" {
 		t.Fatalf("snapshot should preserve original data, got %+v", response.Stage2Snapshot)
 	}
 }
@@ -233,7 +232,6 @@ func TestResolveURLFromSource_RejectsSchemaInvalidLongURLPayload(t *testing.T) {
 			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
-					LandingNodeName: "HK 01",
 					Mode:            "unsupported",
 				}},
 			},
@@ -434,7 +432,6 @@ func TestResolveURLFromSource_DowngradesTemplateUnavailableToConflicted(t *testi
 			RowID:                 "HK 01",
 			SourceLandingNodeName: "HK 01",
 			ProxyName:             "HK 01",
-			LandingNodeName:       "HK 01",
 			Mode:                  "chain",
 			TargetName:            &targetName,
 		}},
@@ -511,7 +508,6 @@ func TestResolveURLFromSource_DowngradesTemplateConfigFieldErrorToConflicted(t *
 			RowID:                 "HK 01",
 			SourceLandingNodeName: "HK 01",
 			ProxyName:             "HK 01",
-			LandingNodeName:       "HK 01",
 			Mode:                  "chain",
 			TargetName:            &targetName,
 		}},
@@ -589,7 +585,6 @@ func TestResolveURLFromSource_UsesManagedLandingPass3ForRestoreValidation(t *tes
 				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
-				LandingNodeName:       "HK Landing",
 				Mode:                  "chain",
 				TargetName:            &chainTarget,
 			},
@@ -597,7 +592,6 @@ func TestResolveURLFromSource_UsesManagedLandingPass3ForRestoreValidation(t *tes
 				RowID:                 "hk-2",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing Copy",
-				LandingNodeName:       "HK Landing Copy",
 				Mode:                  "port_forward",
 				TargetName:            &forwardRelay,
 			},

@@ -20,7 +20,6 @@ func TestBuildStage1ConvertMessages_IncludesSummary(t *testing.T) {
 	messages := buildStage1ConvertMessages(Stage2Init{
 		Rows: []Stage2InitRow{
 			{
-				LandingNodeName: "HK 01",
 				Mode:            "chain",
 				TargetName:      &target,
 			},

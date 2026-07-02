@@ -182,9 +182,8 @@
 | `availableModes` | `mode[]` | 阶段 2 第三列的全局模式基线 |
 | `chainTargets[]` | object[] | 链式候选列表；每项包含 `name`、`kind`，空策略组额外返回 `isEmpty = true` |
 | `rows[].rowId` | string | 会话行稳定 ID（必填）；复制行默认与派生 `proxyName` 一致（见 §2.3） |
-| `rows[].proxyName` | string | 可编辑节点名（最终 YAML `proxies[].name`） |
-| `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享） |
-| `rows[].landingNodeName` | string | 兼容字段，等同 `proxyName` |
+| `rows[].proxyName` | string | 可编辑节点名（最终 YAML `proxies[].name`，必填） |
+| `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享，必填） |
 | `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
 | `rows[].server` | string | 落地 server；只读，用于按 server 分组；见 [03](03-backend-api.md) / [04 §2.1](04-business-rules.md) |
 | `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因（`reasonCode` / `reasonArgs`）；缺失表示该行无额外限制 |
@@ -210,7 +209,7 @@
 
 ### 2.3 第一列：节点名
 
-- 展示/编辑 `proxyName`；初始化时与 `stage2Init.landingNodeName` 一致
+- 展示/编辑 `proxyName`；初始化时与 `stage2Init` 源行 `proxyName` 一致
 - 提供复制行、删除行（至少保留每个 `sourceLandingNodeName` 一行）
 - 复制行时：`proxyName` 按 `原名 2`、`原名 3`… 派生；`rowId` 默认设为与派生 `proxyName` 相同，以保证会话内定位与链接编码语义一致（编码期后端仍会按 [04 §2.1.2b](04-business-rules.md) 规范化）
 

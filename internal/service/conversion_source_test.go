@@ -324,7 +324,6 @@ func TestBuildGenerateResponseFromSource_UsesManagedLandingPass3ForValidation(t 
 						RowID:                 "hk-1",
 						SourceLandingNodeName: "HK Landing",
 						ProxyName:             "HK Landing",
-						LandingNodeName:       "HK Landing",
 						Mode:                  "chain",
 						TargetName:            &chainTarget,
 					},
@@ -332,7 +331,6 @@ func TestBuildGenerateResponseFromSource_UsesManagedLandingPass3ForValidation(t 
 						RowID:                 "hk-2",
 						SourceLandingNodeName: "HK Landing",
 						ProxyName:             "HK Landing Copy",
-						LandingNodeName:       "HK Landing Copy",
 						Mode:                  "port_forward",
 						TargetName:            &forwardRelay,
 					},
@@ -409,7 +407,6 @@ func TestBuildGenerateResponseFromSource_RejectsEmptyChainTargetFromManagedPass3
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
-					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
 				}},
@@ -488,7 +485,6 @@ func TestBuildGenerateResponseFromSource_ManagedPass3AllowsRenamedPrimaryLanding
 						RowID:                 "hk-1",
 						SourceLandingNodeName: "HK Landing",
 						ProxyName:             renamedLanding,
-						LandingNodeName:       renamedLanding,
 						Mode:                  "chain",
 						TargetName:            &chainTarget,
 					},
@@ -555,7 +551,6 @@ func TestBuildGenerateResponseFromSource_FailsWhenManagedPostProcessDryRunFails(
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
-					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
 				}},
@@ -655,7 +650,6 @@ func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t 
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
-					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
 				},
@@ -663,7 +657,6 @@ func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t 
 					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing Copy",
-					LandingNodeName:       "HK Landing Copy",
 					Mode:                  "port_forward",
 					TargetName:            &forwardRelay,
 				},
@@ -747,7 +740,6 @@ func TestRenderCompleteConfigFromSource_AppendsServerAggregationGroup(t *testing
 					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
-					LandingNodeName:       "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
 				},
@@ -755,7 +747,6 @@ func TestRenderCompleteConfigFromSource_AppendsServerAggregationGroup(t *testing
 					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing Copy",
-					LandingNodeName:       "HK Landing Copy",
 					Mode:                  "port_forward",
 					TargetName:            &forwardRelay,
 				},
@@ -955,7 +946,6 @@ func TestRenderCompleteConfigFromSource_AppliesSwitchOptimizationOnManagedPass3P
 				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
-				LandingNodeName:       "HK Landing",
 				Mode:                  "chain",
 				TargetName:            &chainTarget,
 			}}},
@@ -1354,7 +1344,7 @@ func assertStage2InitRowsHaveServer(t *testing.T, rows []Stage2InitRow) {
 	t.Helper()
 	for _, row := range rows {
 		if strings.TrimSpace(row.Server) == "" {
-			t.Fatalf("stage2Init row %q has empty server", row.LandingNodeName)
+			t.Fatalf("stage2Init row %q has empty server", row.ProxyName)
 		}
 	}
 }

@@ -57,10 +57,9 @@ export interface RestoreConflict {
 }
 
 export interface Stage2Row {
-	rowId?: string;
-	sourceLandingNodeName?: string;
-	proxyName?: string;
-	landingNodeName: string;
+	rowId: string;
+	sourceLandingNodeName: string;
+	proxyName: string;
 	mode: "none" | "chain" | "port_forward";
 	targetName: string | null;
 }

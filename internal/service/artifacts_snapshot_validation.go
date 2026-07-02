@@ -47,7 +47,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 	rowsByProxyName := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
 	for _, row := range stage2Snapshot.Rows {
 		rowErrorRef := stage2RowValidationErrorRef(row)
-		rowID := row.rowIDOrFallback()
+		rowID := stage2RowID(row)
 		if rowID == "" {
 			cause := fmt.Errorf("rowId must not be empty")
 			return nil, newStage2RowInvalidRequestError("rowId must not be empty", rowErrorRef, "rowId", cause)
@@ -57,12 +57,12 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 			return nil, newStage2RowValidationError("DUPLICATE_ROW_ID", "duplicate rowId", rowErrorRef, "rowId", cause)
 		}
 		rowsByRowID[rowID] = row
-		sourceLandingName := row.sourceLandingNodeNameOrFallback()
+		sourceLandingName := stage2SourceLandingNodeName(row)
 		if sourceLandingName == "" {
 			cause := fmt.Errorf("sourceLandingNodeName must not be empty")
 			return nil, newStage2RowInvalidRequestError("sourceLandingNodeName must not be empty", rowErrorRef, "sourceLandingNodeName", cause)
 		}
-		proxyName := row.proxyNameOrFallback()
+		proxyName := stage2ProxyName(row)
 		if proxyName == "" {
 			cause := fmt.Errorf("proxyName must not be empty")
 			return nil, newStage2RowInvalidRequestError("proxyName must not be empty", rowErrorRef, "proxyName", cause)
@@ -95,7 +95,7 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 
 		for _, row := range rows {
 			rowErrorRef := stage2RowValidationErrorRef(row)
-			rowProxyName := row.proxyNameOrFallback()
+			rowProxyName := stage2ProxyName(row)
 			switch row.Mode {
 			case "none":
 				if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
@@ -148,7 +148,6 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		if _, exists := landingByName[sourceLandingName]; !exists {
 			cause := fmt.Errorf("unknown source landing node %q in stage2 snapshot", sourceLandingName)
 			rowErrorRef := stage2RowErrorRef{
-				SourceLandingNodeName: sourceLandingName,
 			}
 			if len(rows) > 0 {
 				rowErrorRef = stage2RowValidationErrorRef(rows[0])
@@ -288,7 +287,7 @@ func validateServerAggregationGroups(
 				cause := fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
 				return newGlobalValidationError("SERVER_AGGREGATION_MEMBER_NOT_FOUND", "server aggregation member not found", cause)
 			}
-			sourceLandingName := memberRow.sourceLandingNodeNameOrFallback()
+			sourceLandingName := stage2SourceLandingNodeName(memberRow)
 			landing, exists := landingByName[sourceLandingName]
 			if !exists {
 				cause := fmt.Errorf("server aggregation member rowId %q references unknown source landing node %q", rowID, sourceLandingName)
@@ -315,17 +314,17 @@ func validateServerAggregationGroups(
 
 func requireTargetName(row Stage2Row) (string, error) {
 	if row.TargetName == nil || strings.TrimSpace(*row.TargetName) == "" {
-		cause := fmt.Errorf("missing targetName for proxy %q", row.proxyNameOrFallback())
+		cause := fmt.Errorf("missing targetName for proxy %q", stage2ProxyName(row))
 		return "", newStage2RowValidationError("MISSING_TARGET", "missing targetName", stage2RowValidationErrorRef(row), "targetName", cause)
 	}
 	return *row.TargetName, nil
 }
 
 func stage2RowValidationErrorRef(row Stage2Row) stage2RowErrorRef {
-	proxyName := row.proxyNameOrFallback()
+	proxyName := stage2ProxyName(row)
 	return stage2RowErrorRef{
-		RowID:                 row.rowIDOrFallback(),
-		SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
+		RowID:                 stage2RowID(row),
+		SourceLandingNodeName: stage2SourceLandingNodeName(row),
 		ProxyName:             proxyName,
 	}
 }

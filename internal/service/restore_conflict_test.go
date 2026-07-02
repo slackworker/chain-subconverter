@@ -5,6 +5,7 @@ import "testing"
 func TestRestoreConflictFromError_TargetNotFound(t *testing.T) {
 	err := newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", stage2RowErrorRef{
 		RowID:     "HK 02",
+		SourceLandingNodeName: "HK 02",
 		ProxyName: "HK 02",
 	}, "targetName", nil)
 

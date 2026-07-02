@@ -307,7 +307,6 @@ function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialApp
 			context: {
 				server,
 				rowId: singleMember ?? "",
-				landingNodeName: singleMemberRow?.landingNodeName ?? "",
 				sourceLandingNodeName: singleMemberRow?.sourceLandingNodeName ?? "",
 			},
 		});
@@ -503,7 +502,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	function getStage2RowMeta(landingNodeName: string) {
 		const snapshotRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
 		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : landingNodeName;
-		return state.stage2Init?.rows.find((row) => matchesStage2RowKey(row, sourceLandingNodeName)) ?? null;
+		return state.stage2Init?.rows.find((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName) ?? null;
 	}
 
 	function getStage2RowErrors(landingNodeName: string) {
@@ -653,7 +652,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		updateStage2Row(landingNodeName, (row) => ({
 			...row,
 			proxyName,
-			landingNodeName: proxyName,
 		}));
 	}
 
@@ -819,7 +817,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	function getStage2RowMetaFromState(current: typeof state, landingNodeName: string) {
 		const snapshotRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
 		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : landingNodeName;
-		return current.stage2Init?.rows.find((row) => matchesStage2RowKey(row, sourceLandingNodeName)) ?? null;
+		return current.stage2Init?.rows.find((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName) ?? null;
 	}
 
 	function handleServerAggregationEnableWithDefaults(

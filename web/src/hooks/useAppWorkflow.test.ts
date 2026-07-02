@@ -77,7 +77,9 @@ function buildStage2Init(): Stage1ConvertResponse["stage2Init"] {
 		],
 		rows: [
 			{
-				landingNodeName: "landing-hk",
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -224,7 +226,9 @@ describe("useAppWorkflow", () => {
 			serverAggregationGroups: [],
 			rows: [
 				{
-					landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 					mode: "none",
 					targetName: null,
 				},
@@ -256,7 +260,6 @@ describe("useAppWorkflow", () => {
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -344,7 +347,6 @@ describe("useAppWorkflow", () => {
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -372,6 +374,9 @@ describe("useAppWorkflow", () => {
 			workflow.current.handleTargetChange(sourceRowKey, "relay-a.example.com:7443");
 		});
 		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 			mode: "port_forward",
 			targetName: "relay-a.example.com:7443",
 		});
@@ -391,6 +396,9 @@ describe("useAppWorkflow", () => {
 		await runWorkflowAction(() => workflow.current.handleStage1Convert());
 
 		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 			mode: "none",
 			targetName: null,
 		});
@@ -459,7 +467,9 @@ describe("useAppWorkflow", () => {
 				serverAggregationGroups: [],
 				rows: [
 					{
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "port_forward",
 						targetName: "relay.example.com:7443",
 					},
@@ -540,7 +550,9 @@ describe("useAppWorkflow", () => {
 				serverAggregationGroups: [],
 				rows: [
 					{
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "chain",
 						targetName: "HK Relay Group",
 					},
@@ -611,7 +623,9 @@ describe("useAppWorkflow", () => {
 				serverAggregationGroups: [],
 				rows: [
 					{
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "chain",
 						targetName: "HK Relay Group",
 					},
@@ -687,7 +701,9 @@ describe("useAppWorkflow", () => {
 				serverAggregationGroups: [],
 				rows: expect.arrayContaining([
 					expect.objectContaining({
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "none",
 						targetName: null,
 					}),
@@ -723,7 +739,6 @@ it("blocks generate when aggregation group has fewer than two members", async ()
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "hk.example.com",
 				mode: "none",
@@ -784,7 +799,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-11",
 					sourceLandingNodeName: "landing-11",
 					proxyName: "landing-11",
-					landingNodeName: "landing-11",
 					landingNodeType: "ss",
 					server: "198.51.100.11",
 					mode: "none",
@@ -794,7 +808,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-10",
 					sourceLandingNodeName: "landing-10",
 					proxyName: "landing-10",
-					landingNodeName: "landing-10",
 					landingNodeType: "ss",
 					server: "198.51.100.10",
 					mode: "none",
@@ -852,7 +865,7 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					code: "MISSING_TARGET",
 					message: "存在未完成配置的行",
 					scope: "stage2_row",
-					context: { landingNodeName: "landing-hk", field: "targetName" },
+					context: { rowId: "landing-hk", field: "targetName" },
 				},
 			],
 		};
@@ -889,7 +902,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "",
 					mode: "chain",
@@ -942,11 +954,9 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 
 		expect(workflow.current.stage2Rows[0]).toMatchObject({
 			proxyName: "landing-hk renamed",
-			landingNodeName: "landing-hk renamed",
 		});
 		expect(workflow.current.stage2Rows[1]).toMatchObject({
 			proxyName: "landing-hk 2",
-			landingNodeName: "landing-hk 2",
 		});
 	});
 
@@ -965,7 +975,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "",
 					mode: "chain",
@@ -975,7 +984,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk-derived-1",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk 2",
-					landingNodeName: "landing-hk 2",
 					landingNodeType: "ss",
 					server: "",
 					mode: "chain",
@@ -985,7 +993,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-jp",
 					sourceLandingNodeName: "landing-jp",
 					proxyName: "landing-jp",
-					landingNodeName: "landing-jp",
 					landingNodeType: "vmess",
 					server: "",
 					mode: "none",
@@ -1037,7 +1044,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "Alpha-SS-SG",
 					sourceLandingNodeName: "Alpha-SS-SG",
 					proxyName: "🇸🇬 Alpha-SS-SG",
-					landingNodeName: "🇸🇬 Alpha-SS-SG",
 					landingNodeType: "ss",
 					server: "198.51.100.10",
 					mode: "chain",
@@ -1065,7 +1071,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		expect(workflow.current.stage2Rows[1]).toMatchObject({
 			sourceLandingNodeName: "Alpha-SS-SG",
 			proxyName: "🇸🇬 Alpha-SS-SG 2",
-			landingNodeName: "🇸🇬 Alpha-SS-SG 2",
 		});
 	});
 
@@ -1084,7 +1089,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "",
 					mode: "chain",
@@ -1145,7 +1149,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "chain",
@@ -1155,7 +1158,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk-2",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk 2",
-					landingNodeName: "landing-hk 2",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "none",
@@ -1213,7 +1215,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 				rowId: "landing-hk",
 				sourceLandingNodeName: "landing-hk",
 				proxyName: "landing-hk",
-				landingNodeName: "landing-hk",
 				landingNodeType: "ss",
 				server: "",
 				mode: "chain",
@@ -1263,7 +1264,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "chain",
@@ -1273,7 +1273,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk-2",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk 2",
-					landingNodeName: "landing-hk 2",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "none",
@@ -1283,7 +1282,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk-3",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk 3",
-					landingNodeName: "landing-hk 3",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "none",
@@ -1394,7 +1392,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
 					server: "",
 					mode: "chain",
@@ -1452,7 +1449,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "hk-1",
 					sourceLandingNodeName: "hk-1",
 					proxyName: "HK 1",
-					landingNodeName: "HK 1",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "chain",
@@ -1462,7 +1458,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "hk-2",
 					sourceLandingNodeName: "hk-1",
 					proxyName: "HK 2",
-					landingNodeName: "HK 2",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "none",
@@ -1472,7 +1467,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "hk-3",
 					sourceLandingNodeName: "hk-1",
 					proxyName: "HK 3",
-					landingNodeName: "HK 3",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "chain",
@@ -1529,7 +1523,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "hk-1",
 					sourceLandingNodeName: "hk-1",
 					proxyName: "HK 1",
-					landingNodeName: "HK 1",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "chain",
@@ -1539,7 +1532,6 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 					rowId: "hk-2",
 					sourceLandingNodeName: "hk-1",
 					proxyName: "HK 2",
-					landingNodeName: "HK 2",
 					landingNodeType: "ss",
 					server: "hk.example.com",
 					mode: "none",
@@ -1874,14 +1866,18 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 			forwardRelays: [{ name: "relay.example.com:7443" }],
 			rows: [
 				{
-					landingNodeName: "landing-hk",
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
 					landingNodeType: "ss",
 					server: "landing-hk.example.com",
 					mode: "chain",
 					targetName: "HK Relay Group",
 				},
 				{
-					landingNodeName: "landing-us",
+					rowId: "landing-us",
+					sourceLandingNodeName: "landing-us",
+					proxyName: "landing-us",
 					landingNodeType: "ss",
 					server: "landing-us.example.com",
 					mode: "chain",
@@ -1924,7 +1920,9 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 			forwardRelays: [{ name: "relay.example.com:7443" }],
 			rows: [
 				{
-					landingNodeName: "landing-hk",
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
 					landingNodeType: "ss",
 					server: "landing-hk.example.com",
 					mode: "none",
@@ -1964,7 +1962,9 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 			forwardRelays: [{ name: "relay.example.com:7443" }],
 			rows: [
 				{
-					landingNodeName: "landing-hk",
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
 					landingNodeType: "ss",
 					server: "landing-hk.example.com",
 					mode: "chain",
@@ -1995,6 +1995,9 @@ it("blocks generate when multiple undersized aggregation groups are enabled", as
 		});
 
 		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 			mode: "chain",
 			targetName: "Transit Node A",
 		});

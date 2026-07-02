@@ -26,13 +26,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_ProxyGroupsAtEnd(t *t
 		Rows: []Stage2Row{
 			{
 				RowID:           "hk-1",
+				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing",
-				LandingNodeName: "HK Landing",
 			},
 			{
 				RowID:           "hk-2",
+				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing Copy",
-				LandingNodeName: "HK Landing Copy",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -92,13 +92,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_DeduplicatesMembersBy
 		Rows: []Stage2Row{
 			{
 				RowID:           "hk-1",
+				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing",
-				LandingNodeName: "HK Landing",
 			},
 			{
 				RowID:           "hk-2",
+				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing Copy",
-				LandingNodeName: "HK Landing Copy",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -154,15 +154,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_PrefersFrontEndEdited
 		Rows: []Stage2Row{
 			{
 				RowID:                 "hk-1",
-				SourceLandingNodeName: "HK Landing",
+				SourceLandingNodeName: "HK 按延迟分组",
 				ProxyName:             "HK 按延迟分组",
-				LandingNodeName:       "HK 按延迟分组",
 			},
 			{
 				RowID:                 "hk-2",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing Copy",
-				LandingNodeName:       "HK Landing Copy",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -207,13 +205,11 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_UsesEmojiServerDefaul
 				RowID:                 "🇭🇰 HK Landing",
 				SourceLandingNodeName: "🇭🇰 HK Landing",
 				ProxyName:             "🇭🇰 HK Landing",
-				LandingNodeName:       "🇭🇰 HK Landing",
 			},
 			{
 				RowID:                 "hk-2",
 				SourceLandingNodeName: "🇭🇰 HK Landing",
 				ProxyName:             "🇭🇰 HK Landing Copy",
-				LandingNodeName:       "🇭🇰 HK Landing Copy",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -255,15 +251,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_DefaultNameIgnoresAnc
 		Rows: []Stage2Row{
 			{
 				RowID:                 "hk-1",
-				SourceLandingNodeName: "HK Landing",
+				SourceLandingNodeName: "HK Landing Renamed",
 				ProxyName:             "HK Landing Renamed",
-				LandingNodeName:       "HK Landing Renamed",
 			},
 			{
 				RowID:                 "hk-2",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing Copy",
-				LandingNodeName:       "HK Landing Copy",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -310,13 +304,11 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_RendersExtendedStrate
 						RowID:                 "hk-1",
 						SourceLandingNodeName: "HK Landing",
 						ProxyName:             "HK Landing",
-						LandingNodeName:       "HK Landing",
 					},
 					{
 						RowID:                 "hk-2",
 						SourceLandingNodeName: "HK Landing",
 						ProxyName:             "HK Landing Copy",
-						LandingNodeName:       "HK Landing Copy",
 					},
 				},
 				ServerAggregationGroups: []ServerAggregationGroup{

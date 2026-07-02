@@ -28,13 +28,11 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 		forwardRelays: [{ name: relayA }, { name: relayB }],
 		rows: [
 			{
-				landingNodeName: "Alpha-Reality-HK-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
 			},
 			{
-				landingNodeName: "Beta-Reality-JP-PortForward",
 				landingNodeType: "vless",
 				mode: "none",
 				targetName: null,
@@ -157,12 +155,10 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 
 	const expectedRows: Stage2Row[] = [
 		{
-			landingNodeName: "Alpha-Reality-HK-PortForward",
 			mode: "port_forward",
 			targetName: relayA,
 		},
 		{
-			landingNodeName: "Beta-Reality-JP-PortForward",
 			mode: "port_forward",
 			targetName: relayB,
 		},

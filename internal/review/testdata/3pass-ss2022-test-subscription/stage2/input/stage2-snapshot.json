@@ -2,19 +2,25 @@
   "stage2Snapshot": {
     "rows": [
       {
-        "landingNodeName": "🇺🇸 SS2022-Test-256-US",
         "mode": "chain",
-        "targetName": "🇺🇸 美国节点"
+        "targetName": "🇺🇸 美国节点",
+        "rowId": "🇺🇸 SS2022-Test-256-US",
+        "sourceLandingNodeName": "🇺🇸 SS2022-Test-256-US",
+        "proxyName": "🇺🇸 SS2022-Test-256-US"
       },
       {
-        "landingNodeName": "SS2022-Test-256",
         "mode": "none",
-        "targetName": null
+        "targetName": null,
+        "rowId": "SS2022-Test-256",
+        "sourceLandingNodeName": "SS2022-Test-256",
+        "proxyName": "SS2022-Test-256"
       },
       {
-        "landingNodeName": "Example3",
         "mode": "none",
-        "targetName": null
+        "targetName": null,
+        "rowId": "Example3",
+        "sourceLandingNodeName": "Example3",
+        "proxyName": "Example3"
       }
     ]
   }

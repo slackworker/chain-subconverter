@@ -58,8 +58,8 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	expect(stage1ConvertRequest.stage1Input.forwardRelayItems).toEqual([relayA, relayB]);
 
 	const stage1ConvertPayload = (await stage1ConvertResponse.json()) as Stage1ConvertResponse;
-	const firstRowName = stage1ConvertPayload.stage2Init.rows[0]?.landingNodeName;
-	const secondRowName = stage1ConvertPayload.stage2Init.rows[1]?.landingNodeName;
+	const firstRowName = stage1ConvertPayload.stage2Init.rows[0]?.proxyName;
+	const secondRowName = stage1ConvertPayload.stage2Init.rows[1]?.proxyName;
 	if (!firstRowName || !secondRowName) {
 		throw new Error("dual-landing full flow requires at least two stage2 rows");
 	}
@@ -102,8 +102,8 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	await expectHTTPResponseOK(generateResponse, "generate");
 
 	const generateRequest = generateResponse.request().postDataJSON() as GenerateRequest;
-	const sourceSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === firstRowName);
-	const replicaSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.landingNodeName === replicaRowName);
+	const sourceSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.proxyName === firstRowName);
+	const replicaSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.proxyName === replicaRowName);
 	if (sourceSnapshotRow?.rowId === undefined || replicaSnapshotRow?.rowId === undefined) {
 		throw new Error("real dual-landing full flow requires row IDs for aggregation assertions");
 	}
@@ -112,17 +112,14 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	expect(generateRequest.stage2Snapshot.rows).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				landingNodeName: firstRowName,
 				mode: "chain",
 				targetName: preferredChainTarget,
 			}),
 			expect.objectContaining({
-				landingNodeName: replicaRowName,
 				mode: "port_forward",
 				targetName: relayA,
 			}),
 			expect.objectContaining({
-				landingNodeName: secondRowName,
 				mode: "port_forward",
 				targetName: relayB,
 			}),
@@ -147,17 +144,14 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	expect(resolvePayload.stage2Snapshot.rows).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
-				landingNodeName: firstRowName,
 				mode: "chain",
 				targetName: preferredChainTarget,
 			}),
 			expect.objectContaining({
-				landingNodeName: replicaRowName,
 				mode: "port_forward",
 				targetName: relayA,
 			}),
 			expect.objectContaining({
-				landingNodeName: secondRowName,
 				mode: "port_forward",
 				targetName: relayB,
 			}),

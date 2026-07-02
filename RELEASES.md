@@ -17,6 +17,16 @@
 
 ---
 
+## Unreleased
+
+**破坏性变更（Stage 2 行身份硬切）：**
+
+- `stage2Snapshot.rows[]` 与 `stage2Init.rows[]` 不再接受或输出 `landingNodeName`
+- 每行必填：`rowId`、`proxyName`、`sourceLandingNodeName`（非空字符串）
+- 仅含 `landingNodeName` 的旧 v4 长链接载荷将无法恢复；须用新版本重新生成
+
+---
+
 ## v3.2.0-beta.1
 
 **Tag:** `v3.2.0-beta.1`  

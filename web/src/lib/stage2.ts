@@ -16,33 +16,18 @@ export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"
 export type Stage2SnapshotRows = Stage2Row[];
 export type ServerAggregationStrategy = ServerAggregationGroup["strategy"];
 
-const STAGE2_ROW_KEY_PREFIXES = {
-	rowId: "rowId:",
-	proxyName: "proxyName:",
-	landingNodeName: "landingNodeName:",
-	sourceLandingNodeName: "sourceLandingNodeName:",
-} as const;
+const STAGE2_ROW_KEY_PREFIX = "rowId:";
 
-type Stage2RowKeyField = keyof typeof STAGE2_ROW_KEY_PREFIXES;
-
-export function getStage2RowDisplayName(row: Pick<Stage2Row, "proxyName" | "landingNodeName">) {
-	const proxyName = row.proxyName?.trim();
-	if (proxyName) {
-		return proxyName;
-	}
-	return row.landingNodeName.trim();
+export function getStage2RowDisplayName(row: Pick<Stage2Row, "proxyName">) {
+	return row.proxyName.trim();
 }
 
-export function getStage2RowEditableName(row: Pick<Stage2Row, "proxyName" | "landingNodeName">) {
-	return row.proxyName ?? row.landingNodeName;
+export function getStage2RowEditableName(row: Pick<Stage2Row, "proxyName">) {
+	return row.proxyName;
 }
 
-export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandingNodeName" | "landingNodeName">) {
-	const sourceLandingNodeName = row.sourceLandingNodeName?.trim();
-	if (sourceLandingNodeName) {
-		return sourceLandingNodeName;
-	}
-	return row.landingNodeName.trim();
+export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandingNodeName">) {
+	return row.sourceLandingNodeName.trim();
 }
 
 export function getStage2SourceGroupSize(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
@@ -71,98 +56,42 @@ export function getServerAggregationStrategy(
 	return getServerAggregationGroup(snapshot, server)?.strategy ?? null;
 }
 
-function getTrimmedStage2RowFieldValue(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-	field: Stage2RowKeyField,
-) {
-	switch (field) {
-		case "rowId":
-			return row.rowId?.trim() ?? "";
-		case "proxyName":
-			return row.proxyName?.trim() ?? "";
-		case "landingNodeName":
-			return row.landingNodeName.trim();
-		case "sourceLandingNodeName":
-			return row.sourceLandingNodeName?.trim() ?? "";
+function parseStage2RowKey(rowKey: string): string | null {
+	const trimmedRowKey = rowKey.trim();
+	if (!trimmedRowKey.startsWith(STAGE2_ROW_KEY_PREFIX)) {
+		return null;
 	}
+	const value = trimmedRowKey.slice(STAGE2_ROW_KEY_PREFIX.length).trim();
+	return value === "" ? null : value;
 }
 
-function parsePrefixedStage2RowKey(rowKey: string): { field: Stage2RowKeyField; value: string } | null {
-	for (const [field, prefix] of Object.entries(STAGE2_ROW_KEY_PREFIXES) as Array<[Stage2RowKeyField, string]>) {
-		if (!rowKey.startsWith(prefix)) {
-			continue;
-		}
-		const value = rowKey.slice(prefix.length).trim();
-		if (value === "") {
-			return null;
-		}
-		return { field, value };
-	}
-	return null;
+export function getStage2RowKey(row: Pick<Stage2Row, "rowId">) {
+	return row.rowId.trim();
 }
 
-function getStage2RowIdentifiers(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
-	const identifiers = [row.rowId, row.proxyName, row.landingNodeName, row.sourceLandingNodeName];
-	const seen = new Set<string>();
-	const result: string[] = [];
-	for (const value of identifiers) {
-		const trimmed = value?.trim() ?? "";
-		if (trimmed === "" || seen.has(trimmed)) {
-			continue;
-		}
-		seen.add(trimmed);
-		result.push(trimmed);
-	}
-	return result;
+export function getStage2RowStrictKey(row: Pick<Stage2Row, "rowId">) {
+	const rowId = row.rowId.trim();
+	return rowId === "" ? "" : `${STAGE2_ROW_KEY_PREFIX}${rowId}`;
 }
 
-export function getStage2RowKey(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
-	return getStage2RowIdentifiers(row)[0] ?? "";
-}
-
-export function getStage2RowStrictKey(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-) {
-	for (const field of ["rowId", "proxyName", "landingNodeName", "sourceLandingNodeName"] as Stage2RowKeyField[]) {
-		const value = getTrimmedStage2RowFieldValue(row, field);
-		if (value !== "") {
-			return `${STAGE2_ROW_KEY_PREFIXES[field]}${value}`;
-		}
-	}
-	return "";
-}
-
-export function isStage2SourceRow(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-) {
+export function isStage2SourceRow(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName">) {
 	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
 	if (sourceLandingNodeName === "") {
 		return false;
 	}
-	const rowId = row.rowId?.trim();
-	if (rowId) {
-		return rowId === sourceLandingNodeName;
-	}
-	const proxyName = row.proxyName?.trim();
-	if (proxyName) {
-		return proxyName === sourceLandingNodeName;
-	}
-	return row.landingNodeName.trim() === sourceLandingNodeName;
+	return row.rowId.trim() === sourceLandingNodeName;
 }
 
-export function matchesStage2RowKey(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-	rowKey: string,
-) {
+export function matchesStage2RowKey(row: Pick<Stage2Row, "rowId">, rowKey: string) {
 	const trimmedRowKey = rowKey.trim();
 	if (trimmedRowKey === "") {
 		return false;
 	}
-	const prefixedRowKey = parsePrefixedStage2RowKey(trimmedRowKey);
-	if (prefixedRowKey !== null) {
-		return getTrimmedStage2RowFieldValue(row, prefixedRowKey.field) === prefixedRowKey.value;
+	const parsedRowId = parseStage2RowKey(trimmedRowKey);
+	if (parsedRowId !== null) {
+		return row.rowId.trim() === parsedRowId;
 	}
-	return getStage2RowIdentifiers(row).includes(trimmedRowKey);
+	return row.rowId.trim() === trimmedRowKey;
 }
 
 export function findStage2RowByKey(rows: Stage2SnapshotRows, rowKey: string) {
@@ -275,7 +204,7 @@ export function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows
 export function getSelectableChoices(
 	stage2Init: Stage2Init | null,
 	stage2Rows: Stage2SnapshotRows,
-	landingNodeName: string,
+	rowKey: string,
 	mode: Stage2Row["mode"],
 ) {
 	if (mode === "chain") {
@@ -284,7 +213,7 @@ export function getSelectableChoices(
 			.filter((choice) => !choice.disabled);
 	}
 	if (mode === "port_forward") {
-		return getForwardRelayChoices(stage2Init, stage2Rows, landingNodeName).filter((choice) => !choice.disabled);
+		return getForwardRelayChoices(stage2Init, stage2Rows, rowKey).filter((choice) => !choice.disabled);
 	}
 	return [];
 }
@@ -318,14 +247,14 @@ export function getStage2TargetDisplayLabel(
 export function pickNextTarget(
 	stage2Init: Stage2Init | null,
 	stage2Rows: Stage2SnapshotRows,
-	landingNodeName: string,
+	rowKey: string,
 	mode: Stage2Row["mode"],
 	currentTarget: string | null,
 ) {
 	if (mode === "none") {
 		return null;
 	}
-	const choices = getSelectableChoices(stage2Init, stage2Rows, landingNodeName, mode);
+	const choices = getSelectableChoices(stage2Init, stage2Rows, rowKey, mode);
 	if (choices.some((choice) => choice.value === currentTarget)) {
 		return currentTarget;
 	}

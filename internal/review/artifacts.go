@@ -145,7 +145,6 @@ func snapshotRowsFromInit(rows []service.Stage2InitRow) []service.Stage2Row {
 			RowID:                 row.RowID,
 			SourceLandingNodeName: row.SourceLandingNodeName,
 			ProxyName:             row.ProxyName,
-			LandingNodeName:       row.LandingNodeName,
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
 		})
@@ -198,7 +197,7 @@ func buildSummaryMarkdown(scenarioName string, stage2Init service.Stage2Init) st
 			targetName = *row.TargetName
 		}
 		builder.WriteString("| ")
-		builder.WriteString(row.LandingNodeName)
+		builder.WriteString(row.ProxyName)
 		builder.WriteString(" | ")
 		builder.WriteString(row.LandingNodeType)
 		builder.WriteString(" | ")
@@ -217,7 +216,7 @@ func buildAutofillPairsText(rows []service.Stage2InitRow) string {
 
 	lines := make([]string, 0, len(rows))
 	for _, row := range rows {
-		line := row.LandingNodeName + " | " + row.LandingNodeType + " | " + row.Mode
+		line := row.ProxyName + " | " + row.LandingNodeType + " | " + row.Mode
 		if row.TargetName != nil {
 			line += " | " + *row.TargetName
 		}
