@@ -42,7 +42,7 @@ COPY --from=web-builder /web/dist /app/web/dist
 
 RUN mkdir -p /data && chown app:app /data
 
-ENV CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/tmp/short-links.sqlite3
+ENV CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3
 
 USER app
 

@@ -181,22 +181,26 @@ jobs:
               });
 
               const runs = data.workflow_runs || [];
-              const latestRun = runs[0];
+              const successRun = runs.find(
+                (run) => run.status === 'completed' && run.conclusion === 'success'
+              );
 
-              if (!latestRun) {
-                core.info('No CI workflow run found yet for this commit; polling again.');
-              } else if (latestRun.status !== 'completed') {
-                core.info(
-                  `CI run #${latestRun.run_number} is ${latestRun.status}; polling again.`
-                );
-              } else if (latestRun.conclusion === 'success') {
-                core.info(`CI run #${latestRun.run_number} succeeded.`);
+              if (successRun) {
+                core.info(`CI run #${successRun.run_number} succeeded.`);
                 break;
-              } else {
+              }
+
+              const inProgress = runs.some((run) => run.status !== 'completed');
+              if (inProgress) {
+                core.info('CI workflow run still in progress; polling again.');
+              } else if (runs.length > 0) {
+                const latestCompleted = runs[0];
                 core.setFailed(
-                  `CI run #${latestRun.run_number} concluded with ${latestRun.conclusion}.`
+                  `No successful CI run found for ${targetSha}. Latest run #${latestCompleted.run_number} concluded with ${latestCompleted.conclusion}.`
                 );
                 return;
+              } else {
+                core.info('No CI workflow run found yet for this commit; polling again.');
               }
 
               if (Date.now() > deadline) {

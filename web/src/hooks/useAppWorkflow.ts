@@ -172,39 +172,39 @@ export interface AppWorkflowViewModel {
 	updateStage1Input: (updater: (current: Stage1Input) => Stage1Input) => void;
 	getStage1FieldErrors: (field: string) => BlockingError[];
 	getStage3FieldErrors: (field: string) => BlockingError[];
-	getStage2RowMeta: (landingNodeName: string) => Stage2Init["rows"][number] | null;
-	getStage2RowErrors: (landingNodeName: string) => BlockingError[];
+	getStage2RowMeta: (rowKey: string) => Stage2Init["rows"][number] | null;
+	getStage2RowErrors: (rowKey: string) => BlockingError[];
 	getPrimaryBlockingErrorsForStage: (stage: ResponseOriginStage) => BlockingError[];
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
 	getChainTargetChoiceGroups: () => ChainTargetChoiceGroup[];
-	getForwardRelayChoices: (landingNodeName: string) => TargetChoice[];
-	getServerAggregationStrategy: (landingNodeName: string) => AggregationStrategy | null;
-	canConfigureServerAggregationGroup: (landingNodeName: string) => boolean;
-	getServerAggregationGroup: (landingNodeName: string) => { server: string; groupName: string; enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean } | null;
-	handleServerAggregationGroupNameChange: (landingNodeName: string, groupName: string) => void;
+	getForwardRelayChoices: (rowKey: string) => TargetChoice[];
+	getServerAggregationStrategy: (rowKey: string) => AggregationStrategy | null;
+	canConfigureServerAggregationGroup: (rowKey: string) => boolean;
+	getServerAggregationGroup: (rowKey: string) => { server: string; groupName: string; enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean } | null;
+	handleServerAggregationGroupNameChange: (rowKey: string, groupName: string) => void;
 	getServerAggregationOrderedMembers: (
-		landingNodeName: string,
+		rowKey: string,
 	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
 	handleStage1Convert: () => Promise<void>;
 	handleStage1Reset: () => void;
 	isStage1AtInitial: boolean;
 	handleRestore: () => Promise<void>;
-	handleProxyNameChange: (landingNodeName: string, proxyName: string) => void;
-	handleCloneStage2Row: (landingNodeName: string) => void;
-	handleDeleteStage2Row: (landingNodeName: string) => void;
-	canDeleteStage2Row: (landingNodeName: string) => boolean;
-	handleModeChange: (landingNodeName: string, mode: Stage2Row["mode"]) => void;
-	handleTargetChange: (landingNodeName: string, targetName: string) => void;
-	handleServerAggregationStrategyChange: (landingNodeName: string, strategy: AggregationStrategy | null) => void;
-	handleServerAggregationChange: (landingNodeName: string, payload: { enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean }) => void;
-	handleServerAggregationEnableWithDefaults: (landingNodeName: string, payload: { enabled: boolean; strategy: AggregationStrategy }) => void;
+	handleProxyNameChange: (rowKey: string, proxyName: string) => void;
+	handleCloneStage2Row: (rowKey: string) => void;
+	handleDeleteStage2Row: (rowKey: string) => void;
+	canDeleteStage2Row: (rowKey: string) => boolean;
+	handleModeChange: (rowKey: string, mode: Stage2Row["mode"]) => void;
+	handleTargetChange: (rowKey: string, targetName: string) => void;
+	handleServerAggregationStrategyChange: (rowKey: string, strategy: AggregationStrategy | null) => void;
+	handleServerAggregationChange: (rowKey: string, payload: { enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean }) => void;
+	handleServerAggregationEnableWithDefaults: (rowKey: string, payload: { enabled: boolean; strategy: AggregationStrategy }) => void;
 	handleServerAggregationMemberReorder: (
-		landingNodeName: string,
+		rowKey: string,
 		memberRowId: string,
 		direction: "up" | "down",
 	) => void;
 	handleServerAggregationMemberMoveTo: (
-		landingNodeName: string,
+		rowKey: string,
 		memberRowId: string,
 		toIndex: number,
 	) => void;
@@ -266,14 +266,14 @@ function getModeOptions(stage2Init: Stage2Init | null) {
 	return stage2Init?.availableModes ?? [];
 }
 
-function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, landingNodeName: string, mode: Stage2Row["mode"]) {
+function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, rowKey: string, mode: Stage2Row["mode"]) {
 	if (mode === "chain") {
 		return getChainTargetChoiceGroups(stage2Init)
 			.flatMap((group) => group.choices)
 			.filter((choice) => !choice.disabled);
 	}
 	if (mode === "port_forward") {
-		return getForwardRelayChoices(stage2Init, stage2Rows, landingNodeName).filter((choice) => !choice.disabled);
+		return getForwardRelayChoices(stage2Init, stage2Rows, rowKey).filter((choice) => !choice.disabled);
 	}
 	return [];
 }
@@ -499,18 +499,18 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		return getStage3FieldErrors(state.blockingErrors, field);
 	}
 
-	function getStage2RowMeta(landingNodeName: string) {
-		const snapshotRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
-		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : landingNodeName;
+	function getStage2RowMeta(rowKey: string) {
+		const snapshotRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
+		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : rowKey;
 		return state.stage2Init?.rows.find((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName) ?? null;
 	}
 
-	function getStage2RowErrors(landingNodeName: string) {
+	function getStage2RowErrors(rowKey: string) {
 		if (!isStage2Editable) {
 			return [];
 		}
-		const row = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
-		return row ? getRowErrors(state.blockingErrors, row) : getRowErrors(state.blockingErrors, landingNodeName);
+		const row = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
+		return row ? getRowErrors(state.blockingErrors, row) : getRowErrors(state.blockingErrors, rowKey);
 	}
 
 	function getPrimaryBlockingErrors(stage: ResponseOriginStage) {
@@ -644,23 +644,23 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}
 	}
 
-	function updateStage2Row(landingNodeName: string, updater: (row: Stage2Row) => Stage2Row) {
-		setState((current) => updateStage2RowState(current, landingNodeName, updater));
+	function updateStage2Row(rowKey: string, updater: (row: Stage2Row) => Stage2Row) {
+		setState((current) => updateStage2RowState(current, rowKey, updater));
 	}
 
-	function handleProxyNameChange(landingNodeName: string, proxyName: string) {
-		updateStage2Row(landingNodeName, (row) => ({
+	function handleProxyNameChange(rowKey: string, proxyName: string) {
+		updateStage2Row(rowKey, (row) => ({
 			...row,
 			proxyName,
 		}));
 	}
 
-	function handleCloneStage2Row(landingNodeName: string) {
-		setState((current) => cloneStage2RowState(current, landingNodeName));
+	function handleCloneStage2Row(rowKey: string) {
+		setState((current) => cloneStage2RowState(current, rowKey));
 	}
 
-	function canDeleteStage2Row(landingNodeName: string) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+	function canDeleteStage2Row(rowKey: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
 		if (matchedRow === null) {
 			return false;
 		}
@@ -668,32 +668,32 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		return state.stage2Snapshot.rows.filter((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName).length > 1;
 	}
 
-	function handleDeleteStage2Row(landingNodeName: string) {
-		setState((current) => deleteStage2RowState(current, landingNodeName));
+	function handleDeleteStage2Row(rowKey: string) {
+		setState((current) => deleteStage2RowState(current, rowKey));
 	}
 
-	function handleModeChange(landingNodeName: string, mode: Stage2Row["mode"]) {
-		updateStage2Row(landingNodeName, (row) => ({
+	function handleModeChange(rowKey: string, mode: Stage2Row["mode"]) {
+		updateStage2Row(rowKey, (row) => ({
 			...row,
 			mode,
 			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
 		}));
 	}
 
-	function handleTargetChange(landingNodeName: string, targetName: string) {
+	function handleTargetChange(rowKey: string, targetName: string) {
 		const nextTargetName = targetName === "" ? null : targetName;
-		updateStage2Row(landingNodeName, (row) => ({
+		updateStage2Row(rowKey, (row) => ({
 			...row,
 			targetName: nextTargetName,
 		}));
 	}
 
-	function getServerAggregationGroupForRow(landingNodeName: string) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+	function getServerAggregationGroupForRow(rowKey: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
 		if (matchedRow === null) {
 			return null;
 		}
-		const rowMeta = getStage2RowMeta(landingNodeName);
+		const rowMeta = getStage2RowMeta(rowKey);
 		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
 		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
 		if (server === "") {
@@ -710,34 +710,34 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		};
 	}
 
-	function handleServerAggregationGroupNameChange(landingNodeName: string, groupName: string) {
-		const group = getServerAggregationGroupForRow(landingNodeName);
+	function handleServerAggregationGroupNameChange(rowKey: string, groupName: string) {
+		const group = getServerAggregationGroupForRow(rowKey);
 		if (group === null) {
 			return;
 		}
 		setState((current) => updateServerAggregationGroupNameState(current, group.server, groupName));
 	}
 
-	function getServerAggregationStrategyForRow(landingNodeName: string) {
-		if (!canConfigureServerAggregationGroup(landingNodeName)) {
+	function getServerAggregationStrategyForRow(rowKey: string) {
+		if (!canConfigureServerAggregationGroup(rowKey)) {
 			return null;
 		}
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
 		if (matchedRow === null) {
 			return null;
 		}
-		const rowMeta = getStage2RowMeta(landingNodeName);
+		const rowMeta = getStage2RowMeta(rowKey);
 		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
 		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
 		return getServerAggregationStrategy(state.stage2Snapshot, server);
 	}
 
-	function canConfigureServerAggregationGroup(landingNodeName: string) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+	function canConfigureServerAggregationGroup(rowKey: string) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
 		if (matchedRow === null) {
 			return false;
 		}
-		const rowMeta = getStage2RowMeta(landingNodeName);
+		const rowMeta = getStage2RowMeta(rowKey);
 		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
 		const server = rowMeta?.server?.trim() ?? "";
 		let count = 0;
@@ -756,12 +756,12 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		return count > 1;
 	}
 
-	function handleServerAggregationStrategyChange(landingNodeName: string, strategy: AggregationStrategy | null) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
+	function handleServerAggregationStrategyChange(rowKey: string, strategy: AggregationStrategy | null) {
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
 		if (matchedRow === null) {
 			return;
 		}
-		const rowMeta = getStage2RowMeta(landingNodeName);
+		const rowMeta = getStage2RowMeta(rowKey);
 		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
 		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
 		if (strategy === null) {
@@ -788,11 +788,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleServerAggregationChange(
-		landingNodeName: string,
+		rowKey: string,
 		payload: { enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean },
 	) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, landingNodeName);
-		const rowMeta = getStage2RowMeta(landingNodeName);
+		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
+		const rowMeta = getStage2RowMeta(rowKey);
 		if (matchedRow === null || rowMeta === null) {
 			return;
 		}
@@ -814,22 +814,22 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		});
 	}
 
-	function getStage2RowMetaFromState(current: typeof state, landingNodeName: string) {
-		const snapshotRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
-		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : landingNodeName;
+	function getStage2RowMetaFromState(current: typeof state, rowKey: string) {
+		const snapshotRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
+		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : rowKey;
 		return current.stage2Init?.rows.find((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName) ?? null;
 	}
 
 	function handleServerAggregationEnableWithDefaults(
-		landingNodeName: string,
+		rowKey: string,
 		payload: { enabled: boolean; strategy: AggregationStrategy },
 	) {
-		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		const anchorGroup = getServerAggregationGroupForRow(rowKey);
 		if (anchorGroup === null) {
 			return;
 		}
 		if (!payload.enabled) {
-			handleServerAggregationChange(landingNodeName, {
+			handleServerAggregationChange(rowKey, {
 				enabled: false,
 				strategy: payload.strategy,
 				memberChecked: anchorGroup.memberChecked,
@@ -880,8 +880,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		});
 	}
 
-	function getServerAggregationOrderedMembersForRow(landingNodeName: string) {
-		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+	function getServerAggregationOrderedMembersForRow(rowKey: string) {
+		const anchorGroup = getServerAggregationGroupForRow(rowKey);
 		if (anchorGroup === null) {
 			return [];
 		}
@@ -913,11 +913,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleServerAggregationMemberReorder(
-		landingNodeName: string,
+		rowKey: string,
 		memberRowId: string,
 		direction: "up" | "down",
 	) {
-		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		const anchorGroup = getServerAggregationGroupForRow(rowKey);
 		if (anchorGroup === null) {
 			return;
 		}
@@ -927,11 +927,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleServerAggregationMemberMoveTo(
-		landingNodeName: string,
+		rowKey: string,
 		memberRowId: string,
 		toIndex: number,
 	) {
-		const anchorGroup = getServerAggregationGroupForRow(landingNodeName);
+		const anchorGroup = getServerAggregationGroupForRow(rowKey);
 		if (anchorGroup === null) {
 			return;
 		}
@@ -1164,7 +1164,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getPrimaryBlockingErrorsForStage: getPrimaryBlockingErrors,
 		getStageMessages,
 		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Init),
-		getForwardRelayChoices: (landingNodeName: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, landingNodeName),
+		getForwardRelayChoices: (rowKey: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, rowKey),
 		getServerAggregationStrategy: getServerAggregationStrategyForRow,
 		canConfigureServerAggregationGroup,
 		getServerAggregationGroup: getServerAggregationGroupForRow,

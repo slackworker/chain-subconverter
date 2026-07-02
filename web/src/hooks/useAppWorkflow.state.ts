@@ -810,8 +810,8 @@ export function updateStage2RowState(
 	};
 }
 
-export function cloneStage2RowState(current: AppState, landingNodeName: string): AppState {
-	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+export function cloneStage2RowState(current: AppState, rowKey: string): AppState {
+	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
 	if (matchedRow === null) {
 		return current;
 	}
@@ -825,7 +825,7 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string):
 		proxyName: clonedProxyName,
 	};
 
-	const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, landingNodeName));
+	const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, rowKey));
 	const groupLastIndex = current.stage2Snapshot.rows.reduce((lastIndex, row, index) => (
 		getStage2RowSourceLandingName(row) === sourceLandingNodeName ? index : lastIndex
 	), -1);
@@ -845,8 +845,8 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string):
 	};
 }
 
-export function deleteStage2RowState(current: AppState, landingNodeName: string): AppState {
-	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
+export function deleteStage2RowState(current: AppState, rowKey: string): AppState {
+	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
 	if (matchedRow === null) {
 		return current;
 	}
@@ -860,7 +860,7 @@ export function deleteStage2RowState(current: AppState, landingNodeName: string)
 		...expireGeneratedOutput(current),
 		blockingErrors: clearStage2RowErrors(current),
 		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, landingNodeName)),
+			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, rowKey)),
 			current.stage2Snapshot.serverAggregationGroups,
 			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
 		),

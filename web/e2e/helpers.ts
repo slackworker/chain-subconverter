@@ -2,9 +2,9 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
 
 import type { GenerateRequest, Message } from "../src/types/api";
 
-export function locateStage2Row(page: Page, landingNodeName: string) {
+export function locateStage2Row(page: Page, proxyName: string) {
 	return page.locator(".a-table tbody tr", {
-		has: page.locator(`.a-stage2-row-name-input[value="${landingNodeName}"]`),
+		has: page.locator(`.a-stage2-row-name-input[value="${proxyName}"]`),
 	});
 }
 
