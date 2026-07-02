@@ -894,6 +894,21 @@ describe("useAppWorkflow.state", () => {
 		expect(reorderStage2RowsState(current, ["hk-1", "unknown"])).toBe(current);
 	});
 
+	it("rejects row reorder permutations when a snapshot row is missing rowId", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [],
+			},
+		};
+
+		expect(reorderStage2RowsState(current, ["hk-1"])).toBe(current);
+	});
+
 	it("reorders server aggregation members up and down", () => {
 		const current: AppState = {
 			...initialAppState,

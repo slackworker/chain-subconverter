@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	findStage2RowByKey,
 	getForwardRelayChoices,
 	getStage2DerivedProxyNameBase,
 	getStage2RowEditableName,
 	getStage2RowDisplayName,
+	getStage2RowKey,
 	getStage2RowStrictKey,
 	getStage2RowSourceLandingName,
 	getStage2DisplayModeOptions,
@@ -208,6 +210,21 @@ describe("stage2 target helpers", () => {
 
 		expect(getStage2DerivedProxyNameBase(rows, "Alpha-SS-SG")).toBe("🇸🇬 Alpha-SS-SG");
 		expect(pickNextDerivedProxyName(rows, "🇸🇬 Alpha-SS-SG")).toBe("🇸🇬 Alpha-SS-SG 2");
+	});
+
+	it("returns only rowId from getStage2RowKey and does not fall back to proxyName", () => {
+		const row: Stage2Row = {
+			rowId: "",
+			sourceLandingNodeName: "landing-a",
+			proxyName: "landing-a",
+			mode: "none",
+			targetName: null,
+		};
+
+		expect(getStage2RowKey(row)).toBe("");
+		expect(getStage2RowStrictKey(row)).toBe("");
+		expect(findStage2RowByKey([row], "landing-a")).toBeNull();
+		expect(findStage2RowByKey([row], "rowId:landing-a")).toBeNull();
 	});
 
 	it("uses strict row keys to distinguish source and derived rows that share the same source landing name", () => {

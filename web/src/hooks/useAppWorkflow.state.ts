@@ -96,7 +96,7 @@ export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
 }
 
 function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
-	const rowIds = new Set(rows.map((row) => row.rowId?.trim()).filter((rowId): rowId is string => Boolean(rowId)));
+	const rowIds = new Set(rows.map((row) => getStage2RowKey(row)).filter((rowId) => rowId !== ""));
 	const normalized: ServerAggregationGroup[] = [];
 	const seen = new Set<string>();
 	for (const group of serverAggregationGroups) {
@@ -314,7 +314,7 @@ export function mergeStage2SnapshotAfterConvert(
 	const rowsByID = new Map(
 		validatedRows
 			.map((row) => {
-				const rowID = row.rowId?.trim() ?? "";
+				const rowID = getStage2RowKey(row);
 				return rowID === "" ? null : ([rowID, row] as const);
 			})
 			.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
@@ -931,7 +931,7 @@ export function updateServerAggregationGroupState(
 			const rowOrderById = new Map<string, number>();
 			for (let index = 0; index < current.stage2Snapshot.rows.length; index += 1) {
 				const row = current.stage2Snapshot.rows[index];
-				const rowID = (row.rowId?.trim() ?? "") || getStage2RowKey(row);
+				const rowID = getStage2RowKey(row);
 				if (rowID !== "" && !rowOrderById.has(rowID)) {
 					rowOrderById.set(rowID, index);
 				}
@@ -1026,8 +1026,8 @@ export function reorderStage2RowsState(
 	const trimmedOrderedRowIds = orderedRowIds.map((rowId) => rowId.trim()).filter(Boolean);
 	const currentRows = current.stage2Snapshot.rows;
 	const currentRowIds = currentRows
-		.map((row) => row.rowId?.trim())
-		.filter((rowId): rowId is string => Boolean(rowId));
+		.map((row) => getStage2RowKey(row))
+		.filter((rowId) => rowId !== "");
 
 	if (trimmedOrderedRowIds.length !== currentRowIds.length || currentRowIds.length === 0) {
 		return current;
@@ -1045,8 +1045,8 @@ export function reorderStage2RowsState(
 
 	const rowById = new Map<string, Stage2Row>();
 	for (const row of currentRows) {
-		const rowId = row.rowId?.trim();
-		if (rowId) {
+		const rowId = getStage2RowKey(row);
+		if (rowId !== "") {
 			rowById.set(rowId, row);
 		}
 	}

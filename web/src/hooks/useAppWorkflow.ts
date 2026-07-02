@@ -280,7 +280,9 @@ function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2S
 
 function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialAppState.stage2Snapshot): BlockingError[] {
 	const rowsByID = new Map(
-		stage2Snapshot.rows.map((row) => [(row.rowId ?? "").trim(), row] as const).filter(([rowID]) => rowID !== ""),
+		stage2Snapshot.rows
+			.map((row) => [getStage2RowKey(row), row] as const)
+			.filter(([rowID]) => rowID !== ""),
 	);
 	const errors: BlockingError[] = [];
 	const orderedAggregationGroups = [...stage2Snapshot.serverAggregationGroups].sort((left, right) =>
@@ -699,7 +701,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (server === "") {
 			return null;
 		}
-		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
+		const rowID = getStage2RowKey(matchedRow);
 		const group = getServerAggregationGroup(state.stage2Snapshot, server);
 		return {
 			server,
@@ -776,7 +778,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				const rowKey = getStage2RowKey(row);
 				return (getStage2RowMeta(rowKey)?.server?.trim() ?? "") === rowMeta?.server?.trim();
 			})
-			.map((row) => (row.rowId?.trim() ?? "") || getStage2RowKey(row))
+			.map((row) => getStage2RowKey(row))
 			.filter((rowID) => rowID !== "");
 		setState((current) => {
 			let next = current;
@@ -797,7 +799,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return;
 		}
 		const server = resolveServerAggregationServer(matchedRow, rowMeta);
-		const rowID = (matchedRow.rowId?.trim() ?? "") || getStage2RowKey(matchedRow);
+		const rowID = getStage2RowKey(matchedRow);
 		if (server === "" || rowID === "") {
 			return;
 		}
@@ -860,7 +862,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					continue;
 				}
 				const server = resolveServerAggregationServer(matchedRow, rowMeta);
-				const rowID = (matchedRow.rowId?.trim() ?? "") || rowKey;
+				const rowID = getStage2RowKey(matchedRow);
 				if (server === "" || rowID === "") {
 					continue;
 				}
@@ -892,7 +894,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		const rowsByID = new Map(
 			state.stage2Snapshot.rows
 				.map((row) => {
-					const rowID = (row.rowId?.trim() ?? "") || getStage2RowKey(row);
+					const rowID = getStage2RowKey(row);
 					return rowID === "" ? null : ([rowID, row] as const);
 				})
 				.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
