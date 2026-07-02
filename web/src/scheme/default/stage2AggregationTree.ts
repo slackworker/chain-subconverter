@@ -200,7 +200,7 @@ export function buildStage2AggregationTree(
 
 		const anchorRow = serverRows[0];
 		const anchorRowKey = getStage2RowStrictKey(anchorRow);
-		const displayServer = getRowDisplayServer(anchorRow, getRowMeta) || serverKey.replace(/^source:/, "");
+		const displayServer = getRowDisplayServer(anchorRow, getRowMeta);
 
 		nodes.push({
 			kind: "server",

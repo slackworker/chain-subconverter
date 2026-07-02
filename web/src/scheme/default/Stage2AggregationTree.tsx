@@ -53,6 +53,9 @@ function getServerGroupDisplayName(displayServer: string, sourceFlagEmoji: strin
 		return trimmedGroupName;
 	}
 	const serverName = formatServerGroupLabel(displayServer);
+	if (serverName === "--") {
+		return serverName;
+	}
 	return sourceFlagEmoji ? `${sourceFlagEmoji} ${serverName}` : serverName;
 }
 

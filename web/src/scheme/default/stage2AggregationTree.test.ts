@@ -165,7 +165,7 @@ describe("buildStage2AggregationTree", () => {
 		]);
 	});
 
-	it("uses source fallback key when server is empty", () => {
+	it("keeps source fallback key internal when server is empty", () => {
 		const specs: RowSpec[] = [
 			{
 				row: {
@@ -180,7 +180,7 @@ describe("buildStage2AggregationTree", () => {
 
 		const rows = specs.map((spec) => spec.row);
 		const nodes = buildStage2AggregationTree(rows, buildMetaLookup(specs));
-		expect(nodes[0]).toMatchObject({ kind: "server", server: "source:solo", displayServer: "solo" });
+		expect(nodes[0]).toMatchObject({ kind: "server", server: "source:solo", displayServer: "" });
 	});
 
 	it("captures shared source flag emoji for each server group", () => {
