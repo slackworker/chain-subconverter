@@ -1011,11 +1011,11 @@ it("inserts newly checked members by stage2 row order", () => {
 			},
 		};
 
-		const next = cloneStage2RowState(current, "rowId:Alpha-SS-SG", "alpha-ss-sg-copy-1");
+		const next = cloneStage2RowState(current, "rowId:Alpha-SS-SG");
 
 		expect(next.stage2Snapshot.rows).toHaveLength(2);
 		expect(next.stage2Snapshot.rows[1]).toMatchObject({
-			rowId: "alpha-ss-sg-copy-1",
+			rowId: "🇸🇬 Alpha-SS-SG 2",
 			sourceLandingNodeName: "Alpha-SS-SG",
 			proxyName: "🇸🇬 Alpha-SS-SG 2",
 			landingNodeName: "🇸🇬 Alpha-SS-SG 2",

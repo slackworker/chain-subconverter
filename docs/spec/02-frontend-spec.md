@@ -181,7 +181,7 @@
 |------|------|------|
 | `availableModes` | `mode[]` | 阶段 2 第三列的全局模式基线 |
 | `chainTargets[]` | object[] | 链式候选列表；每项包含 `name`、`kind`，空策略组额外返回 `isEmpty = true` |
-| `rows[].rowId` | string | 行稳定 ID（必填）；复制行须新生成 |
+| `rows[].rowId` | string | 会话行稳定 ID（必填）；复制行默认与派生 `proxyName` 一致（见 §2.3） |
 | `rows[].proxyName` | string | 可编辑节点名（最终 YAML `proxies[].name`） |
 | `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享） |
 | `rows[].landingNodeName` | string | 兼容字段，等同 `proxyName` |
@@ -212,6 +212,7 @@
 
 - 展示/编辑 `proxyName`；初始化时与 `stage2Init.landingNodeName` 一致
 - 提供复制行、删除行（至少保留每个 `sourceLandingNodeName` 一行）
+- 复制行时：`proxyName` 按 `原名 2`、`原名 3`… 派生；`rowId` 默认设为与派生 `proxyName` 相同，以保证会话内定位与链接编码语义一致（编码期后端仍会按 [04 §2.1.2b](04-business-rules.md) 规范化）
 
 ### 2.4 第二列：节点类型
 

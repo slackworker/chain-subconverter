@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert, postStage2Reset } from "../lib/api";
 import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
@@ -387,7 +387,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isResettingStage2, setIsResettingStage2] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
-	const stage2DerivedRowSequenceRef = useRef(0);
 
 	const stage2Rows = state.stage2Snapshot.rows;
 	const modeOptions = getModeOptions(state.stage2Init);
@@ -430,14 +429,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		: state.generatedUrls.shortUrl
 			? { label: "Short URL Ready", tone: "success" }
 			: { label: "Long URL Ready", tone: "success" };
-
-	function nextStage2DerivedRowID(sourceLandingNodeName: string) {
-		stage2DerivedRowSequenceRef.current += 1;
-		const normalizedSource = sourceLandingNodeName.trim().replace(/\s+/g, "-").replace(/[^\w\u0080-\uFFFF-]/g, "").slice(0, 32);
-		const sourcePrefix = normalizedSource === "" ? "stage2-row" : normalizedSource;
-		const randomPart = globalThis.crypto?.randomUUID?.().slice(0, 8) ?? `${Date.now()}-${stage2DerivedRowSequenceRef.current}`;
-		return `${sourcePrefix}-${randomPart}`;
-	}
 
 	function applyDefaultTemplateURL(templateURL: string) {
 		const normalizedTemplateURL = templateURL.trim();
@@ -667,14 +658,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleCloneStage2Row(landingNodeName: string) {
-		setState((current) => {
-			const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
-			if (matchedRow === null) {
-				return current;
-			}
-			const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-			return cloneStage2RowState(current, landingNodeName, nextStage2DerivedRowID(sourceLandingNodeName));
-		});
+		setState((current) => cloneStage2RowState(current, landingNodeName));
 	}
 
 	function canDeleteStage2Row(landingNodeName: string) {

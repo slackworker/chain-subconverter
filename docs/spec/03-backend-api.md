@@ -486,7 +486,7 @@
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
-- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `USER_FACING_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
+- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与经**编码前语义规范化**（见 [04 §2.1.2b](04-business-rules.md)）后的 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；请求校验仍使用客户端提交的原始 `rowId` / `memberRowIds`，规范化仅作用于编码输出；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `USER_FACING_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
 - 当前 Web 前端拿到 `longUrl` 后，若其长度超过 `GET /api/runtime-config` 返回的 `maxPublicLongURLLength`，必须立即创建并切换为 `shortUrl` 展示；此时 `longUrl` 只作为前端与后端之间的内部中间值存在，不再作为主展示结果
 - 请求体中的 `advancedOptions.config` 仍表示模板 URL，而不是最终订阅 YAML
 
@@ -796,11 +796,12 @@
 
 编码步骤固定为：
 
-1. 将逻辑载荷按当前版本结构组装为 JSON 对象
-2. 将该对象序列化为 UTF-8 的规范化 JSON
-3. 将规范化 JSON 字节做 gzip 压缩
-4. 将压缩结果做 base64url 编码，且不带 `=` padding
-5. 作为 `data` 查询参数拼接到 `GET /sub?data=...`
+1. 对 `stage2Snapshot` 执行编码前语义规范化（见 [04 §2.1.2b](04-business-rules.md)）
+2. 将逻辑载荷按当前版本结构组装为 JSON 对象
+3. 将该对象序列化为 UTF-8 的规范化 JSON
+4. 将规范化 JSON 字节做 gzip 压缩
+5. 将压缩结果做 base64url 编码，且不带 `=` padding
+6. 作为 `data` 查询参数拼接到 `GET /sub?data=...`
 
 规范化 JSON 规则：
 
@@ -840,7 +841,7 @@ gzip 规则：
 - 长链接本身也是订阅资源地址；公开路径固定为 `/sub?...`
 - 短链接是长链接的不透明别名，不单独承载状态源语义；公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
 - 短链接 ID 必须由**规范状态键**通过确定性算法生成；规范状态键由规范化状态载荷唯一导出，等价于与公开基地址无关的 canonical data key；同一份规范状态必须得到同一个 `<id>`
-- 短链 `canonicalStateKey` **必须保留** `rows[]` presentation order；仅做字段 trim/归一化，**不得**对 `rows[]` 重排序；长链接 `data` 编码亦必须保留 presentation order（见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
+- 短链 `canonicalStateKey` **必须保留** `rows[]` presentation order；在编码前语义规范化（见 [04 §2.1.2b](04-business-rules.md)）之后，仅做字段 trim/归一化，**不得**对 `rows[]` 重排序；长链接 `data` 编码亦必须保留 presentation order（见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
 - 当前默认短链接 ID 生成算法为：对规范状态键计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
 - 规范状态键不得包含 `USER_FACING_BASE_URL`、请求来源 host、scheme 或 base path 等发布入口信息；这些信息只能影响返回给用户的 `longUrl` / `shortUrl` 前缀，不得影响 `<id>`
 - 短链接索引在逻辑上是 `canonicalStateKey ↔ shortId` 的双射子集，并额外维护 `shortId -> longUrl` 的当前反查值：除淘汰导致的失效外，同一 `canonicalStateKey` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`canonicalStateKey` 唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立

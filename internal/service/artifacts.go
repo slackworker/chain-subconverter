@@ -81,7 +81,8 @@ func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtur
 		return GenerateResponse{}, err
 	}
 
-	longURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(request.Stage1Input, request.Stage2Snapshot), maxLongURLLength)
+	encodingSnapshot := CanonicalizeStage2SnapshotForLinkEncoding(request.Stage2Snapshot)
+	longURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(request.Stage1Input, encodingSnapshot), maxLongURLLength)
 	if err != nil {
 		return GenerateResponse{}, err
 	}

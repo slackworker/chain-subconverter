@@ -184,8 +184,10 @@ func canonicalizeShortLinkTarget(publicBaseURL string, rawLongURL string, maxLon
 
 func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) LongURLPayload {
 	canonical := payload
-	rows := make([]Stage2Row, len(payload.Stage2Snapshot.Rows))
-	copy(rows, payload.Stage2Snapshot.Rows)
+	canonical.Stage2Snapshot = CanonicalizeStage2SnapshotForLinkEncoding(payload.Stage2Snapshot)
+
+	rows := make([]Stage2Row, len(canonical.Stage2Snapshot.Rows))
+	copy(rows, canonical.Stage2Snapshot.Rows)
 
 	for index, row := range rows {
 		rows[index].RowID = strings.TrimSpace(row.rowIDOrFallback())
@@ -194,8 +196,8 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 		rows[index].LandingNodeName = rows[index].ProxyName
 	}
 
-	groups := make([]ServerAggregationGroup, len(payload.Stage2Snapshot.ServerAggregationGroups))
-	for index, group := range payload.Stage2Snapshot.ServerAggregationGroups {
+	groups := make([]ServerAggregationGroup, len(canonical.Stage2Snapshot.ServerAggregationGroups))
+	for index, group := range canonical.Stage2Snapshot.ServerAggregationGroups {
 		memberRowIDs := make([]string, 0, len(group.MemberRowIDs))
 		seen := make(map[string]struct{}, len(group.MemberRowIDs))
 		for _, memberRowID := range group.MemberRowIDs {
@@ -225,9 +227,9 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 	})
 
 	canonical.Stage2Snapshot = Stage2Snapshot{
-		Rows:                          rows,
-		ChainProxyTargetGroupSwitchOptimizationEnabled: payload.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
-		ServerAggregationGroups:       groups,
+		Rows: rows,
+		ChainProxyTargetGroupSwitchOptimizationEnabled: canonical.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
+		ServerAggregationGroups:                        groups,
 	}
 	return canonical
 }

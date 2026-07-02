@@ -253,12 +253,28 @@
 ### 2.1.2 `stage2Snapshot` 行身份
 
 - `stage2Init`：每 Pass 1 落地一行；同时返回 `rowId`、`sourceLandingNodeName`、`proxyName`（`sourceLandingNodeName` 固定为 Pass 1 名，`proxyName` 为 chain emoji 处理后的展示名）
-- `rowId`：行稳定 ID（全表唯一）；复制行须新生成，不与 `proxyName` 绑定
+- **会话 `rowId`**：编辑期行稳定 ID（全表唯一）；复制行须新生成会话内唯一 ID，不与 `proxyName` 绑定；用于行定位、`memberRowIds` 引用、`blockingErrors.context` 与 reset
+- **编码 `rowId`**：写入长链接 `statePayload v4` 与短链 `canonicalStateKey` 前，由后端按 `2.1.2b` 从 `proxyName` 确定性导出；用户可见配置相同时编码结果必须相同
 - `proxyName`：最终 YAML `proxies[].name`（全表唯一，可改名）
 - `sourceLandingNodeName`：Pass 1 原始 `proxy.name`（连接参数键；复制行可共享）
-- 复制：共享 `sourceLandingNodeName`；新 `rowId`；`proxyName` 默认 `原名 2`、`原名 3`…
-- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；行定位主键始终是 `rowId`；`rows[]` 数组顺序承载展示顺序，见 `2.1.3`
+- 复制：共享 `sourceLandingNodeName`；新会话 `rowId`（前端默认与派生 `proxyName` 一致，见 [02 §2.3](02-frontend-spec.md)）；`proxyName` 默认 `原名 2`、`原名 3`…
+- `rowId` 在 `stage2Snapshot.rows[]` 中为必填；编辑期行定位主键始终是**会话** `rowId`；`rows[]` 数组顺序承载展示顺序，见 `2.1.3`
 - 行集：每个落地身份至少一行；不得引用未知 `sourceLandingNodeName`
+
+### 2.1.2b 编码前语义规范化
+
+长链接与短链状态键在编码前须对 `stage2Snapshot` 做确定性规范化，使**用户可见配置**决定链接，而非会话 `rowId`：
+
+**语义等价定义**：若两份快照在 `stage1Input` + 各行 `(proxyName, sourceLandingNodeName, mode, targetName)` + `rows[]` presentation order + 聚合组 `(server, enabled, strategy, memberProxyNames 按序)` 相同，则 `data` 载荷必须相同。
+
+**规范化规则**（`POST /api/generate`、`EncodeLongURL`、`canonicalStateKey` 计算前执行；校验仍用原始请求快照）：
+
+1. 保留 `rows[]` presentation order
+2. 对每行：`encodedRowId = trim(proxyName)`
+3. 构建 `oldRowId → encodedRowId` 映射，将 `serverAggregationGroups[].memberRowIds[]` **按原顺序**重映射为编码 ID；`fallback` 策略下**不得**对成员排序
+4. 其余字段（`sourceLandingNodeName`、`mode`、`targetName`、聚合 `server`/`enabled`/`strategy`、切换优化开关、`stage1Input`）原样保留
+
+- `rowId` **不参与** Pass 3 YAML 渲染（路由以 `proxyName` 为准）；仅影响链接编码与恢复时的行定位键
 
 ### 2.1.2a 顺序域总览
 

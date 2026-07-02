@@ -812,7 +812,7 @@ export function updateStage2RowState(
 	};
 }
 
-export function cloneStage2RowState(current: AppState, landingNodeName: string, rowID: string): AppState {
+export function cloneStage2RowState(current: AppState, landingNodeName: string): AppState {
 	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, landingNodeName);
 	if (matchedRow === null) {
 		return current;
@@ -823,7 +823,7 @@ export function cloneStage2RowState(current: AppState, landingNodeName: string, 
 	const clonedProxyName = pickNextDerivedProxyName(current.stage2Snapshot.rows, derivedNameBase);
 	const clonedRow: Stage2Row = {
 		...matchedRow,
-		rowId: rowID,
+		rowId: clonedProxyName,
 		proxyName: clonedProxyName,
 		landingNodeName: clonedProxyName,
 	};

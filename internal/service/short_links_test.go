@@ -93,74 +93,48 @@ func TestBuildShortLinkResponse_KeepsShortIDStableAcrossBaseURLs(t *testing.T) {
 	}
 }
 
-func TestCanonicalShortLinkStateKey_ChangesWhenRowIdentityChanges(t *testing.T) {
+func TestCanonicalShortLinkStateKey_IgnoresSessionRowIdentity(t *testing.T) {
 	stage1 := stage1InputWithTemplate(Stage1Input{
 		LandingRawText: "landing",
 		TransitRawText: "transit",
 	})
 	targetSG := "🇸🇬 新加坡节点"
 
-	firstPayload := BuildLongURLPayload(stage1, Stage2Snapshot{
-		Rows: []Stage2Row{
-			{
-				RowID:                 "alpha-random-row-id",
-				SourceLandingNodeName: "🇸🇬 Alpha",
-				ProxyName:             "🇸🇬 Alpha",
-				LandingNodeName:       "🇸🇬 Alpha",
-				Mode:                  "chain",
-				TargetName:            &targetSG,
+	buildPayload := func(firstRowID string, secondRowID string, memberRowIDs []string) LongURLPayload {
+		return BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 firstRowID,
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha",
+					LandingNodeName:       "🇸🇬 Alpha",
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+				{
+					RowID:                 secondRowID,
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha 2",
+					LandingNodeName:       "🇸🇬 Alpha 2",
+					Mode:                  "none",
+				},
 			},
-			{
-				RowID:                 "alpha-derived-random",
-				SourceLandingNodeName: "🇸🇬 Alpha",
-				ProxyName:             "🇸🇬 Alpha 2",
-				LandingNodeName:       "🇸🇬 Alpha 2",
-				Mode:                  "none",
+			ServerAggregationGroups: []ServerAggregationGroup{
+				{
+					Server:       "198.51.100.10",
+					Enabled:      true,
+					Strategy:     "fallback",
+					MemberRowIDs: memberRowIDs,
+				},
 			},
-		},
-		ServerAggregationGroups: []ServerAggregationGroup{
-			{
-				Server:       "198.51.100.10",
-				Enabled:      true,
-				Strategy:     "fallback",
-				MemberRowIDs: []string{"alpha-random-row-id", "alpha-derived-random"},
-			},
-		},
-	})
+		})
+	}
 
-	secondPayload := BuildLongURLPayload(stage1, Stage2Snapshot{
-		Rows: []Stage2Row{
-			{
-				RowID:                 "another-random-id-xyz",
-				SourceLandingNodeName: "🇸🇬 Alpha",
-				ProxyName:             "🇸🇬 Alpha 2",
-				LandingNodeName:       "🇸🇬 Alpha 2",
-				Mode:                  "none",
-			},
-			{
-				RowID:                 "source-row-random-abc",
-				SourceLandingNodeName: "🇸🇬 Alpha",
-				ProxyName:             "🇸🇬 Alpha",
-				LandingNodeName:       "🇸🇬 Alpha",
-				Mode:                  "chain",
-				TargetName:            &targetSG,
-			},
-		},
-		ServerAggregationGroups: []ServerAggregationGroup{
-			{
-				Server:       "198.51.100.10",
-				Enabled:      true,
-				Strategy:     "fallback",
-				MemberRowIDs: []string{"source-row-random-abc", "another-random-id-xyz"},
-			},
-		},
-	})
-
-	firstLongURL, err := EncodeLongURL("https://a.example.com/base", firstPayload, 0)
+	firstLongURL, err := EncodeLongURL("https://a.example.com/base", buildPayload("alpha-random-row-id", "alpha-derived-random", []string{"alpha-random-row-id", "alpha-derived-random"}), 0)
 	if err != nil {
 		t.Fatalf("EncodeLongURL() first error = %v", err)
 	}
-	secondLongURL, err := EncodeLongURL("https://b.example.com/base", secondPayload, 0)
+	secondLongURL, err := EncodeLongURL("https://a.example.com/base", buildPayload("another-random-id-xyz", "yet-another-random-abc", []string{"another-random-id-xyz", "yet-another-random-abc"}), 0)
 	if err != nil {
 		t.Fatalf("EncodeLongURL() second error = %v", err)
 	}
@@ -174,11 +148,11 @@ func TestCanonicalShortLinkStateKey_ChangesWhenRowIdentityChanges(t *testing.T) 
 		t.Fatalf("CanonicalShortLinkStateKey() second error = %v", err)
 	}
 
-	if firstKey == secondKey {
-		t.Fatalf("CanonicalShortLinkStateKey() should change when row identity changes")
+	if firstKey != secondKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should ignore session row identity when visible config matches: %q != %q", firstKey, secondKey)
 	}
-	if DeterministicShortID(firstKey) == DeterministicShortID(secondKey) {
-		t.Fatalf("DeterministicShortID() should change when row identity changes")
+	if DeterministicShortID(firstKey) != DeterministicShortID(secondKey) {
+		t.Fatalf("DeterministicShortID() should be stable for semantically equivalent snapshots")
 	}
 }
 

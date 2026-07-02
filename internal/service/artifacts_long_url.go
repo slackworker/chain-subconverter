@@ -90,6 +90,8 @@ func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLengt
 		return "", fmt.Errorf("unsupported long URL payload version %d", payload.V)
 	}
 
+	payload.Stage2Snapshot = CanonicalizeStage2SnapshotForLinkEncoding(payload.Stage2Snapshot)
+
 	payloadJSON, err := marshalCanonicalLongURLPayload(payload)
 	if err != nil {
 		return "", fmt.Errorf("marshal long URL payload: %w", err)
