@@ -19,56 +19,56 @@
     "rows": [
       {
         "rowId": "🇸🇬 Alpha-SS-SG",
-        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "sourceLandingNodeName": "Alpha-SS-SG",
         "proxyName": "🇸🇬 Alpha-SS-SG",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"
       },
       {
         "rowId": "🇸🇬 Alpha-SS-SG 2",
-        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "sourceLandingNodeName": "Alpha-SS-SG",
         "proxyName": "🇸🇬 Alpha-SS-SG 2",
         "mode": "chain",
         "targetName": "🇸🇬 新加坡节点"
       },
       {
         "rowId": "🇸🇬 Alpha-Reality-SG",
-        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "Alpha-Reality-SG",
         "proxyName": "🇸🇬 Alpha-Reality-SG",
         "mode": "none",
         "targetName": null
       },
       {
         "rowId": "🇸🇬 Alpha-Reality-SG 2",
-        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "Alpha-Reality-SG",
         "proxyName": "🇸🇬 Alpha-Reality-SG 2",
         "mode": "port_forward",
         "targetName": "relay-a.example.com:7443"
       },
       {
         "rowId": "🇸🇬 Alpha-Reality-SG 3",
-        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "sourceLandingNodeName": "Alpha-Reality-SG",
         "proxyName": "🇸🇬 Alpha-Reality-SG 3",
         "mode": "port_forward",
         "targetName": "relay-b.example.com:8443"
       },
       {
         "rowId": "🇯🇵 Beta-SS-JP",
-        "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
+        "sourceLandingNodeName": "Beta-SS-JP",
         "proxyName": "🇯🇵 Beta-SS-JP",
         "mode": "chain",
         "targetName": "🇯🇵 日本节点"
       },
       {
         "rowId": "🇯🇵 Beta-Reality-JP",
-        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
+        "sourceLandingNodeName": "Beta-Reality-JP",
         "proxyName": "🇯🇵 Beta-Reality-JP",
         "mode": "none",
         "targetName": null
       },
       {
         "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-        "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "sourceLandingNodeName": "Manual-SOCKS5-HK-Fallback",
         "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "mode": "chain",
         "targetName": "🇭🇰 香港节点"

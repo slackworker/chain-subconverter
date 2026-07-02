@@ -113,8 +113,8 @@
     ],
     "rows": [
       {
-        "rowId": "🇸🇬 Alpha-SS-SG",
-        "sourceLandingNodeName": "🇸🇬 Alpha-SS-SG",
+        "rowId": "Alpha-SS-SG",
+        "sourceLandingNodeName": "Alpha-SS-SG",
         "proxyName": "🇸🇬 Alpha-SS-SG",
         "landingNodeType": "SS",
         "server": "198.51.100.10",
@@ -122,8 +122,8 @@
         "targetName": "🇸🇬 新加坡节点"
       },
       {
-        "rowId": "🇸🇬 Alpha-Reality-SG",
-        "sourceLandingNodeName": "🇸🇬 Alpha-Reality-SG",
+        "rowId": "Alpha-Reality-SG",
+        "sourceLandingNodeName": "Alpha-Reality-SG",
         "proxyName": "🇸🇬 Alpha-Reality-SG",
         "landingNodeType": "Reality",
         "server": "198.51.100.10",
@@ -139,8 +139,8 @@
         }
       },
       {
-        "rowId": "🇯🇵 Beta-SS-JP",
-        "sourceLandingNodeName": "🇯🇵 Beta-SS-JP",
+        "rowId": "Beta-SS-JP",
+        "sourceLandingNodeName": "Beta-SS-JP",
         "proxyName": "🇯🇵 Beta-SS-JP",
         "landingNodeType": "SS",
         "server": "198.51.100.11",
@@ -148,8 +148,8 @@
         "targetName": "🇯🇵 日本节点"
       },
       {
-        "rowId": "🇯🇵 Beta-Reality-JP",
-        "sourceLandingNodeName": "🇯🇵 Beta-Reality-JP",
+        "rowId": "Beta-Reality-JP",
+        "sourceLandingNodeName": "Beta-Reality-JP",
         "proxyName": "🇯🇵 Beta-Reality-JP",
         "landingNodeType": "Reality",
         "server": "198.51.100.11",
@@ -165,8 +165,8 @@
         }
       },
       {
-        "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-        "sourceLandingNodeName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+        "rowId": "Manual-SOCKS5-HK-Fallback",
+        "sourceLandingNodeName": "Manual-SOCKS5-HK-Fallback",
         "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
         "landingNodeType": "SOCKS5",
         "server": "manual-socks-hk.example.test",
