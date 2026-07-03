@@ -23,6 +23,53 @@
 
 ---
 
+## v3.2.0-beta.3
+
+**Tag:** `v3.2.0-beta.3`  
+**日期:** 2026-07-03  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+**beta 线重整发版**：将 `v3.0.0-beta.4` 之后分散在 dev/beta 上的约 189 条提交重整为干净历史，统一承载 **v3.1 聚合 → v3.2 Pipeline/行身份 → 聚合组注入 → Docker CI 发布** 全量能力。`main` 已快进到 [`v3.0.0-beta.4`](#v300-beta4)（不含 v3.1+ 聚合）；本 tag 为当前推荐 Beta 线。
+
+### 相对 main（v3.0.0-beta.4）新增
+
+- **v3.1**：server 聚合组、`chainProxyTargetGroupSwitchOptimization`、长链 v3、默认 UI 聚合树
+- **v3.2**：Pipeline hard-break、长链 v4、`restoreConflicts`、Stage 2 行身份硬切（`rowId` / `proxyName` / `sourceLandingNodeName`）
+- **聚合组注入**：将 server 聚合组注入 select 策略组（`server_aggregation_groups.go`）
+- **Docker 发布**：`docker-publish.yml` 与 CI 集成、Publish Validation 门禁
+
+### 相对 v3.2.0-beta.2 tag 吸收
+
+- tag 后 dev 上已验证的聚合注入与编码/展示修补（`e792f77` 及后续补丁的功能等价内容）
+- Docker 发布 workflow 重构（CI 校验同 SHA、多架构构建）
+- **历史 beta.1/beta.2 镜像不再推荐**；请切至本 tag 或 `beta-latest`
+
+### 不兼容与升级
+
+- v2/v3 长链在 3.2 线仍不兼容；含 `landingNodeName` 旧字段快照不兼容 beta.2+
+- 从 beta.2 升级：拉取新镜像并重启；旧长链/短链若仍依赖 `landingNodeName` 需重新生成
+
+### 测试
+
+- 2026-07-03（重整后）：`go test ./...`、`cd web && npm run test`、`cd web && npm run test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**
+- 第三方部署：功能等价于此前 `dev-latest` @ `78a4477` 验证快照；设备需切回 `beta-latest` / 本 tag 后按 runbook 覆盖 [deployments.md](docs/testing/deployments.md)
+
+### 自部署
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.2.0-beta.3"
+```
+
+### Beta 说明
+
+仍属预发布；安全与部署注意同 [v3.2.0-beta.2](#v320-beta2) 与 [SECURITY.md](SECURITY.md)。本轮为 beta 历史重整与镜像滚动收口。
+
+---
+
 ## v3.2.0-beta.2
 
 **Tag:** `v3.2.0-beta.2`  
