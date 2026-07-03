@@ -54,7 +54,7 @@
 ### 测试
 
 - 2026-07-03（重整后）：`go test ./...`、`cd web && npm run test`、`cd web && npm run test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**
-- 第三方部署：功能等价于此前 `dev-latest` @ `78a4477` 验证快照；设备需切回 `beta-latest` / 本 tag 后按 runbook 覆盖 [deployments.md](docs/testing/deployments.md)
+- 第三方部署：2026-07-03 三种形态 `dev-latest` @ `78a4477` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
 
 ### 自部署
 
@@ -96,7 +96,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.2.0-beta.3"
 ### 测试
 
 - 2026-07-02：`go test ./...`、`cd web && npm run test`、`cd web && npm run test:e2e:mock:all`、`cd web && npm run build:default && npm run build:b1 && npm run build:b2 && npm run build:c1 && npm run build:c2`、`docker compose -f deploy/docker-compose.yml config` **通过**
-- 第三方 `real-smoke` / `real-full` 公开记录仍止于 [v3.2.0-beta.1](#v320-beta1)；若要更新公开部署结论，需按 runbook 重新覆盖 `deployments.md`
+- 第三方 `real-smoke` / `real-full` 公开记录仍止于 [v3.2.0-beta.1](#v320-beta1)；若要更新公开部署结论，需按 runbook 重新覆盖 [third-party-deployments.md](docs/testing/third-party-deployments.md)
 
 ### 自部署
 
@@ -112,7 +112,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.2.0-beta.2"
 
 1. 拉取新镜像并重启 Compose；短链数据卷可保留。
 2. **长链接 / 短链恢复**：若链接快照仍依赖旧字段 `landingNodeName`，升级后将无法恢复；请在新版页面重新生成。
-3. 公开第三方部署结论若仍引用 beta.1，需在新镜像上线后按 runbook 重跑 `real-smoke` / `real-full` 并覆盖记录。
+3. 公开第三方部署结论若仍引用 beta.1，需在新镜像上线后按 runbook 重跑 `real-smoke` / `real-full` 并覆盖 [third-party-deployments.md](docs/testing/third-party-deployments.md)。
 
 ### Beta 说明
 
@@ -400,7 +400,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
 - **设备**：未针对手机浏览器专门优化。
 - **HTTPS / 反代**：若前面有 HTTPS 终止或固定域名，请按 [deploy/README.md](deploy/README.md) 设置 `CHAIN_SUBCONVERTER_USER_FACING_BASE_URL`，避免生成错误链接。
 
-运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/deployments.md](docs/testing/deployments.md)（2026-06-01 vps-01/02 内网与公网一体化 **beta.4** / `beta-latest` **通过**；2026-05-29 beta.3；2026-05-25 beta.2；2026-05-23 双 Docker 分离形态 **通过**）。
+运维与安全细节见 [SECURITY.md](SECURITY.md)；第三方设备回归结论见 [docs/testing/third-party-deployments.md](docs/testing/third-party-deployments.md)（2026-07-03 三种形态 `dev-latest` @ `78a4477` **real-smoke + real-full 通过**）。
 
 ### 反馈
 

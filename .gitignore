@@ -68,5 +68,5 @@ logs/
 docs/temp/*
 !docs/temp/README.md
 
-# Local-only deployment regression details (pair with docs/testing/deployments.md)
-docs/testing/deployments.local.md
+# Local-only deployment regression details (pair with docs/testing/third-party-deployments.md)
+docs/testing/third-party-deployments.local.md

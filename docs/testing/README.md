@@ -9,7 +9,7 @@
 | 了解测试分层与 CI 门禁 | 本文 |
 | 本地开发 / 发版前跑命令 | [runbook.md](runbook.md) |
 | 改金样 / 理解 Smoke 与 Full 场景 | [fixtures.md](fixtures.md) |
-| 查第三方设备回归结论 | [deployments.md](deployments.md) |
+| 查第三方设备回归结论 | [third-party-deployments.md](third-party-deployments.md) |
 | 在线预览粘贴假数据 | [preview-inputs.md](preview-inputs.md) |
 
 ## 统一术语
@@ -74,7 +74,7 @@ non-blocking job：
 - `real-full` 保持轻量：
   - 不做脆弱拖拽手势断言；
   - 至少校验聚合配置已被接受，并在 generate / resolve 回放链路中保持一致（含复制行、「线路聚合模式」、组内「聚合」勾选；见 `real-dual-landing-full-flow.spec.ts`）。
-- **E2E spec 变更后**：须重跑第三方 `real-smoke` + `real-full` 再更新 [deployments.md](deployments.md) 结论；勿在旧镜像结论上直接标记通过。
+- **E2E spec 变更后**：须重跑第三方 `real-smoke` + `real-full` 再更新 [third-party-deployments.md](third-party-deployments.md) 结论；勿在旧镜像结论上直接标记通过。
 
 ## fixture 维护流水线
 

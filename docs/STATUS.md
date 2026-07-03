@@ -43,7 +43,7 @@
 | 可配置 LOG_LEVEL | 运维 stderr 尚无 `LOG_LEVEL` 与可选文件输出；当前为结构化 slog 固定 INFO |
 | 安全 | 基础 SSRF/限速已落地；更严格出站与 egress 待评估 |
 | 可复现性 | 验收依赖外部模板/订阅；`subconverter` 浮动 tag 须在回归记录中注明 |
-| 反馈 | Issue；部署失败或未解问题写在 [deployments.md](testing/deployments.md) 对应节 |
+| 反馈 | Issue；部署失败或未解问题写在 [third-party-deployments.md](testing/third-party-deployments.md) 对应节 |
 
 ## 测试基线
 
@@ -51,9 +51,9 @@
 
 ## 最近验证
 
-> 例行部署结论以 [deployments.md](testing/deployments.md) 为准（覆盖写，不滚历史）；更早记录见 Git 历史。正式 tag 见 [RELEASES.md](../RELEASES.md)。
+> 例行部署结论以 [third-party-deployments.md](testing/third-party-deployments.md) 为准（覆盖写，不滚历史）；更早记录见 Git 历史。正式 tag 见 [RELEASES.md](../RELEASES.md)。
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-07-03：vps-01/02 + Koyeb 目标切 **`beta-latest`** / `v3.2.0-beta.3`（功能等价于此前 `dev-latest` @ `78a4477` 验证）；`real-smoke` + `real-full` 待设备拉取新镜像后覆盖 — 见 [deployments.md](testing/deployments.md) |
+| **第三方部署** | 2026-07-03：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`dev-latest` @ `78a4477` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md) |
 | **本地自动化基线** | 2026-07-02：`go test ./...`、`npm run test`、`test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**；见 [runbook.md](testing/runbook.md) |
