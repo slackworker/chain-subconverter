@@ -20,6 +20,13 @@ type BlockingError struct {
 	Context   map[string]any `json:"context,omitempty"`
 }
 
+// RestoreConflict describes one structured restore validation failure for
+// POST /api/resolve-url when restoreStatus = conflicted.
+type RestoreConflict struct {
+	ReasonCode string         `json:"reasonCode"`
+	ReasonArgs map[string]any `json:"reasonArgs,omitempty"`
+}
+
 type Stage1ConvertResponse struct {
 	Stage2Init     Stage2Init      `json:"stage2Init"`
 	Messages       []Message       `json:"messages"`
@@ -69,11 +76,13 @@ func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixt
 
 func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtures ConversionFixtures, maxLongURLLength int) (GenerateResponse, error) {
 	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
+	request.Stage2Snapshot = NormalizeStage2Snapshot(request.Stage2Snapshot)
 	if _, err := validateGenerateSnapshot(request.Stage1Input, request.Stage2Snapshot, fixtures); err != nil {
 		return GenerateResponse{}, err
 	}
 
-	longURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(request.Stage1Input, request.Stage2Snapshot), maxLongURLLength)
+	encodingSnapshot := CanonicalizeStage2SnapshotForLinkEncoding(request.Stage2Snapshot)
+	longURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(request.Stage1Input, encodingSnapshot), maxLongURLLength)
 	if err != nil {
 		return GenerateResponse{}, err
 	}
@@ -89,6 +98,7 @@ func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtur
 
 func BuildLongURLPayload(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot) LongURLPayload {
 	stage1Input = NormalizeStage1Input(stage1Input)
+	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
 	return LongURLPayload{
 		V:              longURLSchemaVersion,
 		Stage1Input:    stage1Input,
@@ -98,6 +108,7 @@ func BuildLongURLPayload(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot)
 
 func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
+	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
 	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
 	if err != nil {
 		return "", err
@@ -116,12 +127,42 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 		regionGroupNames[matcher.TargetName] = struct{}{}
 	}
 
-	rendered, err := renderCompleteConfigYAML(fixtures.FullBaseYAML, stage2Snapshot.Rows, landingNames, regionGroupNames)
+	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
+	if err != nil {
+		return "", newInternalResponseError("failed to build stage2 init", fmt.Errorf("build stage2 init: %w", err))
+	}
+
+	rendered, err := renderCompleteConfigYAML(
+		fixtures.FullBaseYAML,
+		stage2Snapshot,
+		landingNames,
+		regionGroupNames,
+		proxyGroupChainTargetNameSet(stage2Init),
+	)
+	if err != nil {
+		return "", err
+	}
+	if err := validatePostProcessedChainTargets(rendered, stage2Snapshot, proxyGroupChainTargetNameSet(stage2Init)); err != nil {
+		return "", err
+	}
+	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
 	if err != nil {
 		return "", err
 	}
 
-	return rendered, nil
+	return unescapeYAMLUnicodeEscapes(rendered), nil
+}
+
+func NormalizeStage2Snapshot(snapshot Stage2Snapshot) Stage2Snapshot {
+	if snapshot.Rows == nil {
+		snapshot.Rows = []Stage2Row{}
+	} else {
+		snapshot.Rows = normalizeStage2Rows(snapshot.Rows)
+	}
+	if snapshot.ServerAggregationGroups == nil {
+		snapshot.ServerAggregationGroups = []ServerAggregationGroup{}
+	}
+	return snapshot
 }
 
 func BuildTemplateDiagnostics(fixtures ConversionFixtures) (TemplateDiagnostics, error) {

@@ -44,9 +44,19 @@ export const WORKFLOW_EVENTS = {
 		message: "── 生成链接 ──",
 		originStage: "stage2",
 	},
+	ACTION_STAGE2_RESET: {
+		level: "info",
+		message: "── 重置配置区 ──",
+		originStage: "stage2",
+	},
 	GENERATE_FAILED: {
 		level: "error",
 		message: "生成链接未成功",
+		originStage: "stage2",
+	},
+	STAGE2_RESET_FAILED: {
+		level: "error",
+		message: "重置配置区未成功",
 		originStage: "stage2",
 	},
 	ACTION_SHORT_URL: {

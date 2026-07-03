@@ -94,6 +94,7 @@ func NewHandler(source service.ConversionSource, templateStore service.TemplateC
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/stage1/convert", handler.rateLimitWrite(handler.handleStage1Convert))
+	mux.HandleFunc("POST /api/stage2/reset", handler.rateLimitWrite(handler.handleStage2Reset))
 	mux.HandleFunc("POST /api/generate", handler.rateLimitWrite(handler.handleGenerate))
 	mux.HandleFunc("POST /api/short-links", handler.rateLimitWrite(handler.handleShortLinks))
 	mux.HandleFunc("POST /api/resolve-url", handler.rateLimitWrite(handler.handleResolveURL))
@@ -156,6 +157,21 @@ func (handler *Handler) handleRuntimeConfig(writer http.ResponseWriter, request 
 		DefaultTemplateURL:     handler.defaultTemplateURL,
 		MaxPublicLongURLLength: handler.maxLongURLLength,
 	})
+}
+
+func (handler *Handler) handleStage2Reset(writer http.ResponseWriter, request *http.Request) {
+	var payload service.Stage2ResetRequest
+	if err := decodeJSONBody(writer, request, &payload); err != nil {
+		writeBlockingError(writer, request, http.StatusBadRequest, "INVALID_REQUEST", err.Error(), "global", nil, nil)
+		return
+	}
+
+	response, err := service.BuildStage2ResetResponseFromSource(request.Context(), handler.source, payload, handler.inputLimits)
+	if err != nil {
+		writeOperationError(writer, request, "POST /api/stage2/reset", err)
+		return
+	}
+	writeJSON(writer, http.StatusOK, response)
 }
 
 func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http.Request) {
@@ -365,19 +381,13 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 		writeBlockingError(writer, request, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
 		return
 	}
-	payload.Stage1Input, err = service.ApplyLongURLCompatibleQueryOverrides(payload.Stage1Input, request.URL.Query())
-	if err != nil {
-		writeBlockingError(writer, request, http.StatusUnprocessableEntity, "INVALID_LONG_URL", err.Error(), "global", nil, nil)
-		return
-	}
 
-	renderedConfig, err := service.RenderCompleteConfigFromSourceWithExtraQuery(
+	renderedConfig, err := service.RenderCompleteConfigFromSource(
 		request.Context(),
 		handler.source,
 		payload.Stage1Input,
 		payload.Stage2Snapshot,
 		handler.inputLimits,
-		service.ExtractSubscriptionPassthroughQuery(request.URL.Query()),
 	)
 	if err != nil {
 		if subconverter.IsUnavailable(err) {
@@ -520,6 +530,10 @@ func setAccessLogMessages(writer http.ResponseWriter, value any) {
 	case service.GenerateResponse:
 		recorder.SetAccessLogMessages(response.Messages)
 	case *service.GenerateResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case service.Stage2ResetResponse:
+		recorder.SetAccessLogMessages(response.Messages)
+	case *service.Stage2ResetResponse:
 		recorder.SetAccessLogMessages(response.Messages)
 	case service.ResolveURLResponse:
 		recorder.SetAccessLogMessages(response.Messages)

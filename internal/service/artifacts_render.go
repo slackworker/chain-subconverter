@@ -7,21 +7,73 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func renderCompleteConfigYAML(fullBaseYAML string, rows []Stage2Row, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
+const (
+	switchOptimizationTimeout        = "500"
+	switchOptimizationMaxFailedTimes = "1"
+)
+
+func renderCompleteConfigYAML(
+	fullBaseYAML string,
+	snapshot Stage2Snapshot,
+	landingNames map[string]struct{},
+	regionGroupNames map[string]struct{},
+	proxyGroupChainTargetNames map[string]struct{},
+) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
 		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
 			return err
 		}
-		if err := applySnapshotToInlineProxies(root, rows, lines, replacedLines); err != nil {
+		if err := applySnapshotToInlineProxies(root, snapshot.Rows, lines, replacedLines); err != nil {
+			return err
+		}
+		if err := applySwitchOptimizationOverrides(root, snapshot, proxyGroupChainTargetNames, lines, deletedLines, replacedLines); err != nil {
 			return err
 		}
 		return nil
 	})
 }
 
-func stripLandingNodesFromCompleteConfigYAML(fullBaseYAML string, landingNames map[string]struct{}, regionGroupNames map[string]struct{}) (string, error) {
-	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, _ []string, deletedLines map[int]struct{}, _ map[int]string) error {
-		return stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines)
+func validatePostProcessedChainTargets(renderedYAML string, snapshot Stage2Snapshot, proxyGroupChainTargetNames map[string]struct{}) error {
+	if len(proxyGroupChainTargetNames) == 0 {
+		return nil
+	}
+	proxyGroups, err := parseProxyGroups(renderedYAML)
+	if err != nil {
+		return fmt.Errorf("parse post-processed proxy-groups: %w", err)
+	}
+	for _, row := range snapshot.Rows {
+		if row.Mode != "chain" || row.TargetName == nil {
+			continue
+		}
+		targetName := strings.TrimSpace(*row.TargetName)
+		if targetName == "" {
+			continue
+		}
+		if _, ok := proxyGroupChainTargetNames[targetName]; !ok {
+			continue
+		}
+		group, ok := proxyGroups[targetName]
+		if !ok || len(group.Proxies) > 0 {
+			continue
+		}
+		cause := fmt.Errorf("chain target %q for proxy %q is empty after postProcess", targetName, stage2ProxyName(row))
+		return newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", stage2RowValidationErrorRef(row), "targetName", cause)
+	}
+	return nil
+}
+
+func stripLandingNodesFromCompleteConfigYAML(
+	fullBaseYAML string,
+	snapshot Stage2Snapshot,
+	landingNames map[string]struct{},
+	regionGroupNames map[string]struct{},
+	proxyGroupChainTargetNames map[string]struct{},
+) (string, error) {
+	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
+			return err
+		}
+		return applySwitchOptimizationOverrides(root, snapshot, proxyGroupChainTargetNames, lines, deletedLines, replacedLines)
 	})
 }
 
@@ -112,9 +164,13 @@ func stripLandingNodesFromRegionGroups(root *yaml.Node, landingNames map[string]
 }
 
 func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []string, replacedLines map[int]string) error {
-	rowsByLanding := make(map[string]Stage2Row, len(rows))
+	rowsBySourceLanding := make(map[string][]Stage2Row, len(rows))
 	for _, row := range rows {
-		rowsByLanding[row.LandingNodeName] = row
+		sourceLandingName := stage2SourceLandingNodeName(row)
+		if sourceLandingName == "" {
+			return fmt.Errorf("sourceLandingNodeName must not be empty")
+		}
+		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
 	}
 
 	proxiesNode := yamlMappingValue(root, "proxies")
@@ -135,7 +191,7 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 			return fmt.Errorf("proxy entry is missing name")
 		}
 
-		row, exists := rowsByLanding[nameNode.Value]
+		sourceRows, exists := rowsBySourceLanding[nameNode.Value]
 		if !exists {
 			continue
 		}
@@ -145,14 +201,227 @@ func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []str
 			return fmt.Errorf("proxy line %d is out of range", proxyNode.Line)
 		}
 
-		updatedLine, err := applyRowToInlineProxyLine(lines[lineIndex], row)
-		if err != nil {
-			return fmt.Errorf("apply stage2 row for landing node %q: %w", nameNode.Value, err)
+		updatedLines := make([]string, 0, len(sourceRows))
+		for _, row := range sourceRows {
+			updatedLine, err := applyRowToInlineProxyLine(lines[lineIndex], row)
+			if err != nil {
+				return fmt.Errorf("apply stage2 row for source landing node %q: %w", nameNode.Value, err)
+			}
+			updatedLines = append(updatedLines, updatedLine)
 		}
-		replacedLines[lineIndex] = updatedLine
+		replacedLines[lineIndex] = strings.Join(updatedLines, "\n")
 	}
 
 	return nil
+}
+
+func applySwitchOptimizationOverrides(
+	root *yaml.Node,
+	snapshot Stage2Snapshot,
+	proxyGroupChainTargetNames map[string]struct{},
+	lines []string,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
+	targets := collectSwitchOptimizationTargets(snapshot, proxyGroupChainTargetNames)
+	if len(targets) == 0 {
+		return nil
+	}
+
+	proxyGroupsNode := yamlMappingValue(root, "proxy-groups")
+	if proxyGroupsNode == nil {
+		return fmt.Errorf("full-base YAML is missing proxy-groups")
+	}
+	if proxyGroupsNode.Kind != yaml.SequenceNode {
+		return fmt.Errorf("full-base YAML field %q must be a sequence", "proxy-groups")
+	}
+
+	for index, groupNode := range proxyGroupsNode.Content {
+		if groupNode.Kind != yaml.MappingNode {
+			return fmt.Errorf("proxy-group entry must be a mapping")
+		}
+
+		nameNode := yamlMappingValue(groupNode, "name")
+		if nameNode == nil {
+			return fmt.Errorf("proxy-group entry is missing name")
+		}
+
+		if _, ok := targets[nameNode.Value]; !ok {
+			continue
+		}
+
+		startIndex := groupNode.Line - 1
+		if startIndex < 0 || startIndex >= len(lines) {
+			return fmt.Errorf("proxy-group line %d is out of range", groupNode.Line)
+		}
+
+		endIndex := len(lines)
+		if index+1 < len(proxyGroupsNode.Content) {
+			nextIndex := proxyGroupsNode.Content[index+1].Line - 1
+			if nextIndex > startIndex {
+				endIndex = nextIndex
+			}
+		}
+
+		if err := applySwitchOptimizationLines(groupNode, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
+			return fmt.Errorf("apply switch optimization for %q: %w", nameNode.Value, err)
+		}
+	}
+
+	return nil
+}
+
+func collectSwitchOptimizationTargets(snapshot Stage2Snapshot, proxyGroupChainTargetNames map[string]struct{}) map[string]struct{} {
+	if !snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+		return nil
+	}
+	targets := make(map[string]struct{})
+	for _, row := range snapshot.Rows {
+		if row.Mode != "chain" || row.TargetName == nil {
+			continue
+		}
+		targetName := strings.TrimSpace(*row.TargetName)
+		if targetName == "" {
+			continue
+		}
+		if _, ok := proxyGroupChainTargetNames[targetName]; !ok {
+			continue
+		}
+		targets[targetName] = struct{}{}
+	}
+	return targets
+}
+
+func proxyGroupChainTargetNameSet(stage2Init Stage2Init) map[string]struct{} {
+	names := make(map[string]struct{}, len(stage2Init.ChainTargets))
+	for _, target := range stage2Init.ChainTargets {
+		if target.Kind != "proxy-groups" {
+			continue
+		}
+		names[target.Name] = struct{}{}
+	}
+	return names
+}
+
+var switchOptimizationFieldOrder = []string{
+	"timeout",
+	"max-failed-times",
+}
+
+func switchOptimizationPatch() map[string]string {
+	return map[string]string{
+		"timeout":          switchOptimizationTimeout,
+		"max-failed-times": switchOptimizationMaxFailedTimes,
+	}
+}
+
+func applySwitchOptimizationLines(
+	groupNode *yaml.Node,
+	lines []string,
+	startIndex int,
+	endIndex int,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
+	membersNode := yamlMappingValue(groupNode, "proxies")
+	if membersNode == nil {
+		nameNode := yamlMappingValue(groupNode, "name")
+		groupName := ""
+		if nameNode != nil {
+			groupName = nameNode.Value
+		}
+		return fmt.Errorf("proxy-group %q is missing proxies", groupName)
+	}
+
+	patch := switchOptimizationPatch()
+	fieldIndent := proxyGroupFieldIndent(lines, startIndex, endIndex)
+	pending := make(map[string]string, len(patch))
+	for key, value := range patch {
+		pending[key] = value
+	}
+
+	proxiesLineIndex := -1
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		indent, key, value, ok := parseMappingFieldLine(lines[lineIndex])
+		if !ok {
+			continue
+		}
+		if fieldIndent == "" {
+			fieldIndent = indent
+		}
+		if key == "proxies" && value == "" {
+			proxiesLineIndex = lineIndex
+			continue
+		}
+		if patchValue, shouldSet := pending[key]; shouldSet {
+			replacedLines[lineIndex] = fieldIndent + key + ": " + patchValue
+			delete(pending, key)
+			continue
+		}
+	}
+
+	if len(pending) == 0 {
+		return nil
+	}
+
+	insertLines := make([]string, 0, len(pending))
+	for _, key := range switchOptimizationFieldOrder {
+		value, ok := pending[key]
+		if !ok {
+			continue
+		}
+		insertLines = append(insertLines, fieldIndent+key+": "+value)
+	}
+
+	if proxiesLineIndex >= 0 {
+		replacedLines[proxiesLineIndex] = strings.Join(insertLines, "\n") + "\n" + lines[proxiesLineIndex]
+		return nil
+	}
+
+	insertIndex := endIndex - 1
+	for insertIndex > startIndex {
+		if _, deleted := deletedLines[insertIndex]; !deleted {
+			break
+		}
+		insertIndex--
+	}
+	if insertIndex <= startIndex {
+		return fmt.Errorf("proxy-group block has no insertion point for switch optimization fields")
+	}
+
+	replacedLines[insertIndex] = lines[insertIndex] + "\n" + strings.Join(insertLines, "\n")
+	return nil
+}
+
+func proxyGroupFieldIndent(lines []string, startIndex int, endIndex int) string {
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		indent, _, _, ok := parseMappingFieldLine(lines[lineIndex])
+		if ok {
+			return indent
+		}
+	}
+	return "    "
+}
+
+func parseMappingFieldLine(line string) (indent string, key string, value string, ok bool) {
+	trimmed := strings.TrimLeft(line, " \t")
+	if trimmed == "" || strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "#") {
+		return "", "", "", false
+	}
+
+	colonIndex := strings.Index(trimmed, ":")
+	if colonIndex < 0 {
+		return "", "", "", false
+	}
+
+	key = strings.TrimSpace(trimmed[:colonIndex])
+	if key == "" {
+		return "", "", "", false
+	}
+
+	indent = line[:len(line)-len(trimmed)]
+	value = strings.TrimSpace(trimmed[colonIndex+1:])
+	return indent, key, value, true
 }
 
 func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
@@ -160,6 +429,7 @@ func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fields = upsertInlineProxyField(fields, "name", stage2ProxyName(row))
 
 	switch row.Mode {
 	case "none":

@@ -5,31 +5,29 @@ mode: rule
 log-level: info
 external-controller: 127.0.0.1:9090
 proxies:
-  - {name: 🇭🇰 Alpha-SS-HK, server: 198.51.100.10, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: alpha-ss-hk-secret, udp: true}
-  - {name: 🇭🇰 Alpha-Reality-HK-PortForward, server: 198.51.100.10, port: 8443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: alpha.example.com, host: alpha.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: alpha-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
-  - {name: 🇭🇰 Alpha-Reality-HK-Direct, server: 198.51.100.10, port: 8443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111112, servername: alpha.example.com, host: alpha.example.com, reality-opts: {public-key: alpha-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
-  - {name: 🇯🇵 Beta-SS-JP, server: 198.51.100.11, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: beta-ss-jp-secret, udp: true}
-  - {name: 🇯🇵 Beta-Reality-JP-PortForward, server: 198.51.100.11, port: 9443, type: vless, tls: true, uuid: 22222222-2222-4222-8222-222222222221, servername: beta.example.com, host: beta.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: beta-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
-  - {name: 🇯🇵 Beta-Reality-JP-Direct, server: 198.51.100.11, port: 9443, type: vless, tls: true, uuid: 22222222-2222-4222-8222-222222222222, servername: beta.example.com, host: beta.example.com, reality-opts: {public-key: beta-public-key}, client-fingerprint: random, skip-cert-verify: false, udp: true}
-  - {name: 🇭🇰 Manual-SOCKS5-HK-Fallback, server: manual-socks-hk.example.test, port: 1080, type: socks5, username: demo-user, password: demo-pass, skip-cert-verify: false, udp: true}
-  - {name: 🇭🇰 Transit-A-HongKong-SS-01, server: 198.51.100.120, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-a-hk-01-secret, udp: true}
-  - {name: 🇯🇵 Transit-A-Japan-Trojan-01, server: jp-a-01.example.test, port: 443, type: trojan, password: transit-a-jp-01-secret, sni: jp-a-01.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇺🇸 Transit-A-UnitedStates-VLESS-01, server: us-a-01.example.test, port: 443, type: vless, tls: true, uuid: 33333333-3333-4333-8333-333333333331, servername: us-a-01.example.test, network: ws, ws-opts: {path: /transit-a-us-vless, headers: {Host: us-a-01.example.test}}, skip-cert-verify: false, udp: true}
-  - {name: 🇸🇬 Transit-A-Singapore-Hysteria2-01, server: sg-a-01.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-a-sg-01-secret, sni: sg-a-01.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇨🇳 Transit-A-Taiwan-TUIC-01, server: tw-a-01.example.test, port: 443, type: tuic, uuid: 55555555-5555-4555-8555-555555555551, password: transit-a-tw-01-secret, alpn: [h3], udp-relay-mode: native, congestion-controller: bbr, sni: tw-a-01.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇰🇷 Transit-A-Korea-AnyTLS-01, server: kr-a-01.example.test, port: 443, type: anytls, password: transit-a-kr-01-secret, sni: kr-a-01.example.test, alpn: [h2], skip-cert-verify: false, udp: true}
-  - {name: 🇺🇸 Transit-A-UnitedStates-SSR-01, server: us-a-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-a-us-02-secret, udp: true}
-  - {name: 🇯🇵 Transit-A-Japan-SS-01, server: 198.51.100.121, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-a-jp-02-secret, udp: true}
-  - {name: 🇨🇳 Transit-A-Taiwan-Hysteria2-01, server: tw-a-02.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-a-tw-02-secret, sni: tw-a-02.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇭🇰 Transit-B-HongKong-SS-01, server: 198.51.100.122, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-b-hk-01-secret, udp: true}
-  - {name: 🇯🇵 Transit-B-Japan-Trojan-01, server: jp-b-01.example.test, port: 443, type: trojan, password: transit-b-jp-01-secret, sni: jp-b-01.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇸🇬 Transit-B-Singapore-VLESS-01, server: sg-b-01.example.test, port: 443, type: vless, tls: true, uuid: 88888888-8888-4888-8888-888888888883, servername: sg-b-01.example.test, network: ws, ws-opts: {path: /transit-b-sg-vless, headers: {Host: sg-b-01.example.test}}, skip-cert-verify: false, udp: true}
-  - {name: 🇺🇸 Transit-B-UnitedStates-Hysteria2-01, server: us-b-01.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-b-us-01-secret, sni: us-b-01.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇰🇷 Transit-B-Korea-TUIC-01, server: kr-b-01.example.test, port: 443, type: tuic, uuid: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5, password: transit-b-kr-01-secret, alpn: [h3], udp-relay-mode: native, congestion-controller: bbr, sni: kr-b-01.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇨🇳 Transit-B-Taiwan-AnyTLS-01, server: tw-b-01.example.test, port: 443, type: anytls, password: transit-b-tw-01-secret, sni: tw-b-01.example.test, alpn: [h2], skip-cert-verify: false, udp: true}
-  - {name: 🇭🇰 Transit-B-HongKong-SSR-01, server: hk-b-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-b-hk-02-secret, udp: true}
-  - {name: 🇺🇸 Transit-B-UnitedStates-Trojan-01, server: us-b-02.example.test, port: 443, type: trojan, password: transit-b-us-02-secret, sni: us-b-02.example.test, skip-cert-verify: false, udp: true}
-  - {name: 🇸🇬 Transit-B-Singapore-SS-01, server: 198.51.100.123, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-b-sg-02-secret, udp: true}
+  - {name: Alpha-SS-SG, server: 198.51.100.10, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: alpha-ss-sg-secret, udp: true}
+  - {name: Alpha-Reality-SG, server: 198.51.100.10, port: 8443, type: vless, tls: true, uuid: 11111111-1111-4111-8111-111111111111, servername: alpha.example.com, host: alpha.example.com, flow: xtls-rprx-vision, reality-opts: {public-key: alpha-public-key}, client-fingerprint: random, udp: true}
+  - {name: Beta-SS-JP, server: 198.51.100.11, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: beta-ss-jp-secret, udp: true}
+  - {name: Beta-Reality-JP, server: 198.51.100.11, port: 9443, type: vless, tls: true, uuid: 22222222-2222-4222-8222-222222222222, servername: beta.example.com, host: beta.example.com, reality-opts: {public-key: beta-public-key}, client-fingerprint: random, udp: true}
+  - {name: Manual-SOCKS5-HK-Fallback, server: manual-socks-hk.example.test, port: 1080, type: socks5, username: demo-user, password: demo-pass, udp: true}
+  - {name: Transit-A-HongKong-SS-01, server: 198.51.100.120, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-a-hk-01-secret, udp: true}
+  - {name: Transit-A-Japan-Trojan-01, server: jp-a-01.example.test, port: 443, type: trojan, password: transit-a-jp-01-secret, sni: jp-a-01.example.test, udp: true}
+  - {name: Transit-A-UnitedStates-VLESS-01, server: us-a-01.example.test, port: 443, type: vless, tls: true, uuid: 33333333-3333-4333-8333-333333333331, servername: us-a-01.example.test, network: ws, ws-opts: {path: /transit-a-us-vless, headers: {Host: us-a-01.example.test}}, udp: true}
+  - {name: Transit-A-Singapore-Hysteria2-01, server: sg-a-01.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-a-sg-01-secret, sni: sg-a-01.example.test, skip-cert-verify: true, udp: true}
+  - {name: Transit-A-Taiwan-TUIC-01, server: tw-a-01.example.test, port: 443, type: tuic, uuid: 55555555-5555-4555-8555-555555555551, password: transit-a-tw-01-secret, alpn: [h3], udp-relay-mode: native, congestion-controller: bbr, sni: tw-a-01.example.test, udp: true}
+  - {name: Transit-A-Korea-AnyTLS-01, server: kr-a-01.example.test, port: 443, type: anytls, password: transit-a-kr-01-secret, sni: kr-a-01.example.test, alpn: [h2], udp: true}
+  - {name: Transit-A-UnitedStates-SSR-01, server: us-a-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-a-us-02-secret, udp: true}
+  - {name: Transit-A-Japan-SS-01, server: 198.51.100.121, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-a-jp-02-secret, udp: true}
+  - {name: Transit-A-Taiwan-Hysteria2-01, server: tw-a-02.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-a-tw-02-secret, sni: tw-a-02.example.test, skip-cert-verify: true, udp: true}
+  - {name: Transit-B-HongKong-SS-01, server: 198.51.100.122, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-b-hk-01-secret, udp: true}
+  - {name: Transit-B-Japan-Trojan-01, server: jp-b-01.example.test, port: 443, type: trojan, password: transit-b-jp-01-secret, sni: jp-b-01.example.test, udp: true}
+  - {name: Transit-B-Singapore-VLESS-01, server: sg-b-01.example.test, port: 443, type: vless, tls: true, uuid: 88888888-8888-4888-8888-888888888883, servername: sg-b-01.example.test, network: ws, ws-opts: {path: /transit-b-sg-vless, headers: {Host: sg-b-01.example.test}}, udp: true}
+  - {name: Transit-B-UnitedStates-Hysteria2-01, server: us-b-01.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-b-us-01-secret, sni: us-b-01.example.test, skip-cert-verify: true, udp: true}
+  - {name: Transit-B-Korea-TUIC-01, server: kr-b-01.example.test, port: 443, type: tuic, uuid: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5, password: transit-b-kr-01-secret, alpn: [h3], udp-relay-mode: native, congestion-controller: bbr, sni: kr-b-01.example.test, udp: true}
+  - {name: Transit-B-Taiwan-AnyTLS-01, server: tw-b-01.example.test, port: 443, type: anytls, password: transit-b-tw-01-secret, sni: tw-b-01.example.test, alpn: [h2], udp: true}
+  - {name: Transit-B-HongKong-SSR-01, server: hk-b-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-b-hk-02-secret, udp: true}
+  - {name: Transit-B-UnitedStates-Trojan-01, server: us-b-02.example.test, port: 443, type: trojan, password: transit-b-us-02-secret, sni: us-b-02.example.test, udp: true}
+  - {name: Transit-B-Singapore-SS-01, server: 198.51.100.123, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-b-sg-02-secret, udp: true}
 proxy-groups:
   - name: 🚀 手动选择
     type: select
@@ -41,62 +39,58 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: ♻️ 自动选择
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
     proxies:
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 💬 即时通讯
     type: select
     proxies:
@@ -121,31 +115,29 @@ proxy-groups:
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
       - 🎯 全球直连
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🚀 GitHub
     type: select
     proxies:
@@ -169,31 +161,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🤖 AI服务
     type: select
     proxies:
@@ -205,31 +195,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎶 TikTok
     type: select
     proxies:
@@ -241,31 +229,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 📹 YouTube
     type: select
     proxies:
@@ -277,31 +263,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎥 Netflix
     type: select
     proxies:
@@ -313,31 +297,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎥 DisneyPlus
     type: select
     proxies:
@@ -349,31 +331,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎥 HBO
     type: select
     proxies:
@@ -385,31 +365,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎥 PrimeVideo
     type: select
     proxies:
@@ -421,31 +399,29 @@ proxy-groups:
       - 🇯🇵 日本节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎥 AppleTV+
     type: select
     proxies:
@@ -458,31 +434,29 @@ proxy-groups:
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
       - 🎯 全球直连
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎥 Emby
     type: select
     proxies:
@@ -495,31 +469,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎻 Spotify
     type: select
     proxies:
@@ -532,62 +504,58 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 📺 Bahamut
     type: select
     proxies:
       - 🇼🇸 台湾节点
       - 🚀 手动选择
       - 🎯 全球直连
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🌎 国外媒体
     type: select
     proxies:
@@ -599,31 +567,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🛒 国外电商
     type: select
     proxies:
@@ -636,31 +602,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 📢 谷歌FCM
     type: select
     proxies:
@@ -683,31 +647,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🍎 苹果服务
     type: select
     proxies:
@@ -720,31 +682,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: Ⓜ️ 微软服务
     type: select
     proxies:
@@ -757,31 +717,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎮 游戏平台
     type: select
     proxies:
@@ -794,31 +752,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🎮 Steam
     type: select
     proxies:
@@ -831,31 +787,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🚀 测速工具
     type: select
     proxies:
@@ -868,31 +822,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🐟 漏网之鱼
     type: select
     proxies:
@@ -905,31 +857,29 @@ proxy-groups:
       - 🇸🇬 新加坡节点
       - 🇼🇸 台湾节点
       - 🇰🇷 韩国节点
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-A-Japan-SS-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-Japan-Trojan-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-Korea-TUIC-01
+      - Transit-B-Taiwan-AnyTLS-01
+      - Transit-B-HongKong-SSR-01
+      - Transit-B-UnitedStates-Trojan-01
+      - Transit-B-Singapore-SS-01
   - name: 🔀 非标端口
     type: select
     proxies:
@@ -941,61 +891,59 @@ proxy-groups:
     interval: 300
     tolerance: 50
     proxies:
-      - 🇭🇰 Alpha-SS-HK
-      - 🇭🇰 Alpha-Reality-HK-PortForward
-      - 🇭🇰 Alpha-Reality-HK-Direct
-      - 🇭🇰 Manual-SOCKS5-HK-Fallback
-      - 🇭🇰 Transit-A-HongKong-SS-01
-      - 🇭🇰 Transit-B-HongKong-SS-01
-      - 🇭🇰 Transit-B-HongKong-SSR-01
+      - Manual-SOCKS5-HK-Fallback
+      - Transit-A-HongKong-SS-01
+      - Transit-B-HongKong-SS-01
+      - Transit-B-HongKong-SSR-01
   - name: 🇺🇸 美国节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
     proxies:
-      - 🇺🇸 Transit-A-UnitedStates-VLESS-01
-      - 🇺🇸 Transit-A-UnitedStates-SSR-01
-      - 🇺🇸 Transit-B-UnitedStates-Hysteria2-01
-      - 🇺🇸 Transit-B-UnitedStates-Trojan-01
+      - Transit-A-UnitedStates-VLESS-01
+      - Transit-A-UnitedStates-SSR-01
+      - Transit-B-UnitedStates-Hysteria2-01
+      - Transit-B-UnitedStates-Trojan-01
   - name: 🇯🇵 日本节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
     proxies:
-      - 🇯🇵 Beta-SS-JP
-      - 🇯🇵 Beta-Reality-JP-PortForward
-      - 🇯🇵 Beta-Reality-JP-Direct
-      - 🇯🇵 Transit-A-Japan-Trojan-01
-      - 🇯🇵 Transit-A-Japan-SS-01
-      - 🇯🇵 Transit-B-Japan-Trojan-01
+      - Beta-SS-JP
+      - Beta-Reality-JP
+      - Transit-A-Japan-Trojan-01
+      - Transit-A-Japan-SS-01
+      - Transit-B-Japan-Trojan-01
   - name: 🇸🇬 新加坡节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
     proxies:
-      - 🇸🇬 Transit-A-Singapore-Hysteria2-01
-      - 🇸🇬 Transit-B-Singapore-VLESS-01
-      - 🇸🇬 Transit-B-Singapore-SS-01
+      - Alpha-SS-SG
+      - Alpha-Reality-SG
+      - Transit-A-Singapore-Hysteria2-01
+      - Transit-B-Singapore-VLESS-01
+      - Transit-B-Singapore-SS-01
   - name: 🇼🇸 台湾节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
     proxies:
-      - 🇨🇳 Transit-A-Taiwan-TUIC-01
-      - 🇨🇳 Transit-A-Taiwan-Hysteria2-01
-      - 🇨🇳 Transit-B-Taiwan-AnyTLS-01
+      - Transit-A-Taiwan-TUIC-01
+      - Transit-A-Taiwan-Hysteria2-01
+      - Transit-B-Taiwan-AnyTLS-01
   - name: 🇰🇷 韩国节点
     type: url-test
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
     proxies:
-      - 🇰🇷 Transit-A-Korea-AnyTLS-01
-      - 🇰🇷 Transit-B-Korea-TUIC-01
+      - Transit-A-Korea-AnyTLS-01
+      - Transit-B-Korea-TUIC-01
   - name: 🎯 全球直连
     type: select
     proxies:
@@ -1050,36 +998,36 @@ rule-providers:
   Custom_Direct_Domain:
     type: http
     behavior: domain
-    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Direct_Domain.yaml
-    path: ./providers/2305457515016618925_domain.yaml
+    url: https://testingcf.jsdelivr.net/gh/heunghingwan/Aethersailor-Custom_OpenClash_Rules@main/rule/Custom_Direct_Domain.yaml
+    path: ./providers/815582092012373029_domain.yaml
     interval: 28800
   Custom_Direct_Classical_IP:
     type: http
     behavior: classical
-    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Direct_Classical_IP.yaml
-    path: ./providers/15204165614954008964.yaml
+    url: https://testingcf.jsdelivr.net/gh/heunghingwan/Aethersailor-Custom_OpenClash_Rules@main/rule/Custom_Direct_Classical_IP.yaml
+    path: ./providers/2982162278243874156.yaml
     interval: 28800
   Custom_Proxy_Domain:
     type: http
     behavior: domain
-    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Proxy_Domain.yaml
-    path: ./providers/10543794580940256312_domain.yaml
+    url: https://testingcf.jsdelivr.net/gh/heunghingwan/Aethersailor-Custom_OpenClash_Rules@main/rule/Custom_Proxy_Domain.yaml
+    path: ./providers/17870176214131363808_domain.yaml
     interval: 28800
   Custom_Proxy_Classical_IP:
     type: http
     behavior: classical
-    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Proxy_Classical_IP.yaml
-    path: ./providers/3673053372641237649.yaml
+    url: https://testingcf.jsdelivr.net/gh/heunghingwan/Aethersailor-Custom_OpenClash_Rules@main/rule/Custom_Proxy_Classical_IP.yaml
+    path: ./providers/9622539336982655241.yaml
     interval: 28800
   Steam_CDN_Classical:
     type: http
     behavior: classical
-    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Steam_CDN_Classical.yaml
-    path: ./providers/13268481674871578153.yaml
+    url: https://testingcf.jsdelivr.net/gh/heunghingwan/Aethersailor-Custom_OpenClash_Rules@main/rule/Steam_CDN_Classical.yaml
+    path: ./providers/246780171010895665.yaml
     interval: 28800
   Custom_Port_Direct:
     type: http
     behavior: classical
-    url: https://testingcf.jsdelivr.net/gh/Aethersailor/Custom_OpenClash_Rules@main/rule/Custom_Port_Direct.yaml
-    path: ./providers/2451647452112462632.yaml
+    url: https://testingcf.jsdelivr.net/gh/heunghingwan/Aethersailor-Custom_OpenClash_Rules@main/rule/Custom_Port_Direct.yaml
+    path: ./providers/11083247696828942736.yaml
     interval: 28800

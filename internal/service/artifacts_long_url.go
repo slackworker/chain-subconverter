@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 )
 
 const (
 	defaultLongURLMaxLength = 8192
-	longURLSchemaVersion    = 2
+	longURLSchemaVersion    = 4
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -65,7 +64,9 @@ type longURLAdvancedOptions struct {
 }
 
 type longURLStage2Snapshot struct {
-	Rows []longURLStage2Row `json:"rows"`
+	Rows                                           []longURLStage2Row              `json:"rows"`
+	ChainProxyTargetGroupSwitchOptimizationEnabled *bool                           `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
+	ServerAggregationGroups                        []longURLServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
 }
 
 type longURLStage2Row struct {
@@ -76,10 +77,20 @@ type longURLStage2Row struct {
 	TargetName            *string `json:"targetName"`
 }
 
+type longURLServerAggregationGroup struct {
+	Server       string   `json:"server"`
+	GroupName    string   `json:"groupName,omitempty"`
+	Enabled      bool     `json:"enabled"`
+	Strategy     string   `json:"strategy"`
+	MemberRowIDs []string `json:"memberRowIds,omitempty"`
+}
+
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
 	if payload.V != longURLSchemaVersion {
 		return "", fmt.Errorf("unsupported long URL payload version %d", payload.V)
 	}
+
+	payload.Stage2Snapshot = CanonicalizeStage2SnapshotForLinkEncoding(payload.Stage2Snapshot)
 
 	payloadJSON, err := marshalCanonicalLongURLPayload(payload)
 	if err != nil {
@@ -116,6 +127,9 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 	if err != nil {
 		return LongURLPayload{}, fmt.Errorf("parse long URL: %w", err)
 	}
+	if err := validateLongURLDecodeQuery(parsedURL.Query()); err != nil {
+		return LongURLPayload{}, fmt.Errorf("validate long URL query: %w", err)
+	}
 
 	data, err := parseRequiredStringQueryValue(parsedURL.Query(), longURLParamData)
 	if err != nil {
@@ -132,100 +146,19 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 		return LongURLPayload{}, fmt.Errorf("unmarshal long URL payload: %w", err)
 	}
 
-	payload.Stage1Input, err = ApplyLongURLCompatibleQueryOverrides(payload.Stage1Input, parsedURL.Query())
-	if err != nil {
-		return LongURLPayload{}, fmt.Errorf("apply long URL query overrides: %w", err)
-	}
 	if err := validateLongURLPayloadSchema(payload); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate long URL payload schema: %w", err)
 	}
+
+	// Canonicalize decoded payload to the current in-memory schema version.
+	payload.V = longURLSchemaVersion
+	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
+
 	if err := ValidateStage1InputLimits(payload.Stage1Input, limits); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate stage1 input limits: %w", err)
 	}
 
 	return payload, nil
-}
-
-func ApplyLongURLCompatibleQueryOverrides(stage1Input Stage1Input, query url.Values) (Stage1Input, error) {
-	stage1Input = NormalizeStage1Input(stage1Input)
-
-	emoji, ok, err := parseExplicitBoolQueryOverride(query, longURLParamEmoji)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Emoji = emoji
-	}
-
-	udp, ok, err := parseExplicitBoolQueryOverride(query, longURLParamUDP)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.UDP = udp
-	}
-
-	skipCertVerify, ok, err := parseExplicitBoolQueryOverride(query, longURLParamSkipCertVerify)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.SkipCertVerify = skipCertVerify
-	}
-
-	config, ok, err := parseExplicitStringQueryOverride(query, longURLParamConfig)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Config = config
-	}
-
-	include, ok, err := parseExplicitStringListQueryOverride(query, longURLParamInclude)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Include = include
-	}
-
-	exclude, ok, err := parseExplicitStringListQueryOverride(query, longURLParamExclude)
-	if err != nil {
-		return Stage1Input{}, err
-	}
-	if ok {
-		stage1Input.AdvancedOptions.Exclude = exclude
-	}
-
-	return NormalizeStage1Input(stage1Input), nil
-}
-
-func ExtractSubscriptionPassthroughQuery(query url.Values) url.Values {
-	if len(query) == 0 {
-		return nil
-	}
-
-	passthrough := make(url.Values)
-	for name, values := range query {
-		if isReservedSubscriptionQueryName(name) {
-			continue
-		}
-		trimmedName := strings.TrimSpace(name)
-		if trimmedName == "" {
-			continue
-		}
-		for _, value := range values {
-			trimmedValue := strings.TrimSpace(value)
-			if trimmedValue == "" {
-				continue
-			}
-			passthrough.Add(trimmedName, trimmedValue)
-		}
-	}
-	if len(passthrough) == 0 {
-		return nil
-	}
-	return passthrough
 }
 
 func encodeCompressedData(payload []byte) (string, error) {
@@ -282,14 +215,30 @@ func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error 
 
 func (schema longURLPayloadSchema) payload() LongURLPayload {
 	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
+	chainProxyTargetGroupSwitchOptimizationEnabled := false
+	if schema.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled != nil {
+		chainProxyTargetGroupSwitchOptimizationEnabled = *schema.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled
+	}
 	for index, row := range schema.Stage2Snapshot.Rows {
 		rows[index] = Stage2Row{
 			RowID:                 row.RowID,
 			SourceLandingNodeName: row.SourceLandingNodeName,
 			ProxyName:             row.ProxyName,
-			LandingNodeName:       row.ProxyName,
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
+		}
+	}
+	var serverAggregationGroups []ServerAggregationGroup
+	if len(schema.Stage2Snapshot.ServerAggregationGroups) > 0 {
+		serverAggregationGroups = make([]ServerAggregationGroup, len(schema.Stage2Snapshot.ServerAggregationGroups))
+		for index, group := range schema.Stage2Snapshot.ServerAggregationGroups {
+			serverAggregationGroups[index] = ServerAggregationGroup{
+				Server:       group.Server,
+				GroupName:    group.GroupName,
+				Enabled:      group.Enabled,
+				Strategy:     group.Strategy,
+				MemberRowIDs: append([]string(nil), group.MemberRowIDs...),
+			}
 		}
 	}
 
@@ -308,11 +257,19 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 				Exclude:        schema.Stage1Input.AdvancedOptions.Exclude,
 			},
 		},
-		Stage2Snapshot: Stage2Snapshot{Rows: rows},
+		Stage2Snapshot: Stage2Snapshot{
+			Rows: rows,
+			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
+			ServerAggregationGroups:                        serverAggregationGroups,
+		},
 	}
 }
 
 func validateLongURLPayloadSchema(payload LongURLPayload) error {
+	if payload.V != longURLSchemaVersion {
+		return fmt.Errorf("unsupported long URL payload version %d", payload.V)
+	}
+
 	if payload.Stage1Input.AdvancedOptions.Config == nil {
 		return fmt.Errorf("advancedOptions.config must not be empty")
 	}
@@ -331,17 +288,22 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		return fmt.Errorf("advancedOptions.config must include host")
 	}
 
+	rowsByID := make(map[string]Stage2Row, len(payload.Stage2Snapshot.Rows))
 	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
 	for _, row := range payload.Stage2Snapshot.Rows {
-		rowID := strings.TrimSpace(row.rowIDOrFallback())
+		rowID := strings.TrimSpace(stage2RowID(row))
 		if rowID == "" {
 			return fmt.Errorf("rowId must not be empty")
 		}
-		sourceLandingNodeName := strings.TrimSpace(row.sourceLandingNodeNameOrFallback())
+		if _, exists := rowsByID[rowID]; exists {
+			return fmt.Errorf("duplicate rowId %q", rowID)
+		}
+		rowsByID[rowID] = row
+		sourceLandingNodeName := strings.TrimSpace(stage2SourceLandingNodeName(row))
 		if sourceLandingNodeName == "" {
 			return fmt.Errorf("sourceLandingNodeName must not be empty")
 		}
-		proxyName := strings.TrimSpace(row.proxyNameOrFallback())
+		proxyName := strings.TrimSpace(stage2ProxyName(row))
 		if proxyName == "" {
 			return fmt.Errorf("proxyName must not be empty")
 		}
@@ -360,12 +322,51 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 			if targetName != "" {
 				return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
 			}
-		case "chain", "port_forward":
+		case "chain":
+			if targetName == "" {
+				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			}
+		case "port_forward":
 			if targetName == "" {
 				return fmt.Errorf("missing targetName for proxy %q", proxyName)
 			}
 		default:
 			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
+		}
+	}
+
+	seenServerGroups := make(map[string]struct{}, len(payload.Stage2Snapshot.ServerAggregationGroups))
+	for _, group := range payload.Stage2Snapshot.ServerAggregationGroups {
+		server := strings.TrimSpace(group.Server)
+		if server == "" {
+			return fmt.Errorf("serverAggregationGroups.server must not be empty")
+		}
+		if _, exists := seenServerGroups[server]; exists {
+			return fmt.Errorf("duplicate server aggregation group for server %q", server)
+		}
+		seenServerGroups[server] = struct{}{}
+
+		if !group.Enabled {
+			continue
+		}
+		switch strings.TrimSpace(group.Strategy) {
+		case "fallback", "url-test", "select", "load-balance":
+		default:
+			return fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
+		}
+		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
+		for _, memberRowID := range group.MemberRowIDs {
+			rowID := strings.TrimSpace(memberRowID)
+			if rowID == "" {
+				return fmt.Errorf("server aggregation group for server %q contains empty memberRowId", server)
+			}
+			memberSeen[rowID] = struct{}{}
+			if _, exists := rowsByID[rowID]; !exists {
+				return fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
+			}
+		}
+		if len(memberSeen) < 2 {
+			return fmt.Errorf("server aggregation group for server %q must include at least 2 memberRowIds", server)
 		}
 	}
 
@@ -388,32 +389,31 @@ func joinSubURL(publicBaseURL string, encodedData string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-func isReservedSubscriptionQueryName(name string) bool {
-	switch strings.TrimSpace(name) {
-	case "",
-		longURLParamData,
-		longURLParamDownload,
-		longURLParamEmoji,
-		longURLParamUDP,
-		longURLParamSkipCertVerify,
-		longURLParamConfig,
-		longURLParamInclude,
-		longURLParamExclude,
-		longURLParamTarget,
-		longURLParamURL,
-		longURLParamList,
-		longURLParamExpand,
-		longURLParamClassic,
-		longURLParamVersion,
-		longURLParamLanding,
-		longURLParamTransit,
-		longURLParamRelay,
-		longURLParamPortForward,
-		longURLParamChain:
-		return true
-	default:
-		return false
+func validateLongURLDecodeQuery(query url.Values) error {
+	for rawName, values := range query {
+		name := strings.TrimSpace(rawName)
+		switch name {
+		case longURLParamData:
+			if len(values) > 1 {
+				return fmt.Errorf("duplicate %s query parameter", longURLParamData)
+			}
+		case longURLParamDownload:
+			if len(values) > 1 {
+				return fmt.Errorf("duplicate %s query parameter", longURLParamDownload)
+			}
+			if len(values) == 1 {
+				value := strings.TrimSpace(values[0])
+				if value != "1" {
+					return fmt.Errorf("invalid %s query parameter %q", longURLParamDownload, value)
+				}
+			}
+		case "":
+			return fmt.Errorf("empty query parameter name is not allowed")
+		default:
+			return fmt.Errorf("unsupported query parameter %q", name)
+		}
 	}
+	return nil
 }
 
 func parseRequiredStringQueryValue(query url.Values, name string) (string, error) {
@@ -429,61 +429,6 @@ func parseRequiredStringQueryValue(query url.Values, name string) (string, error
 		return "", fmt.Errorf("missing %s query parameter", name)
 	}
 	return trimmed, nil
-}
-
-func parseExplicitBoolQueryOverride(query url.Values, name string) (*bool, bool, error) {
-	values, ok := query[name]
-	if !ok {
-		return nil, false, nil
-	}
-	if len(values) != 1 {
-		return nil, false, fmt.Errorf("duplicate %s query parameter", name)
-	}
-	trimmed := strings.TrimSpace(values[0])
-	if trimmed == "" {
-		return nil, false, fmt.Errorf("invalid %s query parameter \"\"", name)
-	}
-	value, err := strconv.ParseBool(trimmed)
-	if err != nil {
-		return nil, false, fmt.Errorf("invalid %s query parameter %q", name, trimmed)
-	}
-	return &value, true, nil
-}
-
-func parseExplicitStringQueryOverride(query url.Values, name string) (*string, bool, error) {
-	values, ok := query[name]
-	if !ok {
-		return nil, false, nil
-	}
-	if len(values) != 1 {
-		return nil, false, fmt.Errorf("duplicate %s query parameter", name)
-	}
-	trimmed := strings.TrimSpace(values[0])
-	if trimmed == "" {
-		return nil, true, nil
-	}
-	return &trimmed, true, nil
-}
-
-func parseExplicitStringListQueryOverride(query url.Values, name string) ([]string, bool, error) {
-	values, ok := query[name]
-	if !ok {
-		return nil, false, nil
-	}
-	parts := make([]string, 0, len(values))
-	for _, value := range values {
-		for _, part := range strings.Split(value, "|") {
-			trimmed := strings.TrimSpace(part)
-			if trimmed == "" {
-				continue
-			}
-			parts = append(parts, trimmed)
-		}
-	}
-	if len(parts) == 0 {
-		return nil, true, nil
-	}
-	return parts, true, nil
 }
 
 func marshalCanonicalLongURLPayload(payload LongURLPayload) ([]byte, error) {
@@ -506,14 +451,29 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
 	for index, row := range payload.Stage2Snapshot.Rows {
 		rows[index] = longURLStage2Row{
-			RowID:                 row.rowIDOrFallback(),
-			SourceLandingNodeName: row.sourceLandingNodeNameOrFallback(),
-			ProxyName:             row.proxyNameOrFallback(),
+			RowID:                 stage2RowID(row),
+			SourceLandingNodeName: stage2SourceLandingNodeName(row),
+			ProxyName:             stage2ProxyName(row),
 			Mode:                  row.Mode,
 			TargetName:            row.TargetName,
 		}
 	}
+	serverAggregationGroups := make([]longURLServerAggregationGroup, len(payload.Stage2Snapshot.ServerAggregationGroups))
+	for index, group := range payload.Stage2Snapshot.ServerAggregationGroups {
+		serverAggregationGroups[index] = longURLServerAggregationGroup{
+			Server:       group.Server,
+			GroupName:    group.GroupName,
+			Enabled:      group.Enabled,
+			Strategy:     group.Strategy,
+			MemberRowIDs: append([]string(nil), group.MemberRowIDs...),
+		}
+	}
 
+	var chainProxyTargetGroupSwitchOptimizationEnabled *bool
+	if payload.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+		enabled := true
+		chainProxyTargetGroupSwitchOptimizationEnabled = &enabled
+	}
 	return longURLPayloadSchema{
 		Stage1Input: longURLStage1Input{
 			AdvancedOptions: longURLAdvancedOptions{
@@ -528,7 +488,11 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			LandingRawText:    payload.Stage1Input.LandingRawText,
 			TransitRawText:    payload.Stage1Input.TransitRawText,
 		},
-		Stage2Snapshot: longURLStage2Snapshot{Rows: rows},
-		V:              payload.V,
+		Stage2Snapshot: longURLStage2Snapshot{
+			Rows: rows,
+			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
+			ServerAggregationGroups:                        serverAggregationGroups,
+		},
+		V: payload.V,
 	}
 }

@@ -28,9 +28,11 @@ func TestValidateGenerateSnapshot_RejectsTargetForNoneMode(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Landing",
-					Mode:            "none",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "none",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -53,9 +55,11 @@ func TestValidateGenerateSnapshot_AllowsChainForReality(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Reality",
-					Mode:            "chain",
-					TargetName:      &targetName,
+					RowID:                 "hk-reality-1",
+					SourceLandingNodeName: "HK Reality",
+					ProxyName:             "HK Reality",
+					Mode:                  "chain",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -78,9 +82,11 @@ func TestValidateGenerateSnapshot_RejectsEmptyChainTarget(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "Unknown Landing",
-					Mode:            "chain",
-					TargetName:      &targetName,
+					RowID:                 "unknown-1",
+					SourceLandingNodeName: "Unknown Landing",
+					ProxyName:             "Unknown Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -94,7 +100,54 @@ func TestValidateGenerateSnapshot_RejectsEmptyChainTarget(t *testing.T) {
 	}
 	responseErr, ok := AsResponseError(err)
 	if !ok {
-		t.Fatalf("expected response error, got %T", err)
+		t.Fatalf("expected response error, got %T: %v", err, err)
+	}
+	blockingError := responseErr.BlockingError()
+	if blockingError.Code != "EMPTY_CHAIN_TARGET" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "EMPTY_CHAIN_TARGET")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsEmptyChainTargetFromValidationFullBaseYAML(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+	fixtures.FullBaseYAML = ""
+	fixtures.TemplateConfig = "custom_proxy_group=🇭🇰 香港节点`select`HK\n"
+	fixtures.LandingDiscoveryYAML = strings.Join([]string{
+		"proxies:",
+		"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"",
+	}, "\n")
+	fixtures.ValidationFullBaseYAML = strings.Join([]string{
+		"proxies:",
+		"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: 🇭🇰 香港节点}",
+		"proxy-groups:",
+		"  - name: 🇭🇰 香港节点",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"",
+	}, "\n")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &targetName,
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want empty chain target rejection from validation full-base")
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T: %v", err, err)
 	}
 	blockingError := responseErr.BlockingError()
 	if blockingError.Code != "EMPTY_CHAIN_TARGET" {
@@ -113,14 +166,18 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
-					LandingNodeName: "HK Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				},
 				{
-					LandingNodeName: "US Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "us-1",
+					SourceLandingNodeName: "US Landing",
+					ProxyName:             "US Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				},
 			},
 		},
@@ -142,6 +199,29 @@ func TestValidateGenerateSnapshot_RejectsDuplicateForwardRelayTarget(t *testing.
 	}
 }
 
+func TestValidateGenerateSnapshot_AllowsGlobalSwitchOptimization(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			ChainProxyTargetGroupSwitchOptimizationEnabled: true,
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "chain",
+				TargetName:            &targetName,
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+}
+
 func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
@@ -151,12 +231,14 @@ func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *test
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &targetName,
 				},
 				{
+					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing 2",
 					Mode:                  "none",
@@ -173,6 +255,197 @@ func TestValidateGenerateSnapshot_AllowsMultipleRowsForSameSourceLanding(t *test
 	}
 }
 
+func TestValidateGenerateSnapshot_AllowsServerAggregationGroupForSameServerRows(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	resolved, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "chain",
+					TargetName:            &targetName,
+				},
+				{
+					RowID:                 "hk-2",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
+			}},
+		},
+		fixtures,
+	)
+	if err != nil {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+		t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+	}
+}
+
+func TestValidateGenerateSnapshot_AllowsServerAggregationGroupWithExtendedStrategies(t *testing.T) {
+	targetName := "🇭🇰 香港节点"
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	strategies := []string{"select", "load-balance"}
+	for _, strategy := range strategies {
+		t.Run(strategy, func(t *testing.T) {
+			resolved, err := validateGenerateSnapshot(
+				Stage1Input{},
+				Stage2Snapshot{
+					Rows: []Stage2Row{
+						{
+							RowID:                 "hk-1",
+							SourceLandingNodeName: "HK Landing",
+							ProxyName:             "HK Landing",
+							Mode:                  "chain",
+							TargetName:            &targetName,
+						},
+						{
+							RowID:                 "hk-2",
+							SourceLandingNodeName: "HK Landing",
+							ProxyName:             "HK Landing 2",
+							Mode:                  "none",
+						},
+					},
+					ServerAggregationGroups: []ServerAggregationGroup{{
+						Server:       "landing.example.com",
+						Enabled:      true,
+						Strategy:     strategy,
+						MemberRowIDs: []string{"hk-1", "hk-2"},
+					}},
+				},
+				fixtures,
+			)
+			if err != nil {
+				t.Fatalf("validateGenerateSnapshot() error = %v", err)
+			}
+			if len(resolved) != 1 || resolved[0].Name != "HK Landing" {
+				t.Fatalf("resolved landing proxies = %#v, want one HK Landing entry", resolved)
+			}
+		})
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithUnknownMember(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "missing-row"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want server aggregation member rejection")
+	}
+	if !strings.Contains(err.Error(), `unknown rowId "missing-row"`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_MEMBER_NOT_FOUND" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_MEMBER_NOT_FOUND")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithOnlyOneMember(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want server aggregation group size rejection")
+	}
+	if !strings.Contains(err.Error(), `requires at least 2 members`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_GROUP_TOO_SMALL")
+	}
+}
+
+func TestValidateGenerateSnapshot_RejectsServerAggregationGroupWithDuplicateMembers(t *testing.T) {
+	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
+
+	_, err := validateGenerateSnapshot(
+		Stage1Input{},
+		Stage2Snapshot{
+			Rows: []Stage2Row{{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+				Mode:                  "none",
+			}},
+			ServerAggregationGroups: []ServerAggregationGroup{{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1", "hk-1"},
+			}},
+		},
+		fixtures,
+	)
+	if err == nil {
+		t.Fatal("validateGenerateSnapshot() error = nil, want duplicated server aggregation group members rejection")
+	}
+	if !strings.Contains(err.Error(), `requires at least 2`) {
+		t.Fatalf("validateGenerateSnapshot() error = %v", err)
+	}
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		t.Fatalf("expected response error, got %T", err)
+	}
+	if responseErr.BlockingError().Code != "SERVER_AGGREGATION_GROUP_TOO_SMALL" {
+		t.Fatalf("BlockingError.Code mismatch: got %q want %q", responseErr.BlockingError().Code, "SERVER_AGGREGATION_GROUP_TOO_SMALL")
+	}
+}
+
 func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 	targetName := "🇭🇰 香港节点"
 	fixtures := singleLandingFixture("HK Landing", "ss", "🇭🇰 香港节点")
@@ -182,12 +455,14 @@ func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &targetName,
 				},
 				{
+					RowID:                 "hk-2",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "none",
@@ -211,10 +486,9 @@ func TestValidateGenerateSnapshot_RejectsDuplicateProxyName(t *testing.T) {
 		t.Fatalf("BlockingError.Code mismatch: got %q want %q", blockingError.Code, "DUPLICATE_PROXY_NAME")
 	}
 	wantContext := map[string]any{
-		"rowId":                 "HK Landing",
+		"rowId":                 "hk-2",
 		"sourceLandingNodeName": "HK Landing",
 		"proxyName":             "HK Landing",
-		"landingNodeName":       "HK Landing",
 		"field":                 "proxyName",
 	}
 	if !mapsEqual(blockingError.Context, wantContext) {
@@ -231,6 +505,7 @@ func TestValidateGenerateSnapshot_RejectsUnknownSourceLandingWithDerivedRowConte
 		Stage2Snapshot{
 			Rows: []Stage2Row{
 				{
+					RowID:                 "hk-1",
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
@@ -262,7 +537,6 @@ func TestValidateGenerateSnapshot_RejectsUnknownSourceLandingWithDerivedRowConte
 		"rowId":                 "hk-derived-1",
 		"sourceLandingNodeName": "Missing Landing",
 		"proxyName":             "HK Landing Copy",
-		"landingNodeName":       "Missing Landing",
 	}
 	if !mapsEqual(blockingError.Context, wantContext) {
 		t.Fatalf("BlockingError.Context mismatch: got %#v want %#v", blockingError.Context, wantContext)
@@ -300,7 +574,7 @@ func dualLandingFixture(firstLandingName string, secondLandingName string) Conve
 			inlineLandingFixtureLine(secondLandingName, "ss", false),
 			"",
 		}, "\n"),
-		TransitDiscoveryYAML: "proxies:\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, nil),
 		FullBaseYAML: strings.Join(append([]string{
 			"proxies:",
 			inlineLandingFixtureLine(firstLandingName, "ss", true),

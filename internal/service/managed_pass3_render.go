@@ -8,7 +8,7 @@ import (
 )
 
 type SnapshotPass3RenderingSource interface {
-	RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string) (string, error)
+	RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error)
 }
 
 func buildManagedLandingConfigYAML(landingDiscoveryYAML string, rows []Stage2Row) (string, error) {
@@ -20,7 +20,7 @@ func buildManagedLandingConfigYAML(landingDiscoveryYAML string, rows []Stage2Row
 	var builder strings.Builder
 	builder.WriteString("proxies:\n")
 	for _, row := range rows {
-		sourceLandingName := row.sourceLandingNodeNameOrFallback()
+		sourceLandingName := stage2SourceLandingNodeName(row)
 		line, ok := linesByName[sourceLandingName]
 		if !ok {
 			return "", fmt.Errorf("landing discovery proxy %q not found", sourceLandingName)
@@ -86,7 +86,7 @@ func applyRowToManagedLandingProxyLine(line string, row Stage2Row) (string, erro
 		return "", err
 	}
 
-	fields = upsertInlineProxyField(fields, "name", row.proxyNameOrFallback())
+	fields = upsertInlineProxyField(fields, "name", stage2ProxyName(row))
 
 	switch row.Mode {
 	case "none":
@@ -149,10 +149,10 @@ func stage2StripLandingNames(landingProxies []resolvedLandingProxy, rows []Stage
 		stripNames[landing.Name] = struct{}{}
 	}
 	for _, row := range rows {
-		if sourceLandingName := row.sourceLandingNodeNameOrFallback(); sourceLandingName != "" {
+		if sourceLandingName := stage2SourceLandingNodeName(row); sourceLandingName != "" {
 			stripNames[sourceLandingName] = struct{}{}
 		}
-		if proxyName := row.proxyNameOrFallback(); proxyName != "" {
+		if proxyName := stage2ProxyName(row); proxyName != "" {
 			stripNames[proxyName] = struct{}{}
 		}
 	}

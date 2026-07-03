@@ -30,7 +30,7 @@
         "kind": "proxy-groups"
       },
       {
-        "name": "🇸🇬 建议每日更新订阅",
+        "name": "🇯🇵 建议每日更新订阅",
         "kind": "proxies"
       },
       {
@@ -110,27 +110,27 @@
         "kind": "proxies"
       },
       {
-        "name": "🇨🇳 台湾动态三网|家宽1",
+        "name": "🇼🇸 台湾动态三网|家宽1",
         "kind": "proxies"
       },
       {
-        "name": "🇨🇳 台湾动态三网|家宽2",
+        "name": "🇼🇸 台湾动态三网|家宽2",
         "kind": "proxies"
       },
       {
-        "name": "🇨🇳 台湾动态三网|家宽3",
+        "name": "🇼🇸 台湾动态三网|家宽3",
         "kind": "proxies"
       },
       {
-        "name": "🇨🇳 台湾动态三网|家宽4",
+        "name": "🇼🇸 台湾动态三网|家宽4",
         "kind": "proxies"
       },
       {
-        "name": "🇨🇳 台湾静态三网|家宽1",
+        "name": "🇼🇸 台湾静态三网|家宽1",
         "kind": "proxies"
       },
       {
-        "name": "🇨🇳 台湾静态三网|家宽2",
+        "name": "🇼🇸 台湾静态三网|家宽2",
         "kind": "proxies"
       },
       {
@@ -276,8 +276,8 @@
         "rowId": "🇺🇸 SS2022-Test-256-US",
         "sourceLandingNodeName": "🇺🇸 SS2022-Test-256-US",
         "proxyName": "🇺🇸 SS2022-Test-256-US",
-        "landingNodeName": "🇺🇸 SS2022-Test-256-US",
         "landingNodeType": "SS",
+        "server": "198.51.100.10",
         "mode": "chain",
         "targetName": "🇺🇸 美国节点"
       }

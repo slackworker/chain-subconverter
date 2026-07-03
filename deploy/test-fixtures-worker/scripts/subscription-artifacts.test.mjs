@@ -27,8 +27,8 @@ test("keeps manual SOCKS5 opt-in at the stage1 landing layer", () => {
 	const landingOnly = buildLandingURILines(stage1Input);
 	const landingWithManualSocks = buildLandingURILinesWithManualSocks(stage1Input);
 
-	assert.equal(landingOnly.length, 6);
-	assert.equal(landingWithManualSocks.length, 7);
+	assert.equal(landingOnly.length, 4);
+	assert.equal(landingWithManualSocks.length, 5);
 	assert.equal(
 		landingWithManualSocks.at(-1),
 		stage1Input.manualSocks5Items[0].generatedURI,
@@ -38,24 +38,24 @@ test("keeps manual SOCKS5 opt-in at the stage1 landing layer", () => {
 test("derives URI, base64, and mihomo outputs from the same landing baseline", () => {
 	const landingWithManualSocks = buildLandingURILinesWithManualSocks(stage1Input);
 	const artifacts = deriveSubscriptionArtifacts(landingWithManualSocks);
-	const alphaSS = artifacts.mihomoProxies.find((proxy) => proxy.name === "Alpha-SS-HK");
+	const alphaSS = artifacts.mihomoProxies.find((proxy) => proxy.name === "Alpha-SS-SG");
 	const manualSocks = artifacts.mihomoProxies.find(
 		(proxy) => proxy.name === "Manual-SOCKS5-HK-Fallback",
 	);
 
 	assert.equal(artifacts.outputs.General, artifacts.outputs.URI);
-	assert.equal(artifacts.uriLines.length, 7);
+	assert.equal(artifacts.uriLines.length, 5);
 	assert.equal(
 		Buffer.from(artifacts.outputs.base64, "base64").toString("utf8"),
 		artifacts.outputs.URI,
 	);
 	assert.deepEqual(alphaSS, {
-		name: "Alpha-SS-HK",
+		name: "Alpha-SS-SG",
 		type: "ss",
 		server: "198.51.100.10",
 		port: 443,
 		cipher: "2022-blake3-aes-256-gcm",
-		password: "alpha-ss-hk-secret",
+		password: "alpha-ss-sg-secret",
 	});
 	assert.deepEqual(manualSocks, {
 		name: "Manual-SOCKS5-HK-Fallback",
@@ -66,6 +66,6 @@ test("derives URI, base64, and mihomo outputs from the same landing baseline", (
 		password: "demo-pass",
 	});
 	assert.match(artifacts.outputs.mihomo, /^proxies:\n  - \{/m);
-	assert.match(artifacts.outputs.mihomo, /"password":"alpha-ss-hk-secret"/);
+	assert.match(artifacts.outputs.mihomo, /"password":"alpha-ss-sg-secret"/);
 	assert.deepEqual(parseProxyList(artifacts.outputs.mihomo)[0], alphaSS);
 });

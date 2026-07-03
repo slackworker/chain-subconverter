@@ -1,7 +1,7 @@
 import { getChainTargetGroups } from "./chainTargets";
 
 import type { ChainTargetGroup } from "./chainTargets";
-import type { Stage2Init, Stage2Row } from "../types/api";
+import type { ChainTarget, ServerAggregationGroup, Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
 
 export interface TargetChoice {
 	value: string;
@@ -14,137 +14,255 @@ export interface ChainTargetChoiceGroup extends Omit<ChainTargetGroup, "targets"
 }
 
 export type Stage2SnapshotRows = Stage2Row[];
+export type ServerAggregationStrategy = ServerAggregationGroup["strategy"];
 
-const STAGE2_ROW_KEY_PREFIXES = {
-	rowId: "rowId:",
-	proxyName: "proxyName:",
-	landingNodeName: "landingNodeName:",
-	sourceLandingNodeName: "sourceLandingNodeName:",
-} as const;
+const STAGE2_ROW_KEY_PREFIX = "rowId:";
 
-type Stage2RowKeyField = keyof typeof STAGE2_ROW_KEY_PREFIXES;
+export function getStage2RowDisplayName(row: Pick<Stage2Row, "proxyName">) {
+	return row.proxyName.trim();
+}
 
-export function getStage2RowDisplayName(row: Pick<Stage2Row, "proxyName" | "landingNodeName">) {
-	const proxyName = row.proxyName?.trim();
-	if (proxyName) {
-		return proxyName;
+export function getStage2RowEditableName(row: Pick<Stage2Row, "proxyName">) {
+	return row.proxyName;
+}
+
+export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandingNodeName">) {
+	return row.sourceLandingNodeName.trim();
+}
+
+export function getStage2SourceGroupSize(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
+	const trimmedSourceLandingNodeName = sourceLandingNodeName.trim();
+	if (trimmedSourceLandingNodeName === "") {
+		return 0;
 	}
-	return row.landingNodeName.trim();
+	return rows.filter((row) => getStage2RowSourceLandingName(row) === trimmedSourceLandingNodeName).length;
 }
 
-export function getStage2RowEditableName(row: Pick<Stage2Row, "proxyName" | "landingNodeName">) {
-	return row.proxyName ?? row.landingNodeName;
-}
-
-export function getStage2RowSourceLandingName(row: Pick<Stage2Row, "sourceLandingNodeName" | "landingNodeName">) {
-	const sourceLandingNodeName = row.sourceLandingNodeName?.trim();
-	if (sourceLandingNodeName) {
-		return sourceLandingNodeName;
-	}
-	return row.landingNodeName.trim();
-}
-
-function getTrimmedStage2RowFieldValue(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-	field: Stage2RowKeyField,
+export function getServerAggregationGroup(
+	snapshot: Pick<Stage2Snapshot, "serverAggregationGroups">,
+	server: string,
 ) {
-	switch (field) {
-		case "rowId":
-			return row.rowId?.trim() ?? "";
-		case "proxyName":
-			return row.proxyName?.trim() ?? "";
-		case "landingNodeName":
-			return row.landingNodeName.trim();
-		case "sourceLandingNodeName":
-			return row.sourceLandingNodeName?.trim() ?? "";
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
+		return null;
 	}
+	return snapshot.serverAggregationGroups.find((group) => group.server.trim() === trimmedServer) ?? null;
 }
 
-function parsePrefixedStage2RowKey(rowKey: string): { field: Stage2RowKeyField; value: string } | null {
-	for (const [field, prefix] of Object.entries(STAGE2_ROW_KEY_PREFIXES) as Array<[Stage2RowKeyField, string]>) {
-		if (!rowKey.startsWith(prefix)) {
-			continue;
-		}
-		const value = rowKey.slice(prefix.length).trim();
-		if (value === "") {
+export function getServerAggregationStrategy(
+	snapshot: Pick<Stage2Snapshot, "serverAggregationGroups">,
+	server: string,
+) {
+	return getServerAggregationGroup(snapshot, server)?.strategy ?? null;
+}
+
+function getLeadingFlagEmoji(name: string): string | null {
+	const match = name.trim().match(/^(\p{Regional_Indicator}{2})(?:\s|$)/u);
+	return match?.[1] ?? null;
+}
+
+export function detectServerGroupSourceFlagEmoji(rows: Stage2Row[]): string | null {
+	const sourceRows = rows.filter((row) => isStage2SourceRow(row));
+	if (sourceRows.length === 0) {
+		return null;
+	}
+
+	let emoji: string | null = null;
+	for (const row of sourceRows) {
+		const currentEmoji = getLeadingFlagEmoji(getStage2RowDisplayName(row));
+		if (!currentEmoji) {
 			return null;
 		}
-		return { field, value };
-	}
-	return null;
-}
-
-function getStage2RowIdentifiers(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
-	const identifiers = [row.rowId, row.proxyName, row.landingNodeName, row.sourceLandingNodeName];
-	const seen = new Set<string>();
-	const result: string[] = [];
-	for (const value of identifiers) {
-		const trimmed = value?.trim() ?? "";
-		if (trimmed === "" || seen.has(trimmed)) {
+		if (emoji === null) {
+			emoji = currentEmoji;
 			continue;
 		}
-		seen.add(trimmed);
-		result.push(trimmed);
-	}
-	return result;
-}
-
-export function getStage2RowKey(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">) {
-	return getStage2RowIdentifiers(row)[0] ?? "";
-}
-
-export function getStage2RowStrictKey(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-) {
-	for (const field of ["rowId", "proxyName", "landingNodeName", "sourceLandingNodeName"] as Stage2RowKeyField[]) {
-		const value = getTrimmedStage2RowFieldValue(row, field);
-		if (value !== "") {
-			return `${STAGE2_ROW_KEY_PREFIXES[field]}${value}`;
+		if (emoji !== currentEmoji) {
+			return null;
 		}
 	}
-	return "";
+	return emoji;
 }
 
-export function isStage2SourceRow(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-) {
+export function deriveManagedServerAggregationGroupBaseName(
+	server: string,
+	groupName: string | undefined,
+	memberRows: Stage2Row[],
+): string {
+	const trimmedGroupName = groupName?.trim() ?? "";
+	if (trimmedGroupName !== "") {
+		return trimmedGroupName;
+	}
+	let baseName = server.trim();
+	if (baseName === "") {
+		baseName = "server";
+	}
+	const sourceFlagEmoji = detectServerGroupSourceFlagEmoji(memberRows);
+	return sourceFlagEmoji ? `${sourceFlagEmoji} ${baseName}` : baseName;
+}
+
+export function nextManagedServerAggregationGroupName(baseName: string, usedNames: Set<string>): string {
+	const trimmedBaseName = baseName.trim() === "" ? "server" : baseName.trim();
+	if (!usedNames.has(trimmedBaseName)) {
+		return trimmedBaseName;
+	}
+
+	let suffix = 2;
+	while (usedNames.has(`${trimmedBaseName} ${suffix}`)) {
+		suffix += 1;
+	}
+	return `${trimmedBaseName} ${suffix}`;
+}
+
+export function collectTemplateProxyGroupNames(chainTargets: ChainTarget[]): Set<string> {
+	return new Set(
+		chainTargets
+			.filter((target) => target.kind === "proxy-groups")
+			.map((target) => target.name.trim())
+			.filter((name) => name !== ""),
+	);
+}
+
+export function getServerAggregationMemberRows(
+	snapshot: Pick<Stage2Snapshot, "rows">,
+	group: ServerAggregationGroup,
+): Stage2Row[] {
+	const rowsById = new Map(
+		snapshot.rows
+			.map((row) => [getStage2RowKey(row), row] as const)
+			.filter(([rowId]) => rowId !== ""),
+	);
+	const memberRows: Stage2Row[] = [];
+	const seen = new Set<string>();
+	for (const memberRowId of group.memberRowIds ?? []) {
+		const trimmedMemberRowId = memberRowId.trim();
+		if (trimmedMemberRowId === "" || seen.has(trimmedMemberRowId)) {
+			continue;
+		}
+		seen.add(trimmedMemberRowId);
+		const row = rowsById.get(trimmedMemberRowId);
+		if (row !== undefined) {
+			memberRows.push(row);
+		}
+	}
+	return memberRows;
+}
+
+export function buildManagedServerAggregationGroupDisplayNames(
+	snapshot: Pick<Stage2Snapshot, "rows" | "serverAggregationGroups">,
+	existingProxyGroupNames: Iterable<string> = [],
+): Map<string, string> {
+	const usedNames = new Set(existingProxyGroupNames);
+	const displayNames = new Map<string, string>();
+
+	for (const group of snapshot.serverAggregationGroups) {
+		const server = group.server.trim();
+		if (server === "" || !group.enabled) {
+			continue;
+		}
+		const memberRows = getServerAggregationMemberRows(snapshot, group);
+		const baseName = deriveManagedServerAggregationGroupBaseName(server, group.groupName, memberRows);
+		const managedName = nextManagedServerAggregationGroupName(baseName, usedNames);
+		usedNames.add(managedName);
+		displayNames.set(server, managedName);
+	}
+
+	return displayNames;
+}
+
+export function getServerAggregationGroupDisplayName(
+	snapshot: Pick<Stage2Snapshot, "rows" | "serverAggregationGroups">,
+	server: string,
+	options: {
+		groupName?: string;
+		enabled?: boolean;
+		memberRows?: Stage2Row[];
+		existingProxyGroupNames?: Iterable<string>;
+	} = {},
+): string {
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
+		return "server";
+	}
+
+	const group = getServerAggregationGroup(snapshot, trimmedServer);
+	const memberRows = options.memberRows ?? (group ? getServerAggregationMemberRows(snapshot, group) : []);
+	const enabled = options.enabled ?? group?.enabled ?? false;
+	const groupName = options.groupName ?? group?.groupName;
+
+	if (enabled) {
+		const managedNames = buildManagedServerAggregationGroupDisplayNames(
+			snapshot,
+			options.existingProxyGroupNames ?? [],
+		);
+		const managedName = managedNames.get(trimmedServer);
+		if (managedName !== undefined) {
+			return managedName;
+		}
+	}
+
+	return deriveManagedServerAggregationGroupBaseName(trimmedServer, groupName, memberRows);
+}
+
+function parseStage2RowKey(rowKey: string): string | null {
+	const trimmedRowKey = rowKey.trim();
+	if (!trimmedRowKey.startsWith(STAGE2_ROW_KEY_PREFIX)) {
+		return null;
+	}
+	const value = trimmedRowKey.slice(STAGE2_ROW_KEY_PREFIX.length).trim();
+	return value === "" ? null : value;
+}
+
+export function getStage2RowKey(row: Pick<Stage2Row, "rowId">) {
+	return row.rowId.trim();
+}
+
+export function getStage2RowStrictKey(row: Pick<Stage2Row, "rowId">) {
+	const rowId = row.rowId.trim();
+	return rowId === "" ? "" : `${STAGE2_ROW_KEY_PREFIX}${rowId}`;
+}
+
+export function isStage2SourceRow(row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName">) {
 	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
 	if (sourceLandingNodeName === "") {
 		return false;
 	}
-	const rowId = row.rowId?.trim();
-	if (rowId) {
-		return rowId === sourceLandingNodeName;
-	}
-	const proxyName = row.proxyName?.trim();
-	if (proxyName) {
-		return proxyName === sourceLandingNodeName;
-	}
-	return row.landingNodeName.trim() === sourceLandingNodeName;
+	return row.rowId.trim() === sourceLandingNodeName;
 }
 
-export function matchesStage2RowKey(
-	row: Pick<Stage2Row, "rowId" | "sourceLandingNodeName" | "proxyName" | "landingNodeName">,
-	rowKey: string,
-) {
+export function matchesStage2RowKey(row: Pick<Stage2Row, "rowId">, rowKey: string) {
 	const trimmedRowKey = rowKey.trim();
 	if (trimmedRowKey === "") {
 		return false;
 	}
-	const prefixedRowKey = parsePrefixedStage2RowKey(trimmedRowKey);
-	if (prefixedRowKey !== null) {
-		return getTrimmedStage2RowFieldValue(row, prefixedRowKey.field) === prefixedRowKey.value;
+	const parsedRowId = parseStage2RowKey(trimmedRowKey);
+	if (parsedRowId !== null) {
+		return row.rowId.trim() === parsedRowId;
 	}
-	return getStage2RowIdentifiers(row).includes(trimmedRowKey);
+	return row.rowId.trim() === trimmedRowKey;
 }
 
 export function findStage2RowByKey(rows: Stage2SnapshotRows, rowKey: string) {
 	return rows.find((row) => matchesStage2RowKey(row, rowKey)) ?? null;
 }
 
-export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
-	const baseName = sourceLandingNodeName.trim();
-	if (baseName === "") {
+export function getStage2DerivedProxyNameBase(rows: Stage2SnapshotRows, sourceLandingNodeName: string) {
+	const trimmedSource = sourceLandingNodeName.trim();
+	if (trimmedSource === "") {
+		return "";
+	}
+	const sourceRow = rows.find(
+		(row) => getStage2RowSourceLandingName(row) === trimmedSource && isStage2SourceRow(row),
+	);
+	if (sourceRow !== undefined) {
+		return getStage2RowDisplayName(sourceRow);
+	}
+	return trimmedSource;
+}
+
+export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, baseName: string) {
+	const trimmedBaseName = baseName.trim();
+	if (trimmedBaseName === "") {
 		return "";
 	}
 
@@ -153,15 +271,15 @@ export function pickNextDerivedProxyName(rows: Stage2SnapshotRows, sourceLanding
 			.map((row) => getStage2RowDisplayName(row).trim())
 			.filter((value) => value !== ""),
 	);
-	if (!usedNames.has(baseName)) {
-		return baseName;
+	if (!usedNames.has(trimmedBaseName)) {
+		return trimmedBaseName;
 	}
 
 	let suffix = 2;
-	while (usedNames.has(`${baseName} ${suffix}`)) {
+	while (usedNames.has(`${trimmedBaseName} ${suffix}`)) {
 		suffix += 1;
 	}
-	return `${baseName} ${suffix}`;
+	return `${trimmedBaseName} ${suffix}`;
 }
 
 function getSelectedForwardRelays(rows: Stage2SnapshotRows) {
@@ -198,6 +316,21 @@ export function getChainTargetChoiceGroups(stage2Init: Stage2Init | null) {
 	return getChainTargetGroups(stage2Init.chainTargets).map(toChainTargetChoiceGroup);
 }
 
+export function findChainTarget(stage2Init: Stage2Init | null, targetName: string | null) {
+	if (stage2Init === null || targetName === null) {
+		return null;
+	}
+	return stage2Init.chainTargets.find((target) => target.name === targetName) ?? null;
+}
+
+export function isSwitchOptimizationEligible(stage2Init: Stage2Init | null, row: Stage2Row) {
+	if (row.mode !== "chain" || row.targetName === null) {
+		return false;
+	}
+	const target = findChainTarget(stage2Init, row.targetName);
+	return target?.kind === "proxy-groups";
+}
+
 export function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, rowKey: string) {
 	if (stage2Init === null) {
 		return [];
@@ -219,7 +352,7 @@ export function getForwardRelayChoices(stage2Init: Stage2Init | null, stage2Rows
 export function getSelectableChoices(
 	stage2Init: Stage2Init | null,
 	stage2Rows: Stage2SnapshotRows,
-	landingNodeName: string,
+	rowKey: string,
 	mode: Stage2Row["mode"],
 ) {
 	if (mode === "chain") {
@@ -228,7 +361,7 @@ export function getSelectableChoices(
 			.filter((choice) => !choice.disabled);
 	}
 	if (mode === "port_forward") {
-		return getForwardRelayChoices(stage2Init, stage2Rows, landingNodeName).filter((choice) => !choice.disabled);
+		return getForwardRelayChoices(stage2Init, stage2Rows, rowKey).filter((choice) => !choice.disabled);
 	}
 	return [];
 }
@@ -262,14 +395,14 @@ export function getStage2TargetDisplayLabel(
 export function pickNextTarget(
 	stage2Init: Stage2Init | null,
 	stage2Rows: Stage2SnapshotRows,
-	landingNodeName: string,
+	rowKey: string,
 	mode: Stage2Row["mode"],
 	currentTarget: string | null,
 ) {
 	if (mode === "none") {
 		return null;
 	}
-	const choices = getSelectableChoices(stage2Init, stage2Rows, landingNodeName, mode);
+	const choices = getSelectableChoices(stage2Init, stage2Rows, rowKey, mode);
 	if (choices.some((choice) => choice.value === currentTarget)) {
 		return currentTarget;
 	}

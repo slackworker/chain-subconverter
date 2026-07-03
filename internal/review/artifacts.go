@@ -26,7 +26,7 @@ type ArtifactBundle struct {
 const managedTemplateArtifactURLPlaceholder = "http://managed-template.invalid/internal/templates/managed-template.ini"
 
 func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, testCase Case) (ArtifactBundle, error) {
-	result, fixtures, err := loadConversionResult(ctx, source, testCase.Stage1Input)
+	result, fixtures, err := loadStage1InitResult(ctx, source, testCase.Stage1Input)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -76,16 +76,18 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 }
 
 func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, testCase Case, publicBaseURL string, maxLongURLLength int) (ArtifactBundle, error) {
-	_, fixtures, err := loadConversionResult(ctx, source, testCase.Stage1Input)
-	if err != nil {
-		return ArtifactBundle{}, err
-	}
-
 	request := service.GenerateRequest{
 		Stage1Input:    testCase.Stage1Input,
 		Stage2Snapshot: testCase.Stage2Input,
 	}
-	response, err := service.BuildGenerateResponse(publicBaseURL, request, fixtures, maxLongURLLength)
+	response, err := service.BuildGenerateResponseFromSource(
+		ctx,
+		publicBaseURL,
+		source,
+		request,
+		maxLongURLLength,
+		service.InputLimits{},
+	)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -105,7 +107,13 @@ func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, 
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
-	renderedConfig, err := service.RenderCompleteConfig(testCase.Stage1Input, testCase.Stage2Input, fixtures)
+	renderedConfig, err := service.RenderCompleteConfigFromSource(
+		ctx,
+		source,
+		testCase.Stage1Input,
+		testCase.Stage2Input,
+		service.InputLimits{},
+	)
 	if err != nil {
 		return ArtifactBundle{}, err
 	}
@@ -134,15 +142,20 @@ func snapshotRowsFromInit(rows []service.Stage2InitRow) []service.Stage2Row {
 	snapshotRows := make([]service.Stage2Row, 0, len(rows))
 	for _, row := range rows {
 		snapshotRows = append(snapshotRows, service.Stage2Row{
-			LandingNodeName: row.LandingNodeName,
-			Mode:            row.Mode,
-			TargetName:      row.TargetName,
+			RowID:                 row.RowID,
+			SourceLandingNodeName: row.SourceLandingNodeName,
+			ProxyName:             row.ProxyName,
+			Mode:                  row.Mode,
+			TargetName:            row.TargetName,
 		})
 	}
 	return snapshotRows
 }
 
-func loadConversionResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
+func loadStage1InitResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
+	if _, ok := source.(service.PlannedConversionSource); ok {
+		return service.ExecuteStage1InitConversion(ctx, source, stage1Input, service.InputLimits{})
+	}
 	return service.ExecuteConversion(ctx, source, stage1Input, service.InputLimits{})
 }
 
@@ -184,7 +197,7 @@ func buildSummaryMarkdown(scenarioName string, stage2Init service.Stage2Init) st
 			targetName = *row.TargetName
 		}
 		builder.WriteString("| ")
-		builder.WriteString(row.LandingNodeName)
+		builder.WriteString(row.ProxyName)
 		builder.WriteString(" | ")
 		builder.WriteString(row.LandingNodeType)
 		builder.WriteString(" | ")
@@ -203,7 +216,7 @@ func buildAutofillPairsText(rows []service.Stage2InitRow) string {
 
 	lines := make([]string, 0, len(rows))
 	for _, row := range rows {
-		line := row.LandingNodeName + " | " + row.LandingNodeType + " | " + row.Mode
+		line := row.ProxyName + " | " + row.LandingNodeType + " | " + row.Mode
 		if row.TargetName != nil {
 			line += " | " + *row.TargetName
 		}

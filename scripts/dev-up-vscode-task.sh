@@ -9,6 +9,8 @@ scheme="${1:-}"
 # Default fixed ports (offset 0). Set CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET=auto for
 # legacy per-worktree auto offset, or a numeric offset for parallel worktrees.
 port_offset_input="${2:-${CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET:-0}}"
+# VS Code/Cursor task defaults to force restart so reruns don't get stuck on hidden old instances.
+force_restart_input="${3:-${CHAIN_SUBCONVERTER_DEV_UP_FORCE_RESTART:-1}}"
 
 worktree_auto_port_offset() {
   local current_root
@@ -60,10 +62,17 @@ if [[ -z "$port_offset" ]] || ! [[ "$port_offset" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
+if [[ -z "$force_restart_input" ]] || ! [[ "$force_restart_input" =~ ^[01]$ ]]; then
+  printf 'Unsupported force restart flag: %s (expected 0 or 1)\n' "$force_restart_input" >&2
+  exit 1
+fi
+
 case "$scheme" in
-  a) frontend_base=5173 ;;
-  b) frontend_base=5174 ;;
-  c) frontend_base=5175 ;;
+  default) frontend_base=5173 ;;
+  b1) frontend_base=5174 ;;
+  b2) frontend_base=5175 ;;
+  c1) frontend_base=5176 ;;
+  c2) frontend_base=5177 ;;
   *)
     printf 'Unsupported UI scheme: %s\n' "$scheme" >&2
     exit 1
@@ -83,5 +92,6 @@ fi
 export CHAIN_SUBCONVERTER_DEV_UP_FRONTEND_PORT="$frontend_port"
 export CHAIN_SUBCONVERTER_DEV_UP_BACKEND_PORT="$backend_port"
 export CHAIN_SUBCONVERTER_DEV_UP_SUBCONVERTER_PORT="$subconverter_port"
+export CHAIN_SUBCONVERTER_DEV_UP_FORCE_RESTART="$force_restart_input"
 
 exec "$ROOT_DIR/scripts/dev-up.sh" "$scheme"

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 )
 
@@ -143,7 +144,10 @@ func CanonicalShortLinkStateKey(rawLongURL string, limits InputLimits) (string, 
 		return "", err
 	}
 
-	return encodeLongURLStateKey(BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot))
+	canonicalPayloadForStateKey := canonicalizeLongURLPayloadForShortLinkStateKey(
+		BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot),
+	)
+	return encodeLongURLStateKey(canonicalPayloadForStateKey)
 }
 
 func canonicalizeShortLinkTarget(publicBaseURL string, rawLongURL string, maxLongURLLength int, limits InputLimits) (canonicalShortLinkTarget, error) {
@@ -161,7 +165,8 @@ func canonicalizeShortLinkTarget(publicBaseURL string, rawLongURL string, maxLon
 	}
 
 	canonicalPayload := BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot)
-	stateKey, err := encodeLongURLStateKey(canonicalPayload)
+	canonicalPayloadForStateKey := canonicalizeLongURLPayloadForShortLinkStateKey(canonicalPayload)
+	stateKey, err := encodeLongURLStateKey(canonicalPayloadForStateKey)
 	if err != nil {
 		return canonicalShortLinkTarget{}, fmt.Errorf("encode canonical short link state key: %w", err)
 	}
@@ -175,4 +180,97 @@ func canonicalizeShortLinkTarget(publicBaseURL string, rawLongURL string, maxLon
 		LongURL:  canonicalLongURL,
 		StateKey: stateKey,
 	}, nil
+}
+
+func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) LongURLPayload {
+	canonical := payload
+	canonical.Stage2Snapshot = CanonicalizeStage2SnapshotForLinkEncoding(payload.Stage2Snapshot)
+
+	rows := make([]Stage2Row, len(canonical.Stage2Snapshot.Rows))
+	copy(rows, canonical.Stage2Snapshot.Rows)
+
+	for index, row := range rows {
+		rows[index].RowID = strings.TrimSpace(stage2RowID(row))
+		rows[index].SourceLandingNodeName = strings.TrimSpace(stage2SourceLandingNodeName(row))
+		rows[index].ProxyName = strings.TrimSpace(stage2ProxyName(row))
+	}
+
+	groups := make([]ServerAggregationGroup, len(canonical.Stage2Snapshot.ServerAggregationGroups))
+	for index, group := range canonical.Stage2Snapshot.ServerAggregationGroups {
+		memberRowIDs := canonicalizeServerAggregationMemberRowIDs(group, group.MemberRowIDs)
+		groups[index] = ServerAggregationGroup{
+			Server:       strings.TrimSpace(group.Server),
+			GroupName:    strings.TrimSpace(group.GroupName),
+			Enabled:      group.Enabled,
+			Strategy:     strings.TrimSpace(group.Strategy),
+			MemberRowIDs: memberRowIDs,
+		}
+	}
+
+	sort.Slice(groups, func(left, right int) bool {
+		return compareServerAggregationGroupCanonicalOrder(groups[left], groups[right]) < 0
+	})
+
+	canonical.Stage2Snapshot = Stage2Snapshot{
+		Rows: rows,
+		ChainProxyTargetGroupSwitchOptimizationEnabled: canonical.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
+		ServerAggregationGroups:                        groups,
+	}
+	return canonical
+}
+
+func compareServerAggregationGroupCanonicalOrder(left ServerAggregationGroup, right ServerAggregationGroup) int {
+	leftFields := []string{
+		strings.TrimSpace(left.Server),
+		strings.TrimSpace(left.GroupName),
+		boolToCanonicalString(left.Enabled),
+		strings.TrimSpace(left.Strategy),
+		strings.Join(left.MemberRowIDs, "\x00"),
+	}
+	rightFields := []string{
+		strings.TrimSpace(right.Server),
+		strings.TrimSpace(right.GroupName),
+		boolToCanonicalString(right.Enabled),
+		strings.TrimSpace(right.Strategy),
+		strings.Join(right.MemberRowIDs, "\x00"),
+	}
+	return compareStringFields(leftFields, rightFields)
+}
+
+func compareStringFields(left []string, right []string) int {
+	limit := len(left)
+	if len(right) < limit {
+		limit = len(right)
+	}
+	for index := 0; index < limit; index++ {
+		if left[index] == right[index] {
+			continue
+		}
+		if left[index] < right[index] {
+			return -1
+		}
+		return 1
+	}
+	switch {
+	case len(left) < len(right):
+		return -1
+	case len(left) > len(right):
+		return 1
+	default:
+		return 0
+	}
+}
+
+func normalizeOptionalStringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
+}
+
+func boolToCanonicalString(value bool) string {
+	if value {
+		return "1"
+	}
+	return "0"
 }

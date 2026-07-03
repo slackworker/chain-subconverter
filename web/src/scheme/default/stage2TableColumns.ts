@@ -23,11 +23,40 @@ export const STAGE2_LANDING_RENDERING_SAFETY_PX = 2;
 /** `.a-mode-warning-slot` 1.25rem + `.a-mode-cell` gap 0.4rem */
 export const STAGE2_MODE_EXTRA_PX = 20 + 6;
 
-/** `select.a-select` 右侧自定义下拉箭头区 `padding-right: 1.9rem` */
-export const STAGE2_SELECT_EXTRA_PX = 30;
+/** `.a-select` 水平 padding-left: 0.5rem */
+export const STAGE2_CONTROL_PADDING_LEFT_PX = 8;
 
-/** 目标列触发器/下拉与 {@link STAGE2_SELECT_EXTRA_PX} 同宽 */
-export const STAGE2_TARGET_EXTRA_PX = STAGE2_SELECT_EXTRA_PX;
+/** 原生 `select.a-select` padding-right: 1.9rem（含自定义箭头区） */
+export const STAGE2_NATIVE_SELECT_PADDING_RIGHT_PX = 31;
+
+/** `.a-target-menu__trigger` 右侧：padding-right 0.5rem + gap 0.45rem + ::after 箭头 12px */
+export const STAGE2_TARGET_TRIGGER_PADDING_RIGHT_PX = 8 + 8 + 12;
+
+/** 控件 1px 边框 × 2 */
+export const STAGE2_CONTROL_BORDER_X_PX = 2;
+
+/** canvas 文本测量与原生控件渲染之间的安全余量 */
+export const STAGE2_CONTROL_RENDERING_SAFETY_PX = 2;
+
+/** 原生 select 除文本外占用：左 padding + 右箭头区 + 边框 + 渲染余量 */
+export const STAGE2_NATIVE_SELECT_EXTRA_PX =
+	STAGE2_CONTROL_PADDING_LEFT_PX
+	+ STAGE2_NATIVE_SELECT_PADDING_RIGHT_PX
+	+ STAGE2_CONTROL_BORDER_X_PX
+	+ STAGE2_CONTROL_RENDERING_SAFETY_PX;
+
+/** 链式目标自定义触发器除文本外占用 */
+export const STAGE2_TARGET_TRIGGER_EXTRA_PX =
+	STAGE2_CONTROL_PADDING_LEFT_PX
+	+ STAGE2_TARGET_TRIGGER_PADDING_RIGHT_PX
+	+ STAGE2_CONTROL_BORDER_X_PX
+	+ STAGE2_CONTROL_RENDERING_SAFETY_PX;
+
+/** 目标列控件 chrome 取 native select 与自定义触发器的较大值 */
+export const STAGE2_TARGET_EXTRA_PX = Math.max(STAGE2_NATIVE_SELECT_EXTRA_PX, STAGE2_TARGET_TRIGGER_EXTRA_PX);
+
+/** @deprecated 使用 {@link STAGE2_NATIVE_SELECT_EXTRA_PX} */
+export const STAGE2_SELECT_EXTRA_PX = STAGE2_NATIVE_SELECT_EXTRA_PX;
 
 export const STAGE2_COLUMN_FALLBACK_PERCENTS: readonly [string, string, string, string] = [
 	"28%",
@@ -41,10 +70,12 @@ export type Stage2ColumnWidthsPx = readonly [number, number, number, number];
 export type TextMeasurer = (text: string) => number;
 
 export type Stage2ColumnMeasureRow = {
-	landingNodeName: string;
+	proxyName: string;
 	landingNodeType: string;
 	modeOptionLabels: string[];
 	targetLabel: string;
+	/** 目标列下拉/菜单内可能出现的全部文案（含分组标题与候选项） */
+	targetOptionLabels?: readonly string[];
 };
 
 function maxMeasuredWidth(texts: readonly string[], measureText: TextMeasurer): number {
@@ -73,10 +104,13 @@ export function measureStage2ColumnMins(input: Stage2ColumnMeasureInput): Stage2
 	const modeExtra = input.modeExtraPx ?? STAGE2_MODE_EXTRA_PX;
 	const { measureText, measureLandingText = measureText, headers, rows } = input;
 
-	const landingTexts = [headers[0], ...rows.map((row) => row.landingNodeName)];
+	const landingTexts = [headers[0], ...rows.map((row) => row.proxyName)];
 	const typeTexts = [headers[1], ...rows.map((row) => row.landingNodeType)];
 	const modeTexts = [headers[2], ...rows.flatMap((row) => row.modeOptionLabels)];
-	const targetTexts = [headers[3], ...rows.map((row) => row.targetLabel)];
+	const targetTexts = [
+		headers[3],
+		...rows.flatMap((row) => [row.targetLabel, ...(row.targetOptionLabels ?? [])]),
+	];
 
 	return [
 		maxMeasuredWidth(landingTexts, measureLandingText)
@@ -84,8 +118,8 @@ export function measureStage2ColumnMins(input: Stage2ColumnMeasureInput): Stage2
 			+ STAGE2_LANDING_EDITABLE_EXTRA_PX
 			+ STAGE2_LANDING_RENDERING_SAFETY_PX,
 		maxMeasuredWidth(typeTexts, measureText) + pad,
-		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_SELECT_EXTRA_PX,
-		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_EXTRA_PX,
+		maxMeasuredWidth(modeTexts, measureText) + pad + modeExtra + STAGE2_TARGET_TRIGGER_EXTRA_PX,
+		maxMeasuredWidth(targetTexts, measureText) + pad + STAGE2_TARGET_TRIGGER_EXTRA_PX,
 	];
 }
 

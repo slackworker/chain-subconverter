@@ -37,7 +37,7 @@ func TestLoadCase_DefaultExample(t *testing.T) {
 	if testCase.Stage1Input.AdvancedOptions.SkipCertVerify != nil {
 		t.Fatal("SkipCertVerify placeholder should stay omitted")
 	}
-	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Config, "https://raw.githubusercontent.com/Aethersailor/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini") {
+	if !hasStringValue(testCase.Stage1Input.AdvancedOptions.Config, "https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini") {
 		t.Fatalf("Config = %v, want tracked default template URL", testCase.Stage1Input.AdvancedOptions.Config)
 	}
 	if testCase.Stage1Input.AdvancedOptions.Include != nil {
@@ -346,7 +346,9 @@ func TestLoadCase_PrefersCanonicalStage1ButKeepsTrackedStage2Snapshot(t *testing
 {
   "rows": [
     {
-      "landingNodeName": "tracked-row",
+      "rowId": "tracked-row",
+      "sourceLandingNodeName": "tracked-row",
+      "proxyName": "tracked-row",
       "mode": "chain",
       "targetName": "tracked-target"
     }
@@ -375,8 +377,8 @@ func TestLoadCase_PrefersCanonicalStage1ButKeepsTrackedStage2Snapshot(t *testing
 	if len(testCase.Stage2Input.Rows) != 1 {
 		t.Fatalf("Stage2Input.Rows length = %d, want 1", len(testCase.Stage2Input.Rows))
 	}
-	if testCase.Stage2Input.Rows[0].LandingNodeName != "tracked-row" {
-		t.Fatalf("Stage2Input.Rows[0].LandingNodeName = %q, want %q", testCase.Stage2Input.Rows[0].LandingNodeName, "tracked-row")
+	if testCase.Stage2Input.Rows[0].ProxyName != "tracked-row" {
+		t.Fatalf("Stage2Input.Rows[0].ProxyName = %q, want %q", testCase.Stage2Input.Rows[0].ProxyName, "tracked-row")
 	}
 }
 

@@ -77,8 +77,11 @@ function buildStage2Init(): Stage1ConvertResponse["stage2Init"] {
 		],
 		rows: [
 			{
-				landingNodeName: "landing-hk",
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
 				landingNodeType: "ss",
+				server: "hk.example.com",
 				mode: "none",
 				targetName: null,
 			},
@@ -219,10 +222,13 @@ describe("useAppWorkflow", () => {
 			stage1Input: toStage1InputPayload(stage1Input),
 		});
 		expect(workflow.current.state.stage2Init).toEqual(stage2Init);
-		expect(workflow.current.state.stage2Snapshot).toEqual({
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			serverAggregationGroups: [],
 			rows: [
 				{
-					landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 					mode: "none",
 					targetName: null,
 				},
@@ -237,6 +243,166 @@ describe("useAppWorkflow", () => {
 			"ACTION_STAGE1_CONVERT",
 			"AUTO_CHAIN_TARGET_SELECTED",
 		]);
+	});
+
+	it("preserves non-conflicting Stage 2 edits after reconvert", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+			forwardRelayItems: ["relay-a.example.com:7443"],
+		});
+		const firstStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+		const secondStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			...firstStage2Init,
+			forwardRelays: [{ name: "relay-a.example.com:7443" }, { name: "relay-b.example.com:8443" }],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: firstStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+			workflow.current.handleModeChange(sourceRowKey, "port_forward");
+			workflow.current.handleTargetChange(sourceRowKey, "relay-a.example.com:7443");
+		});
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: secondStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, {
+			...stage1Input,
+			forwardRelayItems: ["relay-a.example.com:7443", "relay-b.example.com:8443"],
+		});
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			mode: "port_forward",
+			targetName: "relay-a.example.com:7443",
+		});
+		expect(workflow.current.state.messages).toEqual([]);
+	});
+
+	it("does not mark Stage 2 stale when Stage 1 only changes trailing line breaks", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init = buildStage2Init();
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		expect(workflow.current.state.stage2Stale).toBe(false);
+
+		await updateStage1Input(workflow, {
+			...stage1Input,
+			landingRawText: `${stage1Input.landingRawText}\r\n\r\n`,
+			transitRawText: `${stage1Input.transitRawText}\n`,
+		});
+
+		expect(workflow.current.state.stage2Stale).toBe(false);
+	});
+
+	it("downgrades invalid Stage 2 fields after reconvert instead of full reset", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+			forwardRelayItems: ["relay-a.example.com:7443"],
+		});
+		const firstStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+		const secondStage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [],
+			rows: firstStage2Init.rows,
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: firstStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleModeChange(sourceRowKey, "port_forward");
+			workflow.current.handleTargetChange(sourceRowKey, "relay-a.example.com:7443");
+		});
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
+			mode: "port_forward",
+			targetName: "relay-a.example.com:7443",
+		});
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init: secondStage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+		await updateStage1Input(workflow, {
+			...stage1Input,
+			advancedOptions: {
+				...stage1Input.advancedOptions,
+				include: ["HK"],
+			},
+		});
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
+			mode: "none",
+			targetName: null,
+		});
+		expect(workflow.current.state.messages.map((message) => message.code)).toContain("STAGE2_MERGE_MODE_RESET");
 	});
 
 	it("surfaces stage1 blocking errors and failure log entries when convert fails", async () => {
@@ -298,9 +464,12 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
+				serverAggregationGroups: [],
 				rows: [
 					{
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "port_forward",
 						targetName: "relay.example.com:7443",
 					},
@@ -336,7 +505,10 @@ describe("useAppWorkflow", () => {
 			},
 		});
 		expect(workflow.current.state.stage2Init).toEqual(stage2Init);
-		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			...restoreResponse.stage2Snapshot,
+			serverAggregationGroups: [],
+		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
 			shortUrl,
@@ -360,6 +532,7 @@ describe("useAppWorkflow", () => {
 			longUrl: "https://public.example.com/sub?data=restore-conflicted",
 			shortUrl,
 			restoreStatus: "conflicted",
+			restoreConflicts: [{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "landing-hk", field: "targetName" } }],
 			stage1Input: {
 				landingRawText: "ss://restored-landing",
 				transitRawText: "https://example.com/restored-transit.txt",
@@ -374,9 +547,12 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
+				serverAggregationGroups: [],
 				rows: [
 					{
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "chain",
 						targetName: "HK Relay Group",
 					},
@@ -403,13 +579,17 @@ describe("useAppWorkflow", () => {
 			},
 		});
 		expect(workflow.current.state.stage2Init).toBeNull();
-		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			...restoreResponse.stage2Snapshot,
+			serverAggregationGroups: [],
+		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
 			shortUrl,
 		});
 		expect(workflow.current.state.currentLinkInput).toBe(shortUrl);
 		expect(workflow.current.state.restoreStatus).toBe("conflicted");
+		expect(workflow.current.state.restoreConflicts).toEqual(restoreResponse.restoreConflicts);
 		expect(workflow.current.state.stage2Stale).toBe(false);
 		expect(workflow.current.isConflictReadonly).toBe(true);
 		expect(workflow.current.isStage2Editable).toBe(false);
@@ -440,9 +620,12 @@ describe("useAppWorkflow", () => {
 				},
 			},
 			stage2Snapshot: {
+				serverAggregationGroups: [],
 				rows: [
 					{
-						landingNodeName: "landing-hk",
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "chain",
 						targetName: "HK Relay Group",
 					},
@@ -480,7 +663,10 @@ describe("useAppWorkflow", () => {
 			},
 		});
 		expect(workflow.current.state.stage2Init).toBeNull();
-		expect(workflow.current.state.stage2Snapshot).toEqual(restoreResponse.stage2Snapshot);
+		expect(workflow.current.state.stage2Snapshot).toMatchObject({
+			...restoreResponse.stage2Snapshot,
+			serverAggregationGroups: [],
+		});
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: restoreResponse.longUrl,
 			shortUrl: null,
@@ -509,18 +695,21 @@ describe("useAppWorkflow", () => {
 
 		await runWorkflowAction(() => workflow.current.handleGenerate());
 
-		expect(mockPostGenerate).toHaveBeenCalledWith({
+		expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
 			stage1Input: toStage1InputPayload(stage1Input),
-			stage2Snapshot: {
-				rows: [
-					{
-						landingNodeName: "landing-hk",
+			stage2Snapshot: expect.objectContaining({
+				serverAggregationGroups: [],
+				rows: expect.arrayContaining([
+					expect.objectContaining({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
 						mode: "none",
 						targetName: null,
-					},
-				],
-			},
-		});
+					}),
+				]),
+			}),
+		}));
 		expect(workflow.current.state.generatedUrls).toEqual({
 			longUrl: generateResponse.longUrl,
 			shortUrl: null,
@@ -536,6 +725,134 @@ describe("useAppWorkflow", () => {
 		]);
 	});
 
+it("blocks generate when aggregation group has fewer than two members", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+	const generateResponse = buildGenerateResponse("https://public.example.com/sub?data=single-member");
+	mockPostGenerate.mockResolvedValueOnce(generateResponse);
+
+		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleServerAggregationChange(rowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+		});
+
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+	expect(mockPostGenerate).not.toHaveBeenCalled();
+		expect(workflow.current.responseOriginStage).toBe("stage2");
+	expect(workflow.current.state.blockingErrors).toEqual([
+		expect.objectContaining({
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+			scope: "stage2_row",
+		}),
+	]);
+	expect(workflow.current.getPrimaryBlockingErrorsForStage("stage2")).toEqual([
+		expect.objectContaining({
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+		}),
+	]);
+	expect(workflow.current.workflowLog.at(-1)?.code).toBe("GENERATE_FAILED");
+	});
+
+it("blocks generate when multiple undersized aggregation groups are enabled", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-11",
+					sourceLandingNodeName: "landing-11",
+					proxyName: "landing-11",
+					landingNodeType: "ss",
+					server: "198.51.100.11",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "landing-10",
+					sourceLandingNodeName: "landing-10",
+					proxyName: "landing-10",
+					landingNodeType: "ss",
+					server: "198.51.100.10",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+	const generateResponse = buildGenerateResponse("https://public.example.com/sub?data=ordered-disabled-groups");
+	mockPostGenerate.mockResolvedValueOnce(generateResponse);
+
+		const rowKey11 = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const rowKey10 = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+		act(() => {
+			workflow.current.handleServerAggregationChange(rowKey11, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+			workflow.current.handleServerAggregationChange(rowKey10, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+		});
+
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		const stage2Errors = workflow.current.getPrimaryBlockingErrorsForStage("stage2");
+	expect(stage2Errors).toHaveLength(2);
+	expect(stage2Errors.map((error) => error.code)).toEqual([
+		"SERVER_AGGREGATION_GROUP_TOO_SMALL",
+		"SERVER_AGGREGATION_GROUP_TOO_SMALL",
+	]);
+	expect(mockPostGenerate).not.toHaveBeenCalled();
+	});
+
 	it("surfaces Stage 2 blocking errors when generate fails", async () => {
 		const workflow = renderWorkflow();
 		await initializeStage2ReadyState(workflow);
@@ -548,7 +865,7 @@ describe("useAppWorkflow", () => {
 					code: "MISSING_TARGET",
 					message: "存在未完成配置的行",
 					scope: "stage2_row",
-					context: { landingNodeName: "landing-hk", field: "targetName" },
+					context: { rowId: "landing-hk", field: "targetName" },
 				},
 			],
 		};
@@ -585,8 +902,8 @@ describe("useAppWorkflow", () => {
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
+					server: "",
 					mode: "chain",
 					targetName: "HK Relay Group",
 				},
@@ -637,11 +954,9 @@ describe("useAppWorkflow", () => {
 
 		expect(workflow.current.stage2Rows[0]).toMatchObject({
 			proxyName: "landing-hk renamed",
-			landingNodeName: "landing-hk renamed",
 		});
 		expect(workflow.current.stage2Rows[1]).toMatchObject({
 			proxyName: "landing-hk 2",
-			landingNodeName: "landing-hk 2",
 		});
 	});
 
@@ -660,8 +975,8 @@ describe("useAppWorkflow", () => {
 					rowId: "landing-hk",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk",
-					landingNodeName: "landing-hk",
 					landingNodeType: "ss",
+					server: "",
 					mode: "chain",
 					targetName: "HK Relay Group",
 				},
@@ -669,8 +984,8 @@ describe("useAppWorkflow", () => {
 					rowId: "landing-hk-derived-1",
 					sourceLandingNodeName: "landing-hk",
 					proxyName: "landing-hk 2",
-					landingNodeName: "landing-hk 2",
 					landingNodeType: "ss",
+					server: "",
 					mode: "chain",
 					targetName: "HK Relay Group",
 				},
@@ -678,8 +993,8 @@ describe("useAppWorkflow", () => {
 					rowId: "landing-jp",
 					sourceLandingNodeName: "landing-jp",
 					proxyName: "landing-jp",
-					landingNodeName: "landing-jp",
 					landingNodeType: "vmess",
+					server: "",
 					mode: "none",
 					targetName: null,
 				},
@@ -712,6 +1027,550 @@ describe("useAppWorkflow", () => {
 			mode: "chain",
 			targetName: "HK Relay Group",
 		});
+	});
+
+	it("clones rows with emoji proxy names when sourceLandingNodeName differs from proxyName", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "🇭🇰 香港节点", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "Alpha-SS-SG",
+					sourceLandingNodeName: "Alpha-SS-SG",
+					proxyName: "🇸🇬 Alpha-SS-SG",
+					landingNodeType: "ss",
+					server: "198.51.100.10",
+					mode: "chain",
+					targetName: "🇭🇰 香港节点",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		expect(workflow.current.stage2Rows).toHaveLength(2);
+		expect(workflow.current.stage2Rows[1]).toMatchObject({
+			sourceLandingNodeName: "Alpha-SS-SG",
+			proxyName: "🇸🇬 Alpha-SS-SG 2",
+		});
+	});
+
+	it("configures server aggregation strategy by source group across source and derived rows", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(false);
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBeNull();
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(true);
+		expect(workflow.current.canConfigureServerAggregationGroup(derivedRowKey)).toBe(true);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "fallback");
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toHaveLength(1);
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "source:landing-hk",
+			enabled: true,
+			strategy: "fallback",
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toHaveLength(2);
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("fallback");
+		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("fallback");
+	});
+
+	it("stores custom server aggregation group name independently from node proxyName", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-hk-2",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const secondRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+			workflow.current.handleServerAggregationChange(secondRowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+			workflow.current.handleServerAggregationGroupNameChange(sourceRowKey, "HK 手动分组");
+			workflow.current.handleProxyNameChange(sourceRowKey, "HK Source Renamed");
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			groupName: "HK 手动分组",
+			enabled: true,
+			strategy: "fallback",
+		});
+		expect(workflow.current.stage2Rows[0].proxyName).toBe("HK Source Renamed");
+	});
+
+	it("supports select/load-balance aggregation strategies in workflow handlers", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "",
+				mode: "chain",
+				targetName: "HK Relay Group",
+			}],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "select");
+		});
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("select");
+		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("select");
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "load-balance");
+		});
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("load-balance");
+		expect(workflow.current.getServerAggregationStrategy(derivedRowKey)).toBe("load-balance");
+	});
+
+	it("reorders server aggregation members and preserves order across strategy switches", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-hk-2",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "landing-hk-3",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk 3",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const secondRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+		const thirdRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[2]);
+
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+			for (const rowKey of [sourceRowKey, secondRowKey, thirdRowKey]) {
+				workflow.current.handleServerAggregationChange(rowKey, {
+					enabled: true,
+					strategy: "fallback",
+					memberChecked: true,
+				});
+			}
+		});
+
+		expect(workflow.current.getServerAggregationOrderedMembers(sourceRowKey).map((member) => member.rowId)).toEqual([
+			"landing-hk",
+			"landing-hk-2",
+			"landing-hk-3",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationMemberReorder(sourceRowKey, "landing-hk-3", "up");
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "url-test");
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(sourceRowKey, "fallback");
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+			"landing-hk-2",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationChange(secondRowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: false,
+			});
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-3",
+		]);
+
+		act(() => {
+			workflow.current.handleServerAggregationChange(secondRowKey, {
+				enabled: true,
+				strategy: "fallback",
+				memberChecked: true,
+			});
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual([
+			"landing-hk",
+			"landing-hk-2",
+			"landing-hk-3",
+		]);
+	});
+
+	it("clears server aggregation strategy when the source group shrinks back to one row", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleCloneStage2Row(sourceRowKey);
+		});
+
+		const derivedRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+
+		act(() => {
+			workflow.current.handleServerAggregationStrategyChange(derivedRowKey, "url-test");
+		});
+
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBe("url-test");
+
+		act(() => {
+			workflow.current.handleDeleteStage2Row(derivedRowKey);
+		});
+
+		expect(workflow.current.stage2Rows).toHaveLength(1);
+		expect(workflow.current.canConfigureServerAggregationGroup(sourceRowKey)).toBe(false);
+		expect(workflow.current.getServerAggregationStrategy(sourceRowKey)).toBeNull();
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "source:landing-hk", enabled: true, strategy: "url-test", memberRowIds: ["landing-hk"] },
+		]);
+	});
+
+	it("auto-selects eligible members when a server group has multiple rows under one source", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "hk-1",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 1",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "hk-2",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "hk-3",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 3",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		const noneRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[1]);
+		const thirdRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[2]);
+
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+		});
+
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([
+			{
+				server: "hk.example.com",
+				enabled: true,
+				strategy: "fallback",
+				memberRowIds: ["hk-1", "hk-3"],
+			},
+		]);
+		expect(workflow.current.getServerAggregationGroup(sourceRowKey)?.memberChecked).toBe(true);
+		expect(workflow.current.getServerAggregationGroup(noneRowKey)?.memberChecked).toBe(false);
+		expect(workflow.current.getServerAggregationGroup(thirdRowKey)?.memberChecked).toBe(true);
+	});
+
+	it("clears aggregation groups before generate when aggregation mode is turned off", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "hk-1",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 1",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "hk-2",
+					sourceLandingNodeName: "hk-1",
+					proxyName: "HK 2",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const sourceRowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+		act(() => {
+			workflow.current.handleServerAggregationEnableWithDefaults(sourceRowKey, {
+				enabled: true,
+				strategy: "fallback",
+			});
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups.length).toBeGreaterThan(0);
+
+		act(() => {
+			workflow.current.handleClearServerAggregationGroups();
+		});
+		expect(workflow.current.state.stage2Snapshot.serverAggregationGroups).toEqual([]);
+
+		mockPostGenerate.mockResolvedValueOnce(buildGenerateResponse("https://public.example.com/sub?data=no-aggregation"));
+		await runWorkflowAction(() => workflow.current.handleGenerate());
+
+		expect(mockPostGenerate).toHaveBeenCalledWith(expect.objectContaining({
+			stage2Snapshot: expect.objectContaining({
+				serverAggregationGroups: [],
+			}),
+		}));
 	});
 
 	it("automatically creates and switches to a short URL when the long URL exceeds the public budget", async () => {
@@ -990,6 +1849,159 @@ describe("useAppWorkflow", () => {
 			"SHORT_LINK_RETRYABLE",
 			"SHORT_URL_FAILED",
 		]);
+	});
+
+	it("toggles switch optimization via Stage2 global switch", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [
+				{ name: "HK Relay Group", kind: "proxy-groups" },
+				{ name: "US Relay Group", kind: "proxy-groups" },
+			],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "landing-hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+				{
+					rowId: "landing-us",
+					sourceLandingNodeName: "landing-us",
+					proxyName: "landing-us",
+					landingNodeType: "ss",
+					server: "landing-us.example.com",
+					mode: "chain",
+					targetName: "US Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		act(() => {
+			workflow.current.handleSwitchOptimizationChange(true);
+		});
+
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
+
+		act(() => {
+			workflow.current.handleSwitchOptimizationChange(false);
+		});
+
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(false);
+	});
+
+	it("allows enabling switch optimization before any eligible chain target is selected", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "landing-hk.example.com",
+					mode: "none",
+					targetName: null,
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		act(() => {
+			workflow.current.handleSwitchOptimizationChange(true);
+		});
+
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
+	});
+
+	it("does not alter global switch optimization when row target switches", async () => {
+		const workflow = renderWorkflow();
+		const stage1Input = buildStage1Input({
+			landingRawText: "ss://landing-node",
+			transitRawText: "https://example.com/transit.txt",
+		});
+		const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [
+				{ name: "HK Relay Group", kind: "proxy-groups" },
+				{ name: "Transit Node A", kind: "proxies" },
+			],
+			forwardRelays: [{ name: "relay.example.com:7443" }],
+			rows: [
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "landing-hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		mockPostStage1Convert.mockResolvedValueOnce({
+			stage2Init,
+			messages: [],
+			blockingErrors: [],
+		});
+
+		await updateStage1Input(workflow, stage1Input);
+		await runWorkflowAction(() => workflow.current.handleStage1Convert());
+
+		const rowKey = getStage2RowStrictKey(workflow.current.stage2Rows[0]);
+
+		act(() => {
+			workflow.current.handleSwitchOptimizationChange(true);
+		});
+
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
+
+		act(() => {
+			workflow.current.handleTargetChange(rowKey, "Transit Node A");
+		});
+
+		expect(workflow.current.stage2Rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			sourceLandingNodeName: "landing-hk",
+			proxyName: "landing-hk",
+			mode: "chain",
+			targetName: "Transit Node A",
+		});
+		expect(workflow.current.state.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled).toBe(true);
 	});
 
 	it("does not allow switching back to the long URL when it exceeds the public budget", async () => {

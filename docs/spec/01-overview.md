@@ -8,12 +8,12 @@
 
 ## 核心设计原则
 
-- **三阶段固定流程**：阶段 1 输入，阶段 2 配置，阶段 3 输出
-- **统一转换管线**：生成、恢复与订阅渲染走完整三 pass；阶段 1「转换并自动填充」仅跑 discovery 两 pass（见 [04 §1.1.3](04-business-rules.md)）
-- **最终配置延迟交付**：阶段 1 与 `generate` 只产出初始化结果或链接；最终 `completeConfig` 只在订阅链接实际被打开或下载时即时生成
-- **输入职责清晰**：所有原始输入都在阶段 1 完成；阶段 2 只基于转换结果做选择
-- **有效模板驱动**：当前自动识别逻辑以本次请求解析得到的有效模板内容为前提；阶段 1 的 `advancedOptions.config` 显式保存本次使用的模板 URL，前端初始值来自部署默认模板 URL
-- **快照可复现**：阶段 3 长链接必须能够完整恢复阶段 1 和阶段 2 的状态；恢复后的后续操作权限以后端恢复校验结果为准
+- **三阶段固定流程**：阶段 1 输入、阶段 2 配置、阶段 3 输出
+- **统一 Pipeline（hard-break）**：`convert` 只执行至 `buildStage2Init`；`generate`、`resolve` 与 `GET /sub*` 必须执行同一条完整 Pipeline（含双托管 Pass 3）；步骤表见 [04 §1.1.1](04-business-rules.md)
+- **单一状态载荷**：长链接仅承载 `statePayload v4`，不接受旧版本载荷与外层 query 覆写
+- **最终配置延迟交付**：`convert` 与 `generate` 不返回 YAML；`completeConfig` 只在订阅链接被打开或下载时即时生成
+- **输入职责清晰**：所有原始输入在阶段 1 完成；阶段 2 只编辑 `stage2Snapshot`
+- **恢复可裁决**：`resolve` 只返回 `replayable` 或 `conflicted`；`conflicted` 仅允许只读恢复
 
 ## 数据流概览
 
@@ -22,19 +22,20 @@ flowchart LR
   subgraph Input[输入]
     L[落地节点信息]
     T[中转节点信息]
-    O[subconverter 参数]
-    F[端口转发服务信息]
+    O[高级选项]
+    F[端口转发服务]
   end
 
   subgraph Flow[流程]
-    C[阶段1 转换并自动填充]
-    S[阶段2 配置]
-    G[阶段3 输出]
+    C[阶段1 convert<br/>Pass1+2+emoji]
+    S[阶段2 snapshot 编辑]
+    G[阶段3 generate/resolve/sub<br/>双托管 Pass3]
   end
 
   subgraph Output[输出]
-    U[长链接]
+    LU[长链接]
     SU[短链接]
+    YAML[completeConfig]
   end
 
   L --> C
@@ -43,36 +44,45 @@ flowchart LR
   F --> C
   C --> S
   S --> G
-  G --> U
+  G --> LU
   G --> SU
+  G --> YAML
 ```
+
+订阅读取（`GET /sub*`）在 Pass 3 前同时托管 **ManagedLanding**（snapshot 合并）与 **ManagedTransitProxies**（Pass 2 emoji 后 `proxies[]` 片段）；不向 Pass 3 透传原始 `transitRawText`。步骤定义见 [04 §1.1.1](04-business-rules.md)。
 
 ## 三阶段职责
 
 | 阶段 | 职责 |
 |------|------|
-| 阶段 1：输入区 | 收集落地节点信息、中转节点信息、`subconverter` 参数、端口转发服务信息；执行统一转换管线；生成阶段 2 初始化数据 |
-| 阶段 2：配置区 | 基于 `stage2Init` 展示并可编辑 `stage2Snapshot`（含复制/改名）；允许调整 `mode` 与目标；通过主按钮发起「生成链接」 |
-| 阶段 3：输出区 | 展示长链接与可选短链接，并提供基于链接的打开、复制、下载操作 |
+| 阶段 1：输入区 | 收集 `stage1Input`；执行 `pass1Discover` + `pass2Discover` + `applyEmoji` 并产出 `stage2Init` |
+| 阶段 2：配置区 | 基于 `stage2Init` 编辑 `stage2Snapshot`（复制、改名、模式与目标、聚合组）；通过主按钮发起 `generate` |
+| 阶段 3：输出区 | `generate` 产出规范长链接；`resolve` 恢复并裁决可重放性；`GET /sub`/`GET /sub/<id>` 经双托管 Pass 3 即时渲染 `completeConfig` |
 
 ## 关键术语
 
 | 术语 | 定义 |
 |------|------|
-| 落地节点（Landing Node） | 最终出口节点。阶段 2 第一列的数据来源 |
-| 中转节点（Transit Node） | 作为前置代理使用的节点或策略组来源 |
-| 端口转发服务（Port Forward Relay） | `server:port` 格式的服务地址；仅用于端口转发，不进入 `subconverter` |
-| 模板 URL（Template URL） | 阶段 1 `advancedOptions.config` 的业务语义；用于指定本次转换采用的远程模板来源。字段名保留 `config` 只是为了兼容 `subconverter` 的既有 `config` 查询参数约定 |
-| 模板内容（TemplateConfig） | 后端根据模板 URL 拉取、校验并托管后的模板文本；用于驱动地域策略组识别与 `subconverter` 转换，不等同于最终 Mihomo YAML |
-| 基底完整配置（BaseCompleteConfig） | `full-base pass` 生成并经后端后处理后的内部基底配置；仅供校验与订阅渲染使用，不直接暴露给前端 |
-| 完整配置（CompleteConfig） | 订阅打开/下载时，后端经托管 landing + full-base + 出组后即时返回的最终 Mihomo YAML |
-| 区域策略组 | 从本次有效模板中识别出的、名称形如“国旗 emoji + 地区名 + 节点”的 `custom_proxy_group` 策略组 |
-| 阶段 2 初始化数据（Stage2Init） | 阶段 1 返回的、供前端直接渲染配置区的数据，包括落地节点、模式可选项、链式候选、中转候选和默认行 |
+| 落地节点（Landing Node） | 最终出口节点，来自 Pass 1 `proxies[].name` |
+| 中转节点（Transit Node） | 作为前置代理使用的节点或策略组来源，来自 Pass 2 与模板识别 |
+| 端口转发服务（Port Forward Relay） | `server:port` 字面量；仅用于 `mode = port_forward`，不进入 `subconverter` |
+| 模板 URL（Template URL） | `stage1Input.advancedOptions.config` 的业务语义；指定本次转换使用的远程模板来源 |
+| 模板内容（TemplateConfig） | 后端拉取、校验并托管后的模板文本；用于地域策略组识别与转换 |
+| 节点 emoji 处理 | `emoji = true` 时在 Pass 1/2 后、`buildStage2Init` 前执行的链路内命名改写；处理 Pass 1 与 Pass 2 的 `proxies[].name` |
+| 托管 landing（ManagedLanding） | Pass 3 前按 `stage2Snapshot` 合并的落地 `proxies[]` YAML；经内部短链传入 Pass 3 |
+| 托管 transit proxies（ManagedTransitProxies） | Pass 2 emoji 处理后的 transit `proxies[]` 片段；仅 `proxies:` 段、不含 `proxy-groups`；经内部短链传入 Pass 3 |
+| 阶段 2 初始化数据（Stage2Init） | `convert` 返回的初始化结果，包含 `availableModes`、候选列表与默认行 |
+| 阶段 2 配置快照（Stage2Snapshot） | 用户可编辑快照；`rowId` 是行主键，`sourceLandingNodeName` 是连接参数绑定键，`proxyName` 是最终 YAML 节点名 |
+| 状态载荷（StatePayload v4） | 长链接 `data` 解码后的唯一规范结构，仅包含 `stage1Input` 与 `stage2Snapshot` |
+| 恢复状态（RestoreStatus） | `resolve` 的裁决结果：`replayable` 可继续编辑/生成，`conflicted` 仅可只读查看 |
+| 原因参数（ReasonArgs） | 与 `reasonCode` 配套的结构化参数；文案由前端本地映射 |
 
 ## 全局约束
 
 - 阶段 1 是唯一原始输入入口；阶段 2 不允许自由手填节点或服务
-- `stage2Init` 每落地一行；`stage2Snapshot` 可含复制行，`rowId` 与 `proxyName` 均全表唯一
+- `stage2Init` 每落地一行；`stage2Snapshot` 可含复制行，`rowId` 与 `proxyName` 全表唯一
+- `stage2Snapshot` 的行身份、展示顺序与聚合组成员顺序彼此独立；权威定义见 [04 §2.1.2a](04-business-rules.md)
 - 端口转发输入独立于中转输入，且不参与 `subconverter`
-- 阶段 2 的自动识别、候选收集、生成前校验与改写规则统一定义在 [04-business-rules](04-business-rules.md)
-- 前端只负责渲染和交互；接口字段与消息结构以 [03-backend-api](03-backend-api.md) 为准
+- `resolve` 返回 `conflicted` 时，页面必须进入只读冲突态，不得继续 `generate`
+- 规范长链接仅接受 `data`（以及订阅读取时可选 `download=1`），不接受状态覆写 query
+- 规则定义在 [04-business-rules](04-business-rules.md)；HTTP 契约定义在 [03-backend-api](03-backend-api.md)

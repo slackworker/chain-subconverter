@@ -7,7 +7,7 @@
       "command": "bash",
       "args": [
         "${workspaceFolder}/scripts/dev-up-vscode-task.sh",
-        "a"
+        "default"
       ],
       "runOptions": {
         "instanceLimit": 1
@@ -133,13 +133,12 @@
       "type": "pickString",
       "description": "Select which experimental UI scheme to copy into default",
       "options": [
-        "a",
         "b1",
         "b2",
         "c1",
         "c2"
       ],
-      "default": "a"
+      "default": "b1"
     }
   ]
 }

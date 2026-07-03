@@ -1,10 +1,11 @@
-name: Build Docker Image & Deploy to Render
+name: Build and Push Docker Image
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   push:
-    branches:
-      - beta
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -17,14 +18,9 @@ on:
         description: Docker image tag to publish
         required: false
         default: dev-latest
-      trigger_render:
-        description: Trigger Render deploy hook after a successful manual build
-        required: false
-        type: boolean
-        default: false
 
 concurrency:
-  group: docker-publish-${{ github.ref }}
+  group: docker-publish-${{ github.event.workflow_run.head_sha || inputs.ref || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -38,6 +34,7 @@ env:
 jobs:
   prepare:
     name: Prepare Docker Metadata
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     outputs:
       checkout_ref: ${{ steps.plan.outputs.checkout_ref }}
@@ -47,7 +44,6 @@ jobs:
       source_sha: ${{ steps.source.outputs.sha }}
       tags: ${{ steps.plan.outputs.tags }}
       labels: ${{ steps.plan.outputs.labels }}
-      should_trigger_render: ${{ steps.plan.outputs.should_trigger_render }}
       should_skip_validation: ${{ steps.plan.outputs.should_skip_validation }}
       primary_tag: ${{ steps.plan.outputs.primary_tag }}
 
@@ -59,17 +55,18 @@ jobs:
           GITHUB_REF: ${{ github.ref }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
           GITHUB_SHA: ${{ github.sha }}
+          WORKFLOW_RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_REF: ${{ inputs.ref }}
           INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
-          INPUT_TRIGGER_RENDER: ${{ inputs.trigger_render }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
           checkout_ref="$GITHUB_SHA"
           if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_REF" ]]; then
             checkout_ref="$INPUT_REF"
+          elif [[ "$EVENT_NAME" == "workflow_run" ]]; then
+            checkout_ref="$WORKFLOW_RUN_HEAD_SHA"
           fi
 
-          should_trigger_render=false
           should_skip_validation=false
           primary_tag=''
           image_version=''
@@ -78,18 +75,14 @@ jobs:
           tags=()
 
           case "$EVENT_NAME" in
+            workflow_run)
+              primary_tag="${IMAGE_NAME}:latest"
+              image_version='latest'
+              image_tag='latest'
+              tags+=("$primary_tag")
+              ;;
             push)
-              if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
-                primary_tag="${IMAGE_NAME}:latest"
-                image_version='latest'
-                image_tag='latest'
-                tags+=("$primary_tag")
-              elif [[ "$GITHUB_REF" == "refs/heads/beta" ]]; then
-                primary_tag="${IMAGE_NAME}:beta-latest"
-                image_version='beta-latest'
-                image_tag='beta-latest'
-                tags+=("$primary_tag")
-              elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
                 version="${GITHUB_REF_NAME#v}"
                 primary_tag="${IMAGE_NAME}:${version}"
                 image_version="$GITHUB_REF_NAME"
@@ -98,9 +91,6 @@ jobs:
                 tags+=("$primary_tag")
                 if [[ "$version" == *-beta.* ]]; then
                   tags+=("${IMAGE_NAME}:beta-latest")
-                else
-                  tags+=("${IMAGE_NAME}:latest")
-                  should_trigger_render=true
                 fi
               else
                 echo "Unsupported push ref: $GITHUB_REF" >&2
@@ -114,9 +104,6 @@ jobs:
               tags+=("$primary_tag")
               if [[ "$INPUT_IMAGE_TAG" == "dev-latest" ]]; then
                 should_skip_validation=true
-              fi
-              if [[ "$INPUT_TRIGGER_RENDER" == "true" ]]; then
-                should_trigger_render=true
               fi
               ;;
             *)
@@ -137,7 +124,6 @@ jobs:
             echo "release_tag=$release_tag"
             echo "image_tag=$image_tag"
             echo "primary_tag=$primary_tag"
-            echo "should_trigger_render=$should_trigger_render"
             echo "should_skip_validation=$should_skip_validation"
             echo 'tags<<EOF'
             printf '%s\n' "${tags[@]}"
@@ -163,12 +149,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Skip validation for manual dev-latest publish
-        if: needs.prepare.outputs.should_skip_validation == 'true'
-        run: echo "Skipping publish validation for manual dev-latest publish."
+      - name: Skip validation for trusted publish paths
+        if: needs.prepare.outputs.should_skip_validation == 'true' || github.event_name == 'workflow_run'
+        run: |
+          echo "Validation skipped for trusted publish path"
+          echo "event=${{ github.event_name }}"
+          echo "should_skip_validation=${{ needs.prepare.outputs.should_skip_validation }}"
 
-      - name: Wait for CI workflow success on source revision
-        if: needs.prepare.outputs.should_skip_validation != 'true'
+      - name: Verify CI workflow success on source revision
+        if: needs.prepare.outputs.should_skip_validation != 'true' && github.event_name != 'workflow_run'
         uses: actions/github-script@v8
         env:
           TARGET_SHA: ${{ needs.prepare.outputs.source_sha }}
@@ -178,52 +167,55 @@ jobs:
             const repo = context.repo.repo;
             const workflowId = 'ci.yml';
             const targetSha = process.env.TARGET_SHA;
-            const timeoutMs = 30 * 60 * 1000;
-            const pollIntervalMs = 30 * 1000;
-            const deadline = Date.now() + timeoutMs;
 
-            core.info(`Waiting for CI to complete on ${targetSha}`);
+            core.info(`Verifying CI success on ${targetSha}`);
 
-            while (true) {
-              const { data } = await github.rest.actions.listWorkflowRuns({
-                owner,
-                repo,
-                workflow_id: workflowId,
-                event: 'push',
-                head_sha: targetSha,
-                per_page: 20,
-              });
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: workflowId,
+              event: 'push',
+              head_sha: targetSha,
+              per_page: 20,
+            });
 
-              const runs = data.workflow_runs || [];
-              const latestRun = runs[0];
+            const runs = data.workflow_runs || [];
+            const successRun = runs.find(
+              (run) => run.status === 'completed' && run.conclusion === 'success'
+            );
 
-              if (!latestRun) {
-                core.info('No CI workflow run found yet for this commit; polling again.');
-              } else if (latestRun.status !== 'completed') {
-                core.info(
-                  `CI run #${latestRun.run_number} is ${latestRun.status}; polling again.`
-                );
-              } else if (latestRun.conclusion === 'success') {
-                core.info(`CI run #${latestRun.run_number} succeeded.`);
-                break;
-              } else {
-                core.setFailed(
-                  `CI run #${latestRun.run_number} concluded with ${latestRun.conclusion}.`
-                );
-                return;
-              }
-
-              if (Date.now() > deadline) {
-                core.setFailed('Timed out waiting for CI success on the source revision.');
-                return;
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+            if (successRun) {
+              core.info(`CI run #${successRun.run_number} succeeded.`);
+              return;
             }
+
+            const inProgress = runs.some((run) => run.status !== 'completed');
+            if (inProgress) {
+              core.setFailed(
+                `CI is still running for ${targetSha}. Re-run this workflow after CI succeeds.`
+              );
+              return;
+            }
+
+            if (runs.length > 0) {
+              const latestCompleted = runs[0];
+              core.setFailed(
+                `No successful CI run found for ${targetSha}. Latest run #${latestCompleted.run_number} concluded with ${latestCompleted.conclusion}.`
+              );
+              return;
+            }
+
+            core.setFailed(
+              `No CI workflow run found for ${targetSha}. Ensure the commit exists on a CI-tracked branch (main/beta/dev) and CI completed successfully.`
+            );
 
   build:
     name: Build ${{ matrix.platform }} image
     needs: [prepare, validate]
+    if: |
+      !cancelled() &&
+      needs.prepare.result == 'success' &&
+      needs.validate.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -243,18 +235,18 @@ jobs:
           ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -277,7 +269,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: digest-${{ matrix.platform_pair }}
           path: /tmp/digests/*
@@ -287,25 +279,29 @@ jobs:
   merge:
     name: Merge Multi-Arch Image
     needs: [prepare, build]
+    if: |
+      !cancelled() &&
+      needs.prepare.result == 'success' &&
+      needs.build.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: /tmp/digests
           pattern: digest-*
           merge-multiple: true
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Create manifest list and push tags
         working-directory: /tmp/digests
@@ -335,7 +331,3 @@ jobs:
 
       - name: Inspect published image
         run: docker buildx imagetools inspect ${{ needs.prepare.outputs.primary_tag }}
-
-      - name: Trigger Render Deploy
-        if: success() && needs.prepare.outputs.should_trigger_render == 'true'
-        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

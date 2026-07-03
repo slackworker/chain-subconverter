@@ -101,7 +101,17 @@ type Stage2SnapshotFixture struct {
 }
 
 type Stage2Snapshot struct {
-	Rows []Stage2Row `json:"rows"`
+	Rows                                           []Stage2Row              `json:"rows"`
+	ChainProxyTargetGroupSwitchOptimizationEnabled bool                     `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
+	ServerAggregationGroups                        []ServerAggregationGroup `json:"serverAggregationGroups"`
+}
+
+type ServerAggregationGroup struct {
+	Server       string   `json:"server"`
+	GroupName    string   `json:"groupName,omitempty"`
+	Enabled      bool     `json:"enabled"`
+	Strategy     string   `json:"strategy"`
+	MemberRowIDs []string `json:"memberRowIds,omitempty"`
 }
 
 type Stage2Init struct {
@@ -112,21 +122,20 @@ type Stage2Init struct {
 }
 
 type Stage2Row struct {
-	RowID                 string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName             string                     `json:"proxyName,omitempty"`
-	LandingNodeName       string                     `json:"landingNodeName"`
+	RowID                 string                     `json:"rowId"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName"`
+	ProxyName             string                     `json:"proxyName"`
 	Mode                  string                     `json:"mode"`
 	TargetName            *string                    `json:"targetName"`
 	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
 }
 
 type Stage2InitRow struct {
-	RowID                 string                     `json:"rowId,omitempty"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName,omitempty"`
-	ProxyName             string                     `json:"proxyName,omitempty"`
-	LandingNodeName       string                     `json:"landingNodeName"`
+	RowID                 string                     `json:"rowId"`
+	SourceLandingNodeName string                     `json:"sourceLandingNodeName"`
+	ProxyName             string                     `json:"proxyName"`
 	LandingNodeType       string                     `json:"landingNodeType"`
+	Server                string                     `json:"server"`
 	Mode                  string                     `json:"mode"`
 	TargetName            *string                    `json:"targetName"`
 	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
@@ -134,8 +143,8 @@ type Stage2InitRow struct {
 }
 
 type ModeRestriction struct {
-	ReasonCode string `json:"reasonCode"`
-	ReasonText string `json:"reasonText"`
+	ReasonCode string         `json:"reasonCode"`
+	ReasonArgs map[string]any `json:"reasonArgs,omitempty"`
 }
 
 type ChainTarget struct {
@@ -152,6 +161,7 @@ type ConversionFixtures struct {
 	LandingDiscoveryYAML       string
 	TransitDiscoveryYAML       string
 	FullBaseYAML               string
+	ValidationFullBaseYAML     string
 	TemplateConfig             string
 	EffectiveTemplateURL       string
 	ManagedTemplateURL         string
@@ -170,6 +180,7 @@ type resolvedLandingProxy struct {
 	TypeLabel    string
 	ProtocolType string
 	Port         int
+	Server       string
 }
 
 type proxyGroup struct {
@@ -200,19 +211,17 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	if err != nil {
 		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture: %w", err)
 	}
+	transitDiscoveryGroups, err := parseProxyGroups(fixtures.TransitDiscoveryYAML)
+	if err != nil {
+		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
+	}
 
 	useFullBase := strings.TrimSpace(fixtures.FullBaseYAML) != ""
 
 	var (
-		fullBaseGroups         map[string]proxyGroup
-		transitDiscoveryGroups map[string]proxyGroup
 		resolvedLandingProxies []resolvedLandingProxy
 	)
 	if useFullBase {
-		fullBaseGroups, err = parseProxyGroups(fixtures.FullBaseYAML)
-		if err != nil {
-			return Stage2Init{}, fmt.Errorf("parse full-base fixture: %w", err)
-		}
 		fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
 		if err != nil {
 			return Stage2Init{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
@@ -223,10 +232,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 			return Stage2Init{}, err
 		}
 	} else {
-		transitDiscoveryGroups, err = parseProxyGroups(fixtures.TransitDiscoveryYAML)
-		if err != nil {
-			return Stage2Init{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
-		}
 		resolvedLandingProxies, err = resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies)
 		if err != nil {
 			return Stage2Init{}, err
@@ -242,18 +247,14 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	if err != nil {
 		return Stage2Init{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
+	emojiProcessor, _, err := buildChainEmojiProcessor(fixtures.TemplateConfig, stage1Input.AdvancedOptions)
+	if err != nil {
+		return Stage2Init{}, newInternalResponseError("failed to build chain emoji processor", fmt.Errorf("build chain emoji processor: %w", err))
+	}
 
-	var chainTargets []ChainTarget
-	if useFullBase {
-		chainTargets, err = buildChainTargets(regionMatchers, landingNames, transitProxies, fullBaseGroups)
-		if err != nil {
-			return Stage2Init{}, err
-		}
-	} else {
-		chainTargets, err = buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups)
-		if err != nil {
-			return Stage2Init{}, err
-		}
+	chainTargets, err := buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups, emojiProcessor)
+	if err != nil {
+		return Stage2Init{}, err
 	}
 
 	forwardRelays, err := parseForwardRelays(stage1Input)
@@ -281,12 +282,23 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	}
 	rows := make([]Stage2InitRow, 0, len(resolvedLandingProxies))
 	for _, landing := range resolvedLandingProxies {
+		proxyName := landing.Name
+		if emojiProcessor.enabled {
+			proxyName, err = emojiProcessor.Apply(landing.Name)
+			if err != nil {
+				return Stage2Init{}, newInternalResponseError(
+					"failed to apply chain emoji rules",
+					fmt.Errorf("apply chain emoji rules for %q: %w", landing.Name, err),
+				)
+			}
+		}
+
 		row := Stage2InitRow{
 			RowID:                 landing.Name,
 			SourceLandingNodeName: landing.Name,
-			ProxyName:             landing.Name,
-			LandingNodeName:       landing.Name,
+			ProxyName:             proxyName,
 			LandingNodeType:       landing.TypeLabel,
+			Server:                landing.Server,
 			Mode:                  "none",
 			TargetName:            nil,
 		}
@@ -301,11 +313,11 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 
 		finalAvailableModes := filterRestrictedModes(availableModes, restrictedModes)
 		if containsString(finalAvailableModes, "chain") {
-			targetName, ok, err := detectDefaultChainTarget(landing.Name, regionMatchers, chainTargetNames)
+			targetName, ok, err := detectDefaultChainTarget(proxyName, regionMatchers, chainTargetNames)
 			if err != nil {
 				return Stage2Init{}, newInternalResponseError(
 					"failed to detect default chain target",
-					fmt.Errorf("detect default chain target for %q: %w", landing.Name, err),
+					fmt.Errorf("detect default chain target for %q: %w", proxyName, err),
 				)
 			}
 			if ok {
@@ -327,30 +339,6 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	}, nil
 }
 
-func (row Stage2Row) rowIDOrFallback() string {
-	if id := strings.TrimSpace(row.RowID); id != "" {
-		return id
-	}
-	if proxyName := row.proxyNameOrFallback(); proxyName != "" {
-		return proxyName
-	}
-	return strings.TrimSpace(row.LandingNodeName)
-}
-
-func (row Stage2Row) sourceLandingNodeNameOrFallback() string {
-	if sourceName := strings.TrimSpace(row.SourceLandingNodeName); sourceName != "" {
-		return sourceName
-	}
-	return strings.TrimSpace(row.LandingNodeName)
-}
-
-func (row Stage2Row) proxyNameOrFallback() string {
-	if proxyName := strings.TrimSpace(row.ProxyName); proxyName != "" {
-		return proxyName
-	}
-	return strings.TrimSpace(row.LandingNodeName)
-}
-
 func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, fullBaseGroups map[string]proxyGroup) ([]ChainTarget, error) {
 	return buildChainTargetsFromGroups(
 		regionMatchers,
@@ -367,10 +355,11 @@ func buildChainTargets(regionMatchers []regionMatcher, landingNames map[string]s
 				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceManagedTemplate),
 			)
 		},
+		chainEmojiProcessor{},
 	)
 }
 
-func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, transitGroups map[string]proxyGroup) ([]ChainTarget, error) {
+func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landingNames map[string]struct{}, transitProxies []inlineProxy, transitGroups map[string]proxyGroup, emojiProcessor chainEmojiProcessor) ([]ChainTarget, error) {
 	return buildChainTargetsFromGroups(
 		regionMatchers,
 		landingNames,
@@ -386,6 +375,7 @@ func buildChainTargetsFromTransitDiscovery(regionMatchers []regionMatcher, landi
 				subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
 			)
 		},
+		emojiProcessor,
 	)
 }
 
@@ -395,6 +385,7 @@ func buildChainTargetsFromGroups(
 	transitProxies []inlineProxy,
 	groups map[string]proxyGroup,
 	missingGroupError func(string) error,
+	emojiProcessor chainEmojiProcessor,
 ) ([]ChainTarget, error) {
 	seen := make(map[string]struct{})
 	chainTargets := make([]ChainTarget, 0, len(regionMatchers)+len(transitProxies))
@@ -443,15 +434,22 @@ func buildChainTargetsFromGroups(
 	}
 
 	for _, proxy := range transitProxies {
-		if _, exists := seen[proxy.Name]; exists {
-			cause := fmt.Errorf("chain target name conflict: %q", proxy.Name)
+		displayName, err := transitProxyDisplayName(proxy.Name, emojiProcessor)
+		if err != nil {
+			return nil, newInternalResponseError(
+				"failed to apply chain emoji rules",
+				fmt.Errorf("apply chain emoji rules for transit proxy %q: %w", proxy.Name, err),
+			)
+		}
+		if _, exists := seen[displayName]; exists {
+			cause := fmt.Errorf("chain target name conflict: %q", displayName)
 			return nil, newGlobalValidationError("CHAIN_TARGET_NAME_CONFLICT", "chain target name conflict", cause)
 		}
 		chainTargets = append(chainTargets, ChainTarget{
-			Name: proxy.Name,
+			Name: displayName,
 			Kind: "proxies",
 		})
-		seen[proxy.Name] = struct{}{}
+		seen[displayName] = struct{}{}
 	}
 
 	return chainTargets, nil
@@ -519,31 +517,40 @@ func buildModeWarnings(landingProtocolType string, landingPort int, availableMod
 	if !containsString(availableModes, "chain") {
 		return nil
 	}
-	reasonCode, reasonText := buildChainModeWarning(landingProtocolType, landingPort)
+	reasonCode, reasonArgs := buildChainModeWarning(landingProtocolType, landingPort)
 	if reasonCode == "" {
 		return nil
 	}
 	return map[string]ModeRestriction{
 		"chain": {
 			ReasonCode: reasonCode,
-			ReasonText: reasonText,
+			ReasonArgs: reasonArgs,
 		},
 	}
 }
 
-func buildChainModeWarning(landingProtocolType string, landingPort int) (string, string) {
+func buildChainModeWarning(landingProtocolType string, landingPort int) (string, map[string]any) {
 	protocolWarning := isDiscouragedChainLandingProtocol(landingProtocolType)
 	portWarning := landingPort > recommendedChainLandingPortMax
 
 	switch {
 	case protocolWarning && portWarning:
-		return "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT", protocolChainWarningText() + "；" + chainHighPortWarningText(landingPort)
+		return "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT", map[string]any{
+			"landingProtocolType": landingProtocolType,
+			"landingPort":         landingPort,
+			"recommendedPortMax":  recommendedChainLandingPortMax,
+		}
 	case protocolWarning:
-		return "DISCOURAGED_BY_LANDING_PROTOCOL", protocolChainWarningText()
+		return "DISCOURAGED_BY_LANDING_PROTOCOL", map[string]any{
+			"landingProtocolType": landingProtocolType,
+		}
 	case portWarning:
-		return "DISCOURAGED_BY_LANDING_PORT", chainHighPortWarningText(landingPort)
+		return "DISCOURAGED_BY_LANDING_PORT", map[string]any{
+			"landingPort":        landingPort,
+			"recommendedPortMax": recommendedChainLandingPortMax,
+		}
 	default:
-		return "", ""
+		return "", nil
 	}
 
 }
@@ -576,7 +583,7 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 
 	resolved := make([]resolvedLandingProxy, 0, len(landingProxies))
 	for _, proxy := range landingProxies {
-		resolvedName, typeLabel, port, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts, fullBaseProxyByName)
+		resolvedName, typeLabel, port, server, err := resolveLandingDiscoveryName(proxy, fullBaseNameCounts, fullBaseProxyByName)
 		if err != nil {
 			return nil, err
 		}
@@ -585,6 +592,7 @@ func resolveLandingDiscoveryProxies(landingProxies []inlineProxy, fullBaseProxie
 			TypeLabel:    typeLabel,
 			ProtocolType: proxy.Type,
 			Port:         port,
+			Server:       server,
 		})
 	}
 
@@ -604,48 +612,87 @@ func resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies []inlineProxy)
 			)
 		}
 		seenNames[proxy.Name] = struct{}{}
+		port, server, err := extractInlineProxyEndpointStrict(proxy)
+		if err != nil {
+			return nil, err
+		}
 		resolved = append(resolved, resolvedLandingProxy{
 			Name:         proxy.Name,
 			TypeLabel:    formatLandingNodeTypeLabel(proxy.Type),
 			ProtocolType: proxy.Type,
-			Port:         extractInlineProxyPort(proxy),
+			Port:         port,
+			Server:       server,
 		})
 	}
 	return resolved, nil
 }
 
-func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int, fullBaseProxyByName map[string]inlineProxy) (string, string, int, error) {
+func resolveLandingDiscoveryName(proxy inlineProxy, fullBaseNameCounts map[string]int, fullBaseProxyByName map[string]inlineProxy) (string, string, int, string, error) {
 	resolvedName := proxy.Name
 	count := fullBaseNameCounts[resolvedName]
 	if count == 1 {
-		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), extractInlineProxyPort(fullBaseProxyByName[resolvedName]), nil
+		fullBaseProxy := fullBaseProxyByName[resolvedName]
+		port, server, err := extractInlineProxyEndpointStrict(fullBaseProxy)
+		if err != nil {
+			return "", "", 0, "", err
+		}
+		return resolvedName, formatLandingNodeTypeLabel(proxy.Type), port, server, nil
 	}
 	if count > 1 {
 		cause := fmt.Errorf("landing discovery proxy %q matches %d full-base proxies", resolvedName, count)
-		return "", "", 0, subconverter.NewUnavailableError(
+		return "", "", 0, "", subconverter.NewUnavailableError(
 			"validate landing-discovery names",
 			cause,
 			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
 		)
 	}
 	cause := fmt.Errorf("landing discovery proxy %q is missing from full-base result", resolvedName)
-	return "", "", 0, subconverter.NewUnavailableError(
+	return "", "", 0, "", subconverter.NewUnavailableError(
 		"validate landing-discovery names",
 		cause,
 		subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
 	)
 }
 
-func extractInlineProxyPort(proxy inlineProxy) int {
+func extractInlineProxyEndpointStrict(proxy inlineProxy) (int, string, error) {
 	portText, err := extractInlineField(proxy.Raw, "port")
 	if err != nil {
-		return 0
+		cause := fmt.Errorf("landing discovery proxy %q missing port field: %w", proxy.Name, err)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
 	port, err := strconv.Atoi(portText)
 	if err != nil || port < 1 || port > 65535 {
-		return 0
+		cause := fmt.Errorf("landing discovery proxy %q has invalid port %q", proxy.Name, portText)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
 	}
-	return port
+	serverText, err := extractInlineField(proxy.Raw, "server")
+	if err != nil {
+		cause := fmt.Errorf("landing discovery proxy %q missing server field: %w", proxy.Name, err)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
+	}
+	server := strings.TrimSpace(serverText)
+	if server == "" {
+		cause := fmt.Errorf("landing discovery proxy %q has empty server field", proxy.Name)
+		return 0, "", subconverter.NewUnavailableError(
+			"validate landing-discovery endpoint fields",
+			cause,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceLanding),
+		)
+	}
+
+	return port, server, nil
 }
 
 func formatLandingNodeTypeLabel(protocolType string) string {

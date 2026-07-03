@@ -2,22 +2,19 @@ import type { ComponentType } from "react";
 
 import type { AppPageProps, UIScheme, UISchemeDefinition } from "../lib/composition";
 import { defaultUIScheme } from "./default";
-import { aUIScheme } from "./a";
 import { b1UIScheme } from "./b1";
 import { b2UIScheme } from "./b2";
 import { c1UIScheme } from "./c1";
 import { c2UIScheme } from "./c2";
 
 const fallbackUIScheme = defaultUIScheme;
-const orderedSchemes = [defaultUIScheme, aUIScheme, b1UIScheme, b2UIScheme, c1UIScheme, c2UIScheme];
+const orderedSchemes = [defaultUIScheme, b1UIScheme, b2UIScheme, c1UIScheme, c2UIScheme];
 const schemes: Record<string, UISchemeDefinition> = Object.fromEntries(orderedSchemes.map((scheme) => [scheme.id, scheme]));
 
 async function loadUISchemePage(id: string): Promise<ComponentType<AppPageProps>> {
 	switch (id) {
 		case "default":
 			return (await import("./default/Page")).SchemePage;
-		case "a":
-			return (await import("./a/Page")).SchemePage;
 		case "b1":
 			return (await import("./b1/Page")).SchemePage;
 		case "b2":

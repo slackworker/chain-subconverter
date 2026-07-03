@@ -52,6 +52,10 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	var expected service.Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -72,15 +76,20 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response JSON: %v", err)
 	}
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
+	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
 }
 
 func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
 	requestBody := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"))
 	expectedResponse := readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.response.json"))
+	var expected service.Stage1ConvertResponse
+	if err := json.Unmarshal([]byte(expectedResponse), &expected); err != nil {
+		t.Fatalf("decode expected response JSON: %v", err)
+	}
 
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -101,15 +110,74 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("decode response JSON: %v", err)
 	}
-	if got := mustMarshalIndented(t, response); strings.TrimSpace(got) != strings.TrimSpace(expectedResponse) {
-		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, expectedResponse)
+	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
+		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
-	if len(response.Stage2Init.Rows) != 7 {
-		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 7", len(response.Stage2Init.Rows))
+	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
+	if len(response.Stage2Init.Rows) != 5 {
+		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 5", len(response.Stage2Init.Rows))
 	}
 	if len(response.Stage2Init.ForwardRelays) != 2 {
 		t.Fatalf("len(response.Stage2Init.ForwardRelays) = %d, want 2", len(response.Stage2Init.ForwardRelays))
 	}
+}
+
+func TestStage2ResetHandler_AllScopeHappyPath(t *testing.T) {
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	var stage1Request service.Stage1ConvertRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"), &stage1Request)
+	var generateRequest service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &generateRequest)
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	})
+
+	requestBody := mustMarshalIndented(t, service.Stage2ResetRequest{
+		Stage1Input:    stage1Request.Stage1Input,
+		Stage2Snapshot: generateRequest.Stage2Snapshot,
+		Reset: service.Stage2ResetAction{
+			Scope: "all",
+		},
+	})
+	request := httptest.NewRequest(http.MethodPost, "/api/stage2/reset", strings.NewReader(requestBody))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	var response service.Stage2ResetResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if len(response.Stage2Snapshot.Rows) != len(response.Stage2Init.Rows) {
+		t.Fatalf("len(stage2Snapshot.rows) = %d, want %d", len(response.Stage2Snapshot.Rows), len(response.Stage2Init.Rows))
+	}
+	if len(response.Stage2Snapshot.ServerAggregationGroups) != 0 {
+		t.Fatalf("len(stage2Snapshot.serverAggregationGroups) = %d, want 0", len(response.Stage2Snapshot.ServerAggregationGroups))
+	}
+	if len(response.Messages) == 0 || response.Messages[len(response.Messages)-1].Code != "STAGE2_RESET" {
+		t.Fatalf("reset messages mismatch: got %v", response.Messages)
+	}
+}
+
+func TestStage2ResetHandler_InvalidScope(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{})
+
+	request := httptest.NewRequest(
+		http.MethodPost,
+		"/api/stage2/reset",
+		strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":null,"config":"https://templates.example.com/default.ini","include":null,"exclude":null}},"stage2Snapshot":{"rows":[],"serverAggregationGroups":[]},"reset":{"scope":"unsupported"}}`),
+	)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
+		Code:    "INVALID_REQUEST",
+		Message: "unsupported reset scope",
+		Scope:   "global",
+	})
 }
 
 func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
@@ -427,8 +495,8 @@ func TestResolveURLHandler_DualLandingChainPortForwardShortURL(t *testing.T) {
 	if response.LongURL != expectedShortLinkResponse.LongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, expectedShortLinkResponse.LongURL)
 	}
-	if len(response.Stage2Snapshot.Rows) != 7 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 7", len(response.Stage2Snapshot.Rows))
+	if len(response.Stage2Snapshot.Rows) != 8 {
+		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 8", len(response.Stage2Snapshot.Rows))
 	}
 }
 
@@ -848,49 +916,42 @@ func TestSubscriptionHandler_DownloadDisposition(t *testing.T) {
 	}
 }
 
-func TestSubscriptionHandler_CompatibleOuterQueryOverridesDecodedPayload(t *testing.T) {
+func TestSubscriptionHandler_RejectsUnsupportedOuterQueryEmojiOverride(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var generateResponse service.GenerateResponse
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
-	source := &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}
-	handler := mustNewTestHandler(t, source)
+	handler := mustNewTestHandler(t, &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)})
 
 	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL+"&emoji=false", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
-	}
-	if source.gotRequest.Options.Emoji == nil || *source.gotRequest.Options.Emoji {
-		t.Fatalf("expected emoji override to propagate as false, got %+v", source.gotRequest.Options.Emoji)
-	}
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: `validate long URL query: unsupported query parameter "emoji"`,
+		Scope:   "global",
+	})
 }
 
-func TestSubscriptionHandler_PassesThroughExtraQueryToSubconverter(t *testing.T) {
+func TestSubscriptionHandler_RejectsUnsupportedExtraQuery(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 
 	var generateResponse service.GenerateResponse
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
-	source := &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)}
-	handler := mustNewTestHandler(t, source)
+	handler := mustNewTestHandler(t, &fakeConversionSource{result: loadThreePassResult(t, fixtureDir)})
 
 	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL+"&tfo=true", nil)
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
-	}
-	if got := source.gotRequest.ExtraQuery.Get("tfo"); got != "true" {
-		t.Fatalf("expected passthrough query tfo=true, got %q", got)
-	}
-	if source.gotRequest.ExtraQuery.Get("download") != "" {
-		t.Fatalf("download query must not passthrough, got %+v", source.gotRequest.ExtraQuery)
-	}
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_LONG_URL",
+		Message: `validate long URL query: unsupported query parameter "tfo"`,
+		Scope:   "global",
+	})
 }
 
 func TestSubscriptionHandler_MapsConnectionFailureToBusinessMessage(t *testing.T) {
@@ -900,9 +961,11 @@ func TestSubscriptionHandler_MapsConnectionFailureToBusinessMessage(t *testing.T
 			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "none",
-					TargetName:      nil,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					Mode:                  "none",
+					TargetName:            nil,
 				}},
 			},
 		),
@@ -1301,13 +1364,40 @@ func TestStage1ConvertHandler_MapsForwardRelayErrorToSpecModel(t *testing.T) {
 	})
 }
 
+func TestStage1ConvertHandler_RejectsLandingWithoutServerField(t *testing.T) {
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: singleLandingResult("HK Landing", "ss", true),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/stage1/convert", strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}}}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusServiceUnavailable, recorder.Body.String())
+	}
+	var response struct {
+		Messages       []service.Message       `json:"messages"`
+		BlockingErrors []service.BlockingError `json:"blockingErrors"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode error response JSON: %v", err)
+	}
+	if len(response.BlockingErrors) != 1 {
+		t.Fatalf("expected 1 blocking error, got %v", response.BlockingErrors)
+	}
+	if response.BlockingErrors[0].Code != "SUBCONVERTER_UNAVAILABLE" || response.BlockingErrors[0].Scope != "global" {
+		t.Fatalf("blocking error mismatch: got %+v", response.BlockingErrors[0])
+	}
+}
+
 func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	handler := mustNewTestHandler(t, &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"ss://transit","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"missing-row","sourceLandingNodeName":"missing-row","proxyName":"missing-row","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -1379,7 +1469,7 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 		result: singleLandingResult("Unknown Landing", "ss", false),
 	})
 
-	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"landingNodeName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/generate", strings.NewReader(`{"stage1Input":{"landingRawText":"ss://landing","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":false,"config":"https://templates.example.com/default.ini","include":[],"exclude":[]}},"stage2Snapshot":{"rows":[{"rowId":"Unknown Landing","sourceLandingNodeName":"Unknown Landing","proxyName":"Unknown Landing","mode":"chain","targetName":"🇭🇰 香港节点"}]}}`))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
@@ -1391,13 +1481,12 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 			"rowId":                 "Unknown Landing",
 			"sourceLandingNodeName": "Unknown Landing",
 			"proxyName":             "Unknown Landing",
-			"landingNodeName":       "Unknown Landing",
 			"field":                 "targetName",
 		},
 	})
 }
 
-func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
+func TestSubscriptionHandler_RejectsLandingWithoutServerField(t *testing.T) {
 	targetName := "relay.example.com:80"
 	longURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
@@ -1410,9 +1499,11 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 			},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK Landing",
-					Mode:            "port_forward",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK Landing",
+					ProxyName:             "HK Landing",
+					Mode:                  "port_forward",
+					TargetName:            &targetName,
 				}},
 			},
 		),
@@ -1430,10 +1521,15 @@ func TestSubscriptionHandler_MapsRenderFailureToRenderFailed(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	assertBlockingError(t, recorder, http.StatusInternalServerError, service.BlockingError{
-		Code:    "RENDER_FAILED",
-		Message: internalErrorUserMessage,
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:    "SUBCONVERTER_UNAVAILABLE",
+		Message: "转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查阶段 1 输入和模板设置后重试。",
 		Scope:   "global",
+		Context: map[string]any{"diagnostic": map[string]any{
+			"problemClass":    unavailableProblemConversionResultInvalid,
+			"userInputSource": unavailableInputSourceLanding,
+		}},
+		Retryable: boolPtr(true),
 	})
 }
 
@@ -1487,9 +1583,11 @@ func TestSubscriptionHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *test
 			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "none",
-					TargetName:      &targetName,
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					Mode:                  "none",
+					TargetName:            &targetName,
 				}},
 			},
 		),
@@ -1519,8 +1617,10 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr("https://templates.example.com/default.ini")}},
 			service.Stage2Snapshot{
 				Rows: []service.Stage2Row{{
-					LandingNodeName: "HK 01",
-					Mode:            "unsupported",
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					Mode:                  "unsupported",
 				}},
 			},
 		),
@@ -1545,7 +1645,7 @@ func TestShortLinksHandler_RejectsSchemaInvalidLongURLAsInvalidLongURL(t *testin
 }
 
 func TestManagedTemplateHandler_ServesConfiguredPrefixedRoute(t *testing.T) {
-	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\n"
+	templateConfig := "custom_proxy_group=DE Special`fallback`(DE|德国)`https://cp.cloudflare.com/generate_204`300,,50\nadd_emoji=false\nremove_old_emoji=false\n"
 	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		_, _ = writer.Write([]byte(templateConfig))
 	}))
@@ -1797,6 +1897,24 @@ func normalizeStage2SnapshotForContract(snapshot service.Stage2Snapshot) service
 	return normalized
 }
 
+func normalizeStage1ConvertResponseForContract(response service.Stage1ConvertResponse) service.Stage1ConvertResponse {
+	normalized := response
+	normalized.Stage2Init.Rows = append([]service.Stage2InitRow(nil), response.Stage2Init.Rows...)
+	for index := range normalized.Stage2Init.Rows {
+		normalized.Stage2Init.Rows[index].Server = ""
+	}
+	return normalized
+}
+
+func assertStage2InitRowsHaveServer(t *testing.T, rows []service.Stage2InitRow) {
+	t.Helper()
+	for _, row := range rows {
+		if strings.TrimSpace(row.Server) == "" {
+			t.Fatalf("stage2Init row %q has empty server", row.ProxyName)
+		}
+	}
+}
+
 func assertBlockingError(t *testing.T, recorder *httptest.ResponseRecorder, wantStatus int, want service.BlockingError) {
 	t.Helper()
 
@@ -1869,8 +1987,37 @@ func singleLandingResult(landingName string, landingType string, omitServer bool
 
 	return subconverter.ThreePassResult{
 		LandingDiscovery: subconverter.PassResult{YAML: "proxies:\n- {name: " + landingName + ", type: " + landingType + "}\n"},
-		TransitDiscovery: subconverter.PassResult{YAML: "proxies:\n"},
-		FullBase:         subconverter.PassResult{YAML: fullBaseYAML},
+		TransitDiscovery: subconverter.PassResult{YAML: strings.Join([]string{
+			"proxies:",
+			"- {name: " + landingName + ", type: " + landingType + "}",
+			"proxy-groups:",
+			"  - name: 🇭🇰 香港节点",
+			"    type: select",
+			"    proxies:",
+			"      - " + landingName,
+			"  - name: 🇺🇸 美国节点",
+			"    type: select",
+			"    proxies:",
+			"      - " + landingName,
+			"  - name: 🇯🇵 日本节点",
+			"    type: select",
+			"    proxies:",
+			"      - " + landingName,
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: select",
+			"    proxies:",
+			"      - " + landingName,
+			"  - name: 🇼🇸 台湾节点",
+			"    type: select",
+			"    proxies:",
+			"      - " + landingName,
+			"  - name: 🇰🇷 韩国节点",
+			"    type: select",
+			"    proxies:",
+			"      - " + landingName,
+			"",
+		}, "\n")},
+		FullBase: subconverter.PassResult{YAML: fullBaseYAML},
 	}
 }
 

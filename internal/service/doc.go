@@ -5,5 +5,5 @@
 //   - 通过 ConversionSource 消费 subconverter 三 pass 结果并解析为 ConversionFixtures；
 //   - 定义模板内容暂存接口与阶段 1 转换准备契约；不处理 HTTP 路由或响应头。
 //
-// 验收基线：docs/testing/3pass-ss2022-test-subscription.md 与 internal/review/testdata/3pass-ss2022-test-subscription/。
+// 验收基线：docs/testing/fixtures.md（Smoke 场景）与 internal/review/testdata/3pass-ss2022-test-subscription/。
 package service

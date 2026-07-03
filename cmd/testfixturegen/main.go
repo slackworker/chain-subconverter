@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -152,14 +153,30 @@ func writeStage1Outputs(ctx context.Context, scenario testfixtures.Stage1Scenari
 		if _, ok := trackedStage1OutputArtifacts[file.RelativePath]; !ok {
 			continue
 		}
+		content := file.Content
+		switch file.RelativePath {
+		case "stage1/output/full-base.url.txt":
+			content = ensureTrailingNewline(result.FullBase.RequestURL)
+		case "stage1/output/full-base.yaml":
+			content = ensureTrailingNewline(result.FullBase.YAML)
+		}
 		outputPath := filepath.Join(scenarioDir, filepath.FromSlash(file.RelativePath))
 		if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 			return fmt.Errorf("create %s: %w", filepath.Dir(outputPath), err)
 		}
-		if err := os.WriteFile(outputPath, []byte(file.Content), 0o644); err != nil {
+		if err := os.WriteFile(outputPath, []byte(content), 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", outputPath, err)
 		}
 		fmt.Println(outputPath)
+	}
+	stage2InitRows, foundStage2InitRows, err := stage2InitRowsFromBundle(bundle.Files)
+	if err != nil {
+		return fmt.Errorf("parse stage1 convert response for %s: %w", scenario.ScenarioID, err)
+	}
+	if foundStage2InitRows {
+		if err := rewriteStage2SnapshotSourceLandingNames(scenarioDir, stage2InitRows); err != nil {
+			return fmt.Errorf("rewrite stage2 snapshot source landing names for %s: %w", scenario.ScenarioID, err)
+		}
 	}
 
 	return nil
@@ -331,6 +348,76 @@ func stage1LiveTransitRawText(scenario testfixtures.Stage1Scenario) (string, err
 	return strings.Join(sections, "\n"), nil
 }
 
+func stage2InitRowsFromBundle(files []review.FileArtifact) ([]service.Stage2InitRow, bool, error) {
+	for _, file := range files {
+		if file.RelativePath != "stage1/output/stage1-convert.response.json" {
+			continue
+		}
+		var response service.Stage1ConvertResponse
+		if err := json.Unmarshal([]byte(file.Content), &response); err != nil {
+			return nil, false, err
+		}
+		return append([]service.Stage2InitRow(nil), response.Stage2Init.Rows...), true, nil
+	}
+	return nil, false, nil
+}
+
+func rewriteStage2SnapshotSourceLandingNames(scenarioDir string, stage2InitRows []service.Stage2InitRow) error {
+	snapshotPath := filepath.Join(scenarioDir, "stage2", "input", review.Stage2SnapshotFileName)
+	snapshotData, err := os.ReadFile(snapshotPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	var fixture service.Stage2SnapshotFixture
+	if err := json.Unmarshal(snapshotData, &fixture); err != nil {
+		return err
+	}
+
+	sourceByProxyName := make(map[string]string, len(stage2InitRows))
+	for _, row := range stage2InitRows {
+		proxyName := strings.TrimSpace(row.ProxyName)
+		sourceName := strings.TrimSpace(row.SourceLandingNodeName)
+		if proxyName == "" || sourceName == "" {
+			continue
+		}
+		sourceByProxyName[proxyName] = sourceName
+	}
+	if len(sourceByProxyName) == 0 {
+		return nil
+	}
+
+	changed := false
+	for index, row := range fixture.Stage2Snapshot.Rows {
+		sourceName := strings.TrimSpace(row.SourceLandingNodeName)
+		if sourceName == "" {
+			continue
+		}
+		normalizedSourceName, ok := sourceByProxyName[sourceName]
+		if !ok || normalizedSourceName == sourceName {
+			continue
+		}
+		fixture.Stage2Snapshot.Rows[index].SourceLandingNodeName = normalizedSourceName
+		changed = true
+	}
+	if !changed {
+		return nil
+	}
+
+	rendered, err := json.MarshalIndent(fixture, "", "  ")
+	if err != nil {
+		return err
+	}
+	rendered = append(rendered, '\n')
+	if err := os.WriteFile(snapshotPath, rendered, 0o644); err != nil {
+		return err
+	}
+	fmt.Println(snapshotPath)
+	return nil
+}
+
 func stage1LiveFixtureHosts(rawHost string) []string {
 	trimmedHost := strings.TrimSpace(rawHost)
 	if trimmedHost != "" && !strings.EqualFold(trimmedHost, "auto") {
@@ -426,6 +513,14 @@ func newReviewFixtureSourceFromResult(scenario testfixtures.Stage1Scenario, resu
 
 func (source *reviewFixtureSource) Convert(_ context.Context, _ subconverter.Request) (subconverter.ThreePassResult, error) {
 	return source.result, nil
+}
+
+func (source *reviewFixtureSource) ConvertWithPlan(_ context.Context, _ subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	result := source.result
+	if !plan.IncludeFullBase {
+		result.FullBase = subconverter.PassResult{}
+	}
+	return result, nil
 }
 
 func (source *reviewFixtureSource) PrepareConversion(_ context.Context, stage1Input service.Stage1Input) (service.PreparedConversion, error) {

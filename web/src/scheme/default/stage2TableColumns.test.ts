@@ -10,8 +10,7 @@ import {
 	resolveStage2ColumnWidthsPx,
 	STAGE2_CELL_PADDING_X_PX,
 	STAGE2_MODE_EXTRA_PX,
-	STAGE2_SELECT_EXTRA_PX,
-	STAGE2_TARGET_EXTRA_PX,
+	STAGE2_TARGET_TRIGGER_EXTRA_PX,
 	columnWidthsToFitCssVars,
 	resolveStage2ColumnCssVars,
 	stage2NeedsHorizontalScroll,
@@ -27,7 +26,7 @@ describe("measureStage2ColumnMins", () => {
 			headers: ["落地节点", "类型", "配置方式", "目标"],
 			rows: [
 				{
-					landingNodeName: "very-long-landing-node-name",
+					proxyName: "very-long-landing-node-name",
 					landingNodeType: "SS",
 					modeOptionLabels: ["链式代理", "端口转发（不推荐）"],
 					targetLabel: "relay-a.example.com:7443",
@@ -52,8 +51,57 @@ describe("measureStage2ColumnMins", () => {
 			220 + STAGE2_CELL_PADDING_X_PX + STAGE2_LANDING_EDITABLE_EXTRA_PX + STAGE2_LANDING_RENDERING_SAFETY_PX,
 		);
 		expect(mins[1]).toBe(40 + STAGE2_CELL_PADDING_X_PX);
-		expect(mins[2]).toBe(160 + STAGE2_CELL_PADDING_X_PX + STAGE2_MODE_EXTRA_PX + STAGE2_SELECT_EXTRA_PX);
-		expect(mins[3]).toBe(180 + STAGE2_CELL_PADDING_X_PX + STAGE2_TARGET_EXTRA_PX);
+		expect(mins[2]).toBe(160 + STAGE2_CELL_PADDING_X_PX + STAGE2_MODE_EXTRA_PX + STAGE2_TARGET_TRIGGER_EXTRA_PX);
+		expect(mins[3]).toBe(180 + STAGE2_CELL_PADDING_X_PX + STAGE2_TARGET_TRIGGER_EXTRA_PX);
+	});
+
+	it("includes target menu option labels when computing target column minimum", () => {
+		const withoutOptions = measureStage2ColumnMins({
+			headers: ["落地节点", "类型", "配置方式", "目标"],
+			rows: [
+				{
+					proxyName: "landing-node",
+					landingNodeType: "SS",
+					modeOptionLabels: ["链式代理"],
+					targetLabel: "HK",
+				},
+			],
+			measureText: fixedMeasurer({
+				落地节点: 60,
+				类型: 40,
+				配置方式: 50,
+				目标: 45,
+				"node-a": 80,
+				SS: 30,
+				链式代理: 70,
+				HK: 40,
+			}),
+		});
+		const withOptions = measureStage2ColumnMins({
+			headers: ["落地节点", "类型", "配置方式", "目标"],
+			rows: [
+				{
+					proxyName: "landing-node",
+					landingNodeType: "SS",
+					modeOptionLabels: ["链式代理"],
+					targetLabel: "HK",
+					targetOptionLabels: ["🇭🇰 香港节点 relay group with a very long label"],
+				},
+			],
+			measureText: fixedMeasurer({
+				落地节点: 60,
+				类型: 40,
+				配置方式: 50,
+				目标: 45,
+				"node-a": 80,
+				SS: 30,
+				链式代理: 70,
+				HK: 40,
+				"🇭🇰 香港节点 relay group with a very long label": 320,
+			}),
+		});
+
+		expect(withOptions[3]).toBeGreaterThan(withoutOptions[3]);
 	});
 });
 
@@ -87,7 +135,7 @@ describe("resolveStage2ColumnWidthsPx", () => {
 			headers: ["落地节点", "类型", "配置方式", "目标"] as const,
 			rows: [
 				{
-					landingNodeName: "long-name",
+					proxyName: "landing-node",
 					landingNodeType: "SS",
 					modeOptionLabels: ["链式代理"],
 					targetLabel: "relay-a.example.com:7443",
@@ -142,7 +190,7 @@ describe("resolveStage2ColumnCssVars", () => {
 		headers: ["落地节点", "类型", "配置方式", "目标"] as const,
 		rows: [
 			{
-				landingNodeName: "node-a",
+				proxyName: "landing-node",
 				landingNodeType: "SS",
 				modeOptionLabels: ["链式代理"],
 				targetLabel: "group-a",

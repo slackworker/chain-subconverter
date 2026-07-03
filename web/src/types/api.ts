@@ -44,24 +44,39 @@ export interface Stage1Input {
 	advancedOptions: AdvancedOptions;
 }
 
-export interface RestrictedMode {
+export interface ModeReason {
+	reasonCode?: string;
+	reasonArgs?: Record<string, unknown>;
+	/** Transitional fallback when backend still emits legacy reasonText. */
+	reasonText?: string;
+}
+
+export interface RestoreConflict {
 	reasonCode: string;
-	reasonText: string;
+	reasonArgs?: Record<string, unknown>;
 }
 
 export interface Stage2Row {
-	rowId?: string;
-	sourceLandingNodeName?: string;
-	proxyName?: string;
-	landingNodeName: string;
+	rowId: string;
+	sourceLandingNodeName: string;
+	proxyName: string;
 	mode: "none" | "chain" | "port_forward";
 	targetName: string | null;
 }
 
+export interface ServerAggregationGroup {
+	server: string;
+	groupName?: string;
+	enabled: boolean;
+	strategy: "fallback" | "url-test" | "select" | "load-balance";
+	memberRowIds: string[];
+}
+
 export interface Stage2InitRow extends Stage2Row {
 	landingNodeType: string;
-	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
-	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", RestrictedMode>>;
+	server: string;
+	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", ModeReason>>;
+	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", ModeReason>>;
 }
 
 export interface ChainTarget {
@@ -83,6 +98,8 @@ export interface Stage2Init {
 
 export interface Stage2Snapshot {
 	rows: Stage2Row[];
+	chainProxyTargetGroupSwitchOptimizationEnabled?: boolean;
+	serverAggregationGroups: ServerAggregationGroup[];
 }
 
 export interface Stage1ConvertRequest {
@@ -98,6 +115,22 @@ export interface Stage1ConvertResponse {
 export interface GenerateRequest {
 	stage1Input: Stage1InputPayload;
 	stage2Snapshot: Stage2Snapshot;
+}
+
+export interface Stage2ResetRequest {
+	stage1Input: Stage1InputPayload;
+	stage2Snapshot: Stage2Snapshot;
+	reset: {
+		scope: "all" | "row";
+		rowId?: string;
+	};
+}
+
+export interface Stage2ResetResponse {
+	stage2Init: Stage2Init;
+	stage2Snapshot: Stage2Snapshot;
+	messages: Message[];
+	blockingErrors: BlockingError[];
 }
 
 export interface GenerateResponse {
@@ -117,6 +150,7 @@ export interface ResolveURLResponse {
 	longUrl: string;
 	shortUrl?: string;
 	restoreStatus: "replayable" | "conflicted";
+	restoreConflicts?: RestoreConflict[];
 	stage1Input: Stage1InputPayload;
 	stage2Snapshot: Stage2Snapshot;
 	messages: Message[];

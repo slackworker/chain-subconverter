@@ -49,6 +49,7 @@
 - 后端代码按清晰边界组织为：HTTP 层、业务服务层、存储层、外部集成层
 - `subconverter` 调用必须封装在独立集成模块内；业务层不得散落拼接其请求细节
 - `internal/subconverter` 必须作为唯一的 `subconverter` 访问入口，负责承接 [04-business-rules](04-business-rules.md) 定义的转换契约，并集中管理请求构造、超时/并发/缓存等集成配置
+- 节点 emoji 处理职责固定在 chain 业务层；`subconverter` 集成层不透传 `emoji`，具体业务规则见 [04 §0.2.3](04-business-rules.md)
 - 模板 URL 的上游抓取允许增加运行时可选 TTL 缓存以降低公开部署的重复请求压力；部署默认模板 URL 必须可通过环境变量覆盖，并作为前端模板 URL 输入框的初始值公开；当请求中的显式模板 URL 等于部署默认模板 URL 时，可默认启用独立 TTL 与已验证缓存兜底，其他模板默认保持关闭，公开 preview 或其他共享部署可通过环境变量显式扩大范围
 - 完整前端落地后，前端构建产物必须由后端统一提供；部署时对用户表现为一个主服务入口
 
@@ -136,11 +137,11 @@ chain-subconverter/
 |----|------|------|
 | 后端 | `go test ./...` | 含 `3pass-ss2022`、`dual-landing-chain-port-forward` fixture |
 | 前端逻辑 | Vitest（`web`） | `stage1` / `stage2` / `state` / `notices`、`useAppWorkflow` 等纯逻辑 |
-| 浏览器 | Playwright（`web`） | mocked smoke（`test:e2e:mock`）；本地/容器化，或 CI job `web-mock-e2e`（blocking） |
-| CI | GitHub Actions（`ci.yml`） | Go test；review / worker fixture freshness；Web 单测；`web-mock-e2e`；`default`/`a` build（blocking）；`b1`/`b2`/`c1`/`c2` build（非 blocking）；compose config |
-| 镜像发布校验 | `docker-publish.yml` validate | 等待同 SHA 的 `ci.yml` 成功（含 Vitest、mock E2E、fixture job 等 blocking job）；仅 `workflow_dispatch` 的 `dev-latest` 手动发布跳过 validate |
+| 浏览器 | Playwright（`web`） | mocked 四象限入口（`test:e2e:mock:smoke` / `test:e2e:mock:full`）；本地/容器化，或 CI job `web-e2e-mock-smoke` + `web-e2e-mock-full`（blocking） |
+| CI | GitHub Actions（`ci.yml`） | Go test；review / worker fixture freshness；Web 单测；`web-e2e-mock-smoke` + `web-e2e-mock-full`；`build:default`（blocking）；`build:b1`/`b2`/`c1`/`c2`（非 blocking）；compose config |
+| 镜像发布校验 | `docker-publish.yml` validate | `main` 合并由 `workflow_run`（CI 成功）触发发布，不经 validate；tag / 手动发布一次性校验同 SHA 的 `ci.yml` 已成功；仅 `workflow_dispatch` 的 `dev-latest` 跳过 validate |
 
-分层边界、fixture 维护流水线与 CI 缺口详见 [testing/test-system-review.md](../testing/test-system-review.md)（Vitest / mocked E2E 不读 canonical；`deployed-smoke` 默认读 Smoke canonical）。
+分层边界、fixture 维护流水线与 CI 缺口详见 [testing/README.md](../testing/README.md)（Vitest / mocked E2E 不读 canonical；`real-smoke` 默认读基础 canonical）。
 
 
 

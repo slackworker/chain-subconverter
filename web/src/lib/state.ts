@@ -1,4 +1,4 @@
-import type { BlockingError, Message, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
+import type { BlockingError, Message, RestoreConflict, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
 
 export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
 export type WorkflowLogLevel = Message["level"] | "success" | "error";
@@ -29,6 +29,7 @@ export interface AppState {
 	stage3Expired: boolean;
 	stage2Stale: boolean;
 	restoreStatus: "idle" | "replayable" | "conflicted";
+	restoreConflicts: RestoreConflict[];
 	responseOriginStage: ResponseOriginStage | null;
 	messages: Message[];
 	workflowLog: WorkflowLogEntry[];
@@ -50,15 +51,25 @@ export const initialStage1Input: Stage1Input = {
 	},
 };
 
+export function normalizeRawTextareaInput(value: string): string {
+	return value
+		.replace(/\r\n?/g, "\n")
+		.replace(/\n+$/g, "");
+}
+
 export function toStage1InputPayload(stage1Input: Stage1Input): Stage1InputPayload {
 	const { enablePortForward: _enablePortForward, ...advancedOptions } = stage1Input.advancedOptions;
 
 	return {
-		landingRawText: stage1Input.landingRawText,
-		transitRawText: stage1Input.transitRawText,
+		landingRawText: normalizeRawTextareaInput(stage1Input.landingRawText),
+		transitRawText: normalizeRawTextareaInput(stage1Input.transitRawText),
 		forwardRelayItems: stage1Input.forwardRelayItems,
 		advancedOptions,
 	};
+}
+
+export function isInitialStage1Input(stage1Input: Stage1Input): boolean {
+	return JSON.stringify(toStage1InputPayload(stage1Input)) === JSON.stringify(toStage1InputPayload(initialStage1Input));
 }
 
 function deriveEnablePortForward(stage1Input: Stage1InputPayload): boolean {
@@ -82,11 +93,14 @@ export const initialAppState: AppState = {
 	stage2Init: null,
 	stage2Snapshot: {
 		rows: [],
+		chainProxyTargetGroupSwitchOptimizationEnabled: false,
+		serverAggregationGroups: [],
 	},
 	generatedUrls: null,
 	stage3Expired: false,
 	stage2Stale: false,
 	restoreStatus: "idle",
+	restoreConflicts: [],
 	responseOriginStage: null,
 	messages: [],
 	workflowLog: [],

@@ -1,5 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
 import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
@@ -16,44 +15,18 @@ import {
 	type ManualSocks5FormState,
 	removeForwardRelayItem,
 } from "../../lib/stage1";
-import {
-	getStage2DisplayModeOptions,
-	getStage2RowEditableName,
-	getStage2RowDisplayName,
-	getStage2RowStrictKey,
-	getStage2RowSourceLandingName,
-	getStage2TargetDisplayLabel,
-	isStage2SourceRow,
-} from "../../lib/stage2";
 import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import { Tooltip } from "../../lib/Tooltip";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, MinusIcon, PencilIcon, PlusIcon } from "./Icons";
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ChevronDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, ResetIcon } from "./Icons";
 import { LineNumberTextarea } from "./LineNumberTextarea";
 import { TagField, type TagFieldHandle, type TagFieldReject } from "./TagField";
-import { useStage2TableColumns } from "./useStage2TableColumns";
+import { Stage2Section } from "./Stage2Section";
 import "./index.css";
 
 const LOCALE_STORAGE_KEY = "chain-subconverter-ui.locale";
 const THEME_STORAGE_KEY = "chain-subconverter-ui.theme";
-
-/** 链式目标自定义菜单：Portal + fixed，避免落在 .a-table-wrap（overflow-x: auto → y 为 auto）内撑出纵向滚动条 */
-function computeChainTargetMenuPanelLayout(trigger: HTMLButtonElement) {
-	const rect = trigger.getBoundingClientRect();
-	const gap = 5;
-	const top = rect.bottom + gap;
-	const edge = 12;
-	const maxHeight = Math.min(
-		window.innerHeight * 0.65,
-		Math.max(120, window.innerHeight - top - edge),
-		32 * 16,
-	);
-	const maxPanelWidth = window.innerWidth - edge * 2;
-	const width = Math.min(Math.max(rect.width, 8), maxPanelWidth);
-	const left = Math.min(Math.max(edge, rect.left), window.innerWidth - width - edge);
-	return { top, left, width, maxHeight };
-}
 
 type Locale = "zh" | "en";
 type ColorMode = "light" | "dark";
@@ -84,7 +57,7 @@ const COPY = {
 		logLevelSuccess: "成功",
 		logLevelError: "失败",
 		stage1Title: "输入",
-		stage1Desc: "填写落地与中转，转换生成配置基底",
+		stage1Desc: "填写落地与中转信息，转换生成配置基底",
 		landingInfo: "落地信息",
 		transitInfo: "中转信息",
 		addSocks5: "+ 添加 SOCKS5",
@@ -100,24 +73,53 @@ const COPY = {
 		templateUrlHintAria: "订阅转换模板说明",
 		templatePlaceholder: "请输入带地域分组的模板 URL",
 		templateResetDefault: "恢复默认",
-		includeTags: "include 标签",
-		excludeTags: "exclude 标签",
-		tagPlaceholder: "输入后按 Enter 添加",
-		skipCertVerify: "跳过证书校验（scv）",
+		includeTags: "包含节点",
+		excludeTags: "排除节点",
+		tagPlaceholder: "输入匹配规则",
+		emoji: "Emoji",
+		udp: "UDP",
+		skipCertVerify: "跳过证书校验",
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
 		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
 		stage2Title: "配置",
-		stage2Desc: "按落地节点逐行选择模式与目标",
+		stage2Desc: "按落地节点逐行配置中转",
 		conflictReadonly: "当前恢复快照引用的目标已失效，恢复结果仅供查看。请回到阶段 1 重新执行「转换并自动填充」后再继续。",
 		colLanding: "落地节点",
-		colType: "节点类型",
+		colType: "协议",
+		colTypeAgg: "类型/协议",
+		colServer: "服务器",
+		colNodeTree: "服务器-组/节点",
+		colAggregation: "聚合/入组",
 		colMode: "配置方式",
 		colTarget: "目标",
+		stage2AggregationMode: "线路聚合模式",
+		stage2AggregationModeHint:
+			"实验性功能。为同一服务器落地节点配置多条中转线路（建议目标为固定节点或端口转发，而非策略组），各自完成后聚合成策略组，在中转节点不稳定时提高整体可用性。可与「策略组节点切换优化」同时开启。",
+		stage2AggregationModeHintAria: "线路聚合模式说明",
+		aggregationEnable: "聚合",
+		aggregationInclude: "入组",
+		typePolicyGroup: "策略组",
+		aggregationStrategyLabel: "聚合方式",
+		strategy_fallback: "自动回退",
+		strategy_url_test: "自动选择",
+		strategy_select: "手动选择",
+		strategy_load_balance: "负载均衡",
+		aggregationOff: "关闭",
+		memberOrderManage: "顺序管理",
+		memberOrderFallbackHint: "fallback 按以下顺序尝试",
+		memberOrderUrlTestHint: "url-test 不使用手动顺序",
+		memberOrderEmpty: "暂无入组成员",
+		memberOrderPrimaryBadge: "首选",
+		memberOrderSourceBadge: "源节点",
+		memberOrderDerivedBadge: "副本",
+		memberOrderDragHandle: "拖拽排序",
+		memberOrderDragHandleAria: "拖拽 {name} 调整顺序",
 		stage2Empty: "完成阶段 1 转换后，将在此列出各行配置。",
 		rowRestrictions: "本行存在模式限制，详见下拉禁用项提示。",
 		proxyNameLabel: "节点名",
 		proxyNameEditableHint: "可编辑",
+		serverGroupNameEditableHint: "可编辑；修改组名会改变短链接 ID",
 		rowSourceLabel: "来源：{name}",
 		cloneRow: "复制",
 		deleteRow: "删除",
@@ -127,12 +129,18 @@ const COPY = {
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
 		selectTarget: "请选择",
+		switchOptimizationLabel: "目标策略组节点切换优化（实验性）",
+		switchOptimizationHint:
+			"开启后，为链式代理所选的地域策略组启用更短的健康检查间隔与更快的节点切换；节点异常时尽快切换到可用节点。关闭时沿用订阅模板中的默认设置。",
+		switchOptimizationHintAria: "目标策略组节点切换优化说明",
+		stage1Reset: "重置",
+		stage2Reset: "重置",
 		generating: "生成中…",
 		generateLink: "生成链接",
 		stage3Title: "输出",
 		stage3Desc: "链接输出与反向解析",
 		currentLink: "当前链接",
-		currentLinkPlaceholder: "生成或粘贴 longUrl / shortUrl / short ID",
+		currentLinkPlaceholder: "生成或输入 longUrl / shortUrl / short ID",
 		shortLink: "短链接",
 		openPreview: "打开预览",
 		copy: "复制链接",
@@ -162,7 +170,7 @@ const COPY = {
 		stage1Label: "阶段 1",
 		stage2Label: "阶段 2",
 		stage3Label: "阶段 3",
-		mode_none: "不配置",
+		mode_none: "无/直连",
 		mode_chain: "链式代理",
 		mode_port_forward: "端口转发",
 		statusAwaitingInput: "等待输入",
@@ -222,8 +230,10 @@ const COPY = {
 		templateResetDefault: "Reset default",
 		includeTags: "Include tags",
 		excludeTags: "Exclude tags",
-		tagPlaceholder: "Type and press Enter to add",
-		skipCertVerify: "Skip certificate verification (scv)",
+		tagPlaceholder: "Match pattern",
+		emoji: "Emoji",
+		udp: "UDP",
+		skipCertVerify: "Skip certificate verification",
 		converting: "Converting...",
 		convertAndFill: "Convert and autofill",
 		stageChangedNotice: "Inputs changed. Convert again before generating a link.",
@@ -231,13 +241,40 @@ const COPY = {
 		stage2Desc: "Choose the mode and target for each landing node.",
 		conflictReadonly: "The restored snapshot references targets that no longer exist. The restored result is read-only. Go back to Stage 1 and run Convert and autofill again before continuing.",
 		colLanding: "Landing node",
-		colType: "Node type",
+		colType: "Protocol",
+		colTypeAgg: "Type / protocol",
+		colServer: "Server",
+		colNodeTree: "Server group / node",
+		colAggregation: "Aggregate / include",
 		colMode: "Mode",
 		colTarget: "Target",
+		stage2AggregationMode: "Path aggregation",
+		stage2AggregationModeHint:
+			"Experimental. Configure multiple transit targets per server (prefer fixed nodes or port forwarding over policy groups). Each path completes its chain proxy independently, then results are aggregated into a policy group for better resilience when transit nodes are unstable. Can be used together with switching optimization.",
+		stage2AggregationModeHintAria: "Path aggregation help",
+		aggregationEnable: "Aggregate",
+		aggregationInclude: "Include",
+		typePolicyGroup: "Policy group",
+		aggregationStrategyLabel: "Aggregation strategy",
+		strategy_fallback: "Fallback",
+		strategy_url_test: "URL-Test",
+		strategy_select: "Select",
+		strategy_load_balance: "Load-Balance",
+		aggregationOff: "Off",
+		memberOrderManage: "Manage order",
+		memberOrderFallbackHint: "fallback tries members in this order",
+		memberOrderUrlTestHint: "url-test does not use manual ordering",
+		memberOrderEmpty: "No included members yet",
+		memberOrderPrimaryBadge: "Primary",
+		memberOrderSourceBadge: "Source",
+		memberOrderDerivedBadge: "Derived",
+		memberOrderDragHandle: "Drag to reorder",
+		memberOrderDragHandleAria: "Drag {name} to reorder",
 		stage2Empty: "Run Stage 1 conversion to populate each configuration row here.",
 		rowRestrictions: "This row has mode restrictions. Check the disabled options for details.",
 		proxyNameLabel: "Proxy name",
 		proxyNameEditableHint: "Editable",
+		serverGroupNameEditableHint: "Editable; changing the group name changes the short link ID",
 		rowSourceLabel: "Source: {name}",
 		cloneRow: "Clone",
 		deleteRow: "Delete",
@@ -247,6 +284,12 @@ const COPY = {
 		fixedNodes: "Fixed nodes",
 		noCommonChoices: "No common choices available",
 		selectTarget: "Select a target",
+		switchOptimizationLabel: "Target policy-group node switching optimization",
+		switchOptimizationHint:
+			"When enabled, applies shorter health-check intervals and faster node switching to regional policy groups selected for chain proxies. When disabled, the subscription template defaults apply.",
+		switchOptimizationHintAria: "Target policy-group node switching optimization help",
+		stage1Reset: "Reset",
+		stage2Reset: "Reset",
 		generating: "Generating...",
 		generateLink: "Generate link",
 		stage3Title: "Output",
@@ -591,8 +634,6 @@ function WorkflowLogPanel({ entries, locale, footerCredit }: { entries: Workflow
 export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPlacement, runtimeConfig }: AppPageProps) {
 	const {
 		state,
-		stage2Rows,
-		modeOptions,
 		responseOriginStage,
 		workflowLog,
 		shouldShowStage2StaleNotice,
@@ -610,19 +651,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		updateStage1Input,
 		getStage1FieldErrors,
 		getStage3FieldErrors,
-		getStage2RowMeta,
-		getStage2RowErrors,
 		getPrimaryBlockingErrorsForStage,
-		getChainTargetChoiceGroups,
-		getForwardRelayChoices,
 		handleStage1Convert,
+		handleStage1Reset,
+		isStage1AtInitial,
 		handleRestore,
-		handleProxyNameChange,
-		handleCloneStage2Row,
-		handleDeleteStage2Row,
-		canDeleteStage2Row,
-		handleModeChange,
-		handleTargetChange,
 		handleGenerate,
 		handlePreferShortUrl,
 	} = workflow;
@@ -639,57 +672,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>(null);
 	const [portForwardError, setPortForwardError] = useState<string | null>(null);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
-	const [openTargetMenuRow, setOpenTargetMenuRow] = useState<string | null>(null);
+	const [stage2AdvancedOpen, setStage2AdvancedOpen] = useState(false);
+	const [stage2AggregationMode, setStage2AggregationMode] = useState(false);
 	const [headerScrolled, setHeaderScrolled] = useState(false);
-	const [primaryOpenByRow, setPrimaryOpenByRow] = useState<Record<string, boolean>>({});
-	const [supplementOpenByRow, setSupplementOpenByRow] = useState<Record<string, boolean>>({});
 	const portForwardTagFieldRef = useRef<TagFieldHandle>(null);
-	const chainTargetMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
-	const chainTargetMenuPanelRef = useRef<HTMLDivElement | null>(null);
-	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
 	const stage2TableWrapRef = useRef<HTMLDivElement | null>(null);
-
-	const stage2ColumnMeasureInput = useMemo(() => {
-		if (stage2Rows.length === 0) {
-			return null;
-		}
-
-		return {
-			headers: [copy.colLanding, copy.colType, copy.colMode, copy.colTarget] as const,
-			rows: stage2Rows.map((row) => {
-				const rowKey = getStage2RowStrictKey(row);
-				const meta = getStage2RowMeta(rowKey);
-				const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
-				const modeOptionLabels = displayModeOptions.map((mode) => {
-					const restriction = meta?.restrictedModes?.[mode];
-					const label = getModeLabel(mode, locale);
-					return restriction ? `${label}（${restriction.reasonText}）` : label;
-				});
-				const targetLabel =
-					getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
-					(row.mode === "none" ? "--" : copy.selectTarget);
-
-				return {
-					landingNodeName: getStage2RowDisplayName(row),
-					landingNodeType: meta?.landingNodeType ?? "--",
-					modeOptionLabels,
-					targetLabel,
-				};
-			}),
-		};
-	}, [
-		stage2Rows,
-		state.stage2Init,
-		locale,
-		copy.colLanding,
-		copy.colType,
-		copy.colMode,
-		copy.colTarget,
-		copy.selectTarget,
-		getStage2RowMeta,
-	]);
-
-	const stage2ColumnStyle = useStage2TableColumns(stage2TableWrapRef, stage2ColumnMeasureInput);
 
 	const preferShort = state.preferShortUrl;
 	const hasShort = Boolean(state.generatedUrls?.shortUrl);
@@ -834,84 +821,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 		}
 	}
 
-	function setSupplementOpen(landingNodeName: string, open: boolean) {
-		setSupplementOpenByRow((current) => ({
-			...current,
-			[landingNodeName]: open,
-		}));
-	}
-
-	function setPrimaryOpen(landingNodeName: string, open: boolean) {
-		setPrimaryOpenByRow((current) => ({
-			...current,
-			[landingNodeName]: open,
-		}));
-	}
-
-	useEffect(() => {
-		if (openTargetMenuRow === null) {
-			chainTargetMenuTriggerRef.current = null;
-		}
-	}, [openTargetMenuRow]);
-
-	useLayoutEffect(() => {
-		if (!openTargetMenuRow) {
-			return;
-		}
-		/** 滚动/缩放时直接写 DOM，避免 setState 重渲染带来的跟随延迟 */
-		const syncPanelToTrigger = () => {
-			const trigger = chainTargetMenuTriggerRef.current;
-			const panel = chainTargetMenuPanelRef.current;
-			if (!trigger || !panel) {
-				return;
-			}
-			const { top, left, width, maxHeight } = computeChainTargetMenuPanelLayout(trigger);
-			panel.style.top = `${top}px`;
-			panel.style.left = `${left}px`;
-			panel.style.width = `${width}px`;
-			panel.style.maxHeight = `${maxHeight}px`;
-		};
-		syncPanelToTrigger();
-		const wrap = stage2TableWrapRef.current;
-		const windowScrollOpts: AddEventListenerOptions = { capture: true, passive: true };
-		const passiveScrollOpts: AddEventListenerOptions = { passive: true };
-		window.addEventListener("resize", syncPanelToTrigger);
-		window.addEventListener("scroll", syncPanelToTrigger, windowScrollOpts);
-		wrap?.addEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
-		const vv = window.visualViewport;
-		vv?.addEventListener("resize", syncPanelToTrigger);
-		vv?.addEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
-		return () => {
-			window.removeEventListener("resize", syncPanelToTrigger);
-			window.removeEventListener("scroll", syncPanelToTrigger, windowScrollOpts);
-			wrap?.removeEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
-			vv?.removeEventListener("resize", syncPanelToTrigger);
-			vv?.removeEventListener("scroll", syncPanelToTrigger, passiveScrollOpts);
-		};
-	}, [openTargetMenuRow]);
-
-	useEffect(() => {
-		function handlePointerDown(event: PointerEvent) {
-			const target = event.target;
-			if (!(target instanceof Node)) {
-				setOpenTargetMenuRow(null);
-				return;
-			}
-			const element = target instanceof Element ? target : target.parentElement;
-			if (element?.closest(".a-target-menu")) {
-				return;
-			}
-			setOpenTargetMenuRow(null);
-		}
-
-		document.addEventListener("pointerdown", handlePointerDown, true);
-		return () => {
-			document.removeEventListener("pointerdown", handlePointerDown, true);
-		};
-	}, []);
-
 	const themeToggleLabel = colorMode === "dark" ? copy.themeToLight : copy.themeToDark;
-	const chainTargetMenuPortalEl = chainTargetMenuPortalRef.current;
 
 	return (
 		<div className={`a-shell${colorMode === "dark" ? " a-shell--dark" : ""}`}>
@@ -1075,15 +985,16 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 
 					<div className="a-stage1-actions-wrap">
 						<button type="button" className="a-advanced__toggle" onClick={() => setAdvancedOpen((open) => !open)} aria-expanded={advancedOpen}>
-							<span className={`a-adv-arrow${advancedOpen ? " a-adv-arrow--open" : ""}`} aria-hidden="true">
-								▶
-							</span>
+							<ChevronDownIcon
+								className={`a-adv-chevron${advancedOpen ? " a-adv-chevron--open" : ""}`}
+								aria-hidden="true"
+							/>
 							{copy.advancedOptions}
 						</button>
 						{advancedOpen ? (
 							<div className="a-advanced">
 								<div className="a-advanced__body">
-								<label className="a-field a-field--inline">
+								<div className="a-advanced__section">
 									<span className="a-field-label">
 										{copy.templateUrl}{" "}
 										<Tooltip content={copy.templateUrlHint}>
@@ -1128,15 +1039,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												}))
 											}
 										>
-											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
-												<path
-													d="M4 7v5h5M5.5 12a6.5 6.5 0 1 0 2-4.7L4 10.8"
-													stroke="currentColor"
-													strokeWidth="1.8"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												/>
-											</svg>
+											<ResetIcon className="a-icon" aria-hidden />
 										</button>
 									</div>
 									{configFieldErrors.length > 0 ? (
@@ -1144,7 +1047,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											{copy.localErrorAriaHint}
 										</p>
 									) : null}
-								</label>
+								</div>
 
 								<div className="a-advanced__row-tags">
 									<TagField
@@ -1175,55 +1078,56 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 									/>
 								</div>
 
-								<div className="a-check-row">
-									<label className="a-check">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.emoji === true}
-											onChange={(event) =>
-												updateStage1Input((current) => ({
-													...current,
-													advancedOptions: {
-														...current.advancedOptions,
-														emoji: event.target.checked ? true : null,
-													},
-												}))
-											}
-										/>
-										emoji
-									</label>
-									<label className="a-check">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.udp === true}
-											onChange={(event) =>
-												updateStage1Input((current) => ({
-													...current,
-													advancedOptions: {
-														...current.advancedOptions,
-														udp: event.target.checked ? true : null,
-													},
-												}))
-											}
-										/>
-										udp
-									</label>
-									<label className="a-check">
-										<input
-											type="checkbox"
-											checked={state.stage1Input.advancedOptions.skipCertVerify === true}
-											onChange={(event) =>
-												updateStage1Input((current) => ({
-													...current,
-													advancedOptions: {
-														...current.advancedOptions,
-														skipCertVerify: event.target.checked ? true : null,
-													},
-												}))
-											}
-										/>
-										{copy.skipCertVerify}
-									</label>
+								<div className="a-check-row a-check-row--tail-reset">
+									<AdvancedCheckbox
+										label={copy.emoji}
+										checked={state.stage1Input.advancedOptions.emoji === true}
+										onChange={(checked) =>
+											updateStage1Input((current) => ({
+												...current,
+												advancedOptions: {
+													...current.advancedOptions,
+													emoji: checked ? true : null,
+												},
+											}))
+										}
+									/>
+									<AdvancedCheckbox
+										label={copy.udp}
+										checked={state.stage1Input.advancedOptions.udp === true}
+										onChange={(checked) =>
+											updateStage1Input((current) => ({
+												...current,
+												advancedOptions: {
+													...current.advancedOptions,
+													udp: checked ? true : null,
+												},
+											}))
+										}
+									/>
+									<AdvancedCheckbox
+										label={copy.skipCertVerify}
+										checked={state.stage1Input.advancedOptions.skipCertVerify === true}
+										onChange={(checked) =>
+											updateStage1Input((current) => ({
+												...current,
+												advancedOptions: {
+													...current.advancedOptions,
+													skipCertVerify: checked ? true : null,
+												},
+											}))
+										}
+									/>
+									<button
+										type="button"
+										className="a-stage-action-reset"
+										disabled={isConverting || isStage1AtInitial}
+										title={copy.stage1Reset}
+										onClick={handleStage1Reset}
+									>
+										<ResetIcon className="a-icon" aria-hidden />
+										<span>{copy.stage1Reset}</span>
+									</button>
 								</div>
 								</div>
 							</div>
@@ -1257,384 +1161,25 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					</div>
 				</section>
 
-				<section className="a-stage" aria-labelledby="a-stage2-h">
-					<div className="a-stage__head">
-						<div>
-							<StageHeadline id="a-stage2-h" step={2} stageLabel={copy.stage2Label} title={copy.stage2Title} />
-							<p className="a-stage__desc">{copy.stage2Desc}</p>
-						</div>
-						<StatusPill label={localizedStage2Status} tone={stage2Status.tone} />
-					</div>
-
-					{isConflictReadonly ? (
-						<p className="a-conflict-banner">
-							{copy.conflictReadonly}
-						</p>
-					) : null}
-					<div
-						className="a-table-wrap a-table-wrap--stage2-adaptive"
-						ref={stage2TableWrapRef}
-						style={stage2ColumnStyle}
-					>
-						<table className="a-table a-table--stage2-adaptive">
-							<colgroup>
-								<col />
-								<col />
-								<col />
-								<col />
-							</colgroup>
-							<thead>
-								<tr>
-									<th scope="col">{copy.colLanding}</th>
-									<th scope="col">{copy.colType}</th>
-									<th scope="col">{copy.colMode}</th>
-									<th scope="col">{copy.colTarget}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{stage2Rows.length === 0 ? (
-									<tr>
-										<td colSpan={4} className="a-table__empty">
-											{copy.stage2Empty}
-										</td>
-									</tr>
-								) : (
-									stage2Rows.map((row, rowIndex) => {
-										const rowKey = getStage2RowStrictKey(row);
-										const displayName = getStage2RowDisplayName(row);
-										const sourceLandingName = getStage2RowSourceLandingName(row);
-										const previousSourceLandingName = rowIndex > 0 ? getStage2RowSourceLandingName(stage2Rows[rowIndex - 1]) : null;
-										const nextSourceLandingName = rowIndex + 1 < stage2Rows.length ? getStage2RowSourceLandingName(stage2Rows[rowIndex + 1]) : null;
-										const groupedBySource = previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
-										const groupStart = previousSourceLandingName !== sourceLandingName;
-										const groupEnd = nextSourceLandingName !== sourceLandingName;
-										const sourceRow = isStage2SourceRow(row);
-										const meta = getStage2RowMeta(rowKey);
-										const rowErrors = getStage2RowErrors(rowKey);
-										const chainTargetGroups = getChainTargetChoiceGroups();
-										const primaryGroup = chainTargetGroups.find((group) => group.kind === "proxy-groups") ?? null;
-										const supplementGroup = chainTargetGroups.find((group) => group.kind === "proxies") ?? null;
-										const forwardRelayChoices = getForwardRelayChoices(rowKey);
-										const canDeleteRow = !sourceRow && canDeleteStage2Row(rowKey);
-										const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneDerivedRow;
-										const editable = isStage2Editable;
-										const displayModeOptions = getStage2DisplayModeOptions(state.stage2Init, row.mode);
-										const displayForwardRelayChoices = !editable
-											&& state.stage2Init === null
-											&& row.mode === "port_forward"
-											&& row.targetName !== null
-											&& !forwardRelayChoices.some((choice) => choice.value === row.targetName)
-												? [{ value: row.targetName, label: row.targetName, disabled: false }, ...forwardRelayChoices]
-												: forwardRelayChoices;
-										const selectedInSupplement = Boolean(
-											supplementGroup?.choices.some((choice) => choice.value === row.targetName),
-										);
-										const primaryOpen = primaryOpenByRow[rowKey] !== false;
-										const supplementOpen = supplementOpenByRow[rowKey] ?? selectedInSupplement;
-										const selectedTargetLabel =
-											getStage2TargetDisplayLabel(state.stage2Init, stage2Rows, row) ??
-											(row.mode === "none" ? "--" : copy.selectTarget);
-										const activeModeWarning = meta?.modeWarnings?.[row.mode];
-										const modeWarnId = `a-s2-mode-warn-${rowIndex}`;
-										const rowErrorId = `a-s2-row-error-${rowIndex}`;
-										const rowNameInputId = `a-s2-row-name-${rowIndex}`;
-										const rowInlineClassName = [
-											"a-stage2-row-inline",
-											groupedBySource ? "is-grouped" : "is-solo",
-											sourceRow ? "is-source" : "is-derived",
-											groupStart ? "is-group-start" : "",
-											groupEnd ? "is-group-end" : "",
-										].filter(Boolean).join(" ");
-
-										return (
-											<tr key={rowKey} className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
-												<td>
-													<div className={rowInlineClassName} title={groupedBySource && !sourceRow ? sourceLandingName : undefined}>
-														<div className="a-stage2-row-name-field">
-															<input
-																id={rowNameInputId}
-																	className={`a-input a-stage2-row-name-input ${rowErrors.length > 0 ? "a-input--error" : ""}`}
-																	value={getStage2RowEditableName(row)}
-																disabled={!editable}
-																aria-label={copy.proxyNameLabel}
-																onChange={(event) => handleProxyNameChange(rowKey, event.target.value)}
-															/>
-															<label
-																className="a-stage2-row-edit-hint"
-																htmlFor={rowNameInputId}
-																title={copy.proxyNameEditableHint}
-																aria-label={copy.proxyNameEditableHint}
-															>
-																<PencilIcon className="a-icon" aria-hidden />
-															</label>
-														</div>
-														<div className="a-stage2-row-icon-actions a-stage2-row-icon-actions--toolbar">
-																{sourceRow ? (
-																	<button
-																		type="button"
-																		className="a-btn a-btn--secondary a-btn--icon"
-																		disabled={!editable}
-																		aria-label={copy.cloneRow}
-																		title={copy.cloneRow}
-																		onClick={() => handleCloneStage2Row(rowKey)}
-																	>
-																		<PlusIcon className="a-icon" aria-hidden />
-																	</button>
-																) : (
-																	<button
-																		type="button"
-																		className="a-btn a-btn--secondary a-btn--icon"
-																		disabled={!editable || !canDeleteRow}
-																		aria-label={deleteRowTitle ?? copy.deleteRow}
-																		title={deleteRowTitle ?? copy.deleteRow}
-																		onClick={() => handleDeleteStage2Row(rowKey)}
-																	>
-																		<MinusIcon className="a-icon" aria-hidden />
-																	</button>
-																)}
-														</div>
-													</div>
-												</td>
-												<td>
-													<div className="a-cell-type">{meta?.landingNodeType ?? "--"}</div>
-												</td>
-												<td>
-													<div className="a-mode-cell">
-														<select
-															className="a-select"
-															value={row.mode}
-															disabled={!editable}
-															aria-invalid={rowErrors.length > 0 ? true : undefined}
-															aria-describedby={[
-																activeModeWarning ? modeWarnId : null,
-																rowErrors.length > 0 ? rowErrorId : null,
-															]
-																.filter(Boolean)
-																.join(" ") || undefined}
-															onChange={(event) =>
-																handleModeChange(
-																	rowKey,
-																	event.target.value as typeof row.mode,
-																)
-															}
-														>
-																	{displayModeOptions.map((mode) => {
-																const restriction = meta?.restrictedModes?.[mode];
-																const modeWarn = meta?.modeWarnings?.[mode];
-																	const label = getModeLabel(mode, locale);
-																return (
-																	<option
-																		key={mode}
-																		value={mode}
-																		disabled={Boolean(restriction)}
-																		title={modeWarn && !restriction ? modeWarn.reasonText : undefined}
-																	>
-																		{restriction ? `${label}（${restriction.reasonText}）` : label}
-																	</option>
-																);
-															})}
-														</select>
-														<span className="a-mode-warning-slot">
-															{activeModeWarning ? (
-																<>
-																	<span id={modeWarnId} className="a-sr-only">
-																		{activeModeWarning.reasonText}
-																	</span>
-																	<Tooltip content={activeModeWarning.reasonText} placement="top">
-																		<span className="a-mode-warning-hint" aria-hidden="true">
-																			<svg
-																				xmlns="http://www.w3.org/2000/svg"
-																				viewBox="0 0 24 24"
-																				width="18"
-																				height="18"
-																				fill="none"
-																				aria-hidden="true"
-																			>
-																				<circle
-																					cx="12"
-																					cy="12"
-																					r="10"
-																					stroke="var(--color-line)"
-																					strokeWidth="2"
-																				/>
-																				<path
-																					d="M12 8v4M12 16h.01"
-																					stroke="currentColor"
-																					strokeWidth="2"
-																					strokeLinecap="round"
-																				/>
-																			</svg>
-																		</span>
-																	</Tooltip>
-																</>
-															) : null}
-														</span>
-													</div>
-												</td>
-												<td>
-													{row.mode === "chain" ? (
-														<div className="a-target-picker">
-															<div className="a-target-menu">
-																<button
-																	type="button"
-																	className={`a-select a-target-menu__trigger ${editable ? "" : "a-target-menu__summary--disabled"}`}
-																	disabled={!editable}
-																	aria-expanded={openTargetMenuRow === rowKey}
-																	onClick={(event) => {
-																		const trigger = event.currentTarget;
-																		if (openTargetMenuRow === rowKey) {
-																			chainTargetMenuTriggerRef.current = null;
-																			setOpenTargetMenuRow(null);
-																			return;
-																		}
-																		chainTargetMenuTriggerRef.current = trigger;
-																		setOpenTargetMenuRow(rowKey);
-																	}}
-																>
-																	{selectedTargetLabel}
-																</button>
-																{openTargetMenuRow === rowKey && chainTargetMenuPortalEl
-																	? createPortal(
-																			<div className="a-target-menu a-target-menu--portal">
-																				<div
-																					ref={chainTargetMenuPanelRef}
-																					className="a-target-menu__panel a-target-menu__panel--anchored"
-																				>
-																					<div className="a-target-menu__section">
-																						<button
-																							type="button"
-																							className="a-target-menu__group-toggle"
-																							disabled={!editable}
-																							aria-expanded={primaryOpen}
-																							onClick={() => setPrimaryOpen(rowKey, !primaryOpen)}
-																						>
-																							<span className="a-target-menu__group-label">{copy.commonGroups}</span>
-																							<span className={`a-target-menu__group-icon ${primaryOpen ? "is-open" : ""}`} aria-hidden="true">
-																								▾
-																							</span>
-																						</button>
-																						{primaryOpen ? (
-																							primaryGroup?.choices.length ? (
-																								<ul className="a-target-menu__list">
-																									{primaryGroup.choices.map((choice) => (
-																										<li key={choice.value}>
-																											<button
-																												type="button"
-																												className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
-																												disabled={!editable || choice.disabled}
-																												onClick={() => {
-																												handleTargetChange(rowKey, choice.value);
-																													setOpenTargetMenuRow(null);
-																												}}
-																											>
-																												{choice.label}
-																											</button>
-																										</li>
-																									))}
-																								</ul>
-																							) : (
-																								<p className="a-picker-help">{primaryGroup?.emptyText ?? copy.noCommonChoices}</p>
-																							)
-																						) : null}
-																					</div>
-																					{supplementGroup ? (
-																						<div className="a-target-menu__section">
-																							<button
-																								type="button"
-																								className="a-target-menu__group-toggle"
-																								disabled={!editable}
-																								aria-expanded={supplementOpen}
-																								onClick={() => setSupplementOpen(rowKey, !supplementOpen)}
-																							>
-																								<span className="a-target-menu__group-label">{copy.fixedNodes}</span>
-																								<span className={`a-target-menu__group-icon ${supplementOpen ? "is-open" : ""}`} aria-hidden="true">
-																									▾
-																								</span>
-																							</button>
-																							{supplementOpen ? (
-																								<ul className="a-target-menu__list">
-																									{supplementGroup.choices.map((choice) => (
-																										<li key={choice.value}>
-																											<button
-																												type="button"
-																												className={`a-target-menu__item ${row.targetName === choice.value ? "a-target-menu__item--active" : ""}`}
-																												disabled={!editable || choice.disabled}
-																												onClick={() => {
-																												handleTargetChange(rowKey, choice.value);
-																													setOpenTargetMenuRow(null);
-																												}}
-																											>
-																												{choice.label}
-																											</button>
-																										</li>
-																									))}
-																								</ul>
-																							) : null}
-																						</div>
-																					) : null}
-																				</div>
-																			</div>,
-																			chainTargetMenuPortalEl,
-																		)
-																	: null}
-															</div>
-														</div>
-													) : (
-														<div className="a-target-picker">
-															<select
-																className="a-select"
-																value={row.targetName ?? ""}
-																disabled={!editable || row.mode === "none"}
-																aria-invalid={rowErrors.length > 0 ? true : undefined}
-																aria-describedby={rowErrors.length > 0 ? rowErrorId : undefined}
-																onChange={(event) =>
-																	handleTargetChange(
-																		rowKey,
-																		event.target.value === "" ? "" : event.target.value,
-																	)
-																}
-															>
-																<option value="">{row.mode === "none" ? "--" : copy.selectTarget}</option>
-																{displayForwardRelayChoices.map((choice) => (
-																	<option key={choice.value} value={choice.value} disabled={choice.disabled}>
-																		{choice.label}
-																	</option>
-																))}
-															</select>
-														</div>
-													)}
-													{rowErrors.length > 0 ? (
-														<p id={rowErrorId} className="a-sr-only" role="status">
-															{copy.localErrorAriaHint}
-														</p>
-													) : null}
-												</td>
-											</tr>
-										);
-									})
-								)}
-							</tbody>
-						</table>
-					</div>
-
-					<div className="a-stage-actions a-stage-actions--primary-end">
-						{stage2PrimaryBlockingErrors.length > 0 ? (
-							<div className="a-stage-actions__feedback">
-								<OriginAnchoredBlockingStrip errors={stage2PrimaryBlockingErrors} stageLabel={localizedOriginStageLabel} locale={locale} />
-							</div>
-						) : null}
-						<button type="button" className="a-btn a-btn--primary" disabled={!canGenerate || isGenerating} onClick={() => void handleGenerate()}>
-							{isGenerating ? (
-								copy.generating
-							) : (
-								<>
-									{copy.generateLink}
-									<ArrowRightIcon className="a-icon" aria-hidden />
-								</>
-							)}
-						</button>
-					</div>
-				</section>
+				<Stage2Section
+					workflow={workflow}
+					locale={locale}
+					copy={copy}
+					localizedStage2Status={localizedStage2Status}
+					stage2StatusTone={stage2Status.tone}
+					isConflictReadonly={isConflictReadonly}
+					stage2AggregationMode={stage2AggregationMode}
+					setStage2AggregationMode={setStage2AggregationMode}
+					stage2AdvancedOpen={stage2AdvancedOpen}
+					setStage2AdvancedOpen={setStage2AdvancedOpen}
+					stage2PrimaryBlockingErrors={stage2PrimaryBlockingErrors}
+					localizedOriginStageLabel={localizedOriginStageLabel}
+					isGenerating={isGenerating}
+					canGenerate={canGenerate}
+					handleGenerate={() => void handleGenerate()}
+					isStage2Editable={isStage2Editable}
+					tableWrapRef={stage2TableWrapRef}
+				/>
 
 				<section className="a-stage" aria-labelledby="a-stage3-h">
 					<div className="a-stage__head">
@@ -1654,7 +1199,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 						>
 							<input
 								id="a-current-link"
-								className={`a-input a-input--mono a-input--current-link ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
+								className={`a-input a-input--current-link ${currentLinkFieldErrors.length > 0 ? "a-input--error" : ""}`}
 								type="url"
 								value={state.currentLinkInput}
 								onChange={(event) => setCurrentLinkInput(event.target.value)}
@@ -1835,6 +1380,9 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							ref={portForwardTagFieldRef}
 							label={copy.forwardInfo}
 							values={portForwardDraftTags}
+							autoFocus
+							autoNormalizeFullWidthColon
+							splitByDelimiters
 							onChange={(next) => {
 								setPortForwardDraftTags(next);
 								if (portForwardError) {
@@ -1860,7 +1408,27 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					</div>
 				</div>
 			) : null}
-			<div ref={chainTargetMenuPortalRef} className="a-scheme-a-portal-mount" />
 		</div>
+	);
+}
+
+function AdvancedCheckbox({
+	label,
+	checked,
+	onChange,
+}: {
+	label: string;
+	checked: boolean;
+	onChange: (checked: boolean) => void;
+}) {
+	return (
+		<label className="a-check">
+			<input
+				type="checkbox"
+				checked={checked}
+				onChange={(event) => onChange(event.target.checked)}
+			/>
+			{label}
+		</label>
 	);
 }

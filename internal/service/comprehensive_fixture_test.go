@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"testing"
 
@@ -19,8 +21,8 @@ func TestBuildStage2Init_DualLandingChainPortForwardFixture(t *testing.T) {
 		t.Fatalf("BuildStage2Init() error = %v", err)
 	}
 
-	if len(stage2Init.Rows) != 7 {
-		t.Fatalf("len(stage2Init.Rows) = %d, want 7", len(stage2Init.Rows))
+	if len(stage2Init.Rows) != 5 {
+		t.Fatalf("len(stage2Init.Rows) = %d, want 5", len(stage2Init.Rows))
 	}
 	if len(stage2Init.ForwardRelays) != 2 {
 		t.Fatalf("len(stage2Init.ForwardRelays) = %d, want 2", len(stage2Init.ForwardRelays))
@@ -32,50 +34,34 @@ func TestBuildStage2Init_DualLandingChainPortForwardFixture(t *testing.T) {
 		t.Fatalf("expected chain target %q, got %v", "🇯🇵 日本节点", stage2Init.ChainTargets)
 	}
 
-	alphaChain := findStage2InitRow(t, stage2Init, "🇭🇰 Alpha-SS-HK")
+	alphaChain := findStage2InitRow(t, stage2Init, "🇸🇬 Alpha-SS-SG")
 	if alphaChain.Mode != "chain" {
-		t.Fatalf("🇭🇰 Alpha-SS-HK mode = %q, want %q", alphaChain.Mode, "chain")
+		t.Fatalf("🇸🇬 Alpha-SS-SG mode = %q, want %q", alphaChain.Mode, "chain")
 	}
-	if alphaChain.TargetName == nil || *alphaChain.TargetName != "🇭🇰 香港节点" {
-		t.Fatalf("🇭🇰 Alpha-SS-HK targetName = %v, want %q", alphaChain.TargetName, "🇭🇰 香港节点")
+	if alphaChain.TargetName == nil || *alphaChain.TargetName != "🇸🇬 新加坡节点" {
+		t.Fatalf("🇸🇬 Alpha-SS-SG targetName = %v, want %q", alphaChain.TargetName, "🇸🇬 新加坡节点")
 	}
 
-	alphaReality := findStage2InitRow(t, stage2Init, "🇭🇰 Alpha-Reality-HK-PortForward")
+	alphaReality := findStage2InitRow(t, stage2Init, "🇸🇬 Alpha-Reality-SG")
 	if alphaReality.Mode != "chain" {
-		t.Fatalf("🇭🇰 Alpha-Reality-HK-PortForward mode = %q, want %q", alphaReality.Mode, "chain")
+		t.Fatalf("🇸🇬 Alpha-Reality-SG mode = %q, want %q", alphaReality.Mode, "chain")
 	}
-	if alphaReality.TargetName == nil || *alphaReality.TargetName != "🇭🇰 香港节点" {
-		t.Fatalf("🇭🇰 Alpha-Reality-HK-PortForward targetName = %v, want %q", alphaReality.TargetName, "🇭🇰 香港节点")
+	if alphaReality.TargetName == nil || *alphaReality.TargetName != "🇸🇬 新加坡节点" {
+		t.Fatalf("🇸🇬 Alpha-Reality-SG targetName = %v, want %q", alphaReality.TargetName, "🇸🇬 新加坡节点")
 	}
 	if alphaReality.LandingNodeType != "Reality" {
-		t.Fatalf("🇭🇰 Alpha-Reality-HK-PortForward landing type = %q, want %q", alphaReality.LandingNodeType, "Reality")
+		t.Fatalf("🇸🇬 Alpha-Reality-SG landing type = %q, want %q", alphaReality.LandingNodeType, "Reality")
 	}
 	if warning, ok := alphaReality.ModeWarnings["chain"]; !ok || warning.ReasonCode != "DISCOURAGED_BY_LANDING_PROTOCOL" {
-		t.Fatalf("🇭🇰 Alpha-Reality-HK-PortForward chain warning = %v, want protocol warning", alphaReality.ModeWarnings)
+		t.Fatalf("🇸🇬 Alpha-Reality-SG chain warning = %v, want protocol warning", alphaReality.ModeWarnings)
 	}
 
-	alphaRealityDirect := findStage2InitRow(t, stage2Init, "🇭🇰 Alpha-Reality-HK-Direct")
-	if alphaRealityDirect.Mode != "chain" {
-		t.Fatalf("🇭🇰 Alpha-Reality-HK-Direct mode = %q, want %q", alphaRealityDirect.Mode, "chain")
-	}
-	if alphaRealityDirect.TargetName == nil || *alphaRealityDirect.TargetName != "🇭🇰 香港节点" {
-		t.Fatalf("🇭🇰 Alpha-Reality-HK-Direct targetName = %v, want %q", alphaRealityDirect.TargetName, "🇭🇰 香港节点")
-	}
-
-	betaReality := findStage2InitRow(t, stage2Init, "🇯🇵 Beta-Reality-JP-PortForward")
+	betaReality := findStage2InitRow(t, stage2Init, "🇯🇵 Beta-Reality-JP")
 	if betaReality.Mode != "chain" {
-		t.Fatalf("🇯🇵 Beta-Reality-JP-PortForward mode = %q, want %q", betaReality.Mode, "chain")
+		t.Fatalf("🇯🇵 Beta-Reality-JP mode = %q, want %q", betaReality.Mode, "chain")
 	}
 	if betaReality.TargetName == nil || *betaReality.TargetName != "🇯🇵 日本节点" {
-		t.Fatalf("🇯🇵 Beta-Reality-JP-PortForward targetName = %v, want %q", betaReality.TargetName, "🇯🇵 日本节点")
-	}
-
-	betaRealityDirect := findStage2InitRow(t, stage2Init, "🇯🇵 Beta-Reality-JP-Direct")
-	if betaRealityDirect.Mode != "chain" {
-		t.Fatalf("🇯🇵 Beta-Reality-JP-Direct mode = %q, want %q", betaRealityDirect.Mode, "chain")
-	}
-	if betaRealityDirect.TargetName == nil || *betaRealityDirect.TargetName != "🇯🇵 日本节点" {
-		t.Fatalf("🇯🇵 Beta-Reality-JP-Direct targetName = %v, want %q", betaRealityDirect.TargetName, "🇯🇵 日本节点")
+		t.Fatalf("🇯🇵 Beta-Reality-JP targetName = %v, want %q", betaReality.TargetName, "🇯🇵 日本节点")
 	}
 
 	manualSocks := findStage2InitRow(t, stage2Init, "🇭🇰 Manual-SOCKS5-HK-Fallback")
@@ -125,8 +111,8 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus = %q, want %q", response.RestoreStatus, "replayable")
 	}
-	if len(response.Stage2Snapshot.Rows) != 7 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 7", len(response.Stage2Snapshot.Rows))
+	if len(response.Stage2Snapshot.Rows) != 8 {
+		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 8", len(response.Stage2Snapshot.Rows))
 	}
 	if response.ShortURL != "" {
 		t.Fatalf("ShortURL = %q, want empty for long-url replay", response.ShortURL)
@@ -144,11 +130,29 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 	}}) {
 		t.Fatalf("expected replayable restore summary, got %v", response.Messages)
 	}
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Alpha-Reality-HK-PortForward", "port_forward", "relay-a.example.com:7443")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Alpha-Reality-HK-Direct", "none", "")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-Reality-JP-PortForward", "port_forward", "relay-b.example.com:8443")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-Reality-JP-Direct", "none", "")
+	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-SS-SG", "chain", "🇭🇰 香港节点")
+	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-SS-SG 2", "chain", "🇸🇬 新加坡节点")
+	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG", "none", "")
+	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG 2", "port_forward", "relay-a.example.com:7443")
+	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG 3", "port_forward", "relay-b.example.com:8443")
+	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-Reality-JP", "none", "")
 	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Manual-SOCKS5-HK-Fallback", "chain", "🇭🇰 香港节点")
+	if !response.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+		t.Fatal("expected chainProxyTargetGroupSwitchOptimizationEnabled to be true")
+	}
+	assertServerAggregationGroup(
+		t,
+		response.Stage2Snapshot.ServerAggregationGroups,
+		"198.51.100.10",
+		true,
+		"fallback",
+		[]string{
+			"🇸🇬 Alpha-Reality-SG 2",
+			"🇸🇬 Alpha-Reality-SG 3",
+			"🇸🇬 Alpha-SS-SG",
+			"🇸🇬 Alpha-SS-SG 2",
+		},
+	)
 }
 
 func TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL(t *testing.T) {
@@ -212,6 +216,45 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureShortURL(t *test
 	}
 }
 
+func TestDualLandingManualReferenceShortIDMatchesGeneratedResult(t *testing.T) {
+	request := GenerateRequest{
+		Stage1Input:    dualLandingChainPortForwardStage1Input(t),
+		Stage2Snapshot: dualLandingChainPortForwardStage2Snapshot(t),
+	}
+	source := newDualLandingChainPortForwardSource(t)
+	store := NewInMemoryShortLinkStore()
+
+	generated, err := BuildGenerateResponseFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		source,
+		request,
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("BuildGenerateResponseFromSource() error = %v", err)
+	}
+
+	shortLinkResponse, err := BuildShortLinkResponse(context.Background(), "http://localhost:11200", store, generated.LongURL, 0, InputLimits{})
+	if err != nil {
+		t.Fatalf("BuildShortLinkResponse() error = %v", err)
+	}
+
+	matches := dualLandingManualReferenceShortIDPattern.FindStringSubmatch(readDualLandingManualReferenceDoc(t))
+	if len(matches) != 2 {
+		t.Fatalf("failed to parse short ID from docs/testing/preview-inputs.md")
+	}
+
+	expectedShortID := matches[1]
+	gotShortID := filepath.Base(shortLinkResponse.ShortURL)
+	if gotShortID != expectedShortID {
+		t.Fatalf("manual reference short ID drift: got %q want %q", gotShortID, expectedShortID)
+	}
+}
+
+var dualLandingManualReferenceShortIDPattern = regexp.MustCompile("short ID 金样：`([^`]+)`")
+
 func dualLandingChainPortForwardFixtureDirectory(t *testing.T) string {
 	t.Helper()
 
@@ -245,6 +288,34 @@ func dualLandingChainPortForwardCanonicalScenarioFile(t *testing.T) string {
 		"canonical-scenarios",
 		dualLandingChainPortForwardFixtureName+".stage1.json",
 	)
+}
+
+func dualLandingManualReferenceFile(t *testing.T) string {
+	t.Helper()
+
+	_, currentFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+
+	return filepath.Join(
+		filepath.Dir(currentFile),
+		"..",
+		"..",
+		"docs",
+		"testing",
+		"preview-inputs.md",
+	)
+}
+
+func readDualLandingManualReferenceDoc(t *testing.T) string {
+	t.Helper()
+
+	content, err := os.ReadFile(dualLandingManualReferenceFile(t))
+	if err != nil {
+		t.Fatalf("read manual reference doc: %v", err)
+	}
+	return normalizeTestFixtureNewlines(string(content))
 }
 
 type dualLandingChainPortForwardSource struct {
@@ -340,42 +411,71 @@ func dualLandingChainPortForwardTemplateConfig(t *testing.T) string {
 	return content
 }
 
-func findStage2InitRow(t *testing.T, stage2Init Stage2Init, landingNodeName string) Stage2InitRow {
+func findStage2InitRow(t *testing.T, stage2Init Stage2Init, proxyName string) Stage2InitRow {
 	t.Helper()
 
 	for _, row := range stage2Init.Rows {
-		if row.LandingNodeName == landingNodeName {
+		if row.ProxyName == proxyName {
 			return row
 		}
 	}
 
-	t.Fatalf("landing node %q not found in stage2 init rows: %v", landingNodeName, stage2Init.Rows)
+	t.Fatalf("proxy %q not found in stage2 init rows: %v", proxyName, stage2Init.Rows)
 	return Stage2InitRow{}
 }
 
-func assertSnapshotRow(t *testing.T, rows []Stage2Row, landingNodeName string, mode string, targetName string) {
+func assertSnapshotRow(t *testing.T, rows []Stage2Row, proxyName string, mode string, targetName string) {
 	t.Helper()
 
 	for _, row := range rows {
-		if row.LandingNodeName != landingNodeName {
+		if row.ProxyName != proxyName {
 			continue
 		}
 		if row.Mode != mode {
-			t.Fatalf("row %q mode = %q, want %q", landingNodeName, row.Mode, mode)
+			t.Fatalf("row %q mode = %q, want %q", proxyName, row.Mode, mode)
 		}
 		if targetName == "" {
 			if row.TargetName != nil {
-				t.Fatalf("row %q targetName = %v, want nil", landingNodeName, row.TargetName)
+				t.Fatalf("row %q targetName = %v, want nil", proxyName, row.TargetName)
 			}
 			return
 		}
 		if row.TargetName == nil || *row.TargetName != targetName {
-			t.Fatalf("row %q targetName = %v, want %q", landingNodeName, row.TargetName, targetName)
+			t.Fatalf("row %q targetName = %v, want %q", proxyName, row.TargetName, targetName)
 		}
 		return
 	}
 
-	t.Fatalf("landing node %q not found in snapshot rows: %v", landingNodeName, rows)
+	t.Fatalf("proxy %q not found in snapshot rows: %v", proxyName, rows)
+}
+
+func assertServerAggregationGroup(
+	t *testing.T,
+	groups []ServerAggregationGroup,
+	server string,
+	enabled bool,
+	strategy string,
+	memberRowIDs []string,
+) {
+	t.Helper()
+
+	for _, group := range groups {
+		if group.Server != server {
+			continue
+		}
+		if group.Enabled != enabled {
+			t.Fatalf("server aggregation group %q enabled = %v, want %v", server, group.Enabled, enabled)
+		}
+		if group.Strategy != strategy {
+			t.Fatalf("server aggregation group %q strategy = %q, want %q", server, group.Strategy, strategy)
+		}
+		if !reflect.DeepEqual(group.MemberRowIDs, memberRowIDs) {
+			t.Fatalf("server aggregation group %q memberRowIds = %v, want %v", server, group.MemberRowIDs, memberRowIDs)
+		}
+		return
+	}
+
+	t.Fatalf("server aggregation group %q not found: %v", server, groups)
 }
 
 func loadThreePassResultFromDirectory(t *testing.T, fixtureDir string) subconverter.ThreePassResult {

@@ -32,21 +32,19 @@ type TemplatePreparingSource interface {
 }
 
 func BuildStage1ConvertResponseFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (Stage1ConvertResponse, error) {
-	stage1Input = NormalizeStage1Input(stage1Input)
-	fixtures, err := LoadStage1InitFixtures(ctx, source, stage1Input, limits)
-	if err != nil {
-		return Stage1ConvertResponse{}, err
-	}
-	return BuildStage1ConvertResponse(stage1Input, fixtures)
+	return NewCorePipeline(ctx, source, stage1Input, limits).BuildStage1ConvertResponse()
 }
 
 func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int, limits InputLimits) (GenerateResponse, error) {
-	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
-	fixtures, err := LoadConversionFixtures(ctx, source, request.Stage1Input, limits)
-	if err != nil {
-		return GenerateResponse{}, err
-	}
-	return BuildGenerateResponse(publicBaseURL, request, fixtures, maxLongURLLength)
+	return NewCorePipeline(ctx, source, request.Stage1Input, limits).
+		WithStage2Snapshot(request.Stage2Snapshot).
+		BuildGenerateResponse(publicBaseURL, maxLongURLLength)
+}
+
+func loadGenerateValidationFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (ConversionFixtures, error) {
+	return NewCorePipeline(ctx, source, stage1Input, limits).
+		WithStage2Snapshot(stage2Snapshot).
+		LoadGenerateValidationFixtures()
 }
 
 func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits) (string, error) {
@@ -54,15 +52,12 @@ func RenderCompleteConfigFromSource(ctx context.Context, source ConversionSource
 }
 
 func RenderCompleteConfigFromSourceWithExtraQuery(ctx context.Context, source ConversionSource, stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, limits InputLimits, extraQuery url.Values) (string, error) {
-	stage1Input = NormalizeStage1Input(stage1Input)
-	if snapshotSource, ok := source.(SnapshotPass3RenderingSource); ok {
-		return renderCompleteConfigViaManagedPass3(ctx, source, snapshotSource, stage1Input, stage2Snapshot, limits, extraQuery)
+	if len(extraQuery) > 0 {
+		return "", fmt.Errorf("subscription extra query overrides are not supported")
 	}
-	fixtures, err := LoadConversionFixturesWithExtraQuery(ctx, source, stage1Input, limits, extraQuery)
-	if err != nil {
-		return "", err
-	}
-	return RenderCompleteConfig(stage1Input, stage2Snapshot, fixtures)
+	return NewCorePipeline(ctx, source, stage1Input, limits).
+		WithStage2Snapshot(stage2Snapshot).
+		RenderCompleteConfig()
 }
 
 func renderCompleteConfigViaManagedPass3(
@@ -72,56 +67,23 @@ func renderCompleteConfigViaManagedPass3(
 	stage1Input Stage1Input,
 	stage2Snapshot Stage2Snapshot,
 	limits InputLimits,
-	extraQuery url.Values,
 ) (string, error) {
-	if err := ValidateStage1InputLimits(stage1Input, limits); err != nil {
-		return "", err
-	}
+	return NewCorePipeline(ctx, source, stage1Input, limits).
+		WithStage2Snapshot(stage2Snapshot).
+		renderCompleteConfigViaManagedPass3(snapshotSource)
+}
 
-	prepared, err := prepareConversion(ctx, source, stage1Input)
-	if err != nil {
-		return "", err
-	}
-	if prepared.Cleanup != nil {
-		defer prepared.Cleanup()
-	}
-	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
-
-	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, subconverter.Stage1InitConvertPlan())
-	if err != nil {
-		return "", err
-	}
-
-	fixtures, err := stage1InitFixturesFromResult(result)
-	if err != nil {
-		return "", err
-	}
-	fixtures.TemplateConfig = prepared.TemplateConfig
-	fixtures.EffectiveTemplateURL = prepared.EffectiveTemplateURL
-	fixtures.ManagedTemplateURL = prepared.ManagedTemplateURL
-	fixtures.RecognizedRegionGroupNames = append([]string(nil), prepared.RecognizedRegionGroupNames...)
-
-	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
-	if err != nil {
-		return "", err
-	}
-
-	managedLandingYAML, err := buildManagedLandingConfigYAML(fixtures.LandingDiscoveryYAML, stage2Snapshot.Rows)
-	if err != nil {
-		return "", newInternalResponseError("failed to build managed landing config", err)
-	}
-
-	fullBaseYAML, err := snapshotSource.RenderManagedPass3(ctx, prepared, managedLandingYAML)
-	if err != nil {
-		return "", err
-	}
-
-	regionGroupNames, err := recognizedRegionGroupSet(fixtures)
-	if err != nil {
-		return "", err
-	}
-
-	return stripLandingNodesFromCompleteConfigYAML(fullBaseYAML, stage2StripLandingNames(landingProxies, stage2Snapshot.Rows), regionGroupNames)
+func loadManagedPass3ValidationFixtures(
+	ctx context.Context,
+	source ConversionSource,
+	snapshotSource SnapshotPass3RenderingSource,
+	stage1Input Stage1Input,
+	stage2Snapshot Stage2Snapshot,
+	limits InputLimits,
+) (ConversionFixtures, error) {
+	return NewCorePipeline(ctx, source, stage1Input, limits).
+		WithStage2Snapshot(stage2Snapshot).
+		loadManagedPass3ValidationFixtures(snapshotSource)
 }
 
 func LoadConversionFixtures(ctx context.Context, source ConversionSource, stage1Input Stage1Input, limits InputLimits) (ConversionFixtures, error) {
@@ -304,6 +266,13 @@ func stage1InitFixturesFromResult(result subconverter.ThreePassResult) (Conversi
 			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
 		)
 	}
+	if _, err := parseProxyGroups(fixtures.TransitDiscoveryYAML); err != nil {
+		return ConversionFixtures{}, subconverter.NewUnavailableError(
+			"parse transit-discovery result proxy-groups",
+			err,
+			subconverter.WithUnavailableClassification(subconverter.UnavailableProblemConversionResultInvalid, subconverter.UnavailableInputSourceTransit),
+		)
+	}
 
 	return fixtures, nil
 }
@@ -343,7 +312,6 @@ func toSubconverterRequest(stage1Input Stage1Input) subconverter.Request {
 		LandingRawText: stage1Input.LandingRawText,
 		TransitRawText: stage1Input.TransitRawText,
 		Options: subconverter.AdvancedOptions{
-			Emoji:          stage1Input.AdvancedOptions.Emoji,
 			UDP:            stage1Input.AdvancedOptions.UDP,
 			SkipCertVerify: stage1Input.AdvancedOptions.SkipCertVerify,
 			Config:         stage1Input.AdvancedOptions.Config,

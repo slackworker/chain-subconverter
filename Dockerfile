@@ -8,7 +8,7 @@ RUN npm ci --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=200
 COPY web ./
 RUN npm run build:docker
 
-FROM --platform=$TARGETPLATFORM golang:1.25-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
@@ -42,7 +42,7 @@ COPY --from=web-builder /web/dist /app/web/dist
 
 RUN mkdir -p /data && chown app:app /data
 
-ENV CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/tmp/short-links.sqlite3
+ENV CHAIN_SUBCONVERTER_SHORT_LINK_DB_PATH=/data/short-links.sqlite3
 
 USER app
 

@@ -44,6 +44,52 @@ func (source *fakeTemplatePreparingSource) Convert(_ context.Context, request su
 	return source.result, source.err
 }
 
+type fakeManagedSnapshotSource struct {
+	result                  subconverter.ThreePassResult
+	templateConfig          string
+	gotPlans                []subconverter.ConvertPlan
+	renderManagedPass3Calls int
+}
+
+func (source *fakeManagedSnapshotSource) PrepareConversion(_ context.Context, stage1Input service.Stage1Input) (service.PreparedConversion, error) {
+	normalized := service.NormalizeStage1Input(stage1Input)
+	return service.PreparedConversion{
+		Request: subconverter.Request{
+			LandingRawText: normalized.LandingRawText,
+			TransitRawText: normalized.TransitRawText,
+			Options: subconverter.AdvancedOptions{
+				Emoji:          normalized.AdvancedOptions.Emoji,
+				UDP:            normalized.AdvancedOptions.UDP,
+				SkipCertVerify: normalized.AdvancedOptions.SkipCertVerify,
+				Config:         normalized.AdvancedOptions.Config,
+				Include:        append([]string(nil), normalized.AdvancedOptions.Include...),
+				Exclude:        append([]string(nil), normalized.AdvancedOptions.Exclude...),
+			},
+		},
+		TemplateConfig:       source.templateConfig,
+		EffectiveTemplateURL: "https://template-source.example/config.ini",
+		ManagedTemplateURL:   "http://managed-template.invalid/internal/templates/test.ini",
+	}, nil
+}
+
+func (source *fakeManagedSnapshotSource) Convert(_ context.Context, _ subconverter.Request) (subconverter.ThreePassResult, error) {
+	return source.result, nil
+}
+
+func (source *fakeManagedSnapshotSource) ConvertWithPlan(_ context.Context, _ subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	source.gotPlans = append(source.gotPlans, plan)
+	result := source.result
+	if !plan.IncludeFullBase {
+		result.FullBase = subconverter.PassResult{}
+	}
+	return result, nil
+}
+
+func (source *fakeManagedSnapshotSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string, _ string) (string, error) {
+	source.renderManagedPass3Calls++
+	return source.result.FullBase.YAML, nil
+}
+
 func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	testCase, err := LoadCase(filepath.Join("testdata", "3pass-ss2022-test-subscription"))
 	if err != nil {
@@ -123,11 +169,11 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 		t.Fatalf("BuildStage1Artifacts() error = %v", err)
 	}
 
-	if len(stage1Bundle.Rows) != 7 {
-		t.Fatalf("len(stage1Bundle.Rows) = %d, want 7", len(stage1Bundle.Rows))
+	if len(stage1Bundle.Rows) != 5 {
+		t.Fatalf("len(stage1Bundle.Rows) = %d, want 5", len(stage1Bundle.Rows))
 	}
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Alpha-SS-HK | SS | chain | 🇭🇰 香港节点 |")
-	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Alpha-Reality-HK-PortForward | Reality | chain | 🇭🇰 香港节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇸🇬 Alpha-SS-SG | SS | chain | 🇸🇬 新加坡节点 |")
+	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇸🇬 Alpha-Reality-SG | Reality | chain | 🇸🇬 新加坡节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇯🇵 Beta-SS-JP | SS | chain | 🇯🇵 日本节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇭🇰 Manual-SOCKS5-HK-Fallback | SOCKS5 | chain | 🇭🇰 香港节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/forward-relays.txt", "relay-a.example.com:7443")
@@ -146,6 +192,37 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/short-links.response.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "short-links.response.json")))
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/long-url.payload.json", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "long-url.payload.json")))
 	assertArtifactEqualsTrimmed(t, stage2Bundle.Files, "stage2/output/complete-config.chain.yaml", readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml")))
+}
+
+func TestBuildStage2Artifacts_UsesManagedPass3SourcePathWhenAvailable(t *testing.T) {
+	testCase, err := LoadCase(filepath.Join("testdata", "dual-landing-chain-port-forward"))
+	if err != nil {
+		t.Fatalf("LoadCase() error = %v", err)
+	}
+	testCase.Stage2Input.ServerAggregationGroups = nil
+
+	fixtureDir := filepath.Join("testdata", "dual-landing-chain-port-forward")
+	source := &fakeManagedSnapshotSource{
+		result:         loadThreePassResult(t, fixtureDir),
+		templateConfig: dualLandingChainPortForwardTemplateConfig(t),
+	}
+
+	_, err = BuildStage2Artifacts(context.Background(), source, testCase, "http://localhost:11200", 0)
+	if err != nil {
+		t.Fatalf("BuildStage2Artifacts() error = %v", err)
+	}
+
+	if source.renderManagedPass3Calls < 2 {
+		t.Fatalf("renderManagedPass3Calls = %d, want >= 2", source.renderManagedPass3Calls)
+	}
+	if len(source.gotPlans) == 0 {
+		t.Fatal("gotPlans is empty, want Stage1InitConvertPlan calls")
+	}
+	for _, plan := range source.gotPlans {
+		if plan != subconverter.Stage1InitConvertPlan() {
+			t.Fatalf("unexpected convert plan = %+v, want %+v", plan, subconverter.Stage1InitConvertPlan())
+		}
+	}
 }
 
 func dualLandingChainPortForwardTemplateConfig(t *testing.T) string {
@@ -181,8 +258,17 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 				YAML:       "proxies:\n- {name: DE Landing, type: ss}\n",
 			},
 			TransitDiscovery: subconverter.PassResult{
-				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
-				YAML:       "proxies:\n- {name: transit-de, type: ss}\n",
+				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
+				YAML: strings.Join([]string{
+					"proxies:",
+					"- {name: transit-de, type: ss}",
+					"proxy-groups:",
+					"  - name: 🇩🇪 德国节点",
+					"    type: fallback",
+					"    proxies:",
+					"      - transit-de",
+					"",
+				}, "\n"),
 			},
 			FullBase: subconverter.PassResult{
 				RequestURL: "http://localhost:25511/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub%7Chttps%3A%2F%2Ftransit.example%2Fsub&config=http%3A%2F%2F127.0.0.1%3A38123%2Finternal%2Ftemplates%2Fabc123.ini",
@@ -235,8 +321,17 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 				YAML:       "proxies:\n- {name: HK Landing, type: ss}\n",
 			},
 			TransitDiscovery: subconverter.PassResult{
-				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub&list=true",
-				YAML:       "proxies:\n- {name: transit-hk, type: ss}\n",
+				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Ftransit.example%2Fsub",
+				YAML: strings.Join([]string{
+					"proxies:",
+					"- {name: transit-hk, type: ss}",
+					"proxy-groups:",
+					"  - name: Missing HK Group",
+					"    type: fallback",
+					"    proxies:",
+					"      - transit-hk",
+					"",
+				}, "\n"),
 			},
 			FullBase: subconverter.PassResult{
 				RequestURL: "http://localhost:25500/sub?target=clash&url=https%3A%2F%2Flanding.example%2Fsub%7Chttps%3A%2F%2Ftransit.example%2Fsub",
@@ -273,7 +368,7 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 	assertArtifactContains(t, bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
 	assertArtifactContains(t, bundle.Files, "stage1/output/full-base.yaml", "Missing HK Group")
 	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "missing recognized region proxy-group")
-	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "managed template")
+	assertArtifactContains(t, bundle.Files, "stage1/output/stage1-convert.error.txt", "transit-discovery result")
 	if _, ok := findArtifactOK(bundle.Files, "stage1/output/stage1-convert.response.json"); ok {
 		t.Fatal("stage1/output/stage1-convert.response.json should be absent when Stage 1 auto-fill fails")
 	}

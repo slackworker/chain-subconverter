@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: 发布与回归 runbook
-    url: https://github.com/slackworker/chain-subconverter/blob/main/docs/testing/release-runbook.md
+    url: https://github.com/slackworker/chain-subconverter/blob/main/docs/testing/runbook.md
     about: 分支/标签、发布前检查与回归记录模板

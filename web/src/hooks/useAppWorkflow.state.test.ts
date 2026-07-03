@@ -13,9 +13,19 @@ import {
 	applyShortURLCreationSuccessState,
 	applyShortURLPreferenceToggleState,
 	applyStage1ConvertSuccessState,
+	clearServerAggregationGroupsState,
+	cloneStage2RowState,
 	completeWorkflowRequestState,
+	mergeStage2SnapshotAfterConvert,
 	startShortURLCreationState,
 	startWorkflowRequestState,
+	updateServerAggregationStrategyState,
+	deleteStage2RowState,
+	updateServerAggregationGroupState,
+	updateServerAggregationGroupNameState,
+	moveServerAggregationMemberToIndexState,
+	reorderServerAggregationMemberState,
+	reorderStage2RowsState,
 } from "./useAppWorkflow.state";
 
 describe("useAppWorkflow.state", () => {
@@ -79,8 +89,11 @@ describe("useAppWorkflow.state", () => {
 			chainTargets: [],
 			forwardRelays: [],
 			rows: [{
-				landingNodeName: "landing-hk",
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
 				landingNodeType: "ss",
+				server: "hk.example.com",
 				mode: "none" as const,
 				targetName: null,
 			}],
@@ -103,12 +116,327 @@ describe("useAppWorkflow.state", () => {
 		);
 
 		expect(next.stage2Init).toEqual(stage2Init);
-		expect(next.stage2Snapshot.rows).toEqual([{ landingNodeName: "landing-hk", mode: "none", targetName: null }]);
+		expect(next.stage2Snapshot.rows).toEqual([{ rowId: "landing-hk", sourceLandingNodeName: "landing-hk", proxyName: "landing-hk", mode: "none", targetName: null }]);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([]);
 		expect(next.stage2Stale).toBe(false);
 		expect(next.restoreStatus).toBe("idle");
 		expect(next.responseOriginStage).toBe("stage1");
 		expect(next.messages.map((message) => message.code)).toEqual(["AUTO_CHAIN_TARGET_SELECTED"]);
 		expect(next.workflowLog.map((entry) => entry.code)).toEqual(["ACTION_STAGE1_CONVERT", "AUTO_CHAIN_TARGET_SELECTED"]);
+	});
+
+	it("merges Stage 2 snapshot edits after reconvert when references remain valid", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "landing-hk",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk custom",
+						mode: "port_forward",
+						targetName: "relay-a.example.com:7443",
+					},
+					{
+						rowId: "landing-hk-2",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk 2",
+						mode: "chain",
+						targetName: "HK Relay Group",
+					},
+				],
+				serverAggregationGroups: [
+					{
+						server: "hk.example.com",
+						enabled: true,
+						strategy: "fallback",
+						memberRowIds: ["landing-hk", "landing-hk-2"],
+					},
+				],
+			},
+		};
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }, { name: "relay-b.example.com:8443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+
+		const result = mergeStage2SnapshotAfterConvert(current, stage2Init);
+
+		expect(result.snapshot.rows).toHaveLength(2);
+		expect(result.snapshot.rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			mode: "port_forward",
+			targetName: "relay-a.example.com:7443",
+			proxyName: "landing-hk custom",
+		});
+		expect(result.snapshot.rows[1]).toMatchObject({
+			rowId: "landing-hk-2",
+			sourceLandingNodeName: "landing-hk",
+			mode: "chain",
+			targetName: "HK Relay Group",
+		});
+		expect(result.snapshot.serverAggregationGroups).toEqual([
+			{
+				server: "hk.example.com",
+				enabled: true,
+				strategy: "fallback",
+				memberRowIds: ["landing-hk", "landing-hk-2"],
+			},
+		]);
+		expect(result.report).toEqual({
+			droppedDerivedRows: 0,
+			resetModes: 0,
+			clearedTargets: 0,
+			filteredAggregationMembers: 0,
+			disabledAggregationGroups: 0,
+			removedAggregationGroups: 0,
+		});
+	});
+
+	it("preserves Stage 2 snapshot row order when stage2Init row order changes on reconvert", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "landing-hk",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk",
+						mode: "chain",
+						targetName: "HK Relay Group",
+					},
+					{
+						rowId: "landing-hk-2",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk 2",
+						mode: "none",
+						targetName: null,
+					},
+					{
+						rowId: "landing-jp",
+						sourceLandingNodeName: "landing-jp",
+						proxyName: "landing-jp",
+						mode: "none",
+						targetName: null,
+					},
+				],
+				serverAggregationGroups: [],
+			},
+		};
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [],
+			rows: [
+				{
+					rowId: "landing-jp",
+					sourceLandingNodeName: "landing-jp",
+					proxyName: "landing-jp",
+					landingNodeType: "vmess",
+					server: "jp.example.com",
+					mode: "none",
+					targetName: null,
+				},
+				{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					landingNodeType: "ss",
+					server: "hk.example.com",
+					mode: "chain",
+					targetName: "HK Relay Group",
+				},
+			],
+		};
+
+		const result = mergeStage2SnapshotAfterConvert(current, stage2Init);
+
+		expect(result.snapshot.rows.map((row) => row.rowId)).toEqual([
+			"landing-hk",
+			"landing-hk-2",
+			"landing-jp",
+		]);
+	});
+
+	it("downgrades invalid Stage 2 snapshot fields during merge after reconvert", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "landing-hk",
+						sourceLandingNodeName: "landing-hk",
+						proxyName: "landing-hk custom",
+						mode: "port_forward",
+						targetName: "relay-a.example.com:7443",
+					},
+					{
+						rowId: "landing-obsolete-2",
+						sourceLandingNodeName: "landing-obsolete",
+						proxyName: "landing-obsolete 2",
+						mode: "chain",
+						targetName: "Obsolete Group",
+					},
+				],
+				serverAggregationGroups: [
+					{
+						server: "hk.example.com",
+						enabled: true,
+						strategy: "fallback",
+						memberRowIds: ["landing-hk", "landing-obsolete-2"],
+					},
+				],
+			},
+		};
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+
+		const result = mergeStage2SnapshotAfterConvert(current, stage2Init);
+
+		expect(result.snapshot.rows).toHaveLength(1);
+		expect(result.snapshot.rows[0]).toMatchObject({
+			rowId: "landing-hk",
+			mode: "none",
+			targetName: null,
+		});
+		expect(result.snapshot.serverAggregationGroups).toEqual([
+			{
+				server: "hk.example.com",
+				enabled: false,
+				strategy: "fallback",
+				memberRowIds: ["landing-hk"],
+			},
+		]);
+		expect(result.report).toMatchObject({
+			droppedDerivedRows: 1,
+			resetModes: 1,
+			filteredAggregationMembers: 1,
+			disabledAggregationGroups: 1,
+		});
+	});
+
+	it("disables stale server aggregation groups when all members are filtered out", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "legacy-1",
+						sourceLandingNodeName: "legacy-1",
+						proxyName: "legacy-1",
+						mode: "chain",
+						targetName: "Legacy Group",
+					},
+				],
+				serverAggregationGroups: [
+					{
+						server: "*.*.xyz",
+						enabled: true,
+						strategy: "fallback",
+						memberRowIds: ["legacy-1"],
+					},
+				],
+			},
+		};
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain"],
+			chainTargets: [],
+			forwardRelays: [],
+			rows: [{
+				rowId: "landing-new",
+				sourceLandingNodeName: "landing-new",
+				proxyName: "landing-new",
+				landingNodeType: "ss",
+				server: "198.51.100.10",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+
+		const result = mergeStage2SnapshotAfterConvert(current, stage2Init);
+
+		expect(result.snapshot.serverAggregationGroups).toEqual([
+			{
+				server: "*.*.xyz",
+				enabled: false,
+				strategy: "fallback",
+				memberRowIds: [],
+			},
+		]);
+		expect(result.report).toMatchObject({
+			filteredAggregationMembers: 1,
+			disabledAggregationGroups: 1,
+		});
+	});
+
+	it("keeps select/load-balance strategies during snapshot merge", () => {
+		const stage2Init: Stage2Init = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay-a.example.com:7443" }],
+			rows: [{
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
+				landingNodeType: "ss",
+				server: "hk.example.com",
+				mode: "none",
+				targetName: null,
+			}],
+		};
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [{
+					rowId: "landing-hk",
+					sourceLandingNodeName: "landing-hk",
+					proxyName: "landing-hk",
+					mode: "none",
+					targetName: null,
+				}],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "select", memberRowIds: ["landing-hk"] }],
+			},
+		};
+
+		const mergedSelect = mergeStage2SnapshotAfterConvert(current, stage2Init);
+		expect(mergedSelect.snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			strategy: "select",
+		});
+
+		const mergedLoadBalance = mergeStage2SnapshotAfterConvert({
+			...current,
+			stage2Snapshot: {
+				...current.stage2Snapshot,
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "load-balance", memberRowIds: ["landing-hk"] }],
+			},
+		}, stage2Init);
+		expect(mergedLoadBalance.snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			strategy: "load-balance",
+		});
 	});
 
 	it("completes a workflow request with patch data and logs", () => {
@@ -168,10 +496,12 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "conflicted",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-conflicted",
 			resolvedShortUrl: "https://public.example.com/s/conflicted-short",
-			stage2Snapshot: { rows: [{ landingNodeName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ rowId: "HK 01", sourceLandingNodeName: "HK 01", proxyName: "HK 01", mode: "chain", targetName: "HK Relay Group" }] },
+			restoreConflicts: [{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } }],
 		});
 
 		expect(next.restoreStatus).toBe("conflicted");
+		expect(next.restoreConflicts).toEqual([{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } }]);
 		expect(next.stage2Init).toBeNull();
 		expect(next.stage2Stale).toBe(false);
 		expect(next.currentLinkInput).toBe("https://public.example.com/s/conflicted-short");
@@ -190,8 +520,11 @@ describe("useAppWorkflow.state", () => {
 			chainTargets: [],
 			forwardRelays: [],
 			rows: [{
-				landingNodeName: "landing-hk",
+				rowId: "landing-hk",
+				sourceLandingNodeName: "landing-hk",
+				proxyName: "landing-hk",
 				landingNodeType: "ss",
+				server: "hk.example.com",
 				mode: "chain" as const,
 				targetName: "HK Relay Group",
 			}],
@@ -205,7 +538,7 @@ describe("useAppWorkflow.state", () => {
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restored-long",
 			resolvedShortUrl: "https://public.example.com/s/restored-short",
-			stage2Snapshot: { rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ rowId: "landing-hk", sourceLandingNodeName: "landing-hk", proxyName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.restoreStatus).toBe("replayable");
@@ -231,7 +564,7 @@ describe("useAppWorkflow.state", () => {
 			restoredStage1Input,
 			restoreStatus: "replayable",
 			resolvedLongUrl: "https://public.example.com/sub?data=restore-only",
-			stage2Snapshot: { rows: [{ landingNodeName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
+			stage2Snapshot: { serverAggregationGroups: [], rows: [{ rowId: "landing-hk", sourceLandingNodeName: "landing-hk", proxyName: "landing-hk", mode: "chain", targetName: "HK Relay Group" }] },
 		});
 
 		expect(next.stage2Init).toBeNull();
@@ -240,6 +573,60 @@ describe("useAppWorkflow.state", () => {
 			longUrl: "https://public.example.com/sub?data=restore-only",
 			shortUrl: null,
 		});
+	});
+
+	it("updates server aggregation groups by server name", () => {
+		const next = updateServerAggregationStrategyState({
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "url-test", memberRowIds: ["hk-1", "hk-2"] }],
+			},
+		}, "hk.example.com", "fallback");
+
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }]);
+	});
+
+	it("accepts select and load-balance strategies when updating groups", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
+			},
+		};
+
+		const selected = updateServerAggregationStrategyState(current, "hk.example.com", "select");
+		expect(selected.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "select", memberRowIds: ["hk-1", "hk-2"] },
+		]);
+
+		const loadBalanced = updateServerAggregationStrategyState(selected, "hk.example.com", "load-balance");
+		expect(loadBalanced.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "load-balance", memberRowIds: ["hk-1", "hk-2"] },
+		]);
+	});
+
+	it("clears server aggregation groups when deleting back to a single row", () => {
+		const next = deleteStage2RowState({
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] }],
+			},
+		}, "rowId:hk-2");
+
+		expect(next.stage2Snapshot.rows).toHaveLength(1);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1"] }]);
 	});
 
 	it("keeps short URL preference locked when long URL exceeds the public budget", () => {
@@ -434,5 +821,260 @@ describe("useAppWorkflow.state", () => {
 		expect(next.preferShortUrl).toBe(false);
 		expect(next.blockingErrors.map((error) => error.code)).toEqual(["RATE_LIMITED"]);
 		expect(next.messages.map((message) => message.code)).toEqual(["SHORT_LINK_RETRYABLE"]);
+	});
+
+	it("inserts newly checked members by stage2 row order", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-3"] }],
+			},
+		};
+
+		const next = updateServerAggregationGroupState(current, "hk.example.com", true, "fallback", "hk-2", true);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] },
+		]);
+	});
+
+	it("removes unchecked members while preserving remaining order", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
+			},
+		};
+
+		const next = updateServerAggregationGroupState(current, "hk.example.com", true, "fallback", "hk-2", false);
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-3"] },
+		]);
+	});
+
+	it("reorders stage 2 rows by rowId without changing server aggregation groups", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1"] }],
+			},
+		};
+
+		const reordered = reorderStage2RowsState(current, ["sg-1", "hk-1"]);
+		expect(reordered.stage2Snapshot.rows.map((row) => row.rowId)).toEqual(["sg-1", "hk-1"]);
+		expect(reordered.stage2Snapshot.serverAggregationGroups).toEqual(current.stage2Snapshot.serverAggregationGroups);
+	});
+
+	it("rejects incomplete rowId permutations when reordering stage 2 rows", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "sg-1", sourceLandingNodeName: "SG", proxyName: "SG", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [],
+			},
+		};
+
+		expect(reorderStage2RowsState(current, ["hk-1"])).toBe(current);
+		expect(reorderStage2RowsState(current, ["hk-1", "hk-1"])).toBe(current);
+		expect(reorderStage2RowsState(current, ["hk-1", "unknown"])).toBe(current);
+	});
+
+	it("rejects row reorder permutations when a snapshot row is missing rowId", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [],
+			},
+		};
+
+		expect(reorderStage2RowsState(current, ["hk-1"])).toBe(current);
+	});
+
+	it("reorders server aggregation members up and down", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
+			},
+		};
+
+		const movedDown = reorderServerAggregationMemberState(current, "hk.example.com", "hk-1", "down");
+		expect(movedDown.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-2", "hk-1", "hk-3"]);
+
+		const movedUp = reorderServerAggregationMemberState(movedDown, "hk.example.com", "hk-1", "up");
+		expect(movedUp.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-1", "hk-2", "hk-3"]);
+	});
+
+	it("moves a server aggregation member to an arbitrary index", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+					{ rowId: "hk-3", sourceLandingNodeName: "HK", proxyName: "HK 3", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2", "hk-3"] }],
+			},
+		};
+
+		const movedToEnd = moveServerAggregationMemberToIndexState(current, "hk.example.com", "hk-1", 2);
+		expect(movedToEnd.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-2", "hk-3", "hk-1"]);
+
+		const movedToStart = moveServerAggregationMemberToIndexState(movedToEnd, "hk.example.com", "hk-1", 0);
+		expect(movedToStart.stage2Snapshot.serverAggregationGroups[0].memberRowIds).toEqual(["hk-1", "hk-2", "hk-3"]);
+	});
+
+	it("keeps memberRowIds order when switching aggregation strategy", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-2", "hk-1"] }],
+			},
+		};
+
+		const urlTest = updateServerAggregationStrategyState(current, "hk.example.com", "url-test");
+		expect(urlTest.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "url-test", memberRowIds: ["hk-2", "hk-1"] },
+		]);
+
+		const fallback = updateServerAggregationStrategyState(urlTest, "hk.example.com", "fallback");
+		expect(fallback.stage2Snapshot.serverAggregationGroups).toEqual([
+			{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-2", "hk-1"] },
+		]);
+	});
+
+	it("clears all server aggregation groups in one state transition", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{ rowId: "hk-1", sourceLandingNodeName: "HK", proxyName: "HK", mode: "chain", targetName: "HK Relay" },
+					{ rowId: "hk-2", sourceLandingNodeName: "HK", proxyName: "HK 2", mode: "none", targetName: null },
+				],
+				serverAggregationGroups: [
+					{ server: "hk.example.com", enabled: true, strategy: "fallback", memberRowIds: ["hk-1", "hk-2"] },
+				],
+			},
+			generatedUrls: {
+				longUrl: "https://public.example.com/sub?data=generated-long-url",
+				shortUrl: null,
+			},
+		};
+
+		const next = clearServerAggregationGroupsState(current);
+
+		expect(next.stage2Snapshot.serverAggregationGroups).toEqual([]);
+		expect(next.generatedUrls).toBeNull();
+		expect(next.stage3Expired).toBe(true);
+	});
+
+	it("clones derived rows using the source row proxyName as the naming base", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "Alpha-SS-SG",
+						sourceLandingNodeName: "Alpha-SS-SG",
+						proxyName: "🇸🇬 Alpha-SS-SG",
+						mode: "chain",
+						targetName: "🇭🇰 香港节点",
+					},
+				],
+				serverAggregationGroups: [],
+			},
+		};
+
+		const next = cloneStage2RowState(current, "rowId:Alpha-SS-SG");
+
+		expect(next.stage2Snapshot.rows).toHaveLength(2);
+		expect(next.stage2Snapshot.rows[1]).toMatchObject({
+			rowId: "🇸🇬 Alpha-SS-SG 2",
+			sourceLandingNodeName: "Alpha-SS-SG",
+			proxyName: "🇸🇬 Alpha-SS-SG 2",
+			mode: "chain",
+			targetName: "🇭🇰 香港节点",
+		});
+	});
+
+	it("persists edited server aggregation group names separately from member proxy names", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "hk-1",
+						sourceLandingNodeName: "hk-1",
+						proxyName: "hk-1",
+						mode: "none",
+						targetName: null,
+					},
+					{
+						rowId: "hk-2",
+						sourceLandingNodeName: "hk-1",
+						proxyName: "hk-1 2",
+						mode: "none",
+						targetName: null,
+					},
+				],
+				serverAggregationGroups: [
+					{
+						server: "hk.example.com",
+						enabled: true,
+						strategy: "fallback",
+						memberRowIds: ["hk-1", "hk-2"],
+					},
+				],
+			},
+		};
+
+		const renamed = updateServerAggregationGroupNameState(current, "hk.example.com", "HK 手动分组");
+		expect(renamed.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			groupName: "HK 手动分组",
+			enabled: true,
+			strategy: "fallback",
+			memberRowIds: ["hk-1", "hk-2"],
+		});
+		expect(renamed.stage2Snapshot.rows[0].proxyName).toBe("hk-1");
+
+		const cleared = updateServerAggregationGroupNameState(renamed, "hk.example.com", "  ");
+		expect(cleared.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			enabled: true,
+			strategy: "fallback",
+			memberRowIds: ["hk-1", "hk-2"],
+		});
+		expect(cleared.stage2Snapshot.serverAggregationGroups[0]).not.toHaveProperty("groupName");
 	});
 });

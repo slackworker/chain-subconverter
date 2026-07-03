@@ -17,13 +17,14 @@ type ResolveURLRequest struct {
 
 // ResolveURLResponse is the response payload for POST /api/resolve-url.
 type ResolveURLResponse struct {
-	LongURL        string          `json:"longUrl"`
-	ShortURL       string          `json:"shortUrl,omitempty"`
-	RestoreStatus  string          `json:"restoreStatus"`
-	Stage1Input    Stage1Input     `json:"stage1Input"`
-	Stage2Snapshot Stage2Snapshot  `json:"stage2Snapshot"`
-	Messages       []Message       `json:"messages"`
-	BlockingErrors []BlockingError `json:"blockingErrors"`
+	LongURL          string            `json:"longUrl"`
+	ShortURL         string            `json:"shortUrl,omitempty"`
+	RestoreStatus    string            `json:"restoreStatus"`
+	RestoreConflicts []RestoreConflict `json:"restoreConflicts,omitempty"`
+	Stage1Input      Stage1Input       `json:"stage1Input"`
+	Stage2Snapshot   Stage2Snapshot    `json:"stage2Snapshot"`
+	Messages         []Message         `json:"messages"`
+	BlockingErrors   []BlockingError   `json:"blockingErrors"`
 }
 
 type resolveURLInput struct {
@@ -46,29 +47,80 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	}
 
 	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
+	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
 
-	fixtures, err := LoadConversionFixtures(ctx, source, payload.Stage1Input, limits)
+	pipeline := NewCorePipeline(ctx, source, payload.Stage1Input, limits).
+		WithStage2Snapshot(payload.Stage2Snapshot)
+	validationMessages, err := pipeline.ValidateGenerateDryRun()
 	if err != nil {
+		if restoreStatus, messages, restoreConflicts, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
+			return ResolveURLResponse{
+				LongURL:          resolved,
+				ShortURL:         shortURL,
+				RestoreStatus:    restoreStatus,
+				RestoreConflicts: restoreConflicts,
+				Stage1Input:      payload.Stage1Input,
+				Stage2Snapshot:   payload.Stage2Snapshot,
+				Messages:         messages,
+				BlockingErrors:   []BlockingError{},
+			}, nil
+		}
+		if IsRestoreConflictError(err) {
+			return ResolveURLResponse{
+				LongURL:          resolved,
+				ShortURL:         shortURL,
+				RestoreStatus:    "conflicted",
+				RestoreConflicts: []RestoreConflict{RestoreConflictFromError(err)},
+				Stage1Input:      payload.Stage1Input,
+				Stage2Snapshot:   payload.Stage2Snapshot,
+				Messages: []Message{{
+					Level:   "warning",
+					Code:    "RESTORE_CONFLICT",
+					Message: restoreConflictMessage(err),
+				}},
+				BlockingErrors: []BlockingError{},
+			}, nil
+		}
 		return ResolveURLResponse{}, err
 	}
-
-	restoreStatus, messages, err := determineRestoreStatus(payload.Stage1Input, payload.Stage2Snapshot, fixtures)
-	if err != nil {
-		return ResolveURLResponse{}, err
-	}
-	baseMessages := append([]Message{}, fixtures.Messages...)
-	baseMessages = append(baseMessages, restoreWorkflowMessages(restoreStatus)...)
-	messages = append(baseMessages, messages...)
 
 	return ResolveURLResponse{
-		LongURL:        resolved,
-		ShortURL:       shortURL,
-		RestoreStatus:  restoreStatus,
-		Stage1Input:    payload.Stage1Input,
-		Stage2Snapshot: payload.Stage2Snapshot,
-		Messages:       messages,
-		BlockingErrors: []BlockingError{},
+		LongURL:          resolved,
+		ShortURL:         shortURL,
+		RestoreStatus:    "replayable",
+		RestoreConflicts: nil,
+		Stage1Input:      payload.Stage1Input,
+		Stage2Snapshot:   payload.Stage2Snapshot,
+		Messages: append(
+			append([]Message{}, validationMessages...),
+			restoreWorkflowMessages("replayable")...,
+		),
+		BlockingErrors:   []BlockingError{},
 	}, nil
+}
+
+func downgradeRestoreTemplateFixtureError(err error) (string, []Message, []RestoreConflict, bool) {
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		return "", nil, nil, false
+	}
+	blockingError := responseErr.BlockingError()
+	restoreConflict := RestoreConflictFromError(err)
+	if blockingError.Code == "TEMPLATE_CONFIG_UNAVAILABLE" {
+		return "conflicted", []Message{{
+			Level:   "warning",
+			Code:    "RESTORE_CONFLICT",
+			Message: "当前快照使用的模板 URL 暂时不可用，已恢复输入与快照供参考；请更新模板 URL 后重新转换。",
+		}}, []RestoreConflict{restoreConflict}, true
+	}
+	if blockingError.Scope == "stage1_field" && fmt.Sprint(blockingError.Context["field"]) == "config" {
+		return "conflicted", []Message{{
+			Level:   "warning",
+			Code:    "RESTORE_CONFLICT",
+			Message: "当前快照使用的模板 URL 已失效或不再可用，已恢复输入与快照供参考；请更新模板 URL 后重新转换。",
+		}}, []RestoreConflict{restoreConflict}, true
+	}
+	return "", nil, nil, false
 }
 
 func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, error) {
@@ -129,45 +181,6 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 	}
 
 	return canonicalLongURL, shortURL, payload, nil
-}
-
-// determineRestoreStatus runs the generate-phase validation against the
-// restored snapshot and current fixtures to decide replayable vs conflicted.
-//
-// Per spec 04-business-rules §3.2.1:
-//   - If every row passes validation -> "replayable"
-//   - If any row has an invalid reference -> "conflicted" + RESTORE_CONFLICT message
-func determineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, error) {
-	_, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
-	if err == nil {
-		return "replayable", []Message{}, nil
-	}
-
-	if !isRestoreConflictError(err) {
-		if responseErr, ok := AsResponseError(err); ok && responseErr.StatusCode() < http.StatusInternalServerError {
-			return "", nil, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
-		}
-		return "", nil, err
-	}
-	return "conflicted", []Message{{
-		Level:   "warning",
-		Code:    "RESTORE_CONFLICT",
-		Message: restoreConflictMessage(err),
-	}}, nil
-}
-
-func isRestoreConflictError(err error) bool {
-	responseErr, ok := AsResponseError(err)
-	if !ok {
-		return false
-	}
-
-	switch responseErr.BlockingError().Code {
-	case "STAGE2_ROWSET_MISMATCH", "TARGET_NOT_FOUND", "EMPTY_CHAIN_TARGET", "LANDING_NODE_NOT_FOUND":
-		return true
-	default:
-		return false
-	}
 }
 
 func parseResolveURLInput(rawURL string) (resolveURLInput, error) {

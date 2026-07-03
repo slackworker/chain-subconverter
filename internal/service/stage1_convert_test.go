@@ -26,6 +26,7 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 		LandingDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.yaml")),
 		TransitDiscoveryYAML: readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "transit-discovery.yaml")),
 		FullBaseYAML:         readTextFixture(t, filepath.Join(fixtureDir, "stage1", "output", "full-base.yaml")),
+		TemplateConfig:       defaultRegionConfig,
 	})
 	if err != nil {
 		t.Fatalf("BuildStage2Init() error = %v", err)
@@ -56,7 +57,9 @@ func TestBuildStage2Init_UsesStructuredLandingTypeField(t *testing.T) {
 		Stage1Input{},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: socks5}\n",
-			TransitDiscoveryYAML: "proxies:\n- {name: transit-hk, type: ss}\n",
+			TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-hk, type: ss}"}, map[string]string{
+				"🇭🇰 香港节点": "transit-hk",
+			}),
 			FullBaseYAML: strings.Join([]string{
 				"proxies:",
 				"- {name: HK Landing, type: socks5, server: landing.example.com, port: 443}",
@@ -79,8 +82,8 @@ func TestBuildStage2Init_UsesStructuredLandingTypeField(t *testing.T) {
 	}
 
 	row := stage2Init.Rows[0]
-	if row.LandingNodeName != "HK Landing" {
-		t.Fatalf("LandingNodeName mismatch: got %q want %q", row.LandingNodeName, "HK Landing")
+	if row.ProxyName != "HK Landing" {
+		t.Fatalf("ProxyName mismatch: got %q want %q", row.ProxyName, "HK Landing")
 	}
 	if row.LandingNodeType != "SOCKS5" {
 		t.Fatalf("LandingNodeType mismatch: got %q want %q", row.LandingNodeType, "SOCKS5")
@@ -181,7 +184,9 @@ func TestBuildStage2Init_DoesNotFallbackToPortForwardWhenChainAutoDetectFails(t 
 		},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: Unknown Landing, type: ss}\n",
-			TransitDiscoveryYAML: "proxies:\n- {name: transit-a, type: ss}\n",
+			TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-a, type: ss}"}, map[string]string{
+				"🇺🇸 美国节点": "transit-a",
+			}),
 			FullBaseYAML: strings.Join([]string{
 				"proxies:",
 				"- {name: Unknown Landing, type: ss, server: landing.example.com, port: 443}",
@@ -242,7 +247,7 @@ func TestBuildStage2Init_FallsBackToPortForwardWhenChainUnavailable(t *testing.T
 		},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: Unknown Landing, type: ss}\n",
-			TransitDiscoveryYAML: "proxies:\n",
+			TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, nil),
 			FullBaseYAML: strings.Join([]string{
 				"proxies:",
 				"- {name: Unknown Landing, type: ss, server: landing.example.com, port: 443}",
@@ -303,7 +308,9 @@ func TestBuildStage2Init_DoesNotCountLandingNodeAsRegionMember(t *testing.T) {
 		Stage1Input{},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: Unknown Landing, type: ss}\n",
-			TransitDiscoveryYAML: "proxies:\n",
+			TransitDiscoveryYAML: buildTransitDiscoveryFixture(nil, map[string]string{
+				"🇺🇸 美国节点": "Unknown Landing",
+			}),
 			FullBaseYAML: strings.Join([]string{
 				"proxies:",
 				"- {name: Unknown Landing, type: ss, server: landing.example.com, port: 443}",
@@ -353,7 +360,9 @@ func TestBuildStage2Init_MissingRecognizedRegionGroupReturnsUnavailable(t *testi
 		Stage1Input{},
 		ConversionFixtures{
 			LandingDiscoveryYAML: "proxies:\n- {name: HK Landing, type: ss}\n",
-			TransitDiscoveryYAML: "proxies:\n- {name: transit-hk, type: ss}\n",
+			TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-hk, type: ss}"}, map[string]string{
+				"Missing HK Group": "transit-hk",
+			}),
 			FullBaseYAML: strings.Join([]string{
 				"proxies:",
 				"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
@@ -365,7 +374,7 @@ func TestBuildStage2Init_MissingRecognizedRegionGroupReturnsUnavailable(t *testi
 				"      - transit-hk",
 				"",
 			}, "\n"),
-			TemplateConfig: "custom_proxy_group=🇭🇰 香港节点`url-test`HK\n",
+			TemplateConfig: "custom_proxy_group=🇩🇪 德国节点`url-test`(DE|德国)\n",
 		},
 	)
 	if err == nil {
@@ -374,11 +383,11 @@ func TestBuildStage2Init_MissingRecognizedRegionGroupReturnsUnavailable(t *testi
 	if !subconverter.IsUnavailable(err) {
 		t.Fatalf("BuildStage2Init() error = %v, want subconverter unavailable", err)
 	}
-	if !strings.Contains(err.Error(), `missing recognized region proxy-group "🇭🇰 香港节点"`) {
+	if !strings.Contains(err.Error(), `missing recognized region proxy-group "🇩🇪 德国节点"`) {
 		t.Fatalf("BuildStage2Init() error = %v, want missing region proxy-group detail", err)
 	}
-	if !strings.Contains(err.Error(), "managed template") {
-		t.Fatalf("BuildStage2Init() error = %v, want managed template hint", err)
+	if !strings.Contains(err.Error(), "transit-discovery result") {
+		t.Fatalf("BuildStage2Init() error = %v, want transit-discovery hint", err)
 	}
 }
 
@@ -494,7 +503,9 @@ func TestBuildStage2Init_SkipsAutoFillWhenMultipleRegionsMatch(t *testing.T) {
 func TestBuildStage2Init_UsesTemplateConfigForDynamicRegionAutoDetect(t *testing.T) {
 	fixtures := ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n- {name: DE Landing, type: ss}\n",
-		TransitDiscoveryYAML: "proxies:\n- {name: transit-de, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: transit-de, type: ss}"}, map[string]string{
+			"🇩🇪 德国节点": "transit-de",
+		}),
 		FullBaseYAML: strings.Join([]string{
 			"proxies:",
 			"- {name: DE Landing, type: ss, server: landing.example.com, port: 443}",
@@ -522,6 +533,78 @@ func TestBuildStage2Init_UsesTemplateConfigForDynamicRegionAutoDetect(t *testing
 	}
 	if row.TargetName == nil || *row.TargetName != "🇩🇪 德国节点" {
 		t.Fatalf("row targetName mismatch: got %v want %q", row.TargetName, "🇩🇪 德国节点")
+	}
+}
+
+func TestBuildStage2Init_AppliesChainEmojiAfterStage1(t *testing.T) {
+	enabled := true
+	fixtures := ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: Alpha-SS-sdgfa, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: Alpha-transit-sdgfa, type: ss, server: transit.example.com, port: 443}"}, map[string]string{
+			"🇸🇬 新加坡节点": "Alpha-transit-sdgfa",
+		}),
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: Alpha-SS-sdgfa, type: ss, server: landing.example.com, port: 443}",
+			"- {name: Alpha-transit-sdgfa, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - Alpha-transit-sdgfa",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇸🇬 新加坡节点`fallback`(SG|Singapore|Alpha)\n",
+	}
+
+	stage2Init, err := BuildStage2Init(Stage1Input{
+		AdvancedOptions: AdvancedOptions{Emoji: &enabled},
+	}, fixtures)
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+
+	row := stage2Init.Rows[0]
+	if row.SourceLandingNodeName != "Alpha-SS-sdgfa" {
+		t.Fatalf("SourceLandingNodeName = %q, want %q", row.SourceLandingNodeName, "Alpha-SS-sdgfa")
+	}
+	if row.ProxyName != "🇸🇬 Alpha-SS-sdgfa" {
+		t.Fatalf("ProxyName = %q, want %q", row.ProxyName, "🇸🇬 Alpha-SS-sdgfa")
+	}
+	if row.Mode != "chain" {
+		t.Fatalf("row mode mismatch: got %q want %q", row.Mode, "chain")
+	}
+}
+
+func TestBuildStage2Init_AppliesEmojiToTransitProxyChainTargets(t *testing.T) {
+	enabled := true
+	stage2Init, err := BuildStage2Init(Stage1Input{
+		AdvancedOptions: AdvancedOptions{Emoji: &enabled},
+	}, ConversionFixtures{
+		LandingDiscoveryYAML: "proxies:\n- {name: Alpha-SS-sdgfa, type: ss}\n",
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture([]string{"- {name: Alpha-transit-sg, type: ss}"}, map[string]string{
+			"🇸🇬 新加坡节点": "Alpha-transit-sg",
+		}),
+		FullBaseYAML: strings.Join([]string{
+			"proxies:",
+			"- {name: Alpha-SS-sdgfa, type: ss, server: landing.example.com, port: 443}",
+			"- {name: Alpha-transit-sg, type: ss, server: transit.example.com, port: 443}",
+			"proxy-groups:",
+			"  - name: 🇸🇬 新加坡节点",
+			"    type: fallback",
+			"    proxies:",
+			"      - Alpha-transit-sg",
+			"",
+		}, "\n"),
+		TemplateConfig: "custom_proxy_group=🇸🇬 新加坡节点`fallback`(SG|Singapore|Alpha)\n",
+	})
+	if err != nil {
+		t.Fatalf("BuildStage2Init() error = %v", err)
+	}
+	if target, ok := findChainTarget(stage2Init.ChainTargets, "🇸🇬 Alpha-transit-sg", "proxies"); !ok {
+		t.Fatalf("expected emoji-renamed transit proxy chain target, got %v", stage2Init.ChainTargets)
+	} else if target.IsEmpty {
+		t.Fatalf("expected non-empty transit proxy chain target")
 	}
 }
 
@@ -579,11 +662,11 @@ func TestBuildStage2Init_HighLandingPortEmitsChainWarning(t *testing.T) {
 	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PORT" {
 		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
 	}
-	if !strings.Contains(warning.ReasonText, "10001") {
-		t.Fatalf("ReasonText should mention current landing port, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["landingPort"]; got != 10001 {
+		t.Fatalf("landingPort mismatch: got %#v want %d", got, 10001)
 	}
-	if !strings.Contains(warning.ReasonText, "10000 以内端口") {
-		t.Fatalf("ReasonText should include recommended port range, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["recommendedPortMax"]; got != recommendedChainLandingPortMax {
+		t.Fatalf("recommendedPortMax mismatch: got %#v want %d", got, recommendedChainLandingPortMax)
 	}
 }
 
@@ -604,11 +687,11 @@ func TestBuildStage2Init_HighLandingPortAndProtocolMergeChainWarnings(t *testing
 	if warning.ReasonCode != "DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT" {
 		t.Fatalf("ReasonCode mismatch: got %q", warning.ReasonCode)
 	}
-	if !strings.Contains(warning.ReasonText, "建议 SS（AEAD）或 VMess") {
-		t.Fatalf("ReasonText should retain protocol guidance, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["landingProtocolType"]; got != "vless-reality" {
+		t.Fatalf("landingProtocolType mismatch: got %#v want %q", got, "vless-reality")
 	}
-	if !strings.Contains(warning.ReasonText, "12000") {
-		t.Fatalf("ReasonText should mention current landing port, got %q", warning.ReasonText)
+	if got := warning.ReasonArgs["landingPort"]; got != 12000 {
+		t.Fatalf("landingPort mismatch: got %#v want %d", got, 12000)
 	}
 }
 
@@ -738,13 +821,15 @@ func singleLandingFixture(landingName string, landingType string, transitGroupNa
 }
 
 func singleLandingFixtureWithPort(landingName string, landingType string, transitGroupName string, landingPort int) ConversionFixtures {
-	transitYAML := "proxies:\n"
+	transitProxyEntries := []string{}
+	transitGroupMembers := map[string]string{}
 	fullBaseProxyLines := []string{
 		"proxies:",
 		inlineLandingFixtureLineWithPort(landingName, landingType, landingPort, true),
 	}
 	if transitGroupName != "" {
-		transitYAML = "proxies:\n- {name: transit-a, type: ss}\n"
+		transitProxyEntries = append(transitProxyEntries, "- {name: transit-a, type: ss}")
+		transitGroupMembers[transitGroupName] = "transit-a"
 		fullBaseProxyLines = append(fullBaseProxyLines, "- {name: transit-a, type: ss, server: transit.example.com, port: 443}")
 	}
 
@@ -764,10 +849,37 @@ func singleLandingFixtureWithPort(landingName string, landingType string, transi
 
 	return ConversionFixtures{
 		LandingDiscoveryYAML: "proxies:\n" + inlineLandingFixtureLineWithPort(landingName, landingType, landingPort, false) + "\n",
-		TransitDiscoveryYAML: transitYAML,
+		TransitDiscoveryYAML: buildTransitDiscoveryFixture(transitProxyEntries, transitGroupMembers),
 		FullBaseYAML:         strings.Join(append(fullBaseProxyLines, append(groupLines, "")...), "\n"),
 		TemplateConfig:       defaultRegionConfig,
 	}
+}
+
+func buildTransitDiscoveryFixture(transitProxyEntries []string, regionGroupMembers map[string]string) string {
+	lines := []string{"proxies:"}
+	lines = append(lines, transitProxyEntries...)
+	lines = append(lines, "proxy-groups:")
+	groupNames := []string{"🇭🇰 香港节点", "🇺🇸 美国节点", "🇯🇵 日本节点", "🇸🇬 新加坡节点", "🇼🇸 台湾节点", "🇰🇷 韩国节点"}
+	for groupName := range regionGroupMembers {
+		if containsString(groupNames, groupName) {
+			continue
+		}
+		groupNames = append(groupNames, groupName)
+	}
+	for _, groupName := range groupNames {
+		member := "DIRECT"
+		if mappedMember, ok := regionGroupMembers[groupName]; ok && strings.TrimSpace(mappedMember) != "" {
+			member = mappedMember
+		}
+		lines = append(lines,
+			"  - name: "+groupName,
+			"    type: url-test",
+			"    proxies:",
+			"      - "+member,
+		)
+	}
+	lines = append(lines, "")
+	return strings.Join(lines, "\n")
 }
 
 func inlineLandingFixtureLine(landingName string, landingType string, includeEndpoint bool) string {
@@ -794,6 +906,7 @@ func normalizeStage2InitRowsForContract(rows []Stage2InitRow) []Stage2InitRow {
 		normalized[index].RowID = ""
 		normalized[index].SourceLandingNodeName = ""
 		normalized[index].ProxyName = ""
+		normalized[index].Server = ""
 	}
 	return normalized
 }
