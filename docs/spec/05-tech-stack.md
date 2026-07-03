@@ -139,7 +139,7 @@ chain-subconverter/
 | 前端逻辑 | Vitest（`web`） | `stage1` / `stage2` / `state` / `notices`、`useAppWorkflow` 等纯逻辑 |
 | 浏览器 | Playwright（`web`） | mocked 四象限入口（`test:e2e:mock:smoke` / `test:e2e:mock:full`）；本地/容器化，或 CI job `web-e2e-mock-smoke` + `web-e2e-mock-full`（blocking） |
 | CI | GitHub Actions（`ci.yml`） | Go test；review / worker fixture freshness；Web 单测；`web-e2e-mock-smoke` + `web-e2e-mock-full`；`build:default`（blocking）；`build:b1`/`b2`/`c1`/`c2`（非 blocking）；compose config |
-| 镜像发布校验 | `docker-publish.yml` validate | 等待同 SHA 的 `ci.yml` 成功（含 Vitest、mock E2E、fixture job 等 blocking job）；仅 `workflow_dispatch` 的 `dev-latest` 手动发布跳过 validate |
+| 镜像发布校验 | `docker-publish.yml` validate | `main` 合并由 `workflow_run`（CI 成功）触发发布，不经 validate；tag / 手动发布一次性校验同 SHA 的 `ci.yml` 已成功；仅 `workflow_dispatch` 的 `dev-latest` 跳过 validate |
 
 分层边界、fixture 维护流水线与 CI 缺口详见 [testing/README.md](../testing/README.md)（Vitest / mocked E2E 不读 canonical；`real-smoke` 默认读基础 canonical）。
 

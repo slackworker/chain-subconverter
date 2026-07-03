@@ -2,6 +2,8 @@ import { useMemo, type RefObject } from "react";
 
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
 import {
+	collectTemplateProxyGroupNames,
+	getServerAggregationGroupDisplayName,
 	getStage2DisplayModeOptions,
 	getStage2RowDisplayName,
 	getStage2RowStrictKey,
@@ -11,7 +13,6 @@ import {
 import { formatModeReason } from "../../lib/mode-reason";
 import {
 	buildStage2AggregationTree,
-	formatServerGroupLabel,
 	formatStage2TreeGlyphMeasureSpacer,
 	getServerBlockAggregationEnabled,
 	getStage2AggregationTreeRowInlineClassName,
@@ -47,24 +48,35 @@ interface Stage2AggregationTreeProps {
 	setSupplementOpen: (rowKey: string, open: boolean) => void;
 }
 
-function getServerGroupDisplayName(displayServer: string, sourceFlagEmoji: string | null, groupName?: string): string {
-	const trimmedGroupName = groupName?.trim() ?? "";
+function getServerGroupEditableName(
+	snapshot: AppWorkflowViewModel["state"]["stage2Snapshot"],
+	stage2Init: AppWorkflowViewModel["state"]["stage2Init"],
+	server: string,
+	groupName: string,
+	enabled: boolean,
+): string {
+	const trimmedGroupName = groupName.trim();
 	if (trimmedGroupName !== "") {
 		return trimmedGroupName;
 	}
-	const serverName = formatServerGroupLabel(displayServer);
-	if (serverName === "--") {
-		return serverName;
-	}
-	return sourceFlagEmoji ? `${sourceFlagEmoji} ${serverName}` : serverName;
+	return getServerAggregationGroupDisplayName(snapshot, server, {
+		groupName,
+		enabled,
+		existingProxyGroupNames: collectTemplateProxyGroupNames(stage2Init?.chainTargets ?? []),
+	});
 }
 
-function getServerGroupEditableName(
-	displayServer: string,
-	sourceFlagEmoji: string | null,
-	groupName?: string,
+function getServerGroupColumnLabel(
+	snapshot: AppWorkflowViewModel["state"]["stage2Snapshot"],
+	stage2Init: AppWorkflowViewModel["state"]["stage2Init"],
+	server: string,
+	serverAggregation: ReturnType<AppWorkflowViewModel["getServerAggregationGroup"]>,
 ): string {
-	return getServerGroupDisplayName(displayServer, sourceFlagEmoji, groupName);
+	return getServerAggregationGroupDisplayName(snapshot, server, {
+		groupName: serverAggregation?.groupName,
+		enabled: serverAggregation?.enabled ?? false,
+		existingProxyGroupNames: collectTemplateProxyGroupNames(stage2Init?.chainTargets ?? []),
+	});
 }
 
 export function Stage2AggregationTree({
@@ -118,7 +130,7 @@ export function Stage2AggregationTree({
 			if (node.kind === "server") {
 				const serverAggregation = getServerAggregationGroup(node.anchorRowKey);
 				return {
-					nodeLabel: getServerGroupDisplayName(node.displayServer, node.sourceFlagEmoji, serverAggregation?.groupName),
+					nodeLabel: getServerGroupColumnLabel(state.stage2Snapshot, state.stage2Init, node.server, serverAggregation),
 					landingNodeType: copy.typePolicyGroup,
 					modeOptionLabels: [
 						getAggregationStrategyLabel("fallback", copy),
@@ -161,7 +173,7 @@ export function Stage2AggregationTree({
 			headers: [copy.colNodeTree, copy.colAggregation, copy.colTypeAgg, copy.colMode, copy.colTarget] as const,
 			rows,
 		};
-	}, [treeNodes, state.stage2Init, stage2Rows, locale, copy, getStage2RowMeta, getServerAggregationGroup]);
+	}, [treeNodes, state.stage2Init, state.stage2Snapshot, stage2Rows, locale, copy, getStage2RowMeta, getServerAggregationGroup]);
 
 	const stage2ColumnStyle = useStage2AggTableColumns(tableWrapRef, stage2ColumnMeasureInput);
 
@@ -298,7 +310,14 @@ function Stage2AggregationTreeRow({
 						row={anchorRow}
 						rowKey={node.anchorRowKey}
 						editable={editable && enabled}
-						nameValueOverride={getServerGroupEditableName(node.displayServer, node.sourceFlagEmoji, groupName)}
+						nameValueOverride={getServerGroupEditableName(
+							state.stage2Snapshot,
+							state.stage2Init,
+							node.server,
+							groupName,
+							enabled,
+						)}
+						nameEditableHint={copy.serverGroupNameEditableHint}
 						rowErrors={[]}
 						copy={copy}
 						wrapperClassName={rowInlineClassName}

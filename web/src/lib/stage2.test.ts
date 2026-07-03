@@ -15,9 +15,14 @@ import {
 	matchesStage2RowKey,
 	pickNextDerivedProxyName,
 	pickNextTarget,
+	buildManagedServerAggregationGroupDisplayNames,
+	collectTemplateProxyGroupNames,
+	deriveManagedServerAggregationGroupBaseName,
+	getServerAggregationGroupDisplayName,
+	nextManagedServerAggregationGroupName,
 } from "./stage2";
 
-import type { Stage2Init, Stage2Row } from "../types/api";
+import type { Stage2Init, Stage2Row, Stage2Snapshot } from "../types/api";
 
 const minimalStage2Init: Stage2Init = {
 	availableModes: ["none", "chain", "port_forward"],
@@ -267,5 +272,137 @@ describe("stage2 target helpers", () => {
 
 		expect(isStage2SourceRow(sourceRow)).toBe(true);
 		expect(isStage2SourceRow(derivedRow)).toBe(false);
+	});
+});
+
+describe("server aggregation group naming", () => {
+	it("derives emoji+server default names and conflict suffixes like backend YAML rules", () => {
+		const rows: Stage2Row[] = [
+			{
+				rowId: "🇭🇰 HK Landing",
+				sourceLandingNodeName: "🇭🇰 HK Landing",
+				proxyName: "🇭🇰 HK Landing",
+				mode: "none",
+				targetName: null,
+			},
+			{
+				rowId: "hk-2",
+				sourceLandingNodeName: "🇭🇰 HK Landing",
+				proxyName: "🇭🇰 HK Landing Copy",
+				mode: "none",
+				targetName: null,
+			},
+		];
+		const snapshot = {
+			rows,
+			serverAggregationGroups: [
+				{
+					server: "landing.example.com",
+					enabled: true,
+					strategy: "fallback" as const,
+					memberRowIds: ["🇭🇰 HK Landing", "hk-2"],
+				},
+			],
+		};
+
+		expect(
+			getServerAggregationGroupDisplayName(snapshot, "landing.example.com", {
+				existingProxyGroupNames: ["🇭🇰 landing.example.com"],
+			}),
+		).toBe("🇭🇰 landing.example.com 2");
+	});
+
+	it("uses source:* server keys instead of display placeholders", () => {
+		const rows: Stage2Row[] = [
+			{
+				rowId: "solo",
+				sourceLandingNodeName: "solo",
+				proxyName: "solo",
+				mode: "none",
+				targetName: null,
+			},
+		];
+
+		expect(
+			deriveManagedServerAggregationGroupBaseName("source:solo", undefined, rows),
+		).toBe("source:solo");
+	});
+
+	it("assigns managed names in serverAggregationGroups order", () => {
+		const rows: Stage2Row[] = [
+			{
+				rowId: "a-1",
+				sourceLandingNodeName: "a-1",
+				proxyName: "a-1",
+				mode: "none",
+				targetName: null,
+			},
+			{
+				rowId: "b-1",
+				sourceLandingNodeName: "b-1",
+				proxyName: "b-1",
+				mode: "none",
+				targetName: null,
+			},
+		];
+		const snapshot = {
+			rows,
+			serverAggregationGroups: [
+				{
+					server: "shared.example.com",
+					enabled: true,
+					strategy: "fallback" as const,
+					memberRowIds: ["a-1"],
+				},
+				{
+					server: "other.example.com",
+					enabled: true,
+					strategy: "fallback" as const,
+					memberRowIds: ["b-1"],
+				},
+			],
+		};
+
+		expect(
+			buildManagedServerAggregationGroupDisplayNames(snapshot, ["shared.example.com"]),
+		).toEqual(
+			new Map([
+				["shared.example.com", "shared.example.com 2"],
+				["other.example.com", "other.example.com"],
+			]),
+		);
+	});
+
+	it("collects template proxy group names for conflict resolution", () => {
+		expect(
+			collectTemplateProxyGroupNames([
+				{ name: "HK Relay Group", kind: "proxy-groups" },
+				{ name: "relay.example.com:7443", kind: "proxies" },
+			]),
+		).toEqual(new Set(["HK Relay Group"]));
+	});
+
+	it("increments conflict suffixes from 2 upward", () => {
+		const usedNames = new Set(["HK Group", "HK Group 2"]);
+		expect(nextManagedServerAggregationGroupName("HK Group", usedNames)).toBe("HK Group 3");
+	});
+
+	it("prefers explicit groupName over emoji+server defaults", () => {
+		const rows: Stage2Row[] = [
+			{
+				rowId: "🇭🇰 HK Landing",
+				sourceLandingNodeName: "🇭🇰 HK Landing",
+				proxyName: "🇭🇰 HK Landing",
+				mode: "none",
+				targetName: null,
+			},
+		];
+		expect(deriveManagedServerAggregationGroupBaseName("landing.example.com", "HK 手动分组", rows)).toBe(
+			"HK 手动分组",
+		);
+	});
+
+	it("falls back to server when server key is empty", () => {
+		expect(deriveManagedServerAggregationGroupBaseName("", undefined, [])).toBe("server");
 	});
 });

@@ -331,3 +331,328 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_RendersExtendedStrate
 		})
 	}
 }
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsAggregationIntoSelectGroups(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"  - name: Existing Fallback",
+		"    type: fallback",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"",
+	}, "\n")
+
+	snapshot := aggregationInjectionTestSnapshot("landing.example.com", "hk-1", "hk-2")
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedSelectBlock := strings.Join([]string{
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - landing.example.com",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedSelectBlock) {
+		t.Fatalf("select group should have aggregation prepended:\n%s", rendered)
+	}
+
+	expectedFallbackBlock := strings.Join([]string{
+		"  - name: Existing Fallback",
+		"    type: fallback",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedFallbackBlock) {
+		t.Fatalf("fallback group should remain unchanged:\n%s", rendered)
+	}
+}
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_ExcludesDirectSelectGroups(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 🎯 全球直连",
+		"    type: select",
+		"    proxies:",
+		"      - DIRECT",
+		"  - name: Direct Route",
+		"    type: select",
+		"    proxies:",
+		"      - DIRECT",
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"",
+	}, "\n")
+
+	snapshot := aggregationInjectionTestSnapshot("landing.example.com", "hk-1", "hk-2")
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedDirectBlocks := []string{
+		strings.Join([]string{
+			"  - name: 🎯 全球直连",
+			"    type: select",
+			"    proxies:",
+			"      - DIRECT",
+		}, "\n"),
+		strings.Join([]string{
+			"  - name: Direct Route",
+			"    type: select",
+			"    proxies:",
+			"      - DIRECT",
+		}, "\n"),
+	}
+	for _, block := range expectedDirectBlocks {
+		if !strings.Contains(rendered, block) {
+			t.Fatalf("direct-excluded select group should remain unchanged:\n%s", rendered)
+		}
+	}
+
+	if !strings.Contains(rendered, "      - landing.example.com\n      - HK Landing") {
+		t.Fatalf("non-direct select group should still receive aggregation injection:\n%s", rendered)
+	}
+}
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsMultipleAggregationsInSnapshotOrder(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing-a.example.com, port: 443}",
+		"- {name: SG Landing, type: ss, server: landing-b.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"      - SG Landing",
+		"",
+	}, "\n")
+
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+			},
+			{
+				RowID:                 "sg-1",
+				SourceLandingNodeName: "SG Landing",
+				ProxyName:             "SG Landing",
+			},
+		},
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       "landing-a.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1"},
+			},
+			{
+				Server:       "landing-b.example.com",
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"sg-1"},
+			},
+		},
+	}
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedSelectBlock := strings.Join([]string{
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - landing-a.example.com",
+		"      - landing-b.example.com",
+		"      - HK Landing",
+		"      - SG Landing",
+	}, "\n")
+	if !strings.Contains(rendered, expectedSelectBlock) {
+		t.Fatalf("multiple aggregations should be prepended in snapshot order:\n%s", rendered)
+	}
+}
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_MovesDuplicateAggregationMemberToFront(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"      - landing.example.com",
+		"      - HK Landing Copy",
+		"",
+	}, "\n")
+
+	snapshot := aggregationInjectionTestSnapshot("landing.example.com", "hk-1", "hk-2")
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedSelectBlock := strings.Join([]string{
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - landing.example.com",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedSelectBlock) {
+		t.Fatalf("duplicate aggregation member should move to front without duplication:\n%s", rendered)
+	}
+}
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_NoEnabledGroupsSkipsInjection(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"",
+	}, "\n")
+
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+			},
+		},
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       "landing.example.com",
+				Enabled:      false,
+				Strategy:     "fallback",
+				MemberRowIDs: []string{"hk-1"},
+			},
+		},
+	}
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	if rendered != fullYAML {
+		t.Fatalf("disabled aggregation groups should leave YAML unchanged:\n%s", rendered)
+	}
+}
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_DoesNotInjectIntoManagedAggregationGroup(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"",
+	}, "\n")
+
+	snapshot := Stage2Snapshot{
+		Rows: []Stage2Row{
+			{
+				RowID:                 "hk-1",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing",
+			},
+			{
+				RowID:                 "hk-2",
+				SourceLandingNodeName: "HK Landing",
+				ProxyName:             "HK Landing Copy",
+			},
+		},
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       "landing.example.com",
+				Enabled:      true,
+				Strategy:     "select",
+				MemberRowIDs: []string{"hk-1", "hk-2"},
+			},
+		},
+	}
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedManagedGroupBlock := strings.Join([]string{
+		"  - name: landing.example.com",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedManagedGroupBlock) {
+		t.Fatalf("managed select aggregation group should only contain node members:\n%s", rendered)
+	}
+}
+
+func aggregationInjectionTestSnapshot(server string, memberRowIDs ...string) Stage2Snapshot {
+	rows := make([]Stage2Row, 0, len(memberRowIDs))
+	for index, memberRowID := range memberRowIDs {
+		proxyName := "HK Landing"
+		if index == 1 {
+			proxyName = "HK Landing Copy"
+		}
+		rows = append(rows, Stage2Row{
+			RowID:                 memberRowID,
+			SourceLandingNodeName: proxyName,
+			ProxyName:             proxyName,
+		})
+	}
+	return Stage2Snapshot{
+		Rows: rows,
+		ServerAggregationGroups: []ServerAggregationGroup{
+			{
+				Server:       server,
+				Enabled:      true,
+				Strategy:     "fallback",
+				MemberRowIDs: memberRowIDs,
+			},
+		},
+	}
+}

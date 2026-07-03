@@ -22,6 +22,7 @@ import {
 export type Stage2Copy = {
 	proxyNameLabel: string;
 	proxyNameEditableHint: string;
+	serverGroupNameEditableHint: string;
 	cloneRow: string;
 	deleteRow: string;
 	keepOneDerivedRow: string;
@@ -75,6 +76,7 @@ interface Stage2RowNameCellProps {
 	rowKey: string;
 	editable: boolean;
 	nameValueOverride?: string;
+	nameEditableHint?: string;
 	rowErrors: { code: string; message: string }[];
 	copy: Stage2Copy;
 	glyphParts?: Stage2TreeGlyphParts;
@@ -217,6 +219,7 @@ export function Stage2RowNameCell({
 	rowKey,
 	editable,
 	nameValueOverride,
+	nameEditableHint,
 	rowErrors,
 	copy,
 	glyphParts,
@@ -260,8 +263,8 @@ export function Stage2RowNameCell({
 						<label
 							className="a-stage2-row-edit-hint"
 							htmlFor={rowNameInputId}
-							title={copy.proxyNameEditableHint}
-							aria-label={copy.proxyNameEditableHint}
+							title={nameEditableHint ?? copy.proxyNameEditableHint}
+							aria-label={nameEditableHint ?? copy.proxyNameEditableHint}
 						>
 							<PencilIcon className="a-icon" aria-hidden />
 						</label>

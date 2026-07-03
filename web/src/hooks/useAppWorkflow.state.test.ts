@@ -22,6 +22,7 @@ import {
 	updateServerAggregationStrategyState,
 	deleteStage2RowState,
 	updateServerAggregationGroupState,
+	updateServerAggregationGroupNameState,
 	moveServerAggregationMemberToIndexState,
 	reorderServerAggregationMemberState,
 	reorderStage2RowsState,
@@ -1024,5 +1025,56 @@ describe("useAppWorkflow.state", () => {
 			mode: "chain",
 			targetName: "🇭🇰 香港节点",
 		});
+	});
+
+	it("persists edited server aggregation group names separately from member proxy names", () => {
+		const current: AppState = {
+			...initialAppState,
+			stage2Snapshot: {
+				rows: [
+					{
+						rowId: "hk-1",
+						sourceLandingNodeName: "hk-1",
+						proxyName: "hk-1",
+						mode: "none",
+						targetName: null,
+					},
+					{
+						rowId: "hk-2",
+						sourceLandingNodeName: "hk-1",
+						proxyName: "hk-1 2",
+						mode: "none",
+						targetName: null,
+					},
+				],
+				serverAggregationGroups: [
+					{
+						server: "hk.example.com",
+						enabled: true,
+						strategy: "fallback",
+						memberRowIds: ["hk-1", "hk-2"],
+					},
+				],
+			},
+		};
+
+		const renamed = updateServerAggregationGroupNameState(current, "hk.example.com", "HK 手动分组");
+		expect(renamed.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			groupName: "HK 手动分组",
+			enabled: true,
+			strategy: "fallback",
+			memberRowIds: ["hk-1", "hk-2"],
+		});
+		expect(renamed.stage2Snapshot.rows[0].proxyName).toBe("hk-1");
+
+		const cleared = updateServerAggregationGroupNameState(renamed, "hk.example.com", "  ");
+		expect(cleared.stage2Snapshot.serverAggregationGroups[0]).toMatchObject({
+			server: "hk.example.com",
+			enabled: true,
+			strategy: "fallback",
+			memberRowIds: ["hk-1", "hk-2"],
+		});
+		expect(cleared.stage2Snapshot.serverAggregationGroups[0]).not.toHaveProperty("groupName");
 	});
 });

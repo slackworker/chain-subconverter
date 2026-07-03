@@ -58,7 +58,196 @@ func appendServerAggregationGroupsToCompleteConfigYAML(fullYAML string, snapshot
 	if preserveTrailingNewline {
 		result += "\n"
 	}
-	return result, nil
+	return injectAggregationGroupsIntoSelectProxyGroups(result, managedGroups)
+}
+
+func isDirectExcludedProxyGroupName(name string) bool {
+	return strings.Contains(name, "直连") || strings.Contains(strings.ToLower(name), "direct")
+}
+
+func shouldInjectAggregationIntoProxyGroup(groupName, groupType string, managedNames map[string]struct{}) bool {
+	if groupType != "select" {
+		return false
+	}
+	if isDirectExcludedProxyGroupName(groupName) {
+		return false
+	}
+	if _, isManaged := managedNames[groupName]; isManaged {
+		return false
+	}
+	return true
+}
+
+func prependAggregationNamesToProxies(existing, names []string) []string {
+	if len(names) == 0 {
+		return existing
+	}
+
+	nameSet := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		nameSet[name] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(existing))
+	for _, member := range existing {
+		if _, duplicate := nameSet[member]; duplicate {
+			continue
+		}
+		filtered = append(filtered, member)
+	}
+
+	result := make([]string, 0, len(names)+len(filtered))
+	result = append(result, names...)
+	result = append(result, filtered...)
+	return result
+}
+
+func injectAggregationGroupsIntoSelectProxyGroups(fullYAML string, managedGroups []managedServerAggregationGroup) (string, error) {
+	if len(managedGroups) == 0 {
+		return fullYAML, nil
+	}
+
+	aggregationNames := make([]string, 0, len(managedGroups))
+	managedNames := make(map[string]struct{}, len(managedGroups))
+	for _, group := range managedGroups {
+		aggregationNames = append(aggregationNames, group.Name)
+		managedNames[group.Name] = struct{}{}
+	}
+
+	return rewriteCompleteConfigYAML(fullYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
+		return applyAggregationInjectionToProxyGroups(root, aggregationNames, managedNames, lines, deletedLines, replacedLines)
+	})
+}
+
+func applyAggregationInjectionToProxyGroups(
+	root *yaml.Node,
+	aggregationNames []string,
+	managedNames map[string]struct{},
+	lines []string,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
+	proxyGroupsNode := yamlMappingValue(root, "proxy-groups")
+	if proxyGroupsNode == nil {
+		return fmt.Errorf("complete config YAML is missing proxy-groups")
+	}
+	if proxyGroupsNode.Kind != yaml.SequenceNode {
+		return fmt.Errorf("complete config YAML field %q must be a sequence", "proxy-groups")
+	}
+
+	for index, groupNode := range proxyGroupsNode.Content {
+		if groupNode.Kind != yaml.MappingNode {
+			return fmt.Errorf("proxy-group entry must be a mapping")
+		}
+
+		nameNode := yamlMappingValue(groupNode, "name")
+		if nameNode == nil {
+			return fmt.Errorf("proxy-group entry is missing name")
+		}
+
+		groupType := ""
+		if typeNode := yamlMappingValue(groupNode, "type"); typeNode != nil {
+			groupType = typeNode.Value
+		}
+		if !shouldInjectAggregationIntoProxyGroup(nameNode.Value, groupType, managedNames) {
+			continue
+		}
+
+		startIndex := groupNode.Line - 1
+		if startIndex < 0 || startIndex >= len(lines) {
+			return fmt.Errorf("proxy-group line %d is out of range", groupNode.Line)
+		}
+
+		endIndex := len(lines)
+		if index+1 < len(proxyGroupsNode.Content) {
+			nextIndex := proxyGroupsNode.Content[index+1].Line - 1
+			if nextIndex > startIndex {
+				endIndex = nextIndex
+			}
+		}
+
+		if err := applyAggregationInjectionLines(groupNode, aggregationNames, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
+			return fmt.Errorf("inject aggregation groups into %q: %w", nameNode.Value, err)
+		}
+	}
+
+	return nil
+}
+
+func applyAggregationInjectionLines(
+	groupNode *yaml.Node,
+	aggregationNames []string,
+	lines []string,
+	startIndex int,
+	endIndex int,
+	deletedLines map[int]struct{},
+	replacedLines map[int]string,
+) error {
+	membersNode := yamlMappingValue(groupNode, "proxies")
+	if membersNode == nil {
+		nameNode := yamlMappingValue(groupNode, "name")
+		groupName := ""
+		if nameNode != nil {
+			groupName = nameNode.Value
+		}
+		return fmt.Errorf("proxy-group %q is missing proxies", groupName)
+	}
+
+	existingMembers := make([]string, 0, len(membersNode.Content))
+	for _, memberNode := range membersNode.Content {
+		if memberNode.Kind != yaml.ScalarNode {
+			continue
+		}
+		existingMembers = append(existingMembers, memberNode.Value)
+		if memberNode.Line > 0 {
+			deletedLines[memberNode.Line-1] = struct{}{}
+		}
+	}
+
+	newMembers := prependAggregationNamesToProxies(existingMembers, aggregationNames)
+
+	proxiesLineIndex := proxyGroupProxiesLineIndex(groupNode)
+	if proxiesLineIndex < 0 || proxiesLineIndex >= len(lines) {
+		return fmt.Errorf("proxy-group proxies line %d is out of range", proxiesLineIndex+1)
+	}
+
+	memberIndent := proxyGroupMemberIndent(lines, startIndex, endIndex)
+	memberLines := make([]string, 0, len(newMembers))
+	for _, member := range newMembers {
+		memberLines = append(memberLines, memberIndent+"- "+member)
+	}
+	replacedLines[proxiesLineIndex] = lines[proxiesLineIndex] + "\n" + strings.Join(memberLines, "\n")
+	return nil
+}
+
+func proxyGroupProxiesLineIndex(groupNode *yaml.Node) int {
+	if groupNode == nil || groupNode.Kind != yaml.MappingNode {
+		return -1
+	}
+	for index := 0; index+1 < len(groupNode.Content); index += 2 {
+		keyNode := groupNode.Content[index]
+		if keyNode.Value != "proxies" {
+			continue
+		}
+		if keyNode.Line > 0 {
+			return keyNode.Line - 1
+		}
+		valueNode := groupNode.Content[index+1]
+		if valueNode.Line > 0 {
+			return valueNode.Line - 1
+		}
+	}
+	return -1
+}
+
+func proxyGroupMemberIndent(lines []string, startIndex int, endIndex int) string {
+	for lineIndex := startIndex + 1; lineIndex < endIndex; lineIndex++ {
+		trimmed := strings.TrimLeft(lines[lineIndex], " \t")
+		if strings.HasPrefix(trimmed, "- ") {
+			return lines[lineIndex][:len(lines[lineIndex])-len(trimmed)]
+		}
+	}
+	return "      "
 }
 
 func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapshot) ([]managedServerAggregationGroup, error) {

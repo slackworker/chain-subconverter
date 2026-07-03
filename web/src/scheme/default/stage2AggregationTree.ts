@@ -1,5 +1,5 @@
 import {
-	getStage2RowDisplayName,
+	detectServerGroupSourceFlagEmoji,
 	getStage2RowSourceLandingName,
 	getStage2RowStrictKey,
 	isStage2SourceRow,
@@ -145,34 +145,6 @@ function getServerKeysInRowOrder(rows: Stage2Row[], getRowMeta: Stage2RowMetaLoo
 	return ordered;
 }
 
-function getLeadingFlagEmoji(name: string): string | null {
-	const match = name.trim().match(/^(\p{Regional_Indicator}{2})(?:\s|$)/u);
-	return match?.[1] ?? null;
-}
-
-function getServerGroupSourceFlagEmoji(rows: Stage2Row[]): string | null {
-	const sourceRows = rows.filter((row) => isStage2SourceRow(row));
-	if (sourceRows.length === 0) {
-		return null;
-	}
-
-	let emoji: string | null = null;
-	for (const row of sourceRows) {
-		const currentEmoji = getLeadingFlagEmoji(getStage2RowDisplayName(row));
-		if (!currentEmoji) {
-			return null;
-		}
-		if (emoji === null) {
-			emoji = currentEmoji;
-			continue;
-		}
-		if (emoji !== currentEmoji) {
-			return null;
-		}
-	}
-	return emoji;
-}
-
 export function buildStage2AggregationTree(
 	rows: Stage2Row[],
 	getRowMeta: Stage2RowMetaLookup,
@@ -207,7 +179,7 @@ export function buildStage2AggregationTree(
 			server: serverKey,
 			displayServer,
 			anchorRowKey,
-			sourceFlagEmoji: getServerGroupSourceFlagEmoji(serverRows),
+			sourceFlagEmoji: detectServerGroupSourceFlagEmoji(serverRows),
 		});
 
 		const sourceGroups = getSourceGroupsInRowOrder(serverRows);

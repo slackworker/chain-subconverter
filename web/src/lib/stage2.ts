@@ -56,6 +56,154 @@ export function getServerAggregationStrategy(
 	return getServerAggregationGroup(snapshot, server)?.strategy ?? null;
 }
 
+function getLeadingFlagEmoji(name: string): string | null {
+	const match = name.trim().match(/^(\p{Regional_Indicator}{2})(?:\s|$)/u);
+	return match?.[1] ?? null;
+}
+
+export function detectServerGroupSourceFlagEmoji(rows: Stage2Row[]): string | null {
+	const sourceRows = rows.filter((row) => isStage2SourceRow(row));
+	if (sourceRows.length === 0) {
+		return null;
+	}
+
+	let emoji: string | null = null;
+	for (const row of sourceRows) {
+		const currentEmoji = getLeadingFlagEmoji(getStage2RowDisplayName(row));
+		if (!currentEmoji) {
+			return null;
+		}
+		if (emoji === null) {
+			emoji = currentEmoji;
+			continue;
+		}
+		if (emoji !== currentEmoji) {
+			return null;
+		}
+	}
+	return emoji;
+}
+
+export function deriveManagedServerAggregationGroupBaseName(
+	server: string,
+	groupName: string | undefined,
+	memberRows: Stage2Row[],
+): string {
+	const trimmedGroupName = groupName?.trim() ?? "";
+	if (trimmedGroupName !== "") {
+		return trimmedGroupName;
+	}
+	let baseName = server.trim();
+	if (baseName === "") {
+		baseName = "server";
+	}
+	const sourceFlagEmoji = detectServerGroupSourceFlagEmoji(memberRows);
+	return sourceFlagEmoji ? `${sourceFlagEmoji} ${baseName}` : baseName;
+}
+
+export function nextManagedServerAggregationGroupName(baseName: string, usedNames: Set<string>): string {
+	const trimmedBaseName = baseName.trim() === "" ? "server" : baseName.trim();
+	if (!usedNames.has(trimmedBaseName)) {
+		return trimmedBaseName;
+	}
+
+	let suffix = 2;
+	while (usedNames.has(`${trimmedBaseName} ${suffix}`)) {
+		suffix += 1;
+	}
+	return `${trimmedBaseName} ${suffix}`;
+}
+
+export function collectTemplateProxyGroupNames(chainTargets: ChainTarget[]): Set<string> {
+	return new Set(
+		chainTargets
+			.filter((target) => target.kind === "proxy-groups")
+			.map((target) => target.name.trim())
+			.filter((name) => name !== ""),
+	);
+}
+
+export function getServerAggregationMemberRows(
+	snapshot: Pick<Stage2Snapshot, "rows">,
+	group: ServerAggregationGroup,
+): Stage2Row[] {
+	const rowsById = new Map(
+		snapshot.rows
+			.map((row) => [getStage2RowKey(row), row] as const)
+			.filter(([rowId]) => rowId !== ""),
+	);
+	const memberRows: Stage2Row[] = [];
+	const seen = new Set<string>();
+	for (const memberRowId of group.memberRowIds ?? []) {
+		const trimmedMemberRowId = memberRowId.trim();
+		if (trimmedMemberRowId === "" || seen.has(trimmedMemberRowId)) {
+			continue;
+		}
+		seen.add(trimmedMemberRowId);
+		const row = rowsById.get(trimmedMemberRowId);
+		if (row !== undefined) {
+			memberRows.push(row);
+		}
+	}
+	return memberRows;
+}
+
+export function buildManagedServerAggregationGroupDisplayNames(
+	snapshot: Pick<Stage2Snapshot, "rows" | "serverAggregationGroups">,
+	existingProxyGroupNames: Iterable<string> = [],
+): Map<string, string> {
+	const usedNames = new Set(existingProxyGroupNames);
+	const displayNames = new Map<string, string>();
+
+	for (const group of snapshot.serverAggregationGroups) {
+		const server = group.server.trim();
+		if (server === "" || !group.enabled) {
+			continue;
+		}
+		const memberRows = getServerAggregationMemberRows(snapshot, group);
+		const baseName = deriveManagedServerAggregationGroupBaseName(server, group.groupName, memberRows);
+		const managedName = nextManagedServerAggregationGroupName(baseName, usedNames);
+		usedNames.add(managedName);
+		displayNames.set(server, managedName);
+	}
+
+	return displayNames;
+}
+
+export function getServerAggregationGroupDisplayName(
+	snapshot: Pick<Stage2Snapshot, "rows" | "serverAggregationGroups">,
+	server: string,
+	options: {
+		groupName?: string;
+		enabled?: boolean;
+		memberRows?: Stage2Row[];
+		existingProxyGroupNames?: Iterable<string>;
+	} = {},
+): string {
+	const trimmedServer = server.trim();
+	if (trimmedServer === "") {
+		return "server";
+	}
+
+	const group = getServerAggregationGroup(snapshot, trimmedServer);
+	const memberRows = options.memberRows ?? (group ? getServerAggregationMemberRows(snapshot, group) : []);
+	const enabled = options.enabled ?? group?.enabled ?? false;
+	const groupName = options.groupName ?? group?.groupName;
+
+	if (enabled) {
+		const managedNames = buildManagedServerAggregationGroupDisplayNames(
+			snapshot,
+			options.existingProxyGroupNames ?? [],
+		);
+		const managedName = managedNames.get(trimmedServer);
+		if (managedName !== undefined) {
+			return managedName;
+		}
+	}
+
+	return deriveManagedServerAggregationGroupBaseName(trimmedServer, groupName, memberRows);
+}
+
 function parseStage2RowKey(rowKey: string): string | null {
 	const trimmedRowKey = rowKey.trim();
 	if (!trimmedRowKey.startsWith(STAGE2_ROW_KEY_PREFIX)) {

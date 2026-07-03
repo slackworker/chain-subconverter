@@ -12,7 +12,7 @@
 
 说明：
 
-- `CI` 不再在 tag push 上重复执行；Docker 发布会等待同 SHA 的 `CI` 成功（`Publish Validation`）。
+- `CI` 不再在 tag push 上重复执行；`main` 合并后由 `CI` 成功触发 Docker 发布；tag / 手动发布经 `Publish Validation` 一次性校验同 SHA 的 `CI` 已成功。
 - `beta-latest` 与版本 tag（如 `v3.2.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
 
 ---

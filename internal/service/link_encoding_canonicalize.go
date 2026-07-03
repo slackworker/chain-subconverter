@@ -1,11 +1,15 @@
 package service
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // CanonicalizeStage2SnapshotForLinkEncoding maps session rowIds to deterministic
 // encoded rowIds derived from proxyName before long URL / short link state encoding.
-// Presentation order and fallback member order are preserved; validation must use
-// the original snapshot before this transform.
+// Presentation order is preserved; aggregation member order is preserved only when
+// enabled=true and strategy=fallback. Validation must use the original snapshot
+// before this transform.
 func CanonicalizeStage2SnapshotForLinkEncoding(snapshot Stage2Snapshot) Stage2Snapshot {
 	snapshot = NormalizeStage2Snapshot(snapshot)
 
@@ -37,9 +41,10 @@ func CanonicalizeStage2SnapshotForLinkEncoding(snapshot Stage2Snapshot) Stage2Sn
 			}
 			memberRowIDs = append(memberRowIDs, memberRowID)
 		}
+		memberRowIDs = canonicalizeServerAggregationMemberRowIDs(group, memberRowIDs)
 		groups[index] = ServerAggregationGroup{
 			Server:       group.Server,
-			GroupName:    group.GroupName,
+			GroupName:    strings.TrimSpace(group.GroupName),
 			Enabled:      group.Enabled,
 			Strategy:     group.Strategy,
 			MemberRowIDs: memberRowIDs,
@@ -51,4 +56,28 @@ func CanonicalizeStage2SnapshotForLinkEncoding(snapshot Stage2Snapshot) Stage2Sn
 		ChainProxyTargetGroupSwitchOptimizationEnabled: snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
 		ServerAggregationGroups:                        groups,
 	}
+}
+
+func shouldPreserveServerAggregationMemberOrder(group ServerAggregationGroup) bool {
+	return group.Enabled && strings.TrimSpace(group.Strategy) == "fallback"
+}
+
+func canonicalizeServerAggregationMemberRowIDs(group ServerAggregationGroup, memberRowIDs []string) []string {
+	canonical := make([]string, 0, len(memberRowIDs))
+	seen := make(map[string]struct{}, len(memberRowIDs))
+	for _, memberRowID := range memberRowIDs {
+		memberRowID = strings.TrimSpace(memberRowID)
+		if memberRowID == "" {
+			continue
+		}
+		if _, exists := seen[memberRowID]; exists {
+			continue
+		}
+		seen[memberRowID] = struct{}{}
+		canonical = append(canonical, memberRowID)
+	}
+	if !shouldPreserveServerAggregationMemberOrder(group) {
+		sort.Strings(canonical)
+	}
+	return canonical
 }

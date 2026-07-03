@@ -197,24 +197,10 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 
 	groups := make([]ServerAggregationGroup, len(canonical.Stage2Snapshot.ServerAggregationGroups))
 	for index, group := range canonical.Stage2Snapshot.ServerAggregationGroups {
-		memberRowIDs := make([]string, 0, len(group.MemberRowIDs))
-		seen := make(map[string]struct{}, len(group.MemberRowIDs))
-		for _, memberRowID := range group.MemberRowIDs {
-			memberRowID = strings.TrimSpace(memberRowID)
-			if memberRowID == "" {
-				continue
-			}
-			if _, exists := seen[memberRowID]; exists {
-				continue
-			}
-			seen[memberRowID] = struct{}{}
-			memberRowIDs = append(memberRowIDs, memberRowID)
-		}
-		if shouldCanonicalizeServerAggregationMemberOrder(group.Strategy) {
-			sort.Strings(memberRowIDs)
-		}
+		memberRowIDs := canonicalizeServerAggregationMemberRowIDs(group, group.MemberRowIDs)
 		groups[index] = ServerAggregationGroup{
 			Server:       strings.TrimSpace(group.Server),
+			GroupName:    strings.TrimSpace(group.GroupName),
 			Enabled:      group.Enabled,
 			Strategy:     strings.TrimSpace(group.Strategy),
 			MemberRowIDs: memberRowIDs,
@@ -236,21 +222,19 @@ func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) Long
 func compareServerAggregationGroupCanonicalOrder(left ServerAggregationGroup, right ServerAggregationGroup) int {
 	leftFields := []string{
 		strings.TrimSpace(left.Server),
+		strings.TrimSpace(left.GroupName),
 		boolToCanonicalString(left.Enabled),
 		strings.TrimSpace(left.Strategy),
 		strings.Join(left.MemberRowIDs, "\x00"),
 	}
 	rightFields := []string{
 		strings.TrimSpace(right.Server),
+		strings.TrimSpace(right.GroupName),
 		boolToCanonicalString(right.Enabled),
 		strings.TrimSpace(right.Strategy),
 		strings.Join(right.MemberRowIDs, "\x00"),
 	}
 	return compareStringFields(leftFields, rightFields)
-}
-
-func shouldCanonicalizeServerAggregationMemberOrder(strategy string) bool {
-	return strings.TrimSpace(strategy) != "fallback"
 }
 
 func compareStringFields(left []string, right []string) int {

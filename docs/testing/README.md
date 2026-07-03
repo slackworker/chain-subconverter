@@ -59,8 +59,9 @@ non-blocking job：
 
 ### `docker-publish.yml`
 
-- 触发来源：push 到 `main`、push tag `v*`、以及手动 `workflow_dispatch`。
-- `Publish Validation` 默认等待同 SHA 的 `ci.yml` 成功后再构建镜像。
+- 触发来源：`main` 上 `CI` 成功后 `workflow_run`、push tag `v*`、以及手动 `workflow_dispatch`。
+- `main` → `latest`：`CI` 在 `main` 上成功后自动触发镜像构建，不再轮询等待。
+- tag / 手动发布（非 `dev-latest`）：`Publish Validation` 一次性校验同 SHA 的 `ci.yml` 已成功。
 - 保留 `dev-latest` 手动发布快路径（跳过 validation）；其它发布路径继续复用同一 CI 门禁。
 - 通过移除 `beta` 分支上的自动构建，避免“同一 SHA 在 merge `beta` 与打 `v*` tag 时重复构建镜像”。
 

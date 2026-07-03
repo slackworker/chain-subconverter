@@ -261,6 +261,12 @@ func TestCanonicalShortLinkStateKey_ChangesWhenFallbackMemberOrderChanges(t *tes
 	if orderedKey == reorderedKey {
 		t.Fatalf("CanonicalShortLinkStateKey() should change when fallback member order changes")
 	}
+
+	orderedLongURL := buildURL([]string{"row-source", "row-derived"})
+	reorderedLongURL := buildURL([]string{"row-derived", "row-source"})
+	if orderedLongURL == reorderedLongURL {
+		t.Fatalf("EncodeLongURL() should preserve fallback member order")
+	}
 }
 
 func TestCanonicalShortLinkStateKey_IgnoresURLTestMemberOrder(t *testing.T) {
@@ -313,6 +319,130 @@ func TestCanonicalShortLinkStateKey_IgnoresURLTestMemberOrder(t *testing.T) {
 	}
 	if orderedKey != reorderedKey {
 		t.Fatalf("CanonicalShortLinkStateKey() should ignore url-test member order")
+	}
+
+	orderedLongURL := buildURL([]string{"row-source", "row-derived"})
+	reorderedLongURL := buildURL([]string{"row-derived", "row-source"})
+	if orderedLongURL != reorderedLongURL {
+		t.Fatalf("EncodeLongURL() should ignore url-test member order:\nordered=%q\nreordered=%q", orderedLongURL, reorderedLongURL)
+	}
+}
+
+func TestCanonicalShortLinkStateKey_IgnoresDisabledFallbackMemberOrder(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildURL := func(memberRowIDs []string) string {
+		payload := BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "row-source",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha",
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+				{
+					RowID:                 "row-derived",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{
+				{
+					Server:       "198.51.100.10",
+					Enabled:      false,
+					Strategy:     "fallback",
+					MemberRowIDs: memberRowIDs,
+				},
+			},
+		})
+		longURL, err := EncodeLongURL("https://a.example.com/base", payload, 0)
+		if err != nil {
+			t.Fatalf("EncodeLongURL() error = %v", err)
+		}
+		return longURL
+	}
+
+	orderedKey, err := CanonicalShortLinkStateKey(buildURL([]string{"row-source", "row-derived"}), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() ordered error = %v", err)
+	}
+	reorderedKey, err := CanonicalShortLinkStateKey(buildURL([]string{"row-derived", "row-source"}), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() reordered error = %v", err)
+	}
+	if orderedKey != reorderedKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should ignore disabled fallback member order")
+	}
+
+	orderedLongURL := buildURL([]string{"row-source", "row-derived"})
+	reorderedLongURL := buildURL([]string{"row-derived", "row-source"})
+	if orderedLongURL != reorderedLongURL {
+		t.Fatalf("EncodeLongURL() should ignore disabled fallback member order:\nordered=%q\nreordered=%q", orderedLongURL, reorderedLongURL)
+	}
+}
+
+func TestCanonicalShortLinkStateKey_IgnoresDisabledURLTestMemberOrder(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildURL := func(memberRowIDs []string) string {
+		payload := BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "row-source",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha",
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+				{
+					RowID:                 "row-derived",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{
+				{
+					Server:       "198.51.100.10",
+					Enabled:      false,
+					Strategy:     "url-test",
+					MemberRowIDs: memberRowIDs,
+				},
+			},
+		})
+		longURL, err := EncodeLongURL("https://a.example.com/base", payload, 0)
+		if err != nil {
+			t.Fatalf("EncodeLongURL() error = %v", err)
+		}
+		return longURL
+	}
+
+	orderedKey, err := CanonicalShortLinkStateKey(buildURL([]string{"row-source", "row-derived"}), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() ordered error = %v", err)
+	}
+	reorderedKey, err := CanonicalShortLinkStateKey(buildURL([]string{"row-derived", "row-source"}), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() reordered error = %v", err)
+	}
+	if orderedKey != reorderedKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should ignore disabled url-test member order")
+	}
+
+	orderedLongURL := buildURL([]string{"row-source", "row-derived"})
+	reorderedLongURL := buildURL([]string{"row-derived", "row-source"})
+	if orderedLongURL != reorderedLongURL {
+		t.Fatalf("EncodeLongURL() should ignore disabled url-test member order:\nordered=%q\nreordered=%q", orderedLongURL, reorderedLongURL)
 	}
 }
 
@@ -482,5 +612,135 @@ func TestCanonicalShortLinkStateKey_ChangesWhenVisibleNodeChanges(t *testing.T) 
 	}
 	if firstKey == secondKey {
 		t.Fatalf("CanonicalShortLinkStateKey() should change when proxy name changes")
+	}
+}
+
+func TestCanonicalShortLinkStateKey_ChangesWhenGroupNameChanges(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildURL := func(groupName string) string {
+		payload := BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "row-source",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha",
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+				{
+					RowID:                 "row-derived",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{
+				{
+					Server:       "198.51.100.10",
+					GroupName:    groupName,
+					Enabled:      true,
+					Strategy:     "fallback",
+					MemberRowIDs: []string{"row-source", "row-derived"},
+				},
+			},
+		})
+		longURL, err := EncodeLongURL("https://a.example.com/base", payload, 0)
+		if err != nil {
+			t.Fatalf("EncodeLongURL() error = %v", err)
+		}
+		return longURL
+	}
+
+	firstKey, err := CanonicalShortLinkStateKey(buildURL("HK 手动分组"), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() first error = %v", err)
+	}
+	secondKey, err := CanonicalShortLinkStateKey(buildURL("HK 另一分组"), InputLimits{})
+	if err != nil {
+		t.Fatalf("CanonicalShortLinkStateKey() second error = %v", err)
+	}
+	if firstKey == secondKey {
+		t.Fatalf("CanonicalShortLinkStateKey() should change when groupName changes")
+	}
+	if DeterministicShortID(firstKey) == DeterministicShortID(secondKey) {
+		t.Fatalf("DeterministicShortID() should change when groupName changes")
+	}
+}
+
+func TestBuildShortLinkResponse_GroupNameChangeChangesShortID(t *testing.T) {
+	store := NewInMemoryShortLinkStore()
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	targetSG := "🇸🇬 新加坡节点"
+
+	buildLongURL := func(groupName string) string {
+		payload := BuildLongURLPayload(stage1, Stage2Snapshot{
+			Rows: []Stage2Row{
+				{
+					RowID:                 "row-source",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha",
+					Mode:                  "chain",
+					TargetName:            &targetSG,
+				},
+				{
+					RowID:                 "row-derived",
+					SourceLandingNodeName: "🇸🇬 Alpha",
+					ProxyName:             "🇸🇬 Alpha 2",
+					Mode:                  "none",
+				},
+			},
+			ServerAggregationGroups: []ServerAggregationGroup{
+				{
+					Server:       "198.51.100.10",
+					GroupName:    groupName,
+					Enabled:      true,
+					Strategy:     "fallback",
+					MemberRowIDs: []string{"row-source", "row-derived"},
+				},
+			},
+		})
+		longURL, err := EncodeLongURL("https://legacy.example.com/base", payload, 0)
+		if err != nil {
+			t.Fatalf("EncodeLongURL() error = %v", err)
+		}
+		return longURL
+	}
+
+	firstResponse, err := BuildShortLinkResponse(
+		context.Background(),
+		"https://public.example.com",
+		store,
+		buildLongURL("HK 手动分组"),
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("BuildShortLinkResponse() first error = %v", err)
+	}
+	secondResponse, err := BuildShortLinkResponse(
+		context.Background(),
+		"https://public.example.com",
+		store,
+		buildLongURL("HK 另一分组"),
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("BuildShortLinkResponse() second error = %v", err)
+	}
+
+	if firstResponse.LongURL == secondResponse.LongURL {
+		t.Fatalf("longUrl should change when groupName changes")
+	}
+	if firstResponse.ShortURL == secondResponse.ShortURL {
+		t.Fatalf("shortUrl should change when groupName changes")
 	}
 }
