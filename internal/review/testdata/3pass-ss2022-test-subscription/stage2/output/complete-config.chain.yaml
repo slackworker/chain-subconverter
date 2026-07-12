@@ -144,7 +144,6 @@ proxy-groups:
     interval: 300
     tolerance: 50
     proxies:
-      - 🇺🇸 SS2022-Test-256-US
       - 🇸🇬 建议每日更新订阅
       - ️有超时请重启网络
       - 🇺🇸 美·洛杉矶|三网-DS1

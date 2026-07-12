@@ -72,11 +72,6 @@ proxy-groups:
     interval: 300
     tolerance: 50
     proxies:
-      - Alpha-SS-SG
-      - Alpha-Reality-SG
-      - Beta-SS-JP
-      - Beta-Reality-JP
-      - Manual-SOCKS5-HK-Fallback
       - Transit-A-HongKong-SS-01
       - Transit-A-Japan-Trojan-01
       - Transit-A-UnitedStates-VLESS-01

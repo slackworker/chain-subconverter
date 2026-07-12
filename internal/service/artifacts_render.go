@@ -20,7 +20,7 @@ func renderCompleteConfigYAML(
 	proxyGroupChainTargetNames map[string]struct{},
 ) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
-		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
+		if err := stripLandingNodesFromProxyGroups(root, landingNames, regionGroupNames, nil, deletedLines); err != nil {
 			return err
 		}
 		if err := applySnapshotToInlineProxies(root, snapshot.Rows, lines, replacedLines); err != nil {
@@ -70,11 +70,28 @@ func stripLandingNodesFromCompleteConfigYAML(
 	proxyGroupChainTargetNames map[string]struct{},
 ) (string, error) {
 	return rewriteCompleteConfigYAML(fullBaseYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
-		if err := stripLandingNodesFromRegionGroups(root, landingNames, regionGroupNames, deletedLines); err != nil {
+		// 出组在 §3.3.2 聚合追加之前执行；自建聚合组此时尚不在 YAML 中。
+		// excludedAggregationNames 仍保留给等价实现/单测：若 YAML 中已出现受管聚合组名，不得从中剔除落地成员。
+		if err := stripLandingNodesFromProxyGroups(root, landingNames, regionGroupNames, nil, deletedLines); err != nil {
 			return err
 		}
 		return applySwitchOptimizationOverrides(root, snapshot, proxyGroupChainTargetNames, lines, deletedLines, replacedLines)
 	})
+}
+
+func shouldStripLandingFromProxyGroup(name, groupType string, regionGroupNames, excludedAggregationNames map[string]struct{}) bool {
+	if _, excluded := excludedAggregationNames[name]; excluded {
+		return false
+	}
+	if _, isRegion := regionGroupNames[name]; isRegion {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(groupType)) {
+	case "url-test", "smart":
+		return true
+	default:
+		return false
+	}
 }
 
 func rewriteCompleteConfigYAML(fullBaseYAML string, rewrite func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error) (string, error) {
@@ -115,7 +132,13 @@ func rewriteCompleteConfigYAML(fullBaseYAML string, rewrite func(root *yaml.Node
 	return result, nil
 }
 
-func stripLandingNodesFromRegionGroups(root *yaml.Node, landingNames map[string]struct{}, regionGroupNames map[string]struct{}, deletedLines map[int]struct{}) error {
+func stripLandingNodesFromProxyGroups(
+	root *yaml.Node,
+	landingNames map[string]struct{},
+	regionGroupNames map[string]struct{},
+	excludedAggregationNames map[string]struct{},
+	deletedLines map[int]struct{},
+) error {
 	proxyGroupsNode := yamlMappingValue(root, "proxy-groups")
 	if proxyGroupsNode == nil {
 		return fmt.Errorf("full-base YAML is missing proxy-groups")
@@ -133,13 +156,22 @@ func stripLandingNodesFromRegionGroups(root *yaml.Node, landingNames map[string]
 		if nameNode == nil {
 			return fmt.Errorf("proxy-group entry is missing name")
 		}
-		if _, ok := regionGroupNames[nameNode.Value]; !ok {
+
+		groupType := ""
+		if typeNode := yamlMappingValue(groupNode, "type"); typeNode != nil {
+			groupType = typeNode.Value
+		}
+		_, isRegion := regionGroupNames[nameNode.Value]
+		if !shouldStripLandingFromProxyGroup(nameNode.Value, groupType, regionGroupNames, excludedAggregationNames) {
 			continue
 		}
 
 		membersNode := yamlMappingValue(groupNode, "proxies")
 		if membersNode == nil {
-			return fmt.Errorf("region proxy-group %q is missing proxies", nameNode.Value)
+			if isRegion {
+				return fmt.Errorf("region proxy-group %q is missing proxies", nameNode.Value)
+			}
+			continue
 		}
 		if membersNode.Kind != yaml.SequenceNode {
 			return fmt.Errorf("proxy-group %q field %q must be a sequence", nameNode.Value, "proxies")

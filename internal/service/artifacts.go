@@ -118,10 +118,7 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 		return "", newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
 
-	landingNames := make(map[string]struct{}, len(landingProxies))
-	for _, landing := range landingProxies {
-		landingNames[landing.Name] = struct{}{}
-	}
+	landingNames := stage2StripLandingNames(landingProxies, stage2Snapshot.Rows)
 	regionGroupNames := make(map[string]struct{}, len(regionMatchers))
 	for _, matcher := range regionMatchers {
 		regionGroupNames[matcher.TargetName] = struct{}{}
