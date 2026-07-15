@@ -1,9 +1,11 @@
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
+import type { Stage2Row } from "../../types/api";
 import {
 	getStage2DisplayModeOptions,
 	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowKey,
+	getStage2RowStableKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
 } from "../../lib/stage2";
@@ -74,7 +76,7 @@ export function Stage2({ workflow, locale, colorMode }: Stage2Props) {
 							<tbody className={`divide-y ${isDark ? "divide-zinc-800/40" : "divide-slate-200/40"}`}>
 								{stage2Rows.map(row => (
 									<Stage2RowItem 
-										key={getStage2RowKey(row)} 
+										key={getStage2RowStableKey(row)} 
 										row={row} 
 										workflow={workflow} 
 										disabled={!isStage2Editable} 
@@ -110,7 +112,7 @@ function Stage2RowItem({
 	locale,
 	colorMode,
 }: { 
-	row: typeof import("../../lib/state").initialAppState.stage2Snapshot.rows[0]; 
+	row: Stage2Row;
 	workflow: AppWorkflowViewModel;
 	disabled: boolean;
 	locale: Locale;
@@ -266,6 +268,7 @@ function Stage2RowItem({
 							disabled={disabled}
 							aria-label={copy.proxyNameLabel}
 							onChange={e => workflow.handleProxyNameChange(rowKey, e.target.value)}
+							onBlur={() => workflow.handleProxyNameBlur()}
 						/>
 						<div className="flex flex-wrap gap-2">
 							<button
@@ -288,7 +291,7 @@ function Stage2RowItem({
 										: "border-slate-200 bg-slate-100 text-slate-700 hover:border-slate-350 hover:text-slate-900"
 								}`}
 								disabled={disabled || !canDeleteRow}
-								title={canDeleteRow ? undefined : copy.keepOneDerivedRow}
+								title={canDeleteRow ? undefined : copy.keepOneInstance}
 								onClick={() => workflow.handleDeleteStage2Row(rowKey)}
 							>
 								{copy.deleteRow}

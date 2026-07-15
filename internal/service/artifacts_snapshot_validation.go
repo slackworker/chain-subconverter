@@ -7,10 +7,11 @@ import (
 )
 
 func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) ([]resolvedLandingProxy, error) {
-	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
+	bundle, err := BuildStage2Bundle(stage1Input, fixtures)
 	if err != nil {
 		return nil, err
 	}
+	catalog := bundle.Catalog
 
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
 	if err != nil {
@@ -42,76 +43,66 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 		return nil, err
 	}
 
-	rowsBySourceLanding := make(map[string][]Stage2Row, len(stage2Snapshot.Rows))
-	rowsByRowID := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
-	rowsByProxyName := make(map[string]Stage2Row, len(stage2Snapshot.Rows))
-	for _, row := range stage2Snapshot.Rows {
-		rowErrorRef := stage2RowValidationErrorRef(row)
-		rowID := stage2RowID(row)
-		if rowID == "" {
-			cause := fmt.Errorf("rowId must not be empty")
-			return nil, newStage2RowInvalidRequestError("rowId must not be empty", rowErrorRef, "rowId", cause)
+	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
+	instancesBySource := map[string][]Stage2InstanceRef{}
+	instancesByProxyName := map[string]Stage2InstanceRef{}
+	proxyNames := map[string]struct{}{}
+
+	for _, ref := range FlattenStage2Instances(stage2Snapshot) {
+		errorRef := stage2InstanceValidationErrorRef(ref)
+		sourceID := strings.TrimSpace(ref.SourceID)
+		if sourceID == "" {
+			cause := fmt.Errorf("sourceId must not be empty")
+			return nil, newStage2InstanceInvalidRequestError("sourceId must not be empty", errorRef, "sourceId", cause)
 		}
-		if _, exists := rowsByRowID[rowID]; exists {
-			cause := fmt.Errorf("duplicate rowId %q", rowID)
-			return nil, newStage2RowValidationError("DUPLICATE_ROW_ID", "duplicate rowId", rowErrorRef, "rowId", cause)
-		}
-		rowsByRowID[rowID] = row
-		sourceLandingName := stage2SourceLandingNodeName(row)
-		if sourceLandingName == "" {
-			cause := fmt.Errorf("sourceLandingNodeName must not be empty")
-			return nil, newStage2RowInvalidRequestError("sourceLandingNodeName must not be empty", rowErrorRef, "sourceLandingNodeName", cause)
-		}
-		proxyName := stage2ProxyName(row)
+		proxyName := strings.TrimSpace(ref.Instance.ProxyName)
 		if proxyName == "" {
 			cause := fmt.Errorf("proxyName must not be empty")
-			return nil, newStage2RowInvalidRequestError("proxyName must not be empty", rowErrorRef, "proxyName", cause)
+			return nil, newStage2InstanceInvalidRequestError("proxyName must not be empty", errorRef, "proxyName", cause)
 		}
-		if _, exists := rowsByProxyName[proxyName]; exists {
+		if _, exists := proxyNames[proxyName]; exists {
 			cause := fmt.Errorf("duplicate proxy name %q", proxyName)
-			return nil, newStage2RowValidationError("DUPLICATE_PROXY_NAME", "duplicate proxy name", rowErrorRef, "proxyName", cause)
+			return nil, newStage2InstanceValidationError("DUPLICATE_PROXY_NAME", "duplicate proxy name", errorRef, "proxyName", cause)
 		}
-		rowsByProxyName[proxyName] = row
-		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
+		proxyNames[proxyName] = struct{}{}
+		instancesByProxyName[proxyName] = ref
+		instancesBySource[sourceID] = append(instancesBySource[sourceID], ref)
 	}
 
-	chainTargetsByName := make(map[string]ChainTarget, len(stage2Init.ChainTargets))
-	for _, target := range stage2Init.ChainTargets {
+	chainTargetsByName := make(map[string]ChainTarget, len(catalog.ChainTargets))
+	for _, target := range catalog.ChainTargets {
 		chainTargetsByName[target.Name] = target
 	}
-
-	forwardRelayNames := make(map[string]struct{}, len(stage2Init.ForwardRelays))
-	for _, relay := range stage2Init.ForwardRelays {
+	forwardRelayNames := make(map[string]struct{}, len(catalog.ForwardRelays))
+	for _, relay := range catalog.ForwardRelays {
 		forwardRelayNames[relay.Name] = struct{}{}
 	}
-	forwardRelayUsers := make(map[string]string, len(stage2Init.ForwardRelays))
+	forwardRelayUsers := make(map[string]string, len(catalog.ForwardRelays))
 
 	for _, landing := range resolvedLandingProxies {
-		rows := rowsBySourceLanding[landing.Name]
-		if len(rows) == 0 {
-			cause := fmt.Errorf("missing stage2 row for landing node %q", landing.Name)
-			return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 rowset mismatch", cause)
+		refs := instancesBySource[landing.Name]
+		if len(refs) == 0 {
+			cause := fmt.Errorf("missing stage2 instance for landing node %q", landing.Name)
+			return nil, newGlobalValidationError("STAGE2_ROWSET_MISMATCH", "stage2 instance set mismatch", cause)
 		}
-
-		for _, row := range rows {
-			rowErrorRef := stage2RowValidationErrorRef(row)
-			rowProxyName := stage2ProxyName(row)
-			switch row.Mode {
+		for _, ref := range refs {
+			errorRef := stage2InstanceValidationErrorRef(ref)
+			proxyName := strings.TrimSpace(ref.Instance.ProxyName)
+			switch ref.Instance.Mode {
 			case "none":
-				if row.TargetName != nil && strings.TrimSpace(*row.TargetName) != "" {
-					cause := fmt.Errorf("targetName must be empty for proxy %q when mode is none", rowProxyName)
-					return nil, newStage2RowInvalidRequestError("targetName must be empty when mode is none", rowErrorRef, "targetName", cause)
+				if ref.Instance.TargetName != nil && strings.TrimSpace(*ref.Instance.TargetName) != "" {
+					cause := fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
+					return nil, newStage2InstanceInvalidRequestError("targetName must be empty when mode is none", errorRef, "targetName", cause)
 				}
-				continue
 			case "chain":
-				targetName, err := requireTargetName(row)
+				targetName, err := requireInstanceTargetName(ref)
 				if err != nil {
 					return nil, err
 				}
 				target, exists := chainTargetsByName[targetName]
 				if !exists {
-					cause := fmt.Errorf("unknown chain target %q for proxy %q", targetName, rowProxyName)
-					return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", rowErrorRef, "targetName", cause)
+					cause := fmt.Errorf("unknown chain target %q for proxy %q", targetName, proxyName)
+					return nil, newStage2InstanceValidationError("TARGET_NOT_FOUND", "target not found", errorRef, "targetName", cause)
 				}
 				if target.Kind == "proxy-groups" {
 					isEmpty := target.IsEmpty
@@ -119,44 +110,44 @@ func validateGenerateSnapshot(stage1Input Stage1Input, stage2Snapshot Stage2Snap
 						isEmpty = fullBaseTarget.IsEmpty
 					}
 					if isEmpty {
-						cause := fmt.Errorf("chain target %q for proxy %q is empty", targetName, rowProxyName)
-						return nil, newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", rowErrorRef, "targetName", cause)
+						cause := fmt.Errorf("chain target %q for proxy %q is empty", targetName, proxyName)
+						return nil, newStage2InstanceValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", errorRef, "targetName", cause)
 					}
 				}
 			case "port_forward":
-				targetName, err := requireTargetName(row)
+				targetName, err := requireInstanceTargetName(ref)
 				if err != nil {
 					return nil, err
 				}
 				if _, exists := forwardRelayNames[targetName]; !exists {
-					cause := fmt.Errorf("unknown forward relay %q for proxy %q", targetName, rowProxyName)
-					return nil, newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", rowErrorRef, "targetName", cause)
+					cause := fmt.Errorf("unknown forward relay %q for proxy %q", targetName, proxyName)
+					return nil, newStage2InstanceValidationError("TARGET_NOT_FOUND", "target not found", errorRef, "targetName", cause)
 				}
 				if usedBy, exists := forwardRelayUsers[targetName]; exists {
-					cause := fmt.Errorf("forward relay %q for proxy %q is already used by proxy %q", targetName, rowProxyName, usedBy)
-					return nil, newStage2RowValidationError("DUPLICATE_FORWARD_RELAY_TARGET", "forward relay target is already used", rowErrorRef, "targetName", cause)
+					cause := fmt.Errorf("forward relay %q for proxy %q is already used by proxy %q", targetName, proxyName, usedBy)
+					return nil, newStage2InstanceValidationError("DUPLICATE_FORWARD_RELAY_TARGET", "forward relay target is already used", errorRef, "targetName", cause)
 				}
-				forwardRelayUsers[targetName] = rowProxyName
+				forwardRelayUsers[targetName] = proxyName
 			default:
-				cause := fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, rowProxyName)
-				return nil, newStage2RowInvalidRequestError("unsupported mode", rowErrorRef, "mode", cause)
+				cause := fmt.Errorf("unsupported mode %q for proxy %q", ref.Instance.Mode, proxyName)
+				return nil, newStage2InstanceInvalidRequestError("unsupported mode", errorRef, "mode", cause)
 			}
 		}
 	}
 
-	for sourceLandingName, rows := range rowsBySourceLanding {
-		if _, exists := landingByName[sourceLandingName]; !exists {
-			cause := fmt.Errorf("unknown source landing node %q in stage2 snapshot", sourceLandingName)
-			rowErrorRef := stage2RowErrorRef{
+	for sourceID, refs := range instancesBySource {
+		if _, exists := landingByName[sourceID]; !exists {
+			errorRef := stage2InstanceErrorRef{SourceID: sourceID}
+			if len(refs) > 0 {
+				errorRef = stage2InstanceValidationErrorRef(refs[0])
+				errorRef.SourceID = sourceID
 			}
-			if len(rows) > 0 {
-				rowErrorRef = stage2RowValidationErrorRef(rows[0])
-				rowErrorRef.SourceLandingNodeName = sourceLandingName
-			}
-			return nil, newStage2RowValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", rowErrorRef, "", cause)
+			cause := fmt.Errorf("unknown sourceId %q in stage2 snapshot", sourceID)
+			return nil, newStage2InstanceValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", errorRef, "", cause)
 		}
 	}
-	if err := validateServerAggregationGroups(stage2Snapshot.ServerAggregationGroups, rowsByRowID, landingByName); err != nil {
+
+	if err := validateServerAggregations(stage2Snapshot, instancesByProxyName, landingByName); err != nil {
 		return nil, err
 	}
 
@@ -170,8 +161,6 @@ func validationFullBaseYAML(fixtures ConversionFixtures) string {
 	return fixtures.FullBaseYAML
 }
 
-// DetermineRestoreStatus validates the restored snapshot against current fixtures
-// and returns replayable or conflicted per spec 04-business-rules §3.2.1.
 func DetermineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, []Message, []RestoreConflict, error) {
 	_, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
 	if err == nil {
@@ -191,7 +180,6 @@ func DetermineRestoreStatus(stage1Input Stage1Input, stage2Snapshot Stage2Snapsh
 	}}, []RestoreConflict{RestoreConflictFromError(err)}, nil
 }
 
-// IsRestoreConflictError reports whether an error represents a soft restore conflict.
 func IsRestoreConflictError(err error) bool {
 	responseErr, ok := AsResponseError(err)
 	if !ok {
@@ -241,91 +229,86 @@ func fullBaseProxyGroupTargetsByName(fixtures ConversionFixtures, resolvedLandin
 	return targetsByName, nil
 }
 
-func validateServerAggregationGroups(
-	serverAggregationGroups []ServerAggregationGroup,
-	rowsByID map[string]Stage2Row,
+func validateServerAggregations(
+	snapshot Stage2Snapshot,
+	instancesByProxyName map[string]Stage2InstanceRef,
 	landingByName map[string]resolvedLandingProxy,
 ) error {
-	seenByServer := make(map[string]struct{}, len(serverAggregationGroups))
-	for _, group := range serverAggregationGroups {
-		server := strings.TrimSpace(group.Server)
-		if server == "" {
-			cause := fmt.Errorf("serverAggregationGroups.server must not be empty")
-			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+	seenByServer := map[string]struct{}{}
+	for _, server := range snapshot.Servers {
+		serverKey := strings.TrimSpace(server.ServerKey)
+		if serverKey == "" {
+			cause := fmt.Errorf("servers[].serverKey must not be empty")
+			return newStage2ServerValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation", "", cause)
 		}
-		if _, exists := seenByServer[server]; exists {
-			cause := fmt.Errorf("duplicate server aggregation group for server %q", server)
-			return newGlobalValidationError("DUPLICATE_SERVER_AGGREGATION_GROUP", "duplicate server aggregation group", cause)
+		if _, exists := seenByServer[serverKey]; exists {
+			cause := fmt.Errorf("duplicate serverKey %q", serverKey)
+			return newStage2ServerValidationError("DUPLICATE_SERVER_AGGREGATION_GROUP", "duplicate server aggregation", serverKey, cause)
 		}
-		seenByServer[server] = struct{}{}
+		seenByServer[serverKey] = struct{}{}
 
-		if !group.Enabled {
+		agg := server.Aggregation
+		if !agg.Enabled {
+			if strings.TrimSpace(agg.GroupName) != "" || strings.TrimSpace(agg.Strategy) != "" || len(agg.MemberProxyNames) > 0 {
+				cause := fmt.Errorf("disabled aggregation for server %q must only contain enabled=false", serverKey)
+				return newStage2ServerInvalidRequestError("disabled aggregation must only contain enabled=false", serverKey, "aggregation", cause)
+			}
 			continue
 		}
 
-		switch strings.TrimSpace(group.Strategy) {
+		switch strings.TrimSpace(agg.Strategy) {
 		case "fallback", "url-test", "select", "load-balance":
 		default:
-			cause := fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
-			return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+			cause := fmt.Errorf("unsupported server aggregation strategy %q for server %q", agg.Strategy, serverKey)
+			return newStage2ServerValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation", serverKey, cause)
 		}
 
-		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
-		for _, rawRowID := range group.MemberRowIDs {
-			rowID := strings.TrimSpace(rawRowID)
-			if rowID == "" {
-				cause := fmt.Errorf("server aggregation group for server %q has empty member rowId", server)
-				return newGlobalValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation group", cause)
+		memberSeen := map[string]struct{}{}
+		for _, rawName := range agg.MemberProxyNames {
+			proxyName := strings.TrimSpace(rawName)
+			if proxyName == "" {
+				cause := fmt.Errorf("server %q has empty memberProxyName", serverKey)
+				return newStage2ServerValidationError("INVALID_SERVER_AGGREGATION_GROUP", "invalid server aggregation", serverKey, cause)
 			}
-			if _, exists := memberSeen[rowID]; exists {
+			if _, exists := memberSeen[proxyName]; exists {
 				continue
 			}
-			memberSeen[rowID] = struct{}{}
+			memberSeen[proxyName] = struct{}{}
 
-			memberRow, exists := rowsByID[rowID]
+			ref, exists := instancesByProxyName[proxyName]
 			if !exists {
-				cause := fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
-				return newGlobalValidationError("SERVER_AGGREGATION_MEMBER_NOT_FOUND", "server aggregation member not found", cause)
+				cause := fmt.Errorf("server %q references unknown proxyName %q", serverKey, proxyName)
+				return newStage2ServerValidationError("SERVER_AGGREGATION_MEMBER_NOT_FOUND", "server aggregation member not found", serverKey, cause)
 			}
-			sourceLandingName := stage2SourceLandingNodeName(memberRow)
-			landing, exists := landingByName[sourceLandingName]
-			if !exists {
-				cause := fmt.Errorf("server aggregation member rowId %q references unknown source landing node %q", rowID, sourceLandingName)
+			if strings.TrimSpace(ref.ServerKey) != serverKey {
+				cause := fmt.Errorf("server aggregation member %q crosses server boundary", proxyName)
+				return newStage2ServerValidationError("SERVER_AGGREGATION_SERVER_MISMATCH", "server aggregation member server mismatch", serverKey, cause)
+			}
+			if _, exists := landingByName[ref.SourceID]; !exists {
+				cause := fmt.Errorf("server aggregation member %q references unknown sourceId %q", proxyName, ref.SourceID)
 				return newGlobalValidationError("LANDING_NODE_NOT_FOUND", "landing node not found", cause)
-			}
-			if strings.TrimSpace(landing.Server) != server {
-				cause := fmt.Errorf(
-					"server aggregation member rowId %q server mismatch: group=%q row=%q",
-					rowID,
-					server,
-					strings.TrimSpace(landing.Server),
-				)
-				return newGlobalValidationError("SERVER_AGGREGATION_SERVER_MISMATCH", "server aggregation member server mismatch", cause)
 			}
 		}
 		if len(memberSeen) < 2 {
-			cause := fmt.Errorf("server aggregation group for server %q requires at least 2 members", server)
-			return newGlobalValidationError("SERVER_AGGREGATION_GROUP_TOO_SMALL", "server aggregation group requires at least 2 members", cause)
+			cause := fmt.Errorf("server aggregation for %q requires at least 2 members", serverKey)
+			return newStage2ServerValidationError("SERVER_AGGREGATION_GROUP_TOO_SMALL", "server aggregation group requires at least 2 members", serverKey, cause)
 		}
 	}
-
 	return nil
 }
 
-func requireTargetName(row Stage2Row) (string, error) {
-	if row.TargetName == nil || strings.TrimSpace(*row.TargetName) == "" {
-		cause := fmt.Errorf("missing targetName for proxy %q", stage2ProxyName(row))
-		return "", newStage2RowValidationError("MISSING_TARGET", "missing targetName", stage2RowValidationErrorRef(row), "targetName", cause)
+func requireInstanceTargetName(ref Stage2InstanceRef) (string, error) {
+	if ref.Instance.TargetName == nil || strings.TrimSpace(*ref.Instance.TargetName) == "" {
+		cause := fmt.Errorf("missing targetName for proxy %q", strings.TrimSpace(ref.Instance.ProxyName))
+		return "", newStage2InstanceValidationError("MISSING_TARGET", "missing targetName", stage2InstanceValidationErrorRef(ref), "targetName", cause)
 	}
-	return *row.TargetName, nil
+	return *ref.Instance.TargetName, nil
 }
 
-func stage2RowValidationErrorRef(row Stage2Row) stage2RowErrorRef {
-	proxyName := stage2ProxyName(row)
-	return stage2RowErrorRef{
-		RowID:                 stage2RowID(row),
-		SourceLandingNodeName: stage2SourceLandingNodeName(row),
-		ProxyName:             proxyName,
+func stage2InstanceValidationErrorRef(ref Stage2InstanceRef) stage2InstanceErrorRef {
+	return stage2InstanceErrorRef{
+		SourceID:  strings.TrimSpace(ref.SourceID),
+		ProxyName: strings.TrimSpace(ref.Instance.ProxyName),
 	}
 }
 

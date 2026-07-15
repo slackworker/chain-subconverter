@@ -3,36 +3,18 @@ import { expect, test } from "@playwright/test";
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 import {
 	applyDefaultUiPreferences,
+	assertWireSnapshotHasNoClientIds,
+	buildDefaultStage2Bundle,
+	flattenWireSnapshotInstances,
 	locateStage2Row,
 	mockRuntimeConfig,
+	semanticWireSnapshotKey,
 	selectStage2MenuOption,
 } from "./helpers";
 
-import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse, Stage2Snapshot } from "../src/types/api";
+import type { GenerateRequest, Stage1ConvertRequest } from "../src/types/api";
 
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
-
-function semanticStage2SnapshotKey(snapshot: Stage2Snapshot) {
-	return JSON.stringify({
-		rows: snapshot.rows.map((row) => ({
-			proxyName: row.proxyName ?? row.proxyName,
-			sourceLandingNodeName: row.sourceLandingNodeName,
-			mode: row.mode,
-			targetName: row.targetName,
-		})),
-		presentationOrder: snapshot.rows.map((row) => row.proxyName ?? row.proxyName),
-		groups: (snapshot.serverAggregationGroups ?? []).map((group) => ({
-			server: group.server,
-			enabled: group.enabled,
-			strategy: group.strategy,
-			memberProxyNames: (group.memberRowIds ?? []).map((memberRowId) => {
-				const matchedRow = snapshot.rows.find((row) => row.rowId === memberRowId);
-				return matchedRow?.proxyName ?? matchedRow?.proxyName ?? memberRowId;
-			}),
-		})),
-		chainProxyTargetGroupSwitchOptimizationEnabled: snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
-	});
-}
 
 test("delete and recopy replica row preserves semantic generate payload", async ({ page }) => {
 	const [relayA, relayB] = canonicalStage1Inputs.forwardRelayItems;
@@ -40,29 +22,33 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 		throw new Error("dual-landing canonical scenario must provide two forward relay items");
 	}
 
-	const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+	const stage2 = buildDefaultStage2Bundle({
 		availableModes: ["none", "chain", "port_forward"],
 		chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
 		forwardRelays: [{ name: relayA }, { name: relayB }],
-		rows: [
+		servers: [
 			{
-				rowId: "Alpha-Reality-HK-PortForward",
-				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
-				server: "hk.example.com",
-				landingNodeType: "vless",
-				mode: "none",
-				targetName: null,
+				serverKey: "hk.example.com",
+				sources: [{
+					sourceId: "Alpha-Reality-HK-PortForward",
+					landingNodeType: "vless",
+					defaultProxyName: "Alpha-Reality-HK-PortForward",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
 			},
 			{
-				rowId: "Beta-Reality-JP-PortForward",
-				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
-				server: "jp.example.com",
-				landingNodeType: "vless",
-				mode: "none",
-				targetName: null,
+				serverKey: "jp.example.com",
+				sources: [{
+					sourceId: "Beta-Reality-JP-PortForward",
+					landingNodeType: "vless",
+					defaultProxyName: "Beta-Reality-JP-PortForward",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
 			},
 		],
-	};
+	});
 
 	const stage1Requests: Stage1ConvertRequest[] = [];
 	const generateRequests: GenerateRequest[] = [];
@@ -75,7 +61,7 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 		stage1Requests.push(request);
 		await route.fulfill({
 			json: {
-				stage2Init,
+				stage2,
 				messages: [],
 				blockingErrors: [],
 			},
@@ -127,7 +113,8 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 
 	await page.getByRole("button", { name: "生成链接", exact: true }).click();
 	expect(generateRequests).toHaveLength(1);
-	const firstSemanticKey = semanticStage2SnapshotKey(generateRequests[0]!.stage2Snapshot);
+	assertWireSnapshotHasNoClientIds(generateRequests[0]);
+	const firstSemanticKey = semanticWireSnapshotKey(generateRequests[0]!.stage2.snapshot);
 
 	await replicaRow.getByRole("button", { name: "删除" }).click();
 	await expect(locateStage2Row(page, replicaLandingNodeName)).toHaveCount(0);
@@ -140,10 +127,16 @@ test("delete and recopy replica row preserves semantic generate payload", async 
 
 	await page.getByRole("button", { name: "生成链接", exact: true }).click();
 	expect(generateRequests).toHaveLength(2);
-	const secondSemanticKey = semanticStage2SnapshotKey(generateRequests[1]!.stage2Snapshot);
+	assertWireSnapshotHasNoClientIds(generateRequests[1]);
+	const secondSemanticKey = semanticWireSnapshotKey(generateRequests[1]!.stage2.snapshot);
 
 	expect(secondSemanticKey).toBe(firstSemanticKey);
-	expect(generateRequests[1]!.stage2Snapshot.rows.find((row) => row.proxyName === replicaLandingNodeName)?.rowId).toBe(
-		replicaLandingNodeName,
-	);
+	const replicaWireInstance = flattenWireSnapshotInstances(generateRequests[1]!.stage2.snapshot)
+		.find((instance) => instance.proxyName === replicaLandingNodeName);
+	expect(replicaWireInstance).toMatchObject({
+		proxyName: replicaLandingNodeName,
+		sourceId: "Alpha-Reality-HK-PortForward",
+		mode: "port_forward",
+		targetName: relayA,
+	});
 });

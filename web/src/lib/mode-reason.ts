@@ -32,9 +32,10 @@ function formatPortDiscouragedText(reasonArgs: Record<string, unknown> | undefin
 }
 
 function formatRowRef(reasonArgs: Record<string, unknown> | undefined, locale: ModeReasonLocale): string {
-	const rowId = typeof reasonArgs?.rowId === "string" ? reasonArgs.rowId.trim() : "";
+	const instanceId = typeof reasonArgs?.instanceId === "string" ? reasonArgs.instanceId.trim() : "";
 	const proxyName = typeof reasonArgs?.proxyName === "string" ? reasonArgs.proxyName.trim() : "";
-	const label = rowId || proxyName;
+	const sourceId = typeof reasonArgs?.sourceId === "string" ? reasonArgs.sourceId.trim() : "";
+	const label = proxyName || instanceId || sourceId;
 	if (!label) {
 		return "";
 	}

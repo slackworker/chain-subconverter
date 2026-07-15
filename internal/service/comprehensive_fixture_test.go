@@ -111,8 +111,8 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus = %q, want %q", response.RestoreStatus, "replayable")
 	}
-	if len(response.Stage2Snapshot.Rows) != 8 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 8", len(response.Stage2Snapshot.Rows))
+	if len(FlatStage2Rows(response.Stage2.Snapshot)) != 8 {
+		t.Fatalf("len(FlatStage2Rows(response.Stage2.Snapshot)) = %d, want 8", len(FlatStage2Rows(response.Stage2.Snapshot)))
 	}
 	if response.ShortURL != "" {
 		t.Fatalf("ShortURL = %q, want empty for long-url replay", response.ShortURL)
@@ -130,19 +130,19 @@ func TestResolveURLFromSource_DualLandingChainPortForwardFixtureReplayable(t *te
 	}}) {
 		t.Fatalf("expected replayable restore summary, got %v", response.Messages)
 	}
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-SS-SG", "chain", "🇭🇰 香港节点")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-SS-SG 2", "chain", "🇸🇬 新加坡节点")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG", "none", "")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG 2", "port_forward", "relay-a.example.com:7443")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇸🇬 Alpha-Reality-SG 3", "port_forward", "relay-b.example.com:8443")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇯🇵 Beta-Reality-JP", "none", "")
-	assertSnapshotRow(t, response.Stage2Snapshot.Rows, "🇭🇰 Manual-SOCKS5-HK-Fallback", "chain", "🇭🇰 香港节点")
-	if !response.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇸🇬 Alpha-SS-SG", "chain", "🇭🇰 香港节点")
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇸🇬 Alpha-SS-SG 2", "chain", "🇸🇬 新加坡节点")
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇸🇬 Alpha-Reality-SG", "none", "")
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇸🇬 Alpha-Reality-SG 2", "port_forward", "relay-a.example.com:7443")
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇸🇬 Alpha-Reality-SG 3", "port_forward", "relay-b.example.com:8443")
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇯🇵 Beta-Reality-JP", "none", "")
+	assertSnapshotRow(t, FlatStage2Rows(response.Stage2.Snapshot), "🇭🇰 Manual-SOCKS5-HK-Fallback", "chain", "🇭🇰 香港节点")
+	if !response.Stage2.Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
 		t.Fatal("expected chainProxyTargetGroupSwitchOptimizationEnabled to be true")
 	}
 	assertServerAggregationGroup(
 		t,
-		response.Stage2Snapshot.ServerAggregationGroups,
+		FlatAggregationGroups(response.Stage2.Snapshot),
 		"198.51.100.10",
 		true,
 		"fallback",

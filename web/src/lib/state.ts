@@ -1,4 +1,13 @@
-import type { BlockingError, Message, RestoreConflict, Stage1Input, Stage1InputPayload, Stage2Init, Stage2Snapshot } from "../types/api";
+import type {
+	BlockingError,
+	Message,
+	RestoreConflict,
+	Stage1Input,
+	Stage1InputPayload,
+	Stage2Aggregation,
+	Stage2Catalog,
+	Stage2Snapshot,
+} from "../types/api";
 
 export type ResponseOriginStage = "stage1" | "stage2" | "stage3";
 export type WorkflowLogLevel = Message["level"] | "success" | "error";
@@ -23,8 +32,11 @@ export interface AppState {
 	currentLinkInput: string;
 	preferShortUrl: boolean;
 	stage1Input: Stage1Input;
-	stage2Init: Stage2Init | null;
+	stage2Catalog: Stage2Catalog | null;
+	/** @deprecated UI compatibility alias; kept synchronized with stage2Catalog. */
+	stage2Init: Stage2Catalog | null;
 	stage2Snapshot: Stage2Snapshot;
+	aggregationDraftsByServerKey: Record<string, Stage2Aggregation>;
 	generatedUrls: GeneratedUrls | null;
 	stage3Expired: boolean;
 	stage2Stale: boolean;
@@ -47,7 +59,6 @@ export const initialStage1Input: Stage1Input = {
 		config: null,
 		include: null,
 		exclude: null,
-		enablePortForward: true,
 	},
 };
 
@@ -58,13 +69,11 @@ export function normalizeRawTextareaInput(value: string): string {
 }
 
 export function toStage1InputPayload(stage1Input: Stage1Input): Stage1InputPayload {
-	const { enablePortForward: _enablePortForward, ...advancedOptions } = stage1Input.advancedOptions;
-
 	return {
 		landingRawText: normalizeRawTextareaInput(stage1Input.landingRawText),
 		transitRawText: normalizeRawTextareaInput(stage1Input.transitRawText),
 		forwardRelayItems: stage1Input.forwardRelayItems,
-		advancedOptions,
+		advancedOptions: stage1Input.advancedOptions,
 	};
 }
 
@@ -72,30 +81,21 @@ export function isInitialStage1Input(stage1Input: Stage1Input): boolean {
 	return JSON.stringify(toStage1InputPayload(stage1Input)) === JSON.stringify(toStage1InputPayload(initialStage1Input));
 }
 
-function deriveEnablePortForward(stage1Input: Stage1InputPayload): boolean {
-	return stage1Input.forwardRelayItems.length > 0;
-}
-
 export function hydrateStage1Input(stage1Input: Stage1InputPayload): Stage1Input {
-	return {
-		...stage1Input,
-		advancedOptions: {
-			...stage1Input.advancedOptions,
-			enablePortForward: deriveEnablePortForward(stage1Input),
-		},
-	};
+	return stage1Input;
 }
 
 export const initialAppState: AppState = {
 	currentLinkInput: "",
 	preferShortUrl: false,
 	stage1Input: initialStage1Input,
+	stage2Catalog: null,
 	stage2Init: null,
 	stage2Snapshot: {
-		rows: [],
 		chainProxyTargetGroupSwitchOptimizationEnabled: false,
-		serverAggregationGroups: [],
+		servers: [],
 	},
+	aggregationDraftsByServerKey: {},
 	generatedUrls: null,
 	stage3Expired: false,
 	stage2Stale: false,

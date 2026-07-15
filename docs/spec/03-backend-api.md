@@ -49,122 +49,125 @@
 - 参与转换的 `landingRawText` 与 `transitRawText` 必须受上游 `GET /sub` 请求 URI 预算约束；该预算必须可配置，默认完整请求 URI 最多 `16384` bytes
 - 若任一字段支持多 URL 输入，则该字段承载的输入项数量必须受限；该上限必须可配置，默认每个字段最多 `32` 条
 
-### 2. 阶段 2 配置快照
+### 2. 阶段 2 配置快照（`stage2.snapshot`）
+
+权威形状与字段语义见 [06-stage2-model](06-stage2-model.md)。HTTP 层以嵌套树提交：
 
 ```json
 {
-  "stage2Snapshot": {
-    "rows": [
-      {
-        "rowId": "HK 01",
-        "sourceLandingNodeName": "HK 01",
-        "proxyName": "HK 01",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ],
-    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
-    "serverAggregationGroups": [
-      {
-        "server": "landing.example.com",
-        "groupName": "HK 手动分组",
-        "enabled": true,
-        "strategy": "fallback",
-        "memberRowIds": ["HK 01", "HK 01 2"]
-      },
-      {
-        "server": "edge.reality.example",
-        "enabled": false,
-        "strategy": "",
-        "memberRowIds": []
-      }
-    ]
+  "stage2": {
+    "snapshot": {
+      "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+      "servers": [
+        {
+          "serverKey": "landing.example.com",
+          "aggregation": {
+            "enabled": true,
+            "groupName": "HK 手动分组",
+            "strategy": "fallback",
+            "memberProxyNames": ["HK 01", "HK 01 2"]
+          },
+          "sources": [
+            {
+              "sourceId": "HK 01",
+              "instances": [
+                {
+                  "proxyName": "HK 01",
+                  "mode": "chain",
+                  "targetName": "🇭🇰 香港节点"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "serverKey": "edge.reality.example",
+          "aggregation": { "enabled": false },
+          "sources": [
+            {
+              "sourceId": "Reality 01",
+              "instances": [
+                {
+                  "proxyName": "Reality 01",
+                  "mode": "none",
+                  "targetName": null
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
   }
 }
 ```
 
 约束：
 
-- `rows` 表示阶段 2 的完整固定行模型，不是增量补丁
-- `rowId` 为行稳定 ID（全表唯一，必填）；`proxyName` 为 YAML 节点名（全表唯一）；`sourceLandingNodeName` 为 Pass 1 原始落地名；字段语义见 [04 §2.1.2](04-business-rules.md)
-- `rows[]` 数组顺序与 `serverAggregationGroups[].memberRowIds[]` 数组顺序都属于稳定契约的一部分；具体语义见 [04 §2.1.2a / §2.1.3 / §2.7](04-business-rules.md)
-- 每个当前落地身份至少一行；允许多行共享同一 `sourceLandingNodeName`（复制）
-- `mode` 只能是 `none`、`chain`、`port_forward`
-- `mode = none` 时，`targetName` 必须为空或 `null`
-- `mode = chain` 时，`targetName` 必须等于某个 `chainTargets[].name`
-- `mode = port_forward` 时，`targetName` 必须等于某个 `forwardRelays[].name`，且同一份 `stage2Snapshot` 中不可被多个 `rows[]` 重复使用
-- `serverAggregationGroups[]` 可选；字段形状见上文示例；业务语义、校验、命名与渲染规则见 [04 §2.7](04-business-rules.md) 与 [04 §3.3.2](04-business-rules.md)
-- `serverAggregationGroups[].server` 是组稳定标识，表达“该聚合组对应哪个落地 server”；同一 `stage2Snapshot` 内唯一
-- `serverAggregationGroups[].groupName` 为可选字符串，表达用户显式编辑后的聚合组名；缺失或空字符串都表示“当前未设置自定义组名，应回退到默认命名规则”
-- `serverAggregationGroups[].groupName` 只承载聚合组命名语义，不得改变任何 `rows[]` 的 `proxyName`、`rowId` 或 `sourceLandingNodeName`
-- 渲染出的聚合组是最终 YAML 产物，不回流到 `stage2Init.chainTargets[]`，也不作为 `rows[].targetName` 的可选值
-- `chainProxyTargetGroupSwitchOptimizationEnabled` 为可选布尔值；开启后对所有 `mode = chain` 且 `targetName` 为 `kind = proxy-groups` 的行统一覆写 `timeout` 与 `max-failed-times`；适用条件与校验见 [04 §3.1–3.2](04-business-rules.md)
+- `servers → sources → instances` 为权威形状；UI 平铺仅为投影
+- Wire 请求/响应**不含** `instanceId` / `memberInstanceIds` / `memberLocalInstanceIds`；聚合开启时用 `memberProxyNames[]`（值为 `proxyName`）；入站含废弃字段 → `INVALID_REQUEST`；规则见 [06 §4–7](06-stage2-model.md)
+- `enabled=false` 时请求体 aggregation **只含** `{ "enabled": false }`；不得携带草稿字段
+- `memberProxyNames` 必须全部落在该 server 子树内
+- `mode` / `targetName` 约束与切换优化开关见 [06 §4](06-stage2-model.md) 与 [04 §3](04-business-rules.md)
+- 渲染出的聚合组不回流 `catalog.chainTargets[]`，也不作为 `targetName` 候选
 
-### 3. 阶段 2 初始化数据
+### 3. 阶段 2 初始化（`stage2.catalog` + 默认 `snapshot`）
 
 ```json
 {
-  "stage2Init": {
-    "availableModes": ["none", "chain", "port_forward"],
-    "chainTargets": [
-      { "name": "🇭🇰 香港节点", "kind": "proxy-groups", "isEmpty": true },
-      { "name": "Transit A", "kind": "proxies" }
-    ],
-    "forwardRelays": [
-      { "name": "relay.example.com:1080" }
-    ],
-    "rows": [
-      {
-        "rowId": "HK 01",
-        "sourceLandingNodeName": "HK 01",
-        "proxyName": "HK 01",
-        "landingNodeType": "SS",
-        "server": "landing.example.com",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      },
-      {
-        "rowId": "Reality 01",
-        "sourceLandingNodeName": "Reality 01",
-        "proxyName": "Reality 01",
-        "landingNodeType": "Reality",
-        "server": "edge.reality.example",
-        "modeWarnings": {
-          "chain": {
-            "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
-            "reasonArgs": { "protocolClass": "udp_or_tls_obfuscated" }
-          }
+  "stage2": {
+    "catalog": {
+      "availableModes": ["none", "chain", "port_forward"],
+      "chainTargets": [
+        { "name": "🇭🇰 香港节点", "kind": "proxy-groups", "isEmpty": true },
+        { "name": "Transit A", "kind": "proxies" }
+      ],
+      "forwardRelays": [{ "name": "relay.example.com:1080" }],
+      "servers": [
+        {
+          "serverKey": "landing.example.com",
+          "sources": [
+            {
+              "sourceId": "HK 01",
+              "landingNodeType": "SS",
+              "defaultProxyName": "HK 01",
+              "defaultMode": "chain",
+              "defaultTargetName": "🇭🇰 香港节点"
+            }
+          ]
         },
-        "mode": "chain",
-        "targetName": "relay-group-hk"
-      }
-    ]
+        {
+          "serverKey": "edge.reality.example",
+          "sources": [
+            {
+              "sourceId": "Reality 01",
+              "landingNodeType": "Reality",
+              "modeWarnings": {
+                "chain": {
+                  "reasonCode": "DISCOURAGED_BY_LANDING_PROTOCOL",
+                  "reasonArgs": { "protocolClass": "udp_or_tls_obfuscated" }
+                }
+              },
+              "defaultProxyName": "Reality 01",
+              "defaultMode": "chain",
+              "defaultTargetName": "relay-group-hk"
+            }
+          ]
+        }
+      ]
+    },
+    "snapshot": { "...": "由 catalog 生成的默认树；每源恰好 1 个 instance；aggregation.enabled=false" }
   }
 }
 ```
 
 字段说明：
 
-- `availableModes[]`：阶段 2 第三列的模式列表；出现条件与顺序见 [04-business-rules](04-business-rules.md)
-- `chainTargets[]`：阶段 2 第四列在 `mode = chain` 时的候选列表
-- `chainTargets[].name`：链式候选名称；同时作为 `stage2Snapshot.rows[].targetName` 的可选值
-- `chainTargets[].kind`：链式候选类别；当前只允许 `proxy-groups` 或 `proxies`
-- `chainTargets[].isEmpty`：可选布尔值；仅 `kind = proxy-groups` 时有语义。空策略组写 `true`；非空策略组留空
-- `chainTargets[]` 仅包含阶段 2 可直接选择的链式候选；任何由 `serverAggregationGroups[]` 派生的聚合组都不应出现在该列表中
-- `forwardRelays[]`：阶段 2 第四列在 `mode = port_forward` 时的候选列表
-- `forwardRelays[].name`：规范化后的 `server:port` 字面量，同时作为稳定标识与展示值
-- `rows[]`：阶段 2 默认行模型，前端直接渲染
-- `rows[].landingNodeType`：落地节点类型展示值
-- `rows[].server`：落地节点 server 展示值（用于按 server 分组与聚合配置）；必填且不能为空字符串
-- `stage2Init.rows[]` 不暴露切换优化字段；开关由 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 全局承载（见 §2）
-- `rows[].restrictedModes`：当前行的模式限制映射；出现条件见 [04-business-rules](04-business-rules.md)
-- `rows[].restrictedModes.<mode>.reasonCode`：禁用原因码；文案由前端基于 `reasonCode` 与 `reasonArgs` 本地映射
-- `rows[].restrictedModes.<mode>.reasonArgs`：禁用原因参数对象（可选）
-- `rows[].modeWarnings`：当前行的模式 warning 映射；出现条件见 [04-business-rules](04-business-rules.md)
-- `rows[].modeWarnings.<mode>.reasonCode`：warning 原因码；文案由前端基于 `reasonCode` 与 `reasonArgs` 本地映射
-- `rows[].modeWarnings.<mode>.reasonArgs`：warning 原因参数对象（可选）
-- `modeWarnings.chain.reasonCode` 在当前规格中允许为 `DISCOURAGED_BY_LANDING_PROTOCOL`、`DISCOURAGED_BY_LANDING_PORT` 或 `DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT`
-- 当同一行同时命中多条 `chain` warning 条件时，后端必须合并为单个 `modeWarnings.chain` 项，并在 `reasonArgs` 中返回组合原因参数
+- `availableModes[]` / `chainTargets[]` / `forwardRelays[]`：语义同旧 `stage2Init` 顶层字段；收集规则见 [04 §2.2–2.4](04-business-rules.md)
+- `catalog.servers[].sources[]`：只读元数据；`restrictedModes` / `modeWarnings` 挂在源上
+- `modeWarnings.chain.reasonCode` 允许为 `DISCOURAGED_BY_LANDING_PROTOCOL`、`DISCOURAGED_BY_LANDING_PORT` 或 `DISCOURAGED_BY_LANDING_PROTOCOL_AND_PORT`
+- 默认 `snapshot` 生成规则见 [06 §4.1](06-stage2-model.md)
+- **不再**返回平铺 `rows[]` 或外挂 `serverAggregationGroups[]`
 
 ### 4. 消息与错误模型
 
@@ -191,9 +194,9 @@
 [
   {
     "code": "MISSING_TARGET",
-    "message": "存在未完成配置的行",
-    "scope": "stage2_row",
-    "context": { "rowId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
+    "message": "存在未完成配置的实例",
+    "scope": "stage2_instance",
+    "context": { "sourceId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
   }
 ]
 ```
@@ -204,7 +207,7 @@
 [
   {
     "reasonCode": "TARGET_NOT_FOUND",
-    "reasonArgs": { "rowId": "HK 02", "field": "targetName" }
+    "reasonArgs": { "sourceId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
   }
 ]
 ```
@@ -213,23 +216,24 @@
 
 - `messages[]` 只承载 `info` 与 `warning`
 - `messages[]` 表示服务端返回的非阻断用户提示；它是前端 workflow log 的后端消息源之一，但不等同于整个前端日志系统
-- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`STAGE2_RESET`、`STAGE2_ROW_RESET`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
-- `messages[]` 不承诺字段级或行级定位语义，也不单独决定前端展示位置
+- 当前稳定业务摘要 code 可包括 `STAGE1_CONVERT_SUMMARY`、`AUTO_CHAIN_TARGET_SELECTED`、`GENERATE_METADATA_READY`、`RESTORE_METADATA_READY`、`SHORT_LINK_CREATED`、`CHAIN_TARGET_REVIEW`、`DEFAULT_TEMPLATE_CACHE_USED`、`TEMPLATE_EMOJI_RULE_CONFLICT` 与 `RESTORE_CONFLICT`
+- `messages[]` 不承诺字段级或实例级定位语义，也不单独决定前端展示位置
 - `messages[]` 不定义 `scope`；若返回 `context`，仅作为辅助元数据，前端与测试不得依赖其决定展示位置
 - `messages[]` 可选返回 `reasonArgs`；若返回则必须是对象，由前端基于 `code` 本地映射文案
 - `blockingErrors[]` 只承载阻断当前请求的错误
 - `blockingErrors[]` 的每个元素都必须包含 `code`、`message` 与 `scope`；`code` 与 `restoreConflicts[].reasonCode` 共享同一稳定原因码命名空间（如 `TARGET_NOT_FOUND`）
 - `blockingErrors[]` 可选返回 `reasonArgs`；若返回则必须是对象；前端基于 `code` 与 `reasonArgs` 本地映射 `message` 之外的补充文案
 - `retryable` 为可选字段；仅在后端需要显式表达“当前错误可直接重试”时返回
-- `scope` 只能是 `global`、`stage1_field`、`stage2_row`、`stage3_field` 或 `stage3_action`
+- `scope` 只能是 `global`、`stage1_field`、`stage2_instance`、`stage2_server`、`stage3_field` 或 `stage3_action`（**废弃** `stage2_row`）
 - `scope` 只定义共享层必须稳定的业务定位语义，不规定前端的具体布局、视觉样式或组件形态
 - `scope` 不是 Stage 枚举；前端若需要展示 Stage 1 / 2 / 3 标签，必须按请求入口或工作流上下文派生，不得把 `scope` 当成阶段编号使用
 - 前端可在展示层派生 `originStage` 一类的请求来源语义，用于决定本次反馈属于哪个阶段动作；该语义不进入后端响应结构，也不替代 `scope`
-- 当前 `scope` 覆盖范围固定为现阶段三段业务模型：`global` 表示系统级或请求级阻断，`stage1_field` 表示阶段 1 字段定位，`stage2_row` 表示阶段 2 行级定位，`stage3_field` 与 `stage3_action` 表示阶段 3 的输入定位与动作定位
+- 当前 `scope` 覆盖范围：`global` 系统/请求级；`stage1_field` 阶段 1 字段；`stage2_instance` 实例级；`stage2_server` server/聚合级；`stage3_field` / `stage3_action` 阶段 3
 - `POST /api/resolve-url` 与 `POST /api/short-links` 的失败响应允许使用 `stage3_field` 或 `stage3_action`；仅当错误属于存储、依赖或未知内部异常时使用 `scope = global`
 - 前端仍可在展示层派生 Stage 3 来源标签，但该标签不替代 `stage3_*` 的局部定位职责
 - `scope = stage1_field` 时，`context.field` 必填
-- `scope = stage2_row` 时，`context.rowId` 必填；`context.proxyName` 建议同时返回；列级错误须含 `context.field`
+- `scope = stage2_instance` 时，`context.sourceId` 与 `context.proxyName` 必填；列级错误须含 `context.field`
+- `scope = stage2_server` 时，`context.serverKey` 必填；可选 `context.field`
 - `scope = stage3_field` 时，`context.field` 必填；当前前端默认使用 `currentLinkInput` 作为 Stage 3 当前链接输入框的稳定字段键
 - `scope = stage3_action` 时，`context.action` 为可选字段；若返回，则其值必须只承担动作来源说明，不得替代 `originStage`
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
@@ -340,7 +344,7 @@
 
 ### 3. `POST /api/stage1/convert`
 
-用途：接收阶段 1 输入，并返回本次转换得到的 `stage2Init`。
+用途：接收阶段 1 输入，并返回本次转换得到的 `stage2`（`catalog` + 默认 `snapshot`）。
 
 请求：
 
@@ -364,9 +368,10 @@
 
 成功响应：
 
-- 返回 `stage2Init`、`messages` 与 `blockingErrors`
-- `stage2Init` 的完整结构见“3. 阶段 2 初始化数据”
+- 返回 `stage2`（含 `catalog` 与默认 `snapshot`）、`messages` 与 `blockingErrors`
+- `stage2` 结构见本文“2 / 3”与 [06-stage2-model](06-stage2-model.md)
 - 成功时 `blockingErrors[]` 必须为空
+- 请求**不得**携带旧 snapshot；reconvert merge 由前端本地完成
 
 失败响应：
 
@@ -392,8 +397,8 @@
 补充规则：
 
 - 本接口不返回 `completeConfig` 或 `baseCompleteConfig`
-- `stage2Init` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md)
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：`prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Init`；不执行 `pass3FullBase` 及之后步骤
+- `stage2` 的来源、候选收集与默认填充规则统一见 [04-business-rules](04-business-rules.md) 与 [06-stage2-model](06-stage2-model.md)
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：`prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Bundle`；不执行 `pass3FullBase` 及之后步骤
 - 多条完全一致的落地 URI 不得被静默去重
 - `proxyName` 的具体命名与重名处理由转换服务和 chain 侧命名流程共同决定；前端只消费接口返回结果，不得自行猜测
 - `advancedOptions.config` 虽保留历史字段名 `config`，但其业务语义始终是“模板 URL”；阻断错误中的 `context.field = config` 也对应这一字段
@@ -412,47 +417,54 @@
 
 ### 4. `POST /api/generate`
 
-用途：接收阶段 1 快照与阶段 2 快照，完成最终校验并返回可消费的长链接。
+用途：接收阶段 1 快照与阶段 2 snapshot，完成最终校验并返回可消费的长链接。
 
 请求结构：
 
 - `stage1Input`：结构同 `POST /api/stage1/convert` 的请求体中的 `stage1Input`
-- `stage2Snapshot`：结构见本文“2. 阶段 2 配置快照”
+- `stage2.snapshot`：结构见本文“2. 阶段 2 配置快照”
 
 最小请求示例：
 
 ```json
 {
   "stage1Input": { "...": "同 POST /api/stage1/convert 请求示例" },
-  "stage2Snapshot": {
-    "rows": [
-      {
-        "rowId": "HK 01",
-        "sourceLandingNodeName": "HK 01",
-        "proxyName": "HK 01",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ],
-    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
-    "serverAggregationGroups": [
-      {
-        "server": "landing.example.com",
-        "groupName": "HK 手动分组",
-        "enabled": true,
-        "strategy": "fallback",
-        "memberRowIds": ["HK 01", "HK 02"]
-      }
-    ]
+  "stage2": {
+    "snapshot": {
+      "chainProxyTargetGroupSwitchOptimizationEnabled": true,
+      "servers": [
+        {
+          "serverKey": "landing.example.com",
+          "aggregation": {
+            "enabled": true,
+            "groupName": "HK 手动分组",
+            "strategy": "fallback",
+            "memberProxyNames": ["HK 01", "HK 02"]
+          },
+          "sources": [
+            {
+              "sourceId": "HK 01",
+              "instances": [
+                {
+                  "proxyName": "HK 01",
+                  "mode": "chain",
+                  "targetName": "🇭🇰 香港节点"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
   }
 }
 ```
 
 接口约束：
 
-- 请求体不包含 `completeConfig`
+- 请求体不包含 `completeConfig`；响应**不回传** snapshot / catalog
 - 本接口返回规范化长链接；生成前校验规则见 [04-business-rules](04-business-rules.md)
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess` 的内部 dry-run 校验；并按 hard-break 规则编码 `statePayload v4`
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess` 的内部 dry-run 校验；并按 hard-break 规则编码 `statePayload v5`
 - 本接口不返回 YAML 文本
 
 成功响应：
@@ -473,9 +485,9 @@
   "blockingErrors": [
     {
       "code": "MISSING_TARGET",
-      "message": "存在未完成配置的行",
-      "scope": "stage2_row",
-      "context": { "rowId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
+      "message": "存在未完成配置的实例",
+      "scope": "stage2_instance",
+      "context": { "sourceId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
     }
   ]
 }
@@ -486,89 +498,29 @@
 - `longUrl` 是本系统唯一的规范化状态链接
 - 本接口不负责创建短链接；短链接创建由单独接口处理
 - 本接口成功表示当前快照已通过校验，并已得到可消费的长链接
-- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与经**编码前语义规范化**（见 [04 §2.1.2b](04-business-rules.md)）后的 `stage2Snapshot` 必须生成相同的数据载荷（`data` query 参数），链接的路径与查询结构必须稳定；请求校验仍使用客户端提交的原始 `rowId` / `memberRowIds`，规范化仅作用于编码输出；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `USER_FACING_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
+- `longUrl` 的编码必须可逆、URL-safe 且具确定性；同一份 `stage1Input` 与经**编码前语义规范化**（见 [06 §7](06-stage2-model.md)）后的 snapshot 必须生成相同的数据载荷（`data` query 参数）；请求校验使用 `proxyName` / `memberProxyNames`；规范化仅作用于编码输出；`longUrl` 的 scheme 与 host 由服务端发布地址决定：若显式配置了 `USER_FACING_BASE_URL`，则始终以该配置为准；若未配置，则以当前请求来源推断：默认使用 TLS 状态与 `Host` 请求头；仅当直接对端 IP 命中 `TRUSTED_PROXY_CIDRS` 时，允许改用 `X-Forwarded-Proto` 与 `X-Forwarded-Host`；多入口访问场景下 host 部分可能随入口不同而变化
 - 当前 Web 前端拿到 `longUrl` 后，若其长度超过 `GET /api/runtime-config` 返回的 `maxPublicLongURLLength`，必须立即创建并切换为 `shortUrl` 展示；此时 `longUrl` 只作为前端与后端之间的内部中间值存在，不再作为主展示结果
 - 请求体中的 `advancedOptions.config` 仍表示模板 URL，而不是最终订阅 YAML
 
 最小失败语义：
 
 - `400`：`INVALID_REQUEST`；默认 `scope = global`，当后端能明确定位到具体阶段 1 字段时可返回 `scope = stage1_field`
-- 若 `stage2Snapshot` 含有不受支持的 `mode`，或违反 [04 §3.2](04-business-rules.md) 中 `chainProxyTargetGroupSwitchOptimizationEnabled` 相关校验，后端必须返回 `400 INVALID_REQUEST`，并使用 `scope = stage2_row`
+- 若 snapshot 含有不受支持的 `mode`，或违反 [04 §3.2](04-business-rules.md) 中 `chainProxyTargetGroupSwitchOptimizationEnabled` 相关校验，后端必须返回 `400 INVALID_REQUEST`，并使用 `scope = stage2_instance` 或 `stage2_server`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`CHAIN_TARGET_NAME_CONFLICT`、`INVALID_TEMPLATE_CONFIG`、`STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`、`STAGE2_ROWSET_MISMATCH`、`DUPLICATE_PROXY_NAME`、`LANDING_NODE_NOT_FOUND`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`、`INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
-- `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`；该字段指向阶段 1 的模板 URL 输入及其派生出的模板内容校验
+- `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`
 - `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
-- `DUPLICATE_PROXY_NAME`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_row`，`context.rowId` 必填；建议同时返回 `context.proxyName`；列级错误加 `context.field`
-- `LANDING_NODE_NOT_FOUND`：当错误来源是行快照引用缺失时，须 `scope = stage2_row`（`context.rowId` 必填，建议同时返回 `context.proxyName`）；当错误来源是 server 聚合成员引用到当前环境缺失的落地节点时，须 `scope = global`
-- `INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`：都必须返回 `scope = global`，且不要求返回 `context`
+- `DUPLICATE_PROXY_NAME`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_instance`，`context.sourceId` 与 `context.proxyName` 必填；列级错误加 `context.field`
+- `LANDING_NODE_NOT_FOUND`：实例引用缺失时须 `scope = stage2_instance`；聚合成员引用缺失落地时须 `scope = global` 或 `stage2_server`
+- `INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`：默认 `scope = stage2_server`（`context.serverKey`）；无法定位时可用 `global`
 - `503`：`TEMPLATE_CONFIG_UNAVAILABLE`、`SUBCONVERTER_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
-### 5. `POST /api/stage2/reset`
+### 5. （已废弃）`POST /api/stage2/reset`
 
-用途：基于当前 `stage1Input` 重新计算 Stage 2 初始配置，并按指定范围恢复 `stage2Snapshot`。
-
-请求结构：
-
-- `stage1Input`：结构同 `POST /api/stage1/convert` 请求体中的 `stage1Input`
-- `stage2Snapshot`：当前编辑态快照，结构同本文“2. 阶段 2 配置快照”
-- `reset`：恢复动作
-  - `scope = all`：恢复整个 Stage 2 为初始配置
-  - `scope = row`：只恢复指定 `rowId` 对应行
-  - `rowId`：`scope = row` 时必填
-
-最小请求示例：
-
-```json
-{
-  "stage1Input": { "...": "同 POST /api/stage1/convert 请求示例" },
-  "stage2Snapshot": {
-    "rows": [
-      {
-        "rowId": "HK 01",
-        "sourceLandingNodeName": "HK 01",
-        "proxyName": "HK 01",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ],
-    "chainProxyTargetGroupSwitchOptimizationEnabled": true,
-    "serverAggregationGroups": []
-  },
-  "reset": {
-    "scope": "row",
-    "rowId": "HK 01"
-  }
-}
-```
-
-成功响应：
-
-```json
-{
-  "stage2Init": { "...": "结构同本文“3. 阶段 2 初始化数据”" },
-  "stage2Snapshot": { "...": "重置后的快照" },
-  "messages": [],
-  "blockingErrors": []
-}
-```
-
-规则：
-
-- `scope = all`：`stage2Snapshot` 必须恢复为当前 `stage1Input` 对应的初始快照（`rows` 来自 `stage2Init.rows`，`serverAggregationGroups = []`，切换优化开关为 `false`）
-- `scope = row`：仅恢复指定行的 `proxyName`、`mode` 与 `targetName`；其他行与聚合组保持不变
-- `scope = row` 时，行定位以 `rowId` 为准；若找不到对应行，接口失败
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：`prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Init`；随后按 `reset` 范围重置 `stage2Snapshot`
-
-最小失败语义：
-
-- `400`：`INVALID_REQUEST`（包括 `reset.scope` 非法、`scope = row` 但 `rowId` 缺失）
-- `422`：`STAGE2_ROW_NOT_FOUND`、`LANDING_NODE_NOT_FOUND`
-- `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
-- `503`：`SUBCONVERTER_UNAVAILABLE`；必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
-- `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
+**已删除**。全局重置 = 再调 `POST /api/stage1/convert` 并用默认 snapshot 整份覆盖；局部重置纯前端（见 [06 §9](06-stage2-model.md)）。路由不得再注册。
 
 ### 6. `POST /api/short-links`
 
@@ -611,7 +563,7 @@
 
 规则：
 
-- 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2Snapshot`
+- 请求体只接受 `longUrl`，不重复接收 `stage1Input` 与 `stage2.snapshot`
 - 后端必须先校验 `longUrl` 是否为本系统可识别、可解析的规范长链接
 - 对同一份规范状态的多次成功调用须**幂等**；映射未淘汰且存储可用时，成功响应中的 `shortUrl` 须一致；即使 `USER_FACING_BASE_URL` 或请求入口变化导致规范化 `longUrl` 的 scheme / host / base path 变化，只要状态载荷相同，`shortUrl` 中的 `<id>` 也必须保持一致。存储层如何保证见下文「长短链接语义」中短链接索引相关条目
 - `longUrl` 必须是规范长链接（仅包含 `data`）；若携带其他 query，必须返回 `INVALID_LONG_URL`
@@ -647,11 +599,14 @@
   "restoreConflicts": [
     {
       "reasonCode": "TARGET_NOT_FOUND",
-      "reasonArgs": { "rowId": "HK 02", "field": "targetName" }
+      "reasonArgs": { "sourceId": "HK 02", "proxyName": "HK 02", "field": "targetName" }
     }
   ],
   "stage1Input": { "...": "结构同 POST /api/stage1/convert 请求中的 stage1Input" },
-  "stage2Snapshot": { "...": "结构同本文“2. 阶段 2 配置快照”" },
+  "stage2": {
+    "catalog": { "...": "结构同本文“3. 阶段 2 初始化”" },
+    "snapshot": { "...": "解码后 Wire 形树；不含 instanceId" }
+  },
   "messages": [],
   "blockingErrors": []
 }
@@ -661,17 +616,17 @@
 
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - `restoreConflicts[]` 为可选数组；`restoreStatus = replayable` 时可省略或返回空数组，`restoreStatus = conflicted` 时必须非空
-- 传入长链接时，先解码 `stage1Input` 与 `stage2Snapshot`
+- 传入长链接时，先解码 `stage1Input` 与编码态 snapshot（v5）；响应 snapshot 不含 `instanceId`（前端 `hydrateInstanceIds`）
 - 传入短链接或裸 `shortID` 时，先解析为长链接，再解码同一份快照
 - 传入短链接或裸 `shortID` 且解析成功时，成功响应必须额外返回规范化 `shortUrl`；传入长链接时不返回该字段
 - 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理
 - 若传入长链接携带 `data` 与可选 `download=1` 之外的 query，必须返回 `INVALID_LONG_URL`
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，完成至 `postProcess` 的内部校验；不得走兼容分支或旧版载荷解码路径
+- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，完成至 `postProcess` 的内部校验；不得走兼容分支或旧版（含 v4）载荷解码路径
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
 - `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
-- `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input`、`stage2Snapshot` 与 `restoreConflicts[]`
+- `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input`、`stage2` 与 `restoreConflicts[]`
 - `restoreConflicts[].reasonCode` 必填；`reasonArgs` 可选且必须是对象
 - `restoreStatus = conflicted` 时，`messages[]` 必须包含 `RESTORE_CONFLICT`，供前端进入只读冲突态
 
@@ -704,7 +659,7 @@
 规则：
 
 - 路径固定为 `GET /sub`
-- `data` 必须可逆编码 `stage1Input` 与 `stage2Snapshot`
+- `data` 必须可逆编码 `stage1Input` 与编码态 `stage2.snapshot`（v5）
 - 长链接编码必须 URL-safe 且具确定性；编码规范见下文“长链接编码规范”
 - YAML 渲染规则见 [04-business-rules](04-business-rules.md)
 - 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig`
@@ -728,7 +683,7 @@
 - 规范短链接路径固定为 `GET /sub/<id>`
 - 当前公开契约不保留 `/subscription*` 兼容路径
 - 规范长链接只能由后端生成；前端不得自行构造、重写或“规范化” `longUrl`
-- 前端只提交 `stage1Input` 与 `stage2Snapshot`，并消费后端返回的 `longUrl`
+- 前端只提交 `stage1Input` 与 `stage2.snapshot`，并消费后端返回的 `longUrl`
 - 后端是唯一权威编码器，也是 `resolve-url` 与 `GET /sub?...` 的唯一权威解码器
 
 ### 2. 规范载荷
@@ -737,7 +692,7 @@
 
 ```json
 {
-  "v": 4,
+  "v": 5,
   "stage1Input": {
     "landingRawText": "...",
     "transitRawText": "...",
@@ -752,23 +707,28 @@
     }
   },
   "stage2Snapshot": {
-    "rows": [
-      {
-        "rowId": "HK 01",
-        "sourceLandingNodeName": "HK 01",
-        "proxyName": "HK 01",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ],
     "chainProxyTargetGroupSwitchOptimizationEnabled": true,
-    "serverAggregationGroups": [
+    "servers": [
       {
-        "server": "landing.example.com",
-        "groupName": "HK 手动分组",
-        "enabled": true,
-        "strategy": "fallback",
-        "memberRowIds": ["HK 01", "HK 02"]
+        "serverKey": "landing.example.com",
+        "aggregation": {
+          "enabled": true,
+          "groupName": "HK 手动分组",
+          "strategy": "fallback",
+          "memberProxyNames": ["HK 01", "HK 02"]
+        },
+        "sources": [
+          {
+            "sourceId": "HK 01",
+            "instances": [
+              {
+                "proxyName": "HK 01",
+                "mode": "chain",
+                "targetName": "🇭🇰 香港节点"
+              }
+            ]
+          }
+        ]
       }
     ]
   }
@@ -777,11 +737,11 @@
 
 规则：
 
-- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 4`；不接受 `v = 1/2/3` 或缺失 `v` 的兼容解码
-- 当前版本的规范长链接只编码 `stage1Input` 与 `stage2Snapshot`；其中 `stage1Input.advancedOptions.config` 必须是本次快照使用的具体模板 URL
-- `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled` 属于规范长链接状态的一部分
+- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 5`；**拒绝** `v = 4` 及更旧版本或缺失 `v`
+- 当前版本的规范长链接只编码 `stage1Input` 与编码态嵌套 `stage2Snapshot`（字段名可与 API 外壳 `stage2.snapshot` 对应；载荷内不含 `instanceId`）
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
-- 解码时若 `v` 缺失、不是整数、或不等于 `4`，必须视为无效长链接
+- 编码态聚合：`enabled=true` 时用 `memberProxyNames[]`；`enabled=false` 时仅 `{ "enabled": false }`
+- 规范化规则见 [06 §7](06-stage2-model.md)
 
 ### 3. query 约束（hard-break）
 
@@ -796,8 +756,8 @@
 
 编码步骤固定为：
 
-1. 对 `stage2Snapshot` 执行编码前语义规范化（见 [04 §2.1.2b](04-business-rules.md)）
-2. 将逻辑载荷按当前版本结构组装为 JSON 对象
+1. 对 snapshot 执行编码前语义规范化（见 [06 §7](06-stage2-model.md)）
+2. 将逻辑载荷按当前版本结构组装为 JSON 对象（`v = 5`）
 3. 将该对象序列化为 UTF-8 的规范化 JSON
 4. 将规范化 JSON 字节做 gzip 压缩
 5. 将压缩结果做 base64url 编码，且不带 `=` padding
@@ -806,10 +766,10 @@
 规范化 JSON 规则：
 
 - 对象键必须按字典序递归排序
-- 数组元素顺序按各数组的语义顺序保留；其中 `stage2Snapshot.rows[]` 的 presentation order（见 [04 §2.1.3](04-business-rules.md)）必须在长链接编码中保留
+- 数组元素顺序按各嵌套数组语义顺序保留（`servers` / `sources` / `instances` / fallback `memberProxyNames`）
 - JSON 文本不得包含额外空白
 - 布尔值、`null`、数字与字符串必须使用标准 JSON 表示
-- 当前版本的规范编码输出中，不得包含 schema 未定义字段
+- 当前版本的规范编码输出中，不得包含 schema 未定义字段（含 `instanceId`）
 
 gzip 规则：
 
@@ -828,7 +788,7 @@ gzip 规则：
 - 单条规范化 `longUrl` 的总长度必须受限
 - 当前公开预算默认上限为 `8192` bytes，并通过 `GET /api/runtime-config.maxPublicLongURLLength` 对前端显式暴露
 - 阶段 1 输入边界与公开 `longUrl` 预算必须分别调节：阶段 1 边界以 `GET /sub` 的完整请求 URI 预算为准，公开 `longUrl` 预算只约束主展示结果，不直接决定转换是否可继续
-- 当前编码固定写出 `v = 4`；若 canonical `longUrl` 长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
+- 当前编码固定写出 `v = 5`；若 canonical `longUrl` 长度超过公开预算，前端必须自动切换为短链接展示，而不是把该状态视为生成失败
 - `POST /api/short-links` 与 `POST /api/resolve-url` 在解码已成功的前提下，不再因公开 `longUrl` 预算而失败；它们必须允许内部 canonical `longUrl` 超过公开预算，只要状态本身仍在当前阶段 1 输入边界内
 
 ---
@@ -836,12 +796,12 @@ gzip 规则：
 ## 长短链接语义
 
 - 本节只定义长链接与短链接的关系、索引与存储语义；编码结构、query 约束与错误处理见上一节“长链接编码规范”
-- 长链接是唯一规范化状态源：编码 `stage1Input` 与 `stage2Snapshot`，可逆、URL-safe、具确定性，并显式固定 `v = 4`
+- 长链接是唯一规范化状态源：编码 `stage1Input` 与编码态嵌套 snapshot，可逆、URL-safe、具确定性，并显式固定 `v = 5`
 - 长链接恢复页面状态后的后续操作权限，必须以后端 `resolve-url` 返回的 `restoreStatus` 为准
 - 长链接本身也是订阅资源地址；公开路径固定为 `/sub?...`
 - 短链接是长链接的不透明别名，不单独承载状态源语义；公开路径固定为 `/sub/<id>`，不带 `.yaml` 后缀
 - 短链接 ID 必须由**规范状态键**通过确定性算法生成；规范状态键由规范化状态载荷唯一导出，等价于与公开基地址无关的 canonical data key；同一份规范状态必须得到同一个 `<id>`
-- 短链 `canonicalStateKey` **必须保留** `rows[]` presentation order；在编码前语义规范化（见 [04 §2.1.2b](04-business-rules.md)）之后，仅做字段 trim/归一化，**不得**对 `rows[]` 重排序；长链接 `data` 编码亦必须保留 presentation order（见 [04 §2.1.2a / §2.1.3](04-business-rules.md)）
+- 短链 `canonicalStateKey` **必须保留**嵌套数组顺序；在编码前语义规范化（见 [06 §7](06-stage2-model.md)）之后，仅做字段 trim/归一化，**不得**对无关数组重排序
 - 当前默认短链接 ID 生成算法为：对规范状态键计算 `SHA-256`，取前 `64` bit，并以 base62 编码输出；输出长度因此为 `1-11` 个 ASCII 字符
 - 规范状态键不得包含 `USER_FACING_BASE_URL`、请求来源 host、scheme 或 base path 等发布入口信息；这些信息只能影响返回给用户的 `longUrl` / `shortUrl` 前缀，不得影响 `<id>`
 - 短链接索引在逻辑上是 `canonicalStateKey ↔ shortId` 的双射子集，并额外维护 `shortId -> longUrl` 的当前反查值：除淘汰导致的失效外，同一 `canonicalStateKey` 不得对应多个并存的可解析 `shortId`。并发创建路径上须以 **`canonicalStateKey` 唯一约束**，或等价的事务/锁与冲突处理（例如唯一冲突后回读已有行并返回）保证；仅依赖非原子「先查后写」而未处理冲突的实现不符合本契约；不能仅凭确定性 ID 算法而假定该性质成立

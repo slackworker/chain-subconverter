@@ -5,35 +5,38 @@ import (
 	"strings"
 )
 
-func buildStage1ConvertMessages(stage2Init Stage2Init, existing []Message) []Message {
+func buildStage1ConvertMessages(catalog Stage2Catalog, existing []Message) []Message {
 	messages := append([]Message{}, existing...)
 
-	landingCount := len(stage2Init.Rows)
-	relayCount := len(stage2Init.ForwardRelays)
+	landingCount := 0
 	chainAutoCount := 0
-	for _, row := range stage2Init.Rows {
-		if row.Mode != "chain" || row.TargetName == nil {
-			continue
+	for _, server := range catalog.Servers {
+		for _, source := range server.Sources {
+			landingCount++
+			if source.DefaultMode != "chain" || source.DefaultTargetName == nil {
+				continue
+			}
+			chainAutoCount++
+			targetName := strings.TrimSpace(*source.DefaultTargetName)
+			if targetName == "" {
+				continue
+			}
+			messages = append(messages, Message{
+				Level:   "info",
+				Code:    "AUTO_CHAIN_TARGET_SELECTED",
+				Message: fmt.Sprintf("已为「%s」自动填入 %s", source.DefaultProxyName, targetName),
+			})
 		}
-		chainAutoCount++
-		targetName := strings.TrimSpace(*row.TargetName)
-		if targetName == "" {
-			continue
-		}
-		messages = append(messages, Message{
-			Level:   "info",
-			Code:    "AUTO_CHAIN_TARGET_SELECTED",
-			Message: fmt.Sprintf("已为「%s」自动填入 %s", row.ProxyName, targetName),
-		})
 	}
+	relayCount := len(catalog.ForwardRelays)
 
 	summary := fmt.Sprintf("已识别 %d 个落地节点", landingCount)
 	if relayCount > 0 {
 		summary += fmt.Sprintf("、%d 个中继", relayCount)
 	}
-	summary += fmt.Sprintf("，Stage 2 已初始化 %d 行", landingCount)
+	summary += fmt.Sprintf("，Stage 2 已初始化 %d 个默认实例", landingCount)
 	if chainAutoCount > 0 {
-		summary += fmt.Sprintf("，其中 %d 行已自动填入链式目标", chainAutoCount)
+		summary += fmt.Sprintf("，其中 %d 个已自动填入链式目标", chainAutoCount)
 	}
 	summary += "。"
 
@@ -44,18 +47,21 @@ func buildStage1ConvertMessages(stage2Init Stage2Init, existing []Message) []Mes
 	}}, messages...)
 
 	chainReviewCount := 0
-	for _, row := range stage2Init.Rows {
-		if _, ok := row.ModeWarnings["chain"]; ok {
-			chainReviewCount++
+	for _, server := range catalog.Servers {
+		for _, source := range server.Sources {
+			if _, ok := source.ModeWarnings["chain"]; ok {
+				chainReviewCount++
+			}
 		}
 	}
 	if chainReviewCount > 0 {
 		result = append(result, Message{
 			Level:   "warning",
 			Code:    "CHAIN_TARGET_REVIEW",
-			Message: fmt.Sprintf("有 %d 行建议复核链式目标选择。", chainReviewCount),
+			Message: fmt.Sprintf("有 %d 个落地节点的链式代理配置需要人工确认", chainReviewCount),
 		})
 	}
+
 	return result
 }
 

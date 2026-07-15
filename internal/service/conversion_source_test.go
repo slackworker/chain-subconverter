@@ -191,7 +191,7 @@ func TestBuildStage1ConvertResponseFromSource_HappyPath(t *testing.T) {
 	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
 		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
-	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
+	assertStage2InitRowsHaveServer(t, LegacyInitFromCatalog(response.Stage2.Catalog).Rows)
 
 	if !reflect.DeepEqual(source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input)) {
 		t.Fatalf("source request mismatch: got %#v want %#v", source.gotRequest, toExpectedSubconverterRequest(request.Stage1Input))
@@ -234,11 +234,11 @@ func TestBuildStage1ConvertResponseFromSource_UsesStage1InitPassPlanWhenSupporte
 	if *source.gotPlan != subconverter.Stage1InitConvertPlan() {
 		t.Fatalf("got plan = %+v, want %+v", *source.gotPlan, subconverter.Stage1InitConvertPlan())
 	}
-	if len(response.Stage2Init.Rows) != 1 {
-		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 1", len(response.Stage2Init.Rows))
+	if len(LegacyInitFromCatalog(response.Stage2.Catalog).Rows) != 1 {
+		t.Fatalf("len(LegacyInitFromCatalog(response.Stage2.Catalog).Rows) = %d, want 1", len(LegacyInitFromCatalog(response.Stage2.Catalog).Rows))
 	}
-	if response.Stage2Init.Rows[0].Mode != "chain" {
-		t.Fatalf("row mode = %q, want %q", response.Stage2Init.Rows[0].Mode, "chain")
+	if LegacyInitFromCatalog(response.Stage2.Catalog).Rows[0].Mode != "chain" {
+		t.Fatalf("row mode = %q, want %q", LegacyInitFromCatalog(response.Stage2.Catalog).Rows[0].Mode, "chain")
 	}
 }
 
@@ -409,6 +409,8 @@ func TestBuildGenerateResponseFromSource_RejectsEmptyChainTargetFromManagedPass3
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
+				
+					Server:                "landing.example.com",
 				}},
 			},
 		},
@@ -487,7 +489,9 @@ func TestBuildGenerateResponseFromSource_ManagedPass3AllowsRenamedPrimaryLanding
 						ProxyName:             renamedLanding,
 						Mode:                  "chain",
 						TargetName:            &chainTarget,
-					},
+					
+					Server:                "landing.example.com",
+				},
 				},
 			},
 		},
@@ -553,6 +557,8 @@ func TestBuildGenerateResponseFromSource_FailsWhenManagedPostProcessDryRunFails(
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
+				
+					Server:                "landing.example.com",
 				}},
 			},
 		},
@@ -652,6 +658,8 @@ func TestRenderCompleteConfigFromSource_UsesManagedLandingPass3ForDerivedRows(t 
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
+				
+					Server:                "landing.example.com",
 				},
 				{
 					RowID:                 "hk-2",
@@ -742,6 +750,8 @@ func TestRenderCompleteConfigFromSource_AppendsServerAggregationGroup(t *testing
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
+				
+					Server:                "landing.example.com",
 				},
 				{
 					RowID:                 "hk-2",
@@ -855,7 +865,7 @@ func TestManagedConversionSource_FetchesTemplateAndInjectsManagedConfigURL(t *te
 	if err != nil {
 		t.Fatalf("BuildStage1ConvertResponseFromSource() error = %v", err)
 	}
-	row := response.Stage2Init.Rows[0]
+	row := LegacyInitFromCatalog(response.Stage2.Catalog).Rows[0]
 	if row.LandingNodeType != "SS" {
 		t.Fatalf("row landingNodeType mismatch: got %q want %q", row.LandingNodeType, "SS")
 	}
@@ -1333,10 +1343,14 @@ func toExpectedSubconverterRequest(stage1Input Stage1Input) subconverter.Request
 
 func normalizeStage1ConvertResponseForContract(response Stage1ConvertResponse) Stage1ConvertResponse {
 	normalized := response
-	normalized.Stage2Init.Rows = append([]Stage2InitRow(nil), response.Stage2Init.Rows...)
-	for index := range normalized.Stage2Init.Rows {
-		normalized.Stage2Init.Rows[index].Server = ""
+	// Contract comparisons historically ignored serverKey; clear it on a catalog copy.
+	servers := append([]Stage2CatalogServer(nil), response.Stage2.Catalog.Servers...)
+	for si := range servers {
+		sources := append([]Stage2CatalogSource(nil), servers[si].Sources...)
+		servers[si].Sources = sources
+		servers[si].ServerKey = ""
 	}
+	normalized.Stage2.Catalog.Servers = servers
 	return normalized
 }
 

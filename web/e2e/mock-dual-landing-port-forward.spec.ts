@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 import {
 	applyDefaultUiPreferences,
+	buildDefaultStage2Bundle,
+	flattenStage2Instances,
 	locateStage2Row,
 	mockReplayableResolveRoute,
 	mockRuntimeConfig,
@@ -10,7 +12,7 @@ import {
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 
-import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse, Stage2Row } from "../src/types/api";
+import type { GenerateRequest, Stage1ConvertRequest, Stage2FlatInstance } from "../src/types/api";
 
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 
@@ -22,31 +24,33 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 
 	const longURL = "http://127.0.0.1:11200/sub?data=port-forward-happy";
 	const shortURL = "http://127.0.0.1:11200/sub/port-forward-happy";
-	const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+	const stage2 = buildDefaultStage2Bundle({
 		availableModes: ["none", "chain", "port_forward"],
 		chainTargets: [],
 		forwardRelays: [{ name: relayA }, { name: relayB }],
-		rows: [
+		servers: [
 			{
-				rowId: "Alpha-Reality-HK-PortForward",
-				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
-				proxyName: "Alpha-Reality-HK-PortForward",
-				landingNodeType: "vless",
-				server: "hk.example.com",
-				mode: "none",
-				targetName: null,
+				serverKey: "hk.example.com",
+				sources: [{
+					sourceId: "Alpha-Reality-HK-PortForward",
+					landingNodeType: "vless",
+					defaultProxyName: "Alpha-Reality-HK-PortForward",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
 			},
 			{
-				rowId: "Beta-Reality-JP-PortForward",
-				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
-				proxyName: "Beta-Reality-JP-PortForward",
-				landingNodeType: "vless",
-				server: "jp.example.com",
-				mode: "none",
-				targetName: null,
+				serverKey: "jp.example.com",
+				sources: [{
+					sourceId: "Beta-Reality-JP-PortForward",
+					landingNodeType: "vless",
+					defaultProxyName: "Beta-Reality-JP-PortForward",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
 			},
 		],
-	};
+	});
 
 	const stage1Requests: Stage1ConvertRequest[] = [];
 	const generateRequests: GenerateRequest[] = [];
@@ -61,7 +65,7 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 		stage1Requests.push(request);
 		await route.fulfill({
 			json: {
-				stage2Init,
+				stage2,
 				messages: [],
 				blockingErrors: [],
 			},
@@ -99,6 +103,7 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 		resolveRequests,
 		longURL,
 		shortURL,
+		stage2Catalog: stage2.catalog,
 	});
 
 	await page.goto("/");
@@ -161,17 +166,13 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 	await expect(rowBTargetTrigger).toContainText(relayB);
 	await expect(currentLink).toHaveValue(shortURL);
 
-	const expectedRows: Stage2Row[] = [
+	const expectedInstances = [
 		{
-			rowId: "Alpha-Reality-HK-PortForward",
-			sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
 			proxyName: "Alpha-Reality-HK-PortForward",
 			mode: "port_forward",
 			targetName: relayA,
 		},
 		{
-			rowId: "Beta-Reality-JP-PortForward",
-			sourceLandingNodeName: "Beta-Reality-JP-PortForward",
 			proxyName: "Beta-Reality-JP-PortForward",
 			mode: "port_forward",
 			targetName: relayB,
@@ -187,7 +188,10 @@ test("mock dual-landing port-forward keeps relay choices exclusive and replayabl
 	expect(firstStage1Request.stage1Input.advancedOptions).not.toHaveProperty("enablePortForward");
 	expect(generateRequests).toHaveLength(1);
 	expect(shortLinkRequests).toEqual([longURL]);
-	expect(generateRequests[0]?.stage2Snapshot.rows).toEqual(expectedRows);
+	const wireInstances = generateRequests[0]!.stage2.snapshot.servers
+		.flatMap((server) => server.sources.flatMap((source) => source.instances));
+	expect(wireInstances).toEqual(expectedInstances);
+	expect(JSON.stringify(generateRequests[0])).not.toMatch(/instanceId|memberInstanceIds|memberLocalInstanceIds/);
 	expect(resolveRequests).toEqual([shortURL]);
 });
 

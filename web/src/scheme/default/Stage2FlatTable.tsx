@@ -5,9 +5,9 @@ import {
 	getStage2DisplayModeOptions,
 	getStage2RowDisplayName,
 	getStage2RowSourceLandingName,
+	getStage2RowStableKey,
 	getStage2RowStrictKey,
 	getStage2TargetDisplayLabel,
-	isStage2SourceRow,
 } from "../../lib/stage2";
 import { formatModeReason } from "../../lib/mode-reason";
 import type { Stage2Row } from "../../types/api";
@@ -121,7 +121,7 @@ export function Stage2FlatTable({
 				<tbody>
 					{stage2Rows.map((row, rowIndex) => (
 						<Stage2FlatTableRow
-							key={getStage2RowStrictKey(row)}
+							key={getStage2RowStableKey(row)}
 							row={row}
 							rowIndex={rowIndex}
 							stage2Rows={stage2Rows}
@@ -186,6 +186,7 @@ function Stage2FlatTableRow({
 		getChainTargetChoiceGroups,
 		getForwardRelayChoices,
 		handleProxyNameChange,
+		handleProxyNameBlur,
 		handleCloneStage2Row,
 		handleDeleteStage2Row,
 		canDeleteStage2Row,
@@ -203,11 +204,11 @@ function Stage2FlatTableRow({
 		previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
 	const groupStart = previousSourceLandingName !== sourceLandingName;
 	const groupEnd = nextSourceLandingName !== sourceLandingName;
-	const sourceRow = isStage2SourceRow(row);
+	const isDefaultInstance = groupStart;
 	const meta = getStage2RowMeta(rowKey);
 	const rowErrors = getStage2RowErrors(rowKey);
-	const canDeleteRow = !sourceRow && canDeleteStage2Row(rowKey);
-	const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneDerivedRow;
+	const canDeleteRow = canDeleteStage2Row(rowKey);
+	const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneInstance;
 	const editable = isStage2Editable;
 	const supplementGroup = getChainTargetChoiceGroups().find((group) => group.kind === "proxies") ?? null;
 	const selectedInSupplement = Boolean(
@@ -222,7 +223,7 @@ function Stage2FlatTableRow({
 	const rowInlineClassName = [
 		"a-stage2-row-inline",
 		groupedBySource ? "is-grouped" : "is-solo",
-		sourceRow ? "is-source" : "is-derived",
+		isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
 		groupStart ? "is-group-start" : "",
 		groupEnd ? "is-group-end" : "",
 	]
@@ -240,11 +241,12 @@ function Stage2FlatTableRow({
 					copy={copy}
 					wrapperClassName={rowInlineClassName}
 					sourceLandingName={sourceLandingName}
-					isSource={sourceRow}
+					isDefaultInstance={isDefaultInstance}
 					canDeleteRow={canDeleteRow}
 					deleteRowTitle={deleteRowTitle}
 					rowNameInputId={rowNameInputId}
 					onProxyNameChange={handleProxyNameChange}
+					onProxyNameBlur={() => handleProxyNameBlur()}
 					onCloneRow={handleCloneStage2Row}
 					onDeleteRow={handleDeleteStage2Row}
 				/>

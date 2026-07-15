@@ -36,7 +36,7 @@ describe("formatModeReason", () => {
 		expect(
 			formatModeReason({
 				reasonCode: "TARGET_NOT_FOUND",
-				reasonArgs: { rowId: "HK 02", field: "targetName" },
+				reasonArgs: { proxyName: "HK 02", sourceId: "HK 02", field: "targetName" },
 			}),
 		).toBe("行「HK 02」：引用的目标在当前模板中不存在");
 	});

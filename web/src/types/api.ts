@@ -7,7 +7,13 @@ export interface Message {
 	context?: Record<string, unknown>;
 }
 
-export type BlockingErrorScope = "global" | "stage1_field" | "stage2_row" | "stage3_field" | "stage3_action";
+export type BlockingErrorScope =
+	| "global"
+	| "stage1_field"
+	| "stage2_instance"
+	| "stage2_server"
+	| "stage3_field"
+	| "stage3_action";
 
 export interface BlockingError {
 	code: string;
@@ -24,10 +30,6 @@ export interface AdvancedOptionsPayload {
 	config: string | null;
 	include: string[] | null;
 	exclude: string[] | null;
-	}
-
-export interface AdvancedOptions extends AdvancedOptionsPayload {
-	enablePortForward: boolean;
 }
 
 export interface Stage1InputPayload {
@@ -41,7 +43,7 @@ export interface Stage1Input {
 	landingRawText: string;
 	transitRawText: string;
 	forwardRelayItems: string[];
-	advancedOptions: AdvancedOptions;
+	advancedOptions: AdvancedOptionsPayload;
 }
 
 export interface ModeReason {
@@ -56,28 +58,8 @@ export interface RestoreConflict {
 	reasonArgs?: Record<string, unknown>;
 }
 
-export interface Stage2Row {
-	rowId: string;
-	sourceLandingNodeName: string;
-	proxyName: string;
-	mode: "none" | "chain" | "port_forward";
-	targetName: string | null;
-}
-
-export interface ServerAggregationGroup {
-	server: string;
-	groupName?: string;
-	enabled: boolean;
-	strategy: "fallback" | "url-test" | "select" | "load-balance";
-	memberRowIds: string[];
-}
-
-export interface Stage2InitRow extends Stage2Row {
-	landingNodeType: string;
-	server: string;
-	restrictedModes?: Partial<Record<"none" | "chain" | "port_forward", ModeReason>>;
-	modeWarnings?: Partial<Record<"none" | "chain" | "port_forward", ModeReason>>;
-}
+export type Stage2Mode = "none" | "chain" | "port_forward";
+export type AggregationStrategy = "fallback" | "url-test" | "select" | "load-balance";
 
 export interface ChainTarget {
 	name: string;
@@ -89,17 +71,98 @@ export interface ForwardRelay {
 	name: string;
 }
 
-export interface Stage2Init {
-	availableModes: Array<"none" | "chain" | "port_forward">;
+export interface Stage2CatalogSource {
+	sourceId: string;
+	landingNodeType: string;
+	restrictedModes?: Partial<Record<Stage2Mode, ModeReason>>;
+	modeWarnings?: Partial<Record<Stage2Mode, ModeReason>>;
+	defaultProxyName: string;
+	defaultMode: Stage2Mode;
+	defaultTargetName: string | null;
+}
+
+export interface Stage2CatalogServer {
+	serverKey: string;
+	sources: Stage2CatalogSource[];
+}
+
+export interface Stage2Catalog {
+	availableModes: Stage2Mode[];
 	chainTargets: ChainTarget[];
 	forwardRelays: ForwardRelay[];
-	rows: Stage2InitRow[];
+	servers: Stage2CatalogServer[];
+}
+
+export interface Stage2InstanceWire {
+	proxyName: string;
+	mode: Stage2Mode;
+	targetName: string | null;
+}
+
+export interface Stage2Instance extends Stage2InstanceWire {
+	instanceId: string;
+}
+
+export interface Stage2SnapshotSource {
+	sourceId: string;
+	instances: Stage2Instance[];
+}
+
+export interface Stage2AggregationWire {
+	enabled: boolean;
+	groupName?: string;
+	strategy?: AggregationStrategy;
+	memberProxyNames?: string[];
+}
+
+export interface Stage2Aggregation {
+	enabled: boolean;
+	groupName?: string;
+	strategy?: AggregationStrategy;
+	memberLocalInstanceIds?: string[];
+}
+
+export interface Stage2SnapshotServer {
+	serverKey: string;
+	aggregation: Stage2Aggregation;
+	sources: Stage2SnapshotSource[];
 }
 
 export interface Stage2Snapshot {
-	rows: Stage2Row[];
 	chainProxyTargetGroupSwitchOptimizationEnabled?: boolean;
-	serverAggregationGroups: ServerAggregationGroup[];
+	servers: Stage2SnapshotServer[];
+}
+
+export interface Stage2SnapshotWire {
+	chainProxyTargetGroupSwitchOptimizationEnabled?: boolean;
+	servers: Array<{
+		serverKey: string;
+		aggregation: Stage2AggregationWire;
+		sources: Array<{
+			sourceId: string;
+			instances: Stage2InstanceWire[];
+		}>;
+	}>;
+}
+
+export interface Stage2Bundle {
+	catalog: Stage2Catalog;
+	snapshot: Stage2Snapshot;
+}
+
+/** Flat projection of one nested instance for table UI / notices. */
+export interface Stage2FlatInstance {
+	instanceId: string;
+	/** 0-based index within `source.instances`; stable across proxy rename for React keys. */
+	instanceIndex: number;
+	sourceId: string;
+	serverKey: string;
+	proxyName: string;
+	mode: Stage2Mode;
+	targetName: string | null;
+	landingNodeType?: string;
+	restrictedModes?: Partial<Record<Stage2Mode, ModeReason>>;
+	modeWarnings?: Partial<Record<Stage2Mode, ModeReason>>;
 }
 
 export interface Stage1ConvertRequest {
@@ -107,30 +170,16 @@ export interface Stage1ConvertRequest {
 }
 
 export interface Stage1ConvertResponse {
-	stage2Init: Stage2Init;
+	stage2: Stage2Bundle;
 	messages: Message[];
 	blockingErrors: BlockingError[];
 }
 
 export interface GenerateRequest {
 	stage1Input: Stage1InputPayload;
-	stage2Snapshot: Stage2Snapshot;
-}
-
-export interface Stage2ResetRequest {
-	stage1Input: Stage1InputPayload;
-	stage2Snapshot: Stage2Snapshot;
-	reset: {
-		scope: "all" | "row";
-		rowId?: string;
+	stage2: {
+		snapshot: Stage2SnapshotWire;
 	};
-}
-
-export interface Stage2ResetResponse {
-	stage2Init: Stage2Init;
-	stage2Snapshot: Stage2Snapshot;
-	messages: Message[];
-	blockingErrors: BlockingError[];
 }
 
 export interface GenerateResponse {
@@ -152,7 +201,7 @@ export interface ResolveURLResponse {
 	restoreStatus: "replayable" | "conflicted";
 	restoreConflicts?: RestoreConflict[];
 	stage1Input: Stage1InputPayload;
-	stage2Snapshot: Stage2Snapshot;
+	stage2: Stage2Bundle;
 	messages: Message[];
 	blockingErrors: BlockingError[];
 }
@@ -189,3 +238,15 @@ export interface ErrorResponse {
 	messages: Message[];
 	blockingErrors: BlockingError[];
 }
+
+/** @deprecated Kept as aliases during exploration-scheme migration. */
+export type Stage2Init = Stage2Catalog;
+export type Stage2Row = Stage2FlatInstance;
+export type Stage2InitRow = Stage2FlatInstance;
+export type ServerAggregationGroup = {
+	server: string;
+	groupName?: string;
+	enabled: boolean;
+	strategy: AggregationStrategy;
+	memberRowIds: string[];
+};

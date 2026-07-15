@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
-import { applyDefaultUiPreferences, expectHTTPResponseOK } from "./helpers";
+import { applyDefaultUiPreferences, assertWireSnapshotHasNoClientIds, expectHTTPResponseOK, flattenWireSnapshotInstances } from "./helpers";
 
 import type { ResolveURLResponse, ShortLinkResponse } from "../src/types/api";
 
@@ -20,7 +20,7 @@ import type { ResolveURLResponse, ShortLinkResponse } from "../src/types/api";
  *   CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
  *   npm run test:e2e -- real-deployed-core-flow.spec.ts
  */
-const defaultStage1Inputs = loadCanonicalStage1Inputs("3pass-ss2022-test-subscription");
+const defaultStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 const devUpRuntimeFile = new URL("../../.tmp/dev-up/runtime.env", import.meta.url);
 
 function isLoopbackHostname(hostname: string) {
@@ -142,7 +142,9 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 		(resp) => resp.url().includes("/api/generate"),
 	);
 	await generateButton.click();
-	await expectHTTPResponseOK(await generateResponsePromise, "generate");
+	const generateResponse = await generateResponsePromise;
+	await expectHTTPResponseOK(generateResponse, "generate");
+	assertWireSnapshotHasNoClientIds(generateResponse.request().postDataJSON());
 
 	const currentLink = page.getByLabel("当前链接");
 	await expect(currentLink).not.toHaveValue("", { timeout: 30_000 });
@@ -163,7 +165,7 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 	expect(generatedResolvePayload.restoreStatus).toBe("replayable");
 	expect(generatedResolvePayload.stage1Input.landingRawText).toBe(landingInput);
 	expect(generatedResolvePayload.stage1Input.transitRawText).toBe(transitInput);
-	expect(generatedResolvePayload.stage2Snapshot.rows.length).toBeGreaterThan(0);
+	expect(flattenWireSnapshotInstances(generatedResolvePayload.stage2.snapshot).length).toBeGreaterThan(0);
 	if (generatedURL.pathname.startsWith("/sub/")) {
 		expect(generatedResolvePayload.shortUrl).toBe(generatedURL.toString());
 	} else {
@@ -204,5 +206,5 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 	expect(shortResolvePayload.restoreStatus).toBe("replayable");
 	expect(shortResolvePayload.stage1Input.landingRawText).toBe(landingInput);
 	expect(shortResolvePayload.stage1Input.transitRawText).toBe(transitInput);
-	expect(shortResolvePayload.stage2Snapshot.rows.length).toBeGreaterThan(0);
+	expect(flattenWireSnapshotInstances(shortResolvePayload.stage2.snapshot).length).toBeGreaterThan(0);
 });

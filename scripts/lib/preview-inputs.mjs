@@ -117,6 +117,28 @@ function renderAdvancedOptions(advancedOptions) {
 	return lines.length > 0 ? lines.join("\n") : "- （无）";
 }
 
+function flattenSnapshotToRows(snapshot) {
+	if (!snapshot || !Array.isArray(snapshot.servers)) {
+		throw new Error("stage2 snapshot is missing servers");
+	}
+	const rows = [];
+	for (const server of snapshot.servers) {
+		for (const source of server.sources ?? []) {
+			for (const instance of source.instances ?? []) {
+				rows.push({
+					proxyName: instance.proxyName,
+					mode: instance.mode,
+					targetName: instance.targetName ?? null,
+				});
+			}
+		}
+	}
+	if (rows.length === 0) {
+		throw new Error("stage2 snapshot has no instances");
+	}
+	return rows;
+}
+
 function renderStage2Bullets(rows) {
 	if (!Array.isArray(rows) || rows.length === 0) {
 		throw new Error("stage2 rows are missing or empty");
@@ -178,8 +200,8 @@ function renderManualSocksGeneratedTGURI(manualSocksItems) {
 
 function renderStage2OperationChecklist() {
 	return [
-		"- 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：源行设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。",
-		"- 为 `🇸🇬 Alpha-Reality-SG` 新建 `2` 个副本：源行设为 `无`，两个副本分别设为 `端口转发 -> relay-a.example.com:7443`、`端口转发 -> relay-b.example.com:8443`。",
+		"- 为 `🇸🇬 Alpha-SS-SG` 新建 `1` 个副本：默认实例设为 `链式 -> 🇭🇰 香港节点`，副本设为 `链式 -> 🇸🇬 新加坡节点`。",
+		"- 为 `🇸🇬 Alpha-Reality-SG` 新建 `2` 个副本：默认实例设为 `无`，两个副本分别设为 `端口转发 -> relay-a.example.com:7443`、`端口转发 -> relay-b.example.com:8443`。",
 		"- `🇯🇵 Beta-SS-JP` 保持 `链式 -> 🇯🇵 日本节点`；`🇯🇵 Beta-Reality-JP` 改为 `无`。",
 		"- 开启“线路聚合模式”，并在 `198.51.100.10` 组中勾选入组：`🇸🇬 Alpha-SS-SG`、`🇸🇬 Alpha-SS-SG 2`、`🇸🇬 Alpha-Reality-SG 2`、`🇸🇬 Alpha-Reality-SG 3`（不要勾选 `🇸🇬 Alpha-Reality-SG`）。",
 		"- 在 `198.51.100.10` 组的「顺序管理」中拖拽调整 fallback 顺序为：`🇸🇬 Alpha-Reality-SG 2` → `🇸🇬 Alpha-Reality-SG 3` → `🇸🇬 Alpha-SS-SG` → `🇸🇬 Alpha-SS-SG 2`。",
@@ -211,10 +233,12 @@ export function renderPreviewInputsMarkdown({
 		throw new Error(`expected 2 forward relay lines, got ${relayLines.length}`);
 	}
 
-	const stage2InitRows = stage1ConvertResponse?.stage2Init?.rows;
-	if (!Array.isArray(stage2InitRows) || stage2InitRows.length === 0) {
-		throw new Error("stage1-convert.response.json is missing stage2Init.rows");
+	const defaultSnapshot = stage1ConvertResponse?.stage2?.snapshot;
+	if (!defaultSnapshot) {
+		throw new Error("stage1-convert.response.json is missing stage2.snapshot");
 	}
+	const defaultRows = flattenSnapshotToRows(defaultSnapshot);
+	const goldenRows = flattenSnapshotToRows(stage2Snapshot);
 
 	const shortID = extractShortID(shortLinkResponse.shortUrl);
 	const longURLGoldenPath = extractLongURLGoldenPath(shortLinkResponse.longUrl);
@@ -263,7 +287,7 @@ export function renderPreviewInputsMarkdown({
 		"",
 		"**转换后默认**",
 		"",
-		renderStage2Bullets(stage2InitRows),
+		renderStage2Bullets(defaultRows),
 		"",
 		"### Stage2 操作要点（先操作，再对照金样）",
 		"",
@@ -271,7 +295,7 @@ export function renderPreviewInputsMarkdown({
 		"",
 		"**生成前金样**",
 		"",
-		renderStage2Bullets(stage2Snapshot.rows),
+		renderStage2Bullets(goldenRows),
 		"",
 		"## 验收",
 		"",

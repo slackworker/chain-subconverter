@@ -169,6 +169,8 @@ func TestDecodeLongURLPayload_RejectsTargetNameForNoneMode(t *testing.T) {
 					ProxyName:             "HK 01",
 					Mode:                  "none",
 					TargetName:            &targetName,
+				
+					Server:                "landing.example.com",
 				}},
 			},
 		),
@@ -198,6 +200,8 @@ func TestDecodeLongURLPayload_RejectsServerAggregationGroupWithDuplicateMembers(
 					SourceLandingNodeName: "HK 01",
 					ProxyName:             "HK 01",
 					Mode:                  "none",
+				
+					Server:                "landing.example.com",
 				}},
 				ServerAggregationGroups: []ServerAggregationGroup{{
 					Server:       "landing.example.com",
@@ -217,8 +221,8 @@ func TestDecodeLongURLPayload_RejectsServerAggregationGroupWithDuplicateMembers(
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "validate long URL payload schema: server aggregation group for server") ||
-		!strings.Contains(err.Error(), "must include at least 2 memberRowIds") {
+	if !strings.Contains(err.Error(), "validate long URL payload schema: server aggregation for") ||
+		!strings.Contains(err.Error(), "must include at least 2 members") {
 		t.Fatalf("error mismatch: got %v", err)
 	}
 }
@@ -238,12 +242,14 @@ func TestDecodeLongURLPayload_AcceptsExtendedServerAggregationStrategies(t *test
 								SourceLandingNodeName: "HK 01",
 								ProxyName:             "HK 01",
 								Mode:                  "none",
+								Server:                "landing.example.com",
 							},
 							{
 								RowID:                 "HK 02",
 								SourceLandingNodeName: "HK 02",
 								ProxyName:             "HK 02",
 								Mode:                  "none",
+								Server:                "landing.example.com",
 							},
 						},
 						ServerAggregationGroups: []ServerAggregationGroup{{
@@ -264,7 +270,7 @@ func TestDecodeLongURLPayload_AcceptsExtendedServerAggregationStrategies(t *test
 			if err != nil {
 				t.Fatalf("DecodeLongURLPayload() error = %v", err)
 			}
-			if got := payload.Stage2Snapshot.ServerAggregationGroups[0].Strategy; got != strategy {
+			if got := FlatAggregationGroups(payload.Stage2Snapshot)[0].Strategy; got != strategy {
 				t.Fatalf("decoded strategy mismatch: got %q want %q", got, strategy)
 			}
 		})
@@ -478,7 +484,7 @@ func TestMarshalCanonicalLongURLPayload_UsesSchemaFieldOrder(t *testing.T) {
 		t.Fatalf("marshalCanonicalLongURLPayload() error = %v", err)
 	}
 
-	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"rows":[{"rowId":"HK 01","sourceLandingNodeName":"HK 01","proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}],"serverAggregationGroups":[{"server":"landing.example.com","enabled":true,"strategy":"fallback","memberRowIds":["HK 01"]}]},"v":4}`
+	want := `{"stage1Input":{"advancedOptions":{"config":"  mixed-port: 7890  ","emoji":true,"exclude":["US"],"include":["HK"],"skipCertVerify":true,"udp":false},"forwardRelayItems":["forward"],"landingRawText":"landing","transitRawText":"transit"},"stage2Snapshot":{"servers":[{"serverKey":"landing.example.com","aggregation":{"enabled":true,"strategy":"fallback","memberProxyNames":["HK 01"]},"sources":[{"sourceId":"HK 01","instances":[{"proxyName":"HK 01","mode":"chain","targetName":"HK Relay"}]}]}]},"v":5}`
 	if string(got) != want {
 		t.Fatalf("canonical payload mismatch:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

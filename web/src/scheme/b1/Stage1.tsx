@@ -63,19 +63,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 		setPortForwardDraftTags(null);
 	};
 
-	const handleToggleEnablePortForward = () => {
-		const nextState = !stage1Input.advancedOptions.enablePortForward;
-		updateStage1Input(curr => ({
-			...curr,
-			forwardRelayItems: nextState ? curr.forwardRelayItems : [],
-			advancedOptions: {
-				...curr.advancedOptions,
-				enablePortForward: nextState
-			}
-		}));
-		setPortForwardDraftTags(null);
-	};
-
 	const defaultTemplateURL = runtimeConfig?.defaultTemplateURL || DEFAULT_TEMPLATE_URL;
 	const currentTemplateURL = stage1Input.advancedOptions.config ?? "";
 
@@ -137,16 +124,14 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 						colorMode={colorMode}
 						label={copy.transitInfo}
 						labelAction={
-							stage1Input.advancedOptions.enablePortForward ? (
-								<button
-									type="button"
-									onClick={handleOpenPortForward}
-									disabled={isConflictReadonly}
-									className={accentLink()}
-								>
-									{copy.addPortForward}
-								</button>
-							) : null
+							<button
+								type="button"
+								onClick={handleOpenPortForward}
+								disabled={isConflictReadonly}
+								className={accentLink()}
+							>
+								{copy.addPortForward}
+							</button>
 						}
 						value={stage1Input.transitRawText}
 						onChange={(next) => updateStage1Input((current) => ({ ...current, transitRawText: next }))}
@@ -155,7 +140,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 						hasError={workflow.getStage1FieldErrors("transitRawText").length > 0}
 						errorText={workflow.getStage1FieldErrors("transitRawText")[0]?.message}
 						bottomContent={
-							stage1Input.advancedOptions.enablePortForward && stage1Input.forwardRelayItems.length > 0 ? (
+							stage1Input.forwardRelayItems.length > 0 ? (
 								<ul className={tagListShell(colorMode)} aria-label={copy.portForwardTags}>
 									{stage1Input.forwardRelayItems.map((item: string, index: number) => (
 										<li
@@ -278,23 +263,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 									<svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100" viewBox="0 0 14 10" fill="none"><path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
 								</div>
 								<span className={`text-sm font-medium group-hover:text-indigo-400 transition-colors ${isDark ? "text-zinc-300" : "text-slate-700"}`}>{copy.skipCertVerify}</span>
-							</label>
-
-							<div className={`w-px mx-2 ${isDark ? "bg-zinc-800" : "bg-slate-200"}`} />
-
-							<label className="flex items-center gap-2 cursor-pointer group">
-								<div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${stage1Input.advancedOptions.enablePortForward ? "bg-indigo-600" : isDark ? "bg-zinc-700" : "bg-slate-300"}`}>
-									<span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${stage1Input.advancedOptions.enablePortForward ? 'translate-x-5' : 'translate-x-1'}`} />
-									<input 
-										type="checkbox" 
-										className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-										checked={stage1Input.advancedOptions.enablePortForward}
-										disabled={isConflictReadonly}
-										onChange={handleToggleEnablePortForward}
-										aria-label={copy.enablePortForward}
-									/>
-								</div>
-								<span className={`text-sm font-medium group-hover:text-indigo-400 transition-colors ${isDark ? "text-zinc-300" : "text-slate-700"}`}>{copy.enablePortForward}</span>
 							</label>
 						</div>
 					</div>

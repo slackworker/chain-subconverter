@@ -40,8 +40,8 @@ func TestBuildStage2Init_DefaultChainHappyPath(t *testing.T) {
 		t.Fatalf("ForwardRelays should be empty, got %v", stage2Init.ForwardRelays)
 	}
 
-	if !reflect.DeepEqual(normalizeStage2InitRowsForContract(stage2Init.Rows), normalizeStage2InitRowsForContract(expectedResponse.Stage2Init.Rows)) {
-		t.Fatalf("Rows mismatch: got %#v want %#v", stage2Init.Rows, expectedResponse.Stage2Init.Rows)
+	if !reflect.DeepEqual(normalizeStage2InitRowsForContract(stage2Init.Rows), normalizeStage2InitRowsForContract(LegacyInitFromCatalog(expectedResponse.Stage2.Catalog).Rows)) {
+		t.Fatalf("Rows mismatch: got %#v want %#v", stage2Init.Rows, LegacyInitFromCatalog(expectedResponse.Stage2.Catalog).Rows)
 	}
 
 	if !hasChainTarget(stage2Init.ChainTargets, "🇺🇸 美国节点", "proxy-groups") {

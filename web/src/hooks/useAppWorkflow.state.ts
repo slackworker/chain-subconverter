@@ -1,24 +1,38 @@
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
+	clearDuplicateProxyNameErrors,
 	clearStage1FieldErrors,
 	clearStage3ActionErrors,
 	clearStage3FieldErrors,
+	mergeDuplicateProxyNameErrors,
 } from "../lib/notices";
+import { collectDuplicateProxyNameErrors } from "../lib/stage2Validation";
+import {
+	cloneInstance,
+	defaultSnapshotFromCatalog,
+	deleteInstance,
+	findInstance,
+	flattenInstances,
+	hydrateInstanceIds,
+	mergeSnapshotAfterConvert,
+	reorderInstances,
+	updateInstance,
+	updateServerAggregation,
+} from "../lib/stage2";
 import type { AppState, ResponseOriginStage, WorkflowLogEntry } from "../lib/state";
 import { appendWorkflowLogEntries } from "../lib/workflow-log";
-import {
-	findStage2RowByKey,
-	getSelectableChoices,
-	getStage2RowKey,
-	getServerAggregationGroup,
-	getServerAggregationStrategy,
-	getStage2DerivedProxyNameBase,
-	getStage2RowSourceLandingName,
-	isStage2SourceRow,
-	matchesStage2RowKey,
-	pickNextDerivedProxyName,
-} from "../lib/stage2";
-import type { BlockingError, Message, RestoreConflict, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type {
+	AggregationStrategy,
+	BlockingError,
+	Message,
+	RestoreConflict,
+	Stage1Input,
+	Stage2Aggregation,
+	Stage2Bundle,
+	Stage2Catalog,
+	Stage2Instance,
+	Stage2Snapshot,
+} from "../types/api";
 
 function expireGeneratedOutput(current: AppState) {
 	return {
@@ -27,8 +41,9 @@ function expireGeneratedOutput(current: AppState) {
 	};
 }
 
-function clearStage2RowErrors(current: AppState) {
-	return current.blockingErrors.filter((error) => error.scope !== "stage2_row");
+function clearStage2Errors(current: AppState) {
+	return current.blockingErrors.filter((error) =>
+		error.scope !== "stage2_instance" && error.scope !== "stage2_server");
 }
 
 interface RequestStartStateOptions {
@@ -52,12 +67,7 @@ interface ShortURLCreationStateOptions {
 	resolvedShortURL?: string;
 }
 
-interface GenerateSuccessStateOptions {
-	blockingErrors: BlockingError[];
-	logEntries: WorkflowLogEntry[];
-	messages: Message[];
-	resolvedLongURL: string;
-	resolvedShortURL?: string;
+interface GenerateSuccessStateOptions extends ShortURLCreationStateOptions {
 	preferShortURL?: boolean;
 }
 
@@ -66,318 +76,46 @@ interface GenerateShortURLFailureStateOptions extends ShortURLCreationStateOptio
 }
 
 export interface Stage2SnapshotMergeReport {
-	droppedDerivedRows: number;
-	resetModes: number;
-	clearedTargets: number;
+	droppedSources: number;
 	filteredAggregationMembers: number;
-	disabledAggregationGroups: number;
-	removedAggregationGroups: number;
 }
 
-function createStage2SnapshotMergeReport(): Stage2SnapshotMergeReport {
-	return {
-		droppedDerivedRows: 0,
-		resetModes: 0,
-		clearedTargets: 0,
-		filteredAggregationMembers: 0,
-		disabledAggregationGroups: 0,
-		removedAggregationGroups: 0,
-	};
-}
-
-export function buildStage2SnapshotRows(stage2Init: Stage2Init) {
-	return stage2Init.rows.map((row) => ({
-		rowId: row.rowId,
-		sourceLandingNodeName: row.sourceLandingNodeName,
-		proxyName: row.proxyName,
-		mode: row.mode,
-		targetName: row.targetName,
-	}));
-}
-
-function normalizeServerAggregationGroups(rows: Stage2Row[], serverAggregationGroups: ServerAggregationGroup[]) {
-	const rowIds = new Set(rows.map((row) => getStage2RowKey(row)).filter((rowId) => rowId !== ""));
-	const normalized: ServerAggregationGroup[] = [];
-	const seen = new Set<string>();
-	for (const group of serverAggregationGroups) {
-		const server = group.server.trim();
-		const groupName = group.groupName?.trim() ?? "";
-		if (server === "" || seen.has(server)) {
-			continue;
-		}
-		if (
-			group.strategy !== "fallback"
-			&& group.strategy !== "url-test"
-			&& group.strategy !== "select"
-			&& group.strategy !== "load-balance"
-		) {
-			continue;
-		}
-		const memberRowIds = Array.from(
-			new Set((group.memberRowIds ?? []).map((rowId) => rowId.trim()).filter((rowId) => rowId !== "" && rowIds.has(rowId))),
-		);
-		seen.add(server);
-		normalized.push({
-			server,
-			...(groupName !== "" ? { groupName } : {}),
-			enabled: group.enabled,
-			strategy: group.strategy,
-			memberRowIds,
-		});
-	}
-	return normalized;
-}
-
-function normalizeStage2SnapshotRowsAndGroups(
-	rows: Stage2Row[],
-	serverAggregationGroups: ServerAggregationGroup[],
-	chainProxyTargetGroupSwitchOptimizationEnabled = false,
-) {
-	return {
-		rows,
-		chainProxyTargetGroupSwitchOptimizationEnabled,
-		serverAggregationGroups: normalizeServerAggregationGroups(rows, serverAggregationGroups),
-	};
-}
-
-function getStage2InitRowsBySource(stage2Init: Stage2Init) {
-	const bySource = new Map<string, Stage2Init["rows"][number]>();
-	for (const row of stage2Init.rows) {
-		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-		if (sourceLandingNodeName === "" || bySource.has(sourceLandingNodeName)) {
-			continue;
-		}
-		bySource.set(sourceLandingNodeName, row);
-	}
-	return bySource;
-}
-
-function getRowServerFromStage2Init(
-	row: Stage2Row,
-	stage2InitRowsBySource: Map<string, Stage2Init["rows"][number]>,
-) {
-	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-	const stage2InitRow = stage2InitRowsBySource.get(sourceLandingNodeName);
-	const server = stage2InitRow?.server?.trim() ?? "";
-	if (server !== "") {
-		return server;
-	}
-	return sourceLandingNodeName === "" ? "" : `source:${sourceLandingNodeName}`;
-}
-
-function getAllowedModes(
-	stage2Init: Stage2Init,
-	stage2InitRowsBySource: Map<string, Stage2Init["rows"][number]>,
-	sourceLandingNodeName: string,
-) {
-	const restrictedModes = stage2InitRowsBySource.get(sourceLandingNodeName)?.restrictedModes ?? {};
-	return stage2Init.availableModes.filter((mode) => restrictedModes[mode] === undefined);
-}
-
-function mergeSourceSnapshotRow(baseRow: Stage2Row, existingSourceRow: Stage2Row | undefined): Stage2Row {
-	if (existingSourceRow === undefined) {
-		return baseRow;
-	}
-	const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
-	const mergedProxyName = existingSourceRow.proxyName;
-	return {
-		...baseRow,
-		rowId: existingSourceRow.rowId,
-		sourceLandingNodeName: existingSourceRow.sourceLandingNodeName ?? sourceLandingNodeName,
-		proxyName: mergedProxyName,
-		mode: existingSourceRow.mode,
-		targetName: existingSourceRow.targetName,
-	};
+export function buildStage2SnapshotRows(catalog: Stage2Catalog) {
+	return flattenInstances(defaultSnapshotFromCatalog(catalog), catalog);
 }
 
 export function mergeStage2SnapshotAfterConvert(
 	current: AppState,
-	stage2Init: Stage2Init,
-): { snapshot: AppState["stage2Snapshot"]; report: Stage2SnapshotMergeReport } {
-	const report = createStage2SnapshotMergeReport();
-	const stage2InitRowsBySource = getStage2InitRowsBySource(stage2Init);
-	const baseRows = buildStage2SnapshotRows(stage2Init);
-	if (current.stage2Snapshot.rows.length === 0) {
-		return {
-			snapshot: { rows: baseRows, chainProxyTargetGroupSwitchOptimizationEnabled: false, serverAggregationGroups: [] },
-			report,
-		};
-	}
-
-	const existingSourceRows = new Map<string, Stage2Row>();
-	for (const row of current.stage2Snapshot.rows) {
-		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-		if (sourceLandingNodeName === "") {
-			continue;
-		}
-		const existing = existingSourceRows.get(sourceLandingNodeName);
-		if (existing === undefined) {
-			existingSourceRows.set(sourceLandingNodeName, row);
-			continue;
-		}
-		if (!isStage2SourceRow(existing) && isStage2SourceRow(row)) {
-			existingSourceRows.set(sourceLandingNodeName, row);
-		}
-	}
-
-	const baseRowsBySource = new Map<string, Stage2Row>();
-	for (const baseRow of baseRows) {
-		const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
-		if (sourceLandingNodeName === "" || baseRowsBySource.has(sourceLandingNodeName)) {
-			continue;
-		}
-		baseRowsBySource.set(sourceLandingNodeName, baseRow);
-	}
-
-	const mergedSourceLandingNames = new Set<string>();
-	const mergedRows: Stage2Row[] = [];
-	for (const row of current.stage2Snapshot.rows) {
-		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-		if (sourceLandingNodeName === "") {
-			continue;
-		}
-		if (!stage2InitRowsBySource.has(sourceLandingNodeName)) {
-			if (!isStage2SourceRow(row)) {
-				report.droppedDerivedRows += 1;
-			}
-			continue;
-		}
-		if (isStage2SourceRow(row)) {
-			if (mergedSourceLandingNames.has(sourceLandingNodeName)) {
-				continue;
-			}
-			const baseRow = baseRowsBySource.get(sourceLandingNodeName);
-			if (baseRow === undefined) {
-				continue;
-			}
-			mergedSourceLandingNames.add(sourceLandingNodeName);
-			mergedRows.push(mergeSourceSnapshotRow(baseRow, existingSourceRows.get(sourceLandingNodeName) ?? row));
-			continue;
-		}
-		mergedRows.push({
-			...row,
-			sourceLandingNodeName: row.sourceLandingNodeName ?? sourceLandingNodeName,
-		});
-	}
-
-	for (const baseRow of baseRows) {
-		const sourceLandingNodeName = getStage2RowSourceLandingName(baseRow);
-		if (sourceLandingNodeName === "" || mergedSourceLandingNames.has(sourceLandingNodeName)) {
-			continue;
-		}
-		mergedSourceLandingNames.add(sourceLandingNodeName);
-		mergedRows.push(mergeSourceSnapshotRow(baseRow, existingSourceRows.get(sourceLandingNodeName)));
-	}
-
-	const validatedRows = mergedRows.map((row) => {
-		const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-		const allowedModes = getAllowedModes(stage2Init, stage2InitRowsBySource, sourceLandingNodeName);
-		let mode = row.mode;
-		let targetName = row.targetName;
-		if (!allowedModes.includes(mode)) {
-			const fallbackMode = allowedModes.includes("none")
-				? "none"
-				: (allowedModes[0] ?? "none");
-			if (mode !== fallbackMode) {
-				report.resetModes += 1;
-			}
-			mode = fallbackMode;
-			targetName = null;
-		}
-
-		if (mode === "none") {
-			targetName = null;
-		} else {
-			const selectableChoices = getSelectableChoices(
-				stage2Init,
-				mergedRows,
-				getStage2RowKey(row),
-				mode,
-			);
-			const selectableValues = new Set(selectableChoices.map((choice) => choice.value));
-			if (targetName === null || !selectableValues.has(targetName)) {
-				if (targetName !== null) {
-					report.clearedTargets += 1;
-				}
-				targetName = null;
-			}
-		}
-
-		const nextRow: Stage2Row = {
-			...row,
-			mode,
-			targetName,
-		};
-		return nextRow;
-	});
-
-	const rowsByID = new Map(
-		validatedRows
-			.map((row) => {
-				const rowID = getStage2RowKey(row);
-				return rowID === "" ? null : ([rowID, row] as const);
-			})
-			.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
+	catalog: Stage2Catalog,
+	defaultSnapshot = defaultSnapshotFromCatalog(catalog),
+): { snapshot: Stage2Snapshot; report: Stage2SnapshotMergeReport } {
+	const oldSourceIds = new Set(
+		current.stage2Snapshot.servers.flatMap((server) => server.sources.map((source) => source.sourceId.trim())),
 	);
-	const nextServerAggregationGroups: ServerAggregationGroup[] = [];
-	const seenServers = new Set<string>();
-	for (const group of current.stage2Snapshot.serverAggregationGroups) {
-		const server = group.server.trim();
-		if (
-			server === ""
-			|| seenServers.has(server)
-			|| (
-				group.strategy !== "fallback"
-				&& group.strategy !== "url-test"
-				&& group.strategy !== "select"
-				&& group.strategy !== "load-balance"
-			)
-		) {
-			report.removedAggregationGroups += 1;
-			continue;
-		}
-		seenServers.add(server);
-		const existingMemberRowIds = Array.from(
-			new Set(group.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean)),
-		);
-		const memberRowIds = existingMemberRowIds.filter((rowID) => {
-			const row = rowsByID.get(rowID);
-			if (row === undefined) {
-				return false;
-			}
-			return getRowServerFromStage2Init(row, stage2InitRowsBySource) === server;
-		});
-		report.filteredAggregationMembers += Math.max(0, existingMemberRowIds.length - memberRowIds.length);
-		const shouldDisableGroup = group.enabled && memberRowIds.length < 2;
-		if (shouldDisableGroup) {
-			report.disabledAggregationGroups += 1;
-		}
-		nextServerAggregationGroups.push({
-			server,
-			...(group.groupName?.trim() ? { groupName: group.groupName.trim() } : {}),
-			enabled: shouldDisableGroup ? false : group.enabled,
-			strategy: group.strategy,
-			memberRowIds,
-		});
-	}
-
-	const chainProxyTargetGroupSwitchOptimizationEnabled = Boolean(
-		current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
+	const newSourceIds = new Set(
+		catalog.servers.flatMap((server) => server.sources.map((source) => source.sourceId.trim())),
+	);
+	const beforeMembers = current.stage2Snapshot.servers.reduce(
+		(count, server) => count + (server.aggregation.memberLocalInstanceIds?.length ?? 0),
+		0,
+	);
+	const snapshot = mergeSnapshotAfterConvert(current.stage2Snapshot, catalog, defaultSnapshot);
+	const afterMembers = snapshot.servers.reduce(
+		(count, server) => count + (server.aggregation.memberLocalInstanceIds?.length ?? 0),
+		0,
 	);
 	return {
-		snapshot: normalizeStage2SnapshotRowsAndGroups(validatedRows, nextServerAggregationGroups, chainProxyTargetGroupSwitchOptimizationEnabled),
-		report,
+		snapshot,
+		report: {
+			droppedSources: [...oldSourceIds].filter((id) => !newSourceIds.has(id)).length,
+			filteredAggregationMembers: Math.max(0, beforeMembers - afterMembers),
+		},
 	};
 }
 
 function getDisplayedGeneratedURL(generatedUrls: AppState["generatedUrls"], preferShortURL: boolean) {
-	if (generatedUrls === null) {
-		return "";
-	}
-	if (preferShortURL && generatedUrls.shortUrl) {
-		return generatedUrls.shortUrl;
-	}
-	return generatedUrls.longUrl;
+	if (!generatedUrls) return "";
+	return preferShortURL && generatedUrls.shortUrl ? generatedUrls.shortUrl : generatedUrls.longUrl;
 }
 
 export function setCurrentLinkInputState(current: AppState, value: string): AppState {
@@ -399,10 +137,7 @@ export function reportCurrentLinkInputErrorState(current: AppState, message: str
 				code: "INVALID_CURRENT_LINK",
 				message,
 				scope: "stage3_field",
-				context: {
-					field: "currentLinkInput",
-					action: actionLabel,
-				},
+				context: { field: "currentLinkInput", action: actionLabel },
 			},
 		],
 	};
@@ -464,33 +199,18 @@ export function applyShortURLPreferenceToggleState(
 			currentLinkInput: getDisplayedGeneratedURL(current.generatedUrls, false) || current.currentLinkInput,
 		};
 	}
-
-	if (current.generatedUrls === null) {
-		return {
-			...current,
-			preferShortUrl: true,
-		};
-	}
-	if (current.generatedUrls.shortUrl) {
+	if (!current.generatedUrls || current.generatedUrls.shortUrl) {
 		return {
 			...current,
 			preferShortUrl: true,
 			currentLinkInput: getDisplayedGeneratedURL(current.generatedUrls, true) || current.currentLinkInput,
 		};
 	}
-
 	return current;
 }
 
 export function startShortURLCreationState(current: AppState, actionEntry: WorkflowLogEntry): AppState {
-	return startWorkflowRequestState(
-		{
-			...current,
-			preferShortUrl: true,
-		},
-		"stage3",
-		actionEntry,
-	);
+	return startWorkflowRequestState({ ...current, preferShortUrl: true }, "stage3", actionEntry);
 }
 
 export function updateStage1InputState(
@@ -498,39 +218,32 @@ export function updateStage1InputState(
 	nextStage1Input: Stage1Input,
 	changedFields: string[],
 ): AppState {
-	const becomesStale = changedFields.length > 0 && current.stage2Snapshot.rows.length > 0;
+	const becomesStale = changedFields.length > 0 && flattenInstances(current.stage2Snapshot).length > 0;
 	let blockingErrors = clearStage1FieldErrors(current.blockingErrors, changedFields);
-	if (changedFields.length > 0 && current.responseOriginStage === "stage1") {
-		blockingErrors = [];
-	}
+	if (changedFields.length > 0 && current.responseOriginStage === "stage1") blockingErrors = [];
 	if (becomesStale) {
 		blockingErrors = clearBlockingErrorsSupersededByStage2Stale(blockingErrors, current.responseOriginStage);
 	}
-
 	return {
 		...current,
 		stage1Input: nextStage1Input,
 		...expireGeneratedOutput(current),
-		stage2Stale: becomesStale ? true : current.stage2Stale,
+		stage2Stale: becomesStale || current.stage2Stale,
 		blockingErrors,
 	};
 }
 
 export function applyStage2InitState(
 	current: AppState,
-	stage2Init: Stage2Init,
-	stage2SnapshotOverride?: AppState["stage2Snapshot"],
+	catalog: Stage2Catalog,
+	snapshot = defaultSnapshotFromCatalog(catalog),
 ): AppState {
 	return {
 		...current,
-		stage2Init,
-		stage2Snapshot: stage2SnapshotOverride
-			? normalizeStage2SnapshotRowsAndGroups(
-				stage2SnapshotOverride.rows,
-				stage2SnapshotOverride.serverAggregationGroups,
-					Boolean(stage2SnapshotOverride.chainProxyTargetGroupSwitchOptimizationEnabled),
-			)
-				: { rows: buildStage2SnapshotRows(stage2Init), chainProxyTargetGroupSwitchOptimizationEnabled: false, serverAggregationGroups: [] },
+		stage2Catalog: catalog,
+		stage2Init: catalog,
+		stage2Snapshot: snapshot,
+		aggregationDraftsByServerKey: {},
 		generatedUrls: null,
 		stage3Expired: false,
 		stage2Stale: false,
@@ -541,42 +254,28 @@ export function applyStage2InitState(
 
 export function applyStage1ConvertSuccessState(
 	current: AppState,
-	stage2Init: Stage2Init,
+	stage2: Stage2Bundle,
 	messages: Message[],
 	blockingErrors: BlockingError[],
 	logEntries: WorkflowLogEntry[],
-	stage2SnapshotOverride?: AppState["stage2Snapshot"],
+	overwriteReset = false,
 ): AppState {
-	return completeWorkflowRequestState(
-		applyStage2InitState(current, stage2Init, stage2SnapshotOverride),
-		"stage1",
-		messages,
-		blockingErrors,
-		logEntries,
-	);
-}
-
-export function applyStage2ResetSuccessState(
-	current: AppState,
-	stage2Init: Stage2Init,
-	stage2Snapshot: AppState["stage2Snapshot"],
-	messages: Message[],
-	blockingErrors: BlockingError[],
-	logEntries: WorkflowLogEntry[],
-): AppState {
+	const snapshot = hydrateInstanceIds(overwriteReset
+		? stage2.snapshot
+		: mergeSnapshotAfterConvert(current.stage2Snapshot, stage2.catalog, stage2.snapshot));
+	const validServerKeys = new Set(stage2.catalog.servers.map((server) => server.serverKey));
+	const drafts = overwriteReset
+		? {}
+		: Object.fromEntries(
+			Object.entries(current.aggregationDraftsByServerKey)
+				.filter(([serverKey]) => validServerKeys.has(serverKey)),
+		);
 	return completeWorkflowRequestState(
 		{
-			...current,
-			...expireGeneratedOutput(current),
-			stage2Init,
-			stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-				stage2Snapshot.rows,
-				stage2Snapshot.serverAggregationGroups ?? [],
-				Boolean(stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-			),
-			stage2Stale: false,
+			...applyStage2InitState(current, stage2.catalog, snapshot),
+			aggregationDraftsByServerKey: drafts,
 		},
-		"stage2",
+		overwriteReset ? "stage2" : "stage1",
 		messages,
 		blockingErrors,
 		logEntries,
@@ -592,23 +291,17 @@ interface RestoreStateOptions {
 	restoreStatus: AppState["restoreStatus"];
 	resolvedLongUrl: string;
 	resolvedShortUrl?: string;
-	stage2Snapshot: AppState["stage2Snapshot"];
+	stage2Snapshot: Stage2Snapshot;
 }
 
-function buildRestorePatch(options: RestoreStateOptions) {
+function buildRestorePatch(options: RestoreStateOptions): Partial<AppState> {
 	return {
 		currentLinkInput: options.resolvedShortUrl ?? options.resolvedLongUrl,
 		preferShortUrl: Boolean(options.resolvedShortUrl),
 		stage1Input: options.restoredStage1Input,
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			options.stage2Snapshot.rows,
-			options.stage2Snapshot.serverAggregationGroups ?? [],
-			Boolean(options.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-		generatedUrls: {
-			longUrl: options.resolvedLongUrl,
-			shortUrl: options.resolvedShortUrl ?? null,
-		},
+		stage2Snapshot: hydrateInstanceIds(options.stage2Snapshot),
+		aggregationDraftsByServerKey: {},
+		generatedUrls: { longUrl: options.resolvedLongUrl, shortUrl: options.resolvedShortUrl ?? null },
 		stage3Expired: false,
 		restoreStatus: options.restoreStatus,
 		restoreConflicts: options.restoreConflicts ?? [],
@@ -616,569 +309,305 @@ function buildRestorePatch(options: RestoreStateOptions) {
 }
 
 export function applyRestoreConflictState(current: AppState, options: RestoreStateOptions): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage3",
-		options.messages,
-		options.blockingErrors.filter((error) => error.scope !== "stage2_row"),
-		options.logEntries,
-		{
-			patch: {
-				...buildRestorePatch(options),
-				stage2Init: null,
-				stage2Stale: false,
-			},
-		},
-	);
+	return completeWorkflowRequestState(current, "stage3", options.messages, options.blockingErrors, options.logEntries, {
+		patch: { ...buildRestorePatch(options), stage2Catalog: null, stage2Init: null, stage2Stale: false },
+	});
 }
 
 export function applyRestoreReinitializedState(
 	current: AppState,
-	stage2Init: Stage2Init,
+	catalog: Stage2Catalog,
 	options: RestoreStateOptions,
 ): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage3",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				...buildRestorePatch(options),
-				stage2Init,
-				stage2Stale: false,
-			},
-		},
-	);
+	return completeWorkflowRequestState(current, "stage3", options.messages, options.blockingErrors, options.logEntries, {
+		patch: { ...buildRestorePatch(options), stage2Catalog: catalog, stage2Init: catalog, stage2Stale: false },
+	});
 }
 
 export function applyRestoreReinitFailedState(current: AppState, options: RestoreStateOptions): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage3",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				...buildRestorePatch(options),
-				stage2Init: null,
-				stage2Stale: true,
-			},
-		},
-	);
+	return completeWorkflowRequestState(current, "stage3", options.messages, options.blockingErrors, options.logEntries, {
+		patch: { ...buildRestorePatch(options), stage2Catalog: null, stage2Init: null, stage2Stale: true },
+	});
 }
 
 export function applyGenerateLongURLSuccessState(current: AppState, options: GenerateSuccessStateOptions): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage2",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				generatedUrls: {
-					longUrl: options.resolvedLongURL,
-					shortUrl: null,
-				},
-				currentLinkInput: options.resolvedLongURL,
-				stage3Expired: false,
-			},
+	return completeWorkflowRequestState(current, "stage2", options.messages, options.blockingErrors, options.logEntries, {
+		patch: {
+			generatedUrls: { longUrl: options.resolvedLongURL, shortUrl: null },
+			currentLinkInput: options.resolvedLongURL,
+			stage3Expired: false,
 		},
-	);
+	});
 }
 
 export function applyGenerateShortURLSuccessState(current: AppState, options: GenerateSuccessStateOptions): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage2",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				preferShortUrl: options.preferShortURL ?? current.preferShortUrl,
-				generatedUrls: {
-					longUrl: options.resolvedLongURL,
-					shortUrl: options.resolvedShortURL ?? null,
-				},
-				currentLinkInput: options.resolvedShortURL ?? options.resolvedLongURL,
-				stage3Expired: false,
-			},
+	return completeWorkflowRequestState(current, "stage2", options.messages, options.blockingErrors, options.logEntries, {
+		patch: {
+			preferShortUrl: options.preferShortURL ?? current.preferShortUrl,
+			generatedUrls: { longUrl: options.resolvedLongURL, shortUrl: options.resolvedShortURL ?? null },
+			currentLinkInput: options.resolvedShortURL ?? options.resolvedLongURL,
+			stage3Expired: false,
 		},
-	);
+	});
 }
 
 export function applyGenerateShortURLFailureState(
 	current: AppState,
 	options: GenerateShortURLFailureStateOptions,
 ): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage3",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				preferShortUrl: options.requireShortURL,
-				generatedUrls: options.requireShortURL
-					? null
-					: {
-						longUrl: options.resolvedLongURL,
-						shortUrl: null,
-					},
-				currentLinkInput: options.requireShortURL ? current.currentLinkInput : options.resolvedLongURL,
-				stage3Expired: options.requireShortURL ? current.stage3Expired : false,
-			},
+	return completeWorkflowRequestState(current, "stage3", options.messages, options.blockingErrors, options.logEntries, {
+		patch: {
+			preferShortUrl: options.requireShortURL,
+			generatedUrls: options.requireShortURL ? null : { longUrl: options.resolvedLongURL, shortUrl: null },
+			currentLinkInput: options.requireShortURL ? current.currentLinkInput : options.resolvedLongURL,
+			stage3Expired: options.requireShortURL ? current.stage3Expired : false,
 		},
-	);
+	});
 }
 
 export function applyShortURLCreationSuccessState(current: AppState, options: ShortURLCreationStateOptions): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage3",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				generatedUrls: {
-					longUrl: options.resolvedLongURL,
-					shortUrl: options.resolvedShortURL ?? null,
-				},
-				currentLinkInput: options.resolvedShortURL ?? options.resolvedLongURL,
-				stage3Expired: false,
-			},
+	return completeWorkflowRequestState(current, "stage3", options.messages, options.blockingErrors, options.logEntries, {
+		patch: {
+			generatedUrls: { longUrl: options.resolvedLongURL, shortUrl: options.resolvedShortURL ?? null },
+			currentLinkInput: options.resolvedShortURL ?? options.resolvedLongURL,
+			stage3Expired: false,
 		},
-	);
+	});
 }
 
 export function applyShortURLCreationFailureState(current: AppState, options: ShortURLCreationStateOptions): AppState {
-	return completeWorkflowRequestState(
-		current,
-		"stage3",
-		options.messages,
-		options.blockingErrors,
-		options.logEntries,
-		{
-			patch: {
-				preferShortUrl: false,
-			},
-		},
-	);
+	return completeWorkflowRequestState(current, "stage3", options.messages, options.blockingErrors, options.logEntries, {
+		patch: { preferShortUrl: false },
+	});
 }
 
-export function applySwitchOptimizationState(current: AppState, enabled: boolean): AppState {
-	if (Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled) === enabled) {
-		return current;
-	}
+function withStage2Mutation(current: AppState, snapshot: Stage2Snapshot, drafts = current.aggregationDraftsByServerKey): AppState {
+	if (snapshot === current.stage2Snapshot && drafts === current.aggregationDraftsByServerKey) return current;
 	return {
 		...current,
 		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: current.stage2Snapshot.rows,
-			chainProxyTargetGroupSwitchOptimizationEnabled: enabled,
-			serverAggregationGroups: current.stage2Snapshot.serverAggregationGroups,
-		},
+		blockingErrors: clearStage2Errors(current),
+		stage2Snapshot: snapshot,
+		aggregationDraftsByServerKey: drafts,
 	};
+}
+
+export function applySwitchOptimizationState(current: AppState, enabled: boolean): AppState {
+	if (Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled) === enabled) return current;
+	return withStage2Mutation(current, {
+		...current.stage2Snapshot,
+		chainProxyTargetGroupSwitchOptimizationEnabled: enabled,
+	});
 }
 
 export function updateStage2RowState(
 	current: AppState,
-	rowKey: string,
-	updater: (row: Stage2Row) => Stage2Row,
+	instanceId: string,
+	updater: (instance: Stage2Instance) => Stage2Instance,
 ): AppState {
-	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
-	if (matchedRow === null) {
+	const path = findInstance(current.stage2Snapshot, instanceId);
+	if (!path) return current;
+	const next = updater(path.instance);
+	const snapshot = updateInstance(current.stage2Snapshot, instanceId, () => next);
+	return withStage2Mutation(current, snapshot);
+}
+
+export function updateStage2ProxyNameState(
+	current: AppState,
+	instanceId: string,
+	proxyName: string,
+): AppState {
+	const path = findInstance(current.stage2Snapshot, instanceId);
+	if (!path || path.instance.proxyName === proxyName) {
 		return current;
 	}
-
+	const snapshot = updateInstance(current.stage2Snapshot, instanceId, (instance) => ({
+		...instance,
+		proxyName,
+	}));
 	return {
 		...current,
 		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows.map((row) => (matchesStage2RowKey(row, rowKey) ? updater(row) : row)),
-			current.stage2Snapshot.serverAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
+		stage2Snapshot: snapshot,
+		blockingErrors: clearDuplicateProxyNameErrors(current.blockingErrors),
 	};
 }
 
-export function cloneStage2RowState(current: AppState, rowKey: string): AppState {
-	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
-	if (matchedRow === null) {
-		return current;
-	}
-
-	const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-	const derivedNameBase = getStage2DerivedProxyNameBase(current.stage2Snapshot.rows, sourceLandingNodeName);
-	const clonedProxyName = pickNextDerivedProxyName(current.stage2Snapshot.rows, derivedNameBase);
-	const clonedRow: Stage2Row = {
-		...matchedRow,
-		rowId: clonedProxyName,
-		proxyName: clonedProxyName,
-	};
-
-	const matchedIndex = current.stage2Snapshot.rows.findIndex((row) => matchesStage2RowKey(row, rowKey));
-	const groupLastIndex = current.stage2Snapshot.rows.reduce((lastIndex, row, index) => (
-		getStage2RowSourceLandingName(row) === sourceLandingNodeName ? index : lastIndex
-	), -1);
-	const insertIndex = groupLastIndex >= 0 ? groupLastIndex + 1 : matchedIndex + 1;
-	const nextRows = [...current.stage2Snapshot.rows];
-	nextRows.splice(insertIndex, 0, clonedRow);
+export function applyDuplicateProxyNameValidationState(current: AppState): AppState {
+	const rows = flattenInstances(current.stage2Snapshot, current.stage2Catalog);
+	const duplicateErrors = collectDuplicateProxyNameErrors(rows);
+	const blockingErrors = mergeDuplicateProxyNameErrors(current.blockingErrors, duplicateErrors);
+	const hasStage2Blocking = blockingErrors.some(
+		(error) => error.scope === "stage2_instance" || error.scope === "stage2_server",
+	);
 
 	return {
 		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			nextRows,
-			current.stage2Snapshot.serverAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
+		blockingErrors,
+		responseOriginStage: hasStage2Blocking ? "stage2" : current.responseOriginStage,
 	};
 }
 
-export function deleteStage2RowState(current: AppState, rowKey: string): AppState {
-	const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
-	if (matchedRow === null) {
-		return current;
-	}
-	const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-	if (current.stage2Snapshot.rows.filter((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName).length <= 1) {
-		return current;
-	}
+export function cloneStage2RowState(current: AppState, instanceId: string): AppState {
+	return withStage2Mutation(current, cloneInstance(current.stage2Snapshot, instanceId));
+}
 
+export function deleteStage2RowState(current: AppState, instanceId: string): AppState {
+	return withStage2Mutation(current, deleteInstance(current.stage2Snapshot, instanceId));
+}
+
+function enabledAggregation(
+	aggregation: Stage2Aggregation | undefined,
+	strategy: AggregationStrategy,
+): Stage2Aggregation {
 	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows.filter((row) => !matchesStage2RowKey(row, rowKey)),
-			current.stage2Snapshot.serverAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
+		enabled: true,
+		...(aggregation?.groupName?.trim() ? { groupName: aggregation.groupName.trim() } : {}),
+		strategy: aggregation?.strategy ?? strategy,
+		memberLocalInstanceIds: [...(aggregation?.memberLocalInstanceIds ?? [])],
 	};
+}
+
+export function setServerAggregationEnabledState(
+	current: AppState,
+	serverKey: string,
+	enabled: boolean,
+	strategy: AggregationStrategy = "fallback",
+): AppState {
+	const server = current.stage2Snapshot.servers.find((candidate) => candidate.serverKey.trim() === serverKey.trim());
+	if (!server) return current;
+	if (!enabled) {
+		if (!server.aggregation.enabled) return current;
+		const drafts = { ...current.aggregationDraftsByServerKey, [server.serverKey]: { ...server.aggregation } };
+		return withStage2Mutation(
+			current,
+			updateServerAggregation(current.stage2Snapshot, serverKey, () => ({ enabled: false })),
+			drafts,
+		);
+	}
+	const draft = current.aggregationDraftsByServerKey[server.serverKey];
+	const aggregation = enabledAggregation(draft ?? server.aggregation, strategy);
+	const drafts = { ...current.aggregationDraftsByServerKey };
+	delete drafts[server.serverKey];
+	return withStage2Mutation(
+		current,
+		updateServerAggregation(current.stage2Snapshot, serverKey, () => aggregation),
+		drafts,
+	);
 }
 
 export function updateServerAggregationStrategyState(
 	current: AppState,
-	server: string,
-	strategy: ServerAggregationGroup["strategy"] | null,
+	serverKey: string,
+	strategy: AggregationStrategy | null,
 ): AppState {
-	const trimmedServer = server.trim();
-	if (trimmedServer === "") {
-		return current;
-	}
-	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
-	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
-		(group) => group.server.trim() !== trimmedServer,
+	if (strategy === null) return setServerAggregationEnabledState(current, serverKey, false);
+	const enabled = setServerAggregationEnabledState(current, serverKey, true, strategy);
+	return withStage2Mutation(
+		enabled,
+		updateServerAggregation(enabled.stage2Snapshot, serverKey, (aggregation) => ({ ...aggregation, strategy })),
 	);
-	if (strategy !== null && existingGroup !== null) {
-		nextServerAggregationGroups.push({
-			...existingGroup,
-			strategy,
-		});
-	}
-	const currentStrategy = getServerAggregationStrategy(current.stage2Snapshot, trimmedServer);
-	if (currentStrategy === strategy || (strategy !== null && existingGroup === null)) {
-		return current;
-	}
-
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows,
-			nextServerAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-	};
 }
 
 export function updateServerAggregationGroupState(
 	current: AppState,
-	server: string,
+	serverKey: string,
 	enabled: boolean,
-	strategy: ServerAggregationGroup["strategy"],
-	memberRowID: string,
+	strategy: AggregationStrategy,
+	memberInstanceId: string,
 	checked: boolean,
 ): AppState {
-	const trimmedServer = server.trim();
-	const trimmedMemberRowID = memberRowID.trim();
-	if (trimmedServer === "" || trimmedMemberRowID === "") {
-		return current;
-	}
-	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
-	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
-		(group) => group.server.trim() !== trimmedServer,
-	);
-	const existingMemberRowIds = (existingGroup?.memberRowIds ?? [])
-		.map((rowID) => rowID.trim())
-		.filter(Boolean);
-	let memberRowIds: string[];
-	if (checked) {
-		if (existingMemberRowIds.includes(trimmedMemberRowID)) {
-			memberRowIds = existingMemberRowIds;
-		} else {
-			const rowOrderById = new Map<string, number>();
-			for (let index = 0; index < current.stage2Snapshot.rows.length; index += 1) {
-				const row = current.stage2Snapshot.rows[index];
-				const rowID = getStage2RowKey(row);
-				if (rowID !== "" && !rowOrderById.has(rowID)) {
-					rowOrderById.set(rowID, index);
-				}
-			}
-			const nextRowOrder = rowOrderById.get(trimmedMemberRowID) ?? Number.POSITIVE_INFINITY;
-			let insertAt = existingMemberRowIds.length;
-			for (let index = 0; index < existingMemberRowIds.length; index += 1) {
-				const currentRowOrder = rowOrderById.get(existingMemberRowIds[index]) ?? Number.POSITIVE_INFINITY;
-				if (currentRowOrder > nextRowOrder) {
-					insertAt = index;
-					break;
-				}
-			}
-			memberRowIds = [...existingMemberRowIds];
-			memberRowIds.splice(insertAt, 0, trimmedMemberRowID);
-		}
-	} else {
-		memberRowIds = existingMemberRowIds.filter((rowID) => rowID !== trimmedMemberRowID);
-	}
-	const nextGroup: ServerAggregationGroup = {
-		server: trimmedServer,
-		...(existingGroup?.groupName?.trim() ? { groupName: existingGroup.groupName.trim() } : {}),
-		enabled,
-		strategy,
-		memberRowIds,
-	};
-	if (!enabled && nextGroup.memberRowIds.length === 0) {
-		if (existingGroup === null) {
-			return current;
-		}
-	} else {
-		nextServerAggregationGroups.push(nextGroup);
-	}
-
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows,
-			nextServerAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-	};
+	let next = setServerAggregationEnabledState(current, serverKey, enabled, strategy);
+	if (!enabled) return next;
+	const snapshot = updateServerAggregation(next.stage2Snapshot, serverKey, (aggregation, server) => {
+		const valid = new Set(server.sources.flatMap((source) => source.instances.map((instance) => instance.instanceId)));
+		if (!valid.has(memberInstanceId)) return aggregation;
+		const members = [...(aggregation.memberLocalInstanceIds ?? [])].filter((id) => id !== memberInstanceId);
+		if (checked) members.push(memberInstanceId);
+		return { ...aggregation, strategy, memberLocalInstanceIds: members };
+	});
+	next = withStage2Mutation(next, snapshot);
+	return next;
 }
 
 export function updateServerAggregationGroupNameState(
 	current: AppState,
-	server: string,
+	serverKey: string,
 	groupName: string,
 ): AppState {
-	const trimmedServer = server.trim();
-	if (trimmedServer === "") {
-		return current;
-	}
-	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
-	if (existingGroup === null) {
-		return current;
-	}
-	const trimmedGroupName = groupName.trim();
-	const normalizedGroupName = trimmedGroupName === "" ? undefined : trimmedGroupName;
-	if ((existingGroup.groupName ?? undefined) === normalizedGroupName) {
-		return current;
-	}
-	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
-		(group) => group.server.trim() !== trimmedServer,
+	const normalized = groupName.trim();
+	return withStage2Mutation(
+		current,
+		updateServerAggregation(current.stage2Snapshot, serverKey, (aggregation) => ({
+			...aggregation,
+			...(normalized ? { groupName: normalized } : { groupName: undefined }),
+		})),
 	);
-	nextServerAggregationGroups.push({
-		server: existingGroup.server,
-		enabled: existingGroup.enabled,
-		strategy: existingGroup.strategy,
-		memberRowIds: [...existingGroup.memberRowIds],
-		...(normalizedGroupName ? { groupName: normalizedGroupName } : {}),
-	});
-
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows,
-			nextServerAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-	};
 }
 
-export function reorderStage2RowsState(
+export function reorderStage2RowsState(current: AppState, orderedInstanceIds: string[]): AppState {
+	const rows = flattenInstances(current.stage2Snapshot);
+	if (!rows.length || orderedInstanceIds.length !== rows.length) return current;
+	let snapshot = current.stage2Snapshot;
+	for (const sourceId of new Set(rows.map((row) => row.sourceId))) {
+		snapshot = reorderInstances(
+			snapshot,
+			sourceId,
+			orderedInstanceIds.filter((id) => rows.find((row) => row.instanceId === id)?.sourceId === sourceId),
+		);
+	}
+	return withStage2Mutation(current, snapshot);
+}
+
+function moveMember(
 	current: AppState,
-	orderedRowIds: string[],
+	serverKey: string,
+	memberInstanceId: string,
+	toIndex: number,
 ): AppState {
-	const trimmedOrderedRowIds = orderedRowIds.map((rowId) => rowId.trim()).filter(Boolean);
-	const currentRows = current.stage2Snapshot.rows;
-	const currentRowIds = currentRows
-		.map((row) => getStage2RowKey(row))
-		.filter((rowId) => rowId !== "");
-
-	if (trimmedOrderedRowIds.length !== currentRowIds.length || currentRowIds.length === 0) {
-		return current;
-	}
-
-	const currentRowIdSet = new Set(currentRowIds);
-	if (trimmedOrderedRowIds.length !== new Set(trimmedOrderedRowIds).size) {
-		return current;
-	}
-	for (const rowId of trimmedOrderedRowIds) {
-		if (!currentRowIdSet.has(rowId)) {
-			return current;
-		}
-	}
-
-	const rowById = new Map<string, Stage2Row>();
-	for (const row of currentRows) {
-		const rowId = getStage2RowKey(row);
-		if (rowId !== "") {
-			rowById.set(rowId, row);
-		}
-	}
-
-	const nextRows = trimmedOrderedRowIds
-		.map((rowId) => rowById.get(rowId))
-		.filter((row): row is Stage2Row => row !== undefined);
-
-	if (nextRows.length !== currentRows.length) {
-		return current;
-	}
-
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			nextRows,
-			current.stage2Snapshot.serverAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-	};
+	return withStage2Mutation(
+		current,
+		updateServerAggregation(current.stage2Snapshot, serverKey, (aggregation) => {
+			if (!aggregation.enabled) return aggregation;
+			const members = [...(aggregation.memberLocalInstanceIds ?? [])];
+			const from = members.indexOf(memberInstanceId);
+			if (from < 0) return aggregation;
+			const target = Math.max(0, Math.min(toIndex, members.length - 1));
+			if (from === target) return aggregation;
+			const [member] = members.splice(from, 1);
+			members.splice(target, 0, member);
+			return { ...aggregation, memberLocalInstanceIds: members };
+		}),
+	);
 }
 
 export function reorderServerAggregationMemberState(
 	current: AppState,
-	server: string,
-	memberRowID: string,
+	serverKey: string,
+	memberInstanceId: string,
 	direction: "up" | "down",
 ): AppState {
-	const trimmedServer = server.trim();
-	const trimmedMemberRowID = memberRowID.trim();
-	if (trimmedServer === "" || trimmedMemberRowID === "") {
-		return current;
-	}
-	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
-	if (existingGroup === null || !existingGroup.enabled) {
-		return current;
-	}
-	const memberRowIds = existingGroup.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean);
-	const currentIndex = memberRowIds.indexOf(trimmedMemberRowID);
-	if (currentIndex < 0) {
-		return current;
-	}
-	const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-	if (swapIndex < 0 || swapIndex >= memberRowIds.length) {
-		return current;
-	}
-	const nextMemberRowIds = [...memberRowIds];
-	[nextMemberRowIds[currentIndex], nextMemberRowIds[swapIndex]] = [
-		nextMemberRowIds[swapIndex],
-		nextMemberRowIds[currentIndex],
-	];
-	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
-		(group) => group.server.trim() !== trimmedServer,
-	);
-	nextServerAggregationGroups.push({
-		...existingGroup,
-		memberRowIds: nextMemberRowIds,
-	});
-
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows,
-			nextServerAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-	};
+	const aggregation = current.stage2Snapshot.servers.find((server) => server.serverKey === serverKey)?.aggregation;
+	const index = aggregation?.memberLocalInstanceIds?.indexOf(memberInstanceId) ?? -1;
+	if (index < 0) return current;
+	return moveMember(current, serverKey, memberInstanceId, direction === "up" ? index - 1 : index + 1);
 }
 
 export function moveServerAggregationMemberToIndexState(
 	current: AppState,
-	server: string,
-	memberRowID: string,
+	serverKey: string,
+	memberInstanceId: string,
 	toIndex: number,
 ): AppState {
-	const trimmedServer = server.trim();
-	const trimmedMemberRowID = memberRowID.trim();
-	if (trimmedServer === "" || trimmedMemberRowID === "") {
-		return current;
-	}
-	const existingGroup = getServerAggregationGroup(current.stage2Snapshot, trimmedServer);
-	if (existingGroup === null || !existingGroup.enabled) {
-		return current;
-	}
-	const memberRowIds = existingGroup.memberRowIds.map((rowID) => rowID.trim()).filter(Boolean);
-	const currentIndex = memberRowIds.indexOf(trimmedMemberRowID);
-	if (currentIndex < 0) {
-		return current;
-	}
-	const clampedToIndex = Math.max(0, Math.min(toIndex, memberRowIds.length - 1));
-	if (currentIndex === clampedToIndex) {
-		return current;
-	}
-	const nextMemberRowIds = [...memberRowIds];
-	const [removed] = nextMemberRowIds.splice(currentIndex, 1);
-	nextMemberRowIds.splice(clampedToIndex, 0, removed);
-	const nextServerAggregationGroups = current.stage2Snapshot.serverAggregationGroups.filter(
-		(group) => group.server.trim() !== trimmedServer,
-	);
-	nextServerAggregationGroups.push({
-		...existingGroup,
-		memberRowIds: nextMemberRowIds,
-	});
-
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: normalizeStage2SnapshotRowsAndGroups(
-			current.stage2Snapshot.rows,
-			nextServerAggregationGroups,
-			Boolean(current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled),
-		),
-	};
+	return moveMember(current, serverKey, memberInstanceId, toIndex);
 }
 
 export function clearServerAggregationGroupsState(current: AppState): AppState {
-	if (current.stage2Snapshot.serverAggregationGroups.length === 0) {
-		return current;
+	let snapshot = current.stage2Snapshot;
+	const drafts = { ...current.aggregationDraftsByServerKey };
+	for (const server of snapshot.servers) {
+		if (server.aggregation.enabled) drafts[server.serverKey] = { ...server.aggregation };
+		snapshot = updateServerAggregation(snapshot, server.serverKey, () => ({ enabled: false }));
 	}
-	return {
-		...current,
-		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2RowErrors(current),
-		stage2Snapshot: {
-			rows: current.stage2Snapshot.rows,
-			chainProxyTargetGroupSwitchOptimizationEnabled: current.stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
-			serverAggregationGroups: [],
-		},
-	};
+	return withStage2Mutation(current, snapshot, drafts);
 }

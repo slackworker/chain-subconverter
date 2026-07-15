@@ -348,7 +348,7 @@ func stage1LiveTransitRawText(scenario testfixtures.Stage1Scenario) (string, err
 	return strings.Join(sections, "\n"), nil
 }
 
-func stage2InitRowsFromBundle(files []review.FileArtifact) ([]service.Stage2InitRow, bool, error) {
+func stage2InitRowsFromBundle(files []review.FileArtifact) ([]service.Stage2CatalogSource, bool, error) {
 	for _, file := range files {
 		if file.RelativePath != "stage1/output/stage1-convert.response.json" {
 			continue
@@ -357,12 +357,16 @@ func stage2InitRowsFromBundle(files []review.FileArtifact) ([]service.Stage2Init
 		if err := json.Unmarshal([]byte(file.Content), &response); err != nil {
 			return nil, false, err
 		}
-		return append([]service.Stage2InitRow(nil), response.Stage2Init.Rows...), true, nil
+		sources := make([]service.Stage2CatalogSource, 0)
+		for _, server := range response.Stage2.Catalog.Servers {
+			sources = append(sources, server.Sources...)
+		}
+		return sources, true, nil
 	}
 	return nil, false, nil
 }
 
-func rewriteStage2SnapshotSourceLandingNames(scenarioDir string, stage2InitRows []service.Stage2InitRow) error {
+func rewriteStage2SnapshotSourceLandingNames(scenarioDir string, stage2InitRows []service.Stage2CatalogSource) error {
 	snapshotPath := filepath.Join(scenarioDir, "stage2", "input", review.Stage2SnapshotFileName)
 	snapshotData, err := os.ReadFile(snapshotPath)
 	if err != nil {
@@ -376,33 +380,7 @@ func rewriteStage2SnapshotSourceLandingNames(scenarioDir string, stage2InitRows 
 		return err
 	}
 
-	sourceByProxyName := make(map[string]string, len(stage2InitRows))
-	for _, row := range stage2InitRows {
-		proxyName := strings.TrimSpace(row.ProxyName)
-		sourceName := strings.TrimSpace(row.SourceLandingNodeName)
-		if proxyName == "" || sourceName == "" {
-			continue
-		}
-		sourceByProxyName[proxyName] = sourceName
-	}
-	if len(sourceByProxyName) == 0 {
-		return nil
-	}
-
-	changed := false
-	for index, row := range fixture.Stage2Snapshot.Rows {
-		sourceName := strings.TrimSpace(row.SourceLandingNodeName)
-		if sourceName == "" {
-			continue
-		}
-		normalizedSourceName, ok := sourceByProxyName[sourceName]
-		if !ok || normalizedSourceName == sourceName {
-			continue
-		}
-		fixture.Stage2Snapshot.Rows[index].SourceLandingNodeName = normalizedSourceName
-		changed = true
-	}
-	if !changed {
+	if !normalizeStage2SnapshotSourceLandingNames(&fixture.Stage2Snapshot, stage2InitRows) {
 		return nil
 	}
 

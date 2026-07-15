@@ -28,14 +28,19 @@ type RestoreConflict struct {
 }
 
 type Stage1ConvertResponse struct {
-	Stage2Init     Stage2Init      `json:"stage2Init"`
+	Stage2         Stage2Bundle    `json:"stage2"`
 	Messages       []Message       `json:"messages"`
 	BlockingErrors []BlockingError `json:"blockingErrors"`
 }
 
+type GenerateRequestStage2 struct {
+	Snapshot Stage2Snapshot `json:"snapshot"`
+}
+
 type GenerateRequest struct {
-	Stage1Input    Stage1Input    `json:"stage1Input"`
-	Stage2Snapshot Stage2Snapshot `json:"stage2Snapshot"`
+	Stage1Input    Stage1Input           `json:"stage1Input"`
+	Stage2         GenerateRequestStage2 `json:"stage2"`
+	Stage2Snapshot Stage2Snapshot        `json:"stage2Snapshot,omitempty"` // legacy test/compat; prefer stage2.snapshot
 }
 
 type GenerateResponse struct {
@@ -60,15 +65,15 @@ type TemplateDiagnostics struct {
 
 func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage1ConvertResponse, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
+	bundle, err := BuildStage2Bundle(stage1Input, fixtures)
 	if err != nil {
 		return Stage1ConvertResponse{}, err
 	}
 	messages := append([]Message{}, fixtures.Messages...)
-	messages = buildStage1ConvertMessages(stage2Init, messages)
+	messages = buildStage1ConvertMessages(bundle.Catalog, messages)
 
 	return Stage1ConvertResponse{
-		Stage2Init:     stage2Init,
+		Stage2:         bundle,
 		Messages:       messages,
 		BlockingErrors: []BlockingError{},
 	}, nil
@@ -76,12 +81,17 @@ func BuildStage1ConvertResponse(stage1Input Stage1Input, fixtures ConversionFixt
 
 func BuildGenerateResponse(publicBaseURL string, request GenerateRequest, fixtures ConversionFixtures, maxLongURLLength int) (GenerateResponse, error) {
 	request.Stage1Input = NormalizeStage1Input(request.Stage1Input)
-	request.Stage2Snapshot = NormalizeStage2Snapshot(request.Stage2Snapshot)
-	if _, err := validateGenerateSnapshot(request.Stage1Input, request.Stage2Snapshot, fixtures); err != nil {
+	snapshot := request.Stage2.Snapshot
+	if len(snapshot.Servers) == 0 && (len(request.Stage2Snapshot.Servers) > 0 || len(request.Stage2Snapshot.Rows) > 0) {
+		snapshot = request.Stage2Snapshot
+	}
+	snapshot = NormalizeStage2Snapshot(snapshot)
+	request.Stage2.Snapshot = snapshot
+	if _, err := validateGenerateSnapshot(request.Stage1Input, snapshot, fixtures); err != nil {
 		return GenerateResponse{}, err
 	}
 
-	encodingSnapshot := CanonicalizeStage2SnapshotForLinkEncoding(request.Stage2Snapshot)
+	encodingSnapshot := CanonicalizeStage2SnapshotForLinkEncoding(snapshot)
 	longURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(request.Stage1Input, encodingSnapshot), maxLongURLLength)
 	if err != nil {
 		return GenerateResponse{}, err
@@ -118,28 +128,29 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 		return "", newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
 
-	landingNames := stage2StripLandingNames(landingProxies, stage2Snapshot.Rows)
+	landingNames := stage2StripLandingNames(landingProxies, stage2Snapshot)
 	regionGroupNames := make(map[string]struct{}, len(regionMatchers))
 	for _, matcher := range regionMatchers {
 		regionGroupNames[matcher.TargetName] = struct{}{}
 	}
 
-	stage2Init, err := BuildStage2Init(stage1Input, fixtures)
+	bundle, err := BuildStage2Bundle(stage1Input, fixtures)
 	if err != nil {
-		return "", newInternalResponseError("failed to build stage2 init", fmt.Errorf("build stage2 init: %w", err))
+		return "", newInternalResponseError("failed to build stage2 catalog", fmt.Errorf("build stage2 catalog: %w", err))
 	}
+	catalog := bundle.Catalog
 
 	rendered, err := renderCompleteConfigYAML(
 		fixtures.FullBaseYAML,
 		stage2Snapshot,
 		landingNames,
 		regionGroupNames,
-		proxyGroupChainTargetNameSet(stage2Init),
+		proxyGroupChainTargetNameSet(catalog),
 	)
 	if err != nil {
 		return "", err
 	}
-	if err := validatePostProcessedChainTargets(rendered, stage2Snapshot, proxyGroupChainTargetNameSet(stage2Init)); err != nil {
+	if err := validatePostProcessedChainTargets(rendered, stage2Snapshot, proxyGroupChainTargetNameSet(catalog)); err != nil {
 		return "", err
 	}
 	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, stage2Snapshot)
@@ -148,18 +159,6 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 	}
 
 	return unescapeYAMLUnicodeEscapes(rendered), nil
-}
-
-func NormalizeStage2Snapshot(snapshot Stage2Snapshot) Stage2Snapshot {
-	if snapshot.Rows == nil {
-		snapshot.Rows = []Stage2Row{}
-	} else {
-		snapshot.Rows = normalizeStage2Rows(snapshot.Rows)
-	}
-	if snapshot.ServerAggregationGroups == nil {
-		snapshot.ServerAggregationGroups = []ServerAggregationGroup{}
-	}
-	return snapshot
 }
 
 func BuildTemplateDiagnostics(fixtures ConversionFixtures) (TemplateDiagnostics, error) {

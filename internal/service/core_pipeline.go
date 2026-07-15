@@ -74,43 +74,6 @@ func (pipeline *CorePipeline) BuildGenerateResponse(publicBaseURL string, maxLon
 	}, nil
 }
 
-func (pipeline *CorePipeline) BuildStage2ResetResponse(reset Stage2ResetAction) (Stage2ResetResponse, error) {
-	resetScope := reset.Scope
-	if resetScope != "all" && resetScope != "row" {
-		return Stage2ResetResponse{}, fmt.Errorf("unsupported reset scope %q", reset.Scope)
-	}
-
-	fixtures, err := pipeline.LoadStage1InitFixtures()
-	if err != nil {
-		return Stage2ResetResponse{}, err
-	}
-	stage2Init, err := BuildStage2Init(pipeline.stage1Input, fixtures)
-	if err != nil {
-		return Stage2ResetResponse{}, err
-	}
-
-	initialSnapshot := stage2InitToSnapshot(stage2Init)
-	nextSnapshot := initialSnapshot
-	switch resetScope {
-	case "all":
-		nextSnapshot = initialSnapshot
-	case "row":
-		nextSnapshot, err = resetSingleStage2Row(pipeline.stage2Snapshot, stage2Init, reset.RowID)
-		if err != nil {
-			return Stage2ResetResponse{}, err
-		}
-	}
-
-	messages := append([]Message{}, fixtures.Messages...)
-	messages = append(messages, stage2ResetWorkflowMessage(resetScope))
-	return Stage2ResetResponse{
-		Stage2Init:     stage2Init,
-		Stage2Snapshot: nextSnapshot,
-		Messages:       messages,
-		BlockingErrors: []BlockingError{},
-	}, nil
-}
-
 func (pipeline *CorePipeline) LoadStage1InitFixtures() (ConversionFixtures, error) {
 	return LoadStage1InitFixtures(pipeline.ctx, pipeline.source, pipeline.stage1Input, pipeline.limits)
 }
@@ -228,7 +191,7 @@ func (pipeline *CorePipeline) prepareManagedPass3Render() (managedPass3Prepared,
 		return managedPass3Prepared{}, err
 	}
 
-	managedLandingYAML, err := buildManagedLandingConfigYAML(fixtures.LandingDiscoveryYAML, pipeline.stage2Snapshot.Rows)
+	managedLandingYAML, err := buildManagedLandingConfigYAML(fixtures.LandingDiscoveryYAML, pipeline.stage2Snapshot)
 	if err != nil {
 		if prepared.Cleanup != nil {
 			prepared.Cleanup()
@@ -312,22 +275,23 @@ func (pipeline *CorePipeline) renderManagedPass3CompleteConfig(preparedRender ma
 		return "", err
 	}
 
-	stage2Init, err := BuildStage2Init(pipeline.stage1Input, preparedRender.fixturesForSnapshotValidation)
+	bundle, err := BuildStage2Bundle(pipeline.stage1Input, preparedRender.fixturesForSnapshotValidation)
 	if err != nil {
 		return "", newInternalResponseError("failed to build stage2 init", fmt.Errorf("build stage2 init: %w", err))
 	}
+	catalog := bundle.Catalog
 
 	rendered, err := stripLandingNodesFromCompleteConfigYAML(
 		fullBaseYAML,
 		pipeline.stage2Snapshot,
-		stage2StripLandingNames(preparedRender.landingProxies, pipeline.stage2Snapshot.Rows),
+		stage2StripLandingNames(preparedRender.landingProxies, pipeline.stage2Snapshot),
 		regionGroupNames,
-		proxyGroupChainTargetNameSet(stage2Init),
+		proxyGroupChainTargetNameSet(catalog),
 	)
 	if err != nil {
 		return "", err
 	}
-	if err := validatePostProcessedChainTargets(rendered, pipeline.stage2Snapshot, proxyGroupChainTargetNameSet(stage2Init)); err != nil {
+	if err := validatePostProcessedChainTargets(rendered, pipeline.stage2Snapshot, proxyGroupChainTargetNameSet(catalog)); err != nil {
 		return "", err
 	}
 	rendered, err = appendServerAggregationGroupsToCompleteConfigYAML(rendered, pipeline.stage2Snapshot)

@@ -3,13 +3,16 @@ import { expect, test } from "@playwright/test";
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 import {
 	applyDefaultUiPreferences,
+	assertWireSnapshotHasNoClientIds,
+	buildDefaultStage2Bundle,
+	flattenWireSnapshotInstances,
 	locateStage2Row,
 	mockReplayableResolveRoute,
 	mockRuntimeConfig,
 	selectStage2MenuOption,
 } from "./helpers";
 
-import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
+import type { GenerateRequest, Stage1ConvertRequest } from "../src/types/api";
 
 const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
 
@@ -21,31 +24,33 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 
 	const longURL = "http://127.0.0.1:11200/sub?data=dual-landing-full-flow";
 	const shortURL = "http://127.0.0.1:11200/sub/dual-landing-full-flow";
-	const stage2Init: Stage1ConvertResponse["stage2Init"] = {
+	const stage2 = buildDefaultStage2Bundle({
 		availableModes: ["none", "chain", "port_forward"],
 		chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
 		forwardRelays: [{ name: relayA }, { name: relayB }],
-		rows: [
+		servers: [
 			{
-				rowId: "Alpha-Reality-HK-PortForward",
-				sourceLandingNodeName: "Alpha-Reality-HK-PortForward",
-				proxyName: "Alpha-Reality-HK-PortForward",
-				server: "hk.example.com",
-				landingNodeType: "vless",
-				mode: "none",
-				targetName: null,
+				serverKey: "hk.example.com",
+				sources: [{
+					sourceId: "Alpha-Reality-HK-PortForward",
+					landingNodeType: "vless",
+					defaultProxyName: "Alpha-Reality-HK-PortForward",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
 			},
 			{
-				rowId: "Beta-Reality-JP-PortForward",
-				sourceLandingNodeName: "Beta-Reality-JP-PortForward",
-				proxyName: "Beta-Reality-JP-PortForward",
-				server: "jp.example.com",
-				landingNodeType: "vless",
-				mode: "none",
-				targetName: null,
+				serverKey: "jp.example.com",
+				sources: [{
+					sourceId: "Beta-Reality-JP-PortForward",
+					landingNodeType: "vless",
+					defaultProxyName: "Beta-Reality-JP-PortForward",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
 			},
 		],
-	};
+	});
 
 	const stage1Requests: Stage1ConvertRequest[] = [];
 	const generateRequests: GenerateRequest[] = [];
@@ -60,7 +65,7 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 		stage1Requests.push(request);
 		await route.fulfill({
 			json: {
-				stage2Init,
+				stage2,
 				messages: [{ level: "info", code: "STAGE1_READY", message: "已准备双落地编排。" }],
 				blockingErrors: [],
 			},
@@ -98,6 +103,7 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 		resolveRequests,
 		longURL,
 		shortURL,
+		stage2Catalog: stage2.catalog,
 		messages: [{ level: "info", code: "RESTORE_METADATA_READY", message: "已读取恢复快照。" }],
 	});
 
@@ -170,7 +176,9 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 	if (firstGenerateRequest === undefined) {
 		throw new Error("generate request was not captured");
 	}
-	expect(firstGenerateRequest.stage2Snapshot.rows).toEqual(
+	assertWireSnapshotHasNoClientIds(firstGenerateRequest);
+	const firstSnapshotInstances = flattenWireSnapshotInstances(firstGenerateRequest.stage2.snapshot);
+	expect(firstSnapshotInstances).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				mode: "chain",
@@ -186,19 +194,19 @@ test("mock dual-landing full flow covers stage1 stage2 orchestration and stage3 
 			}),
 		]),
 	);
-	const sourceSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.proxyName === "Alpha-Reality-HK-PortForward");
-	const replicaSnapshotRow = firstGenerateRequest.stage2Snapshot.rows.find((row) => row.proxyName === replicaLandingNodeName);
-	if (sourceSnapshotRow?.rowId === undefined || replicaSnapshotRow?.rowId === undefined) {
-		throw new Error("source/replica row IDs are required for aggregation assertions");
+	const sourceSnapshotRow = firstSnapshotInstances.find((row) => row.proxyName === "Alpha-Reality-HK-PortForward");
+	const replicaSnapshotRow = firstSnapshotInstances.find((row) => row.proxyName === replicaLandingNodeName);
+	if (sourceSnapshotRow === undefined || replicaSnapshotRow === undefined) {
+		throw new Error("source/replica wire snapshot rows are required for aggregation assertions");
 	}
-	expect(firstGenerateRequest.stage2Snapshot.serverAggregationGroups).toBeInstanceOf(Array);
-	expect(sourceSnapshotRow.rowId).not.toBe(replicaSnapshotRow.rowId);
-	expect(firstGenerateRequest.stage2Snapshot.rows.map((row) => row.proxyName)).toEqual([
+	expect(firstGenerateRequest.stage2.snapshot.servers.map((server) => server.aggregation)).toBeInstanceOf(Array);
+	expect(sourceSnapshotRow.proxyName).not.toBe(replicaSnapshotRow.proxyName);
+	expect(firstSnapshotInstances.map((row) => row.proxyName)).toEqual([
 		"Alpha-Reality-HK-PortForward",
 		replicaLandingNodeName,
 		"Beta-Reality-JP-PortForward",
 	]);
-	expect(replicaSnapshotRow.sourceLandingNodeName).toBe("Alpha-Reality-HK-PortForward");
+	expect(replicaSnapshotRow.sourceId).toBe("Alpha-Reality-HK-PortForward");
 	expect(shortLinkRequests).toEqual([longURL]);
 	expect(resolveRequests).toEqual([shortURL]);
 });

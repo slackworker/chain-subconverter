@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/testfixtures"
 )
 
@@ -46,7 +47,7 @@ func TestLoadCase_DefaultExample(t *testing.T) {
 	if testCase.Stage1Input.AdvancedOptions.Exclude != nil {
 		t.Fatalf("Exclude = %v, want omitted placeholder", testCase.Stage1Input.AdvancedOptions.Exclude)
 	}
-	if len(testCase.Stage2Input.Rows) == 0 {
+	if len(service.FlatStage2Rows(testCase.Stage2Input)) == 0 {
 		t.Fatal("Stage2Input.Rows should not be empty")
 	}
 }
@@ -78,8 +79,8 @@ func TestLoadStage1Case_DoesNotRequireStage2Input(t *testing.T) {
 	if testCase.Stage1Input.LandingRawText != "landing-node" {
 		t.Fatalf("LandingRawText = %q, want %q", testCase.Stage1Input.LandingRawText, "landing-node")
 	}
-	if len(testCase.Stage2Input.Rows) != 0 {
-		t.Fatalf("Stage2Input.Rows length = %d, want 0", len(testCase.Stage2Input.Rows))
+	if len(service.FlatStage2Rows(testCase.Stage2Input)) != 0 {
+		t.Fatalf("Stage2Input.Rows length = %d, want 0", len(service.FlatStage2Rows(testCase.Stage2Input)))
 	}
 }
 
@@ -327,8 +328,8 @@ func TestLoadCase_PrefersWrappedStage2SnapshotEvenWhenRowsEmpty(t *testing.T) {
 		t.Fatalf("LoadCase() error = %v", err)
 	}
 
-	if len(testCase.Stage2Input.Rows) != 0 {
-		t.Fatalf("Stage2Input.Rows length = %d, want 0", len(testCase.Stage2Input.Rows))
+	if len(service.FlatStage2Rows(testCase.Stage2Input)) != 0 {
+		t.Fatalf("Stage2Input.Rows length = %d, want 0", len(service.FlatStage2Rows(testCase.Stage2Input)))
 	}
 }
 
@@ -374,11 +375,11 @@ func TestLoadCase_PrefersCanonicalStage1ButKeepsTrackedStage2Snapshot(t *testing
 	if !reflect.DeepEqual(testCase.Stage1Input, expected) {
 		t.Fatalf("Stage1Input = %#v, want %#v", testCase.Stage1Input, expected)
 	}
-	if len(testCase.Stage2Input.Rows) != 1 {
-		t.Fatalf("Stage2Input.Rows length = %d, want 1", len(testCase.Stage2Input.Rows))
+	if len(service.FlatStage2Rows(testCase.Stage2Input)) != 1 {
+		t.Fatalf("Stage2Input.Rows length = %d, want 1", len(service.FlatStage2Rows(testCase.Stage2Input)))
 	}
-	if testCase.Stage2Input.Rows[0].ProxyName != "tracked-row" {
-		t.Fatalf("Stage2Input.Rows[0].ProxyName = %q, want %q", testCase.Stage2Input.Rows[0].ProxyName, "tracked-row")
+	if service.FlatStage2Rows(testCase.Stage2Input)[0].ProxyName != "tracked-row" {
+		t.Fatalf("Stage2Input.Rows[0].ProxyName = %q, want %q", service.FlatStage2Rows(testCase.Stage2Input)[0].ProxyName, "tracked-row")
 	}
 }
 

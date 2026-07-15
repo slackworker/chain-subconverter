@@ -1,0 +1,12 @@
+{
+  "longUrl": "http://localhost:11200/sub?data=H4sIAAAAAAAC_4RSzWrbTBR9lY_7bWWNpDTBHSg0OE0xrWxquzFyCWEsXUljj2bEzMi2YrzJJtBFX6CLvEZbaN-mpMs8QpGc0B9Ky2zuXO453HPO3YKxLEO_L8vKAt0CS1ZMxpgMS8uVNE0rVjLlGVDIrS0NJUSztZtxm1fzyqCOlbQorRurghjB4uVa6SVqcow2R20YF0p3epWxqrgYlih7gpn8YlQJNERjakiOLDGkYFySOM3I_Wg75nLJwQEs1IIDtbpCB3ATiypBoLISwgEuf_maJS97qO0Zap7WD90qKffwnQOp0mumkxEKVvctFgbom3MHBJMJl9mIrSe4sUDBNFLDxXEdcp_Pn5_q2SS00fTs8uWk7w-4L6PAOwpPntXh5St_sIgfDaenPApGYrY43oSL0BtMooPhicijYrCcTaMnT_3HXffQd33Pc32Pdrvd7v_jceAFQWeCxnaCw6PO6zE4YDWThtsfqzTGU0J-wgcePfA8nyRqLYViCbENg6nmJta8jQ52zj7bYCxZaXLVxmtQr1A3kh_qF1g3YlWlY6R3N9ef7m6uP_z3x71YlmnMWMtOt4CSzQUmQFMmTOPsnuSevK37CVD4OymXxjYXt4eVWm3qASvwn7hCNaFDnDMuG8-YztD-jrz98u7r-8_f3l7dXn2E3Xn7HFgBPdx9DwAA___UH3JM-gIAAA",
+  "shortUrl": "http://localhost:11200/sub/F8nkAFcThsS",
+  "messages": [
+    {
+      "level": "info",
+      "code": "SHORT_LINK_CREATED",
+      "message": "已准备好短链接。"
+    }
+  ],
+  "blockingErrors": []
+}

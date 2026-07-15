@@ -1,6 +1,25 @@
 import { expect, type Locator, type Page, type Response } from "@playwright/test";
 
-import type { GenerateRequest, Message } from "../src/types/api";
+import type {
+	GenerateRequest,
+	Message,
+	Stage2Catalog,
+	Stage2Bundle,
+	Stage2FlatInstance,
+	Stage2Snapshot,
+} from "../src/types/api";
+import { defaultSnapshotFromCatalog, flattenInstances } from "../src/lib/stage2";
+
+export function buildDefaultStage2Bundle(catalog: Stage2Catalog): Stage2Bundle {
+	return {
+		catalog,
+		snapshot: defaultSnapshotFromCatalog(catalog),
+	};
+}
+
+export function flattenStage2Instances(snapshot: Stage2Snapshot): Stage2FlatInstance[] {
+	return flattenInstances(snapshot);
+}
 
 export function locateStage2Row(page: Page, proxyName: string) {
 	return page.locator(".a-table tbody tr", {
@@ -64,7 +83,56 @@ interface ReplayableResolveRouteOptions {
 	resolveRequests: string[];
 	longURL: string;
 	shortURL: string;
+	stage2Catalog: Stage2Catalog;
 	messages?: Message[];
+}
+
+export interface WireSnapshotInstance {
+	proxyName: string;
+	mode: Stage2FlatInstance["mode"];
+	targetName: string | null;
+	sourceId: string;
+	serverKey: string;
+}
+
+export function flattenWireSnapshotInstances(snapshot: Stage2Snapshot): WireSnapshotInstance[] {
+	return snapshot.servers.flatMap((server) =>
+		server.sources.flatMap((source) =>
+			source.instances.map((instance) => ({
+				proxyName: instance.proxyName,
+				mode: instance.mode,
+				targetName: instance.targetName,
+				sourceId: source.sourceId,
+				serverKey: server.serverKey,
+			})),
+		),
+	);
+}
+
+export function semanticWireSnapshotKey(snapshot: Stage2Snapshot) {
+	const instances = flattenWireSnapshotInstances(snapshot);
+	return JSON.stringify({
+		instances: instances.map((instance) => ({
+			proxyName: instance.proxyName,
+			sourceId: instance.sourceId,
+			serverKey: instance.serverKey,
+			mode: instance.mode,
+			targetName: instance.targetName,
+		})),
+		groups: snapshot.servers.map((server) => ({
+			serverKey: server.serverKey,
+			enabled: server.aggregation.enabled,
+			strategy: server.aggregation.strategy,
+			memberProxyNames: server.aggregation.enabled
+				? server.aggregation.memberProxyNames ?? []
+				: [],
+		})),
+		chainProxyTargetGroupSwitchOptimizationEnabled: snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
+	});
+}
+
+export function assertWireSnapshotHasNoClientIds(payload: unknown) {
+	expect(JSON.stringify(payload)).not.toMatch(/instanceId|memberInstanceIds|memberLocalInstanceIds/);
 }
 
 export async function mockReplayableResolveRoute({
@@ -73,6 +141,7 @@ export async function mockReplayableResolveRoute({
 	resolveRequests,
 	longURL,
 	shortURL,
+	stage2Catalog,
 	messages = [],
 }: ReplayableResolveRouteOptions) {
 	await page.route("**/api/resolve-url", async (route) => {
@@ -88,7 +157,10 @@ export async function mockReplayableResolveRoute({
 				shortUrl: shortURL,
 				restoreStatus: "replayable",
 				stage1Input: latestGenerateRequest.stage1Input,
-				stage2Snapshot: latestGenerateRequest.stage2Snapshot,
+				stage2: {
+					catalog: stage2Catalog,
+					snapshot: latestGenerateRequest.stage2.snapshot,
+				},
 				messages,
 				blockingErrors: [],
 			},

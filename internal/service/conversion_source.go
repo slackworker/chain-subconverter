@@ -36,8 +36,12 @@ func BuildStage1ConvertResponseFromSource(ctx context.Context, source Conversion
 }
 
 func BuildGenerateResponseFromSource(ctx context.Context, publicBaseURL string, source ConversionSource, request GenerateRequest, maxLongURLLength int, limits InputLimits) (GenerateResponse, error) {
+	snapshot := request.Stage2.Snapshot
+	if len(snapshot.Servers) == 0 && (len(request.Stage2Snapshot.Servers) > 0 || len(request.Stage2Snapshot.Rows) > 0) {
+		snapshot = request.Stage2Snapshot
+	}
 	return NewCorePipeline(ctx, source, request.Stage1Input, limits).
-		WithStage2Snapshot(request.Stage2Snapshot).
+		WithStage2Snapshot(NormalizeStage2Snapshot(snapshot)).
 		BuildGenerateResponse(publicBaseURL, maxLongURLLength)
 }
 

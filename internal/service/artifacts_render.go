@@ -23,7 +23,7 @@ func renderCompleteConfigYAML(
 		if err := stripLandingNodesFromProxyGroups(root, landingNames, regionGroupNames, nil, deletedLines); err != nil {
 			return err
 		}
-		if err := applySnapshotToInlineProxies(root, snapshot.Rows, lines, replacedLines); err != nil {
+		if err := applySnapshotToInlineProxies(root, snapshot, lines, replacedLines); err != nil {
 			return err
 		}
 		if err := applySwitchOptimizationOverrides(root, snapshot, proxyGroupChainTargetNames, lines, deletedLines, replacedLines); err != nil {
@@ -41,7 +41,8 @@ func validatePostProcessedChainTargets(renderedYAML string, snapshot Stage2Snaps
 	if err != nil {
 		return fmt.Errorf("parse post-processed proxy-groups: %w", err)
 	}
-	for _, row := range snapshot.Rows {
+	for _, ref := range FlattenStage2Instances(snapshot) {
+		row := ref.Instance
 		if row.Mode != "chain" || row.TargetName == nil {
 			continue
 		}
@@ -57,7 +58,7 @@ func validatePostProcessedChainTargets(renderedYAML string, snapshot Stage2Snaps
 			continue
 		}
 		cause := fmt.Errorf("chain target %q for proxy %q is empty after postProcess", targetName, stage2ProxyName(row))
-		return newStage2RowValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", stage2RowValidationErrorRef(row), "targetName", cause)
+		return newStage2InstanceValidationError("EMPTY_CHAIN_TARGET", "chain target is empty", stage2InstanceValidationErrorRef(ref), "targetName", cause)
 	}
 	return nil
 }
@@ -195,14 +196,14 @@ func stripLandingNodesFromProxyGroups(
 	return nil
 }
 
-func applySnapshotToInlineProxies(root *yaml.Node, rows []Stage2Row, lines []string, replacedLines map[int]string) error {
-	rowsBySourceLanding := make(map[string][]Stage2Row, len(rows))
-	for _, row := range rows {
-		sourceLandingName := stage2SourceLandingNodeName(row)
-		if sourceLandingName == "" {
-			return fmt.Errorf("sourceLandingNodeName must not be empty")
+func applySnapshotToInlineProxies(root *yaml.Node, snapshot Stage2Snapshot, lines []string, replacedLines map[int]string) error {
+	rowsBySourceLanding := make(map[string][]Stage2Instance)
+	for _, ref := range FlattenStage2Instances(snapshot) {
+		sourceID := strings.TrimSpace(ref.SourceID)
+		if sourceID == "" {
+			return fmt.Errorf("sourceId must not be empty")
 		}
-		rowsBySourceLanding[sourceLandingName] = append(rowsBySourceLanding[sourceLandingName], row)
+		rowsBySourceLanding[sourceID] = append(rowsBySourceLanding[sourceID], ref.Instance)
 	}
 
 	proxiesNode := yamlMappingValue(root, "proxies")
@@ -308,7 +309,8 @@ func collectSwitchOptimizationTargets(snapshot Stage2Snapshot, proxyGroupChainTa
 		return nil
 	}
 	targets := make(map[string]struct{})
-	for _, row := range snapshot.Rows {
+	for _, ref := range FlattenStage2Instances(snapshot) {
+		row := ref.Instance
 		if row.Mode != "chain" || row.TargetName == nil {
 			continue
 		}
@@ -324,7 +326,7 @@ func collectSwitchOptimizationTargets(snapshot Stage2Snapshot, proxyGroupChainTa
 	return targets
 }
 
-func proxyGroupChainTargetNameSet(stage2Init Stage2Init) map[string]struct{} {
+func proxyGroupChainTargetNameSet(stage2Init Stage2Catalog) map[string]struct{} {
 	names := make(map[string]struct{}, len(stage2Init.ChainTargets))
 	for _, target := range stage2Init.ChainTargets {
 		if target.Kind != "proxy-groups" {
@@ -456,7 +458,7 @@ func parseMappingFieldLine(line string) (indent string, key string, value string
 	return indent, key, value, true
 }
 
-func applyRowToInlineProxyLine(line string, row Stage2Row) (string, error) {
+func applyRowToInlineProxyLine(line string, row Stage2Instance) (string, error) {
 	prefix, fields, err := parseInlineProxyLine(line)
 	if err != nil {
 		return "", err

@@ -19,8 +19,8 @@ type FileArtifact struct {
 }
 
 type ArtifactBundle struct {
-	Files []FileArtifact
-	Rows  []service.Stage2Row
+	Files    []FileArtifact
+	Snapshot service.Stage2Snapshot
 }
 
 const managedTemplateArtifactURLPlaceholder = "http://managed-template.invalid/internal/templates/managed-template.ini"
@@ -61,24 +61,24 @@ func BuildStage1Artifacts(ctx context.Context, source service.ConversionSource, 
 		files = append(files, FileArtifact{RelativePath: "stage1/output/stage1-convert.error.txt", Content: ensureTrailingNewline(err.Error())})
 		return ArtifactBundle{Files: files}, err
 	}
-	defaultSnapshot := service.Stage2Snapshot{Rows: snapshotRowsFromInit(stage1Response.Stage2Init.Rows)}
+	defaultSnapshot := stage1Response.Stage2.Snapshot
 
 	files = append(files,
 		FileArtifact{RelativePath: "stage1/output/stage1-convert.response.json", Content: mustMarshalJSON(stage1Response)},
 		FileArtifact{RelativePath: filepath.Join("stage2", "input", Stage2SnapshotFileName), Content: mustMarshalJSON(service.Stage2SnapshotFixture{Stage2Snapshot: defaultSnapshot})},
-		FileArtifact{RelativePath: "stage1/output/review-summary.md", Content: buildSummaryMarkdown(testCase.Name, stage1Response.Stage2Init)},
-		FileArtifact{RelativePath: "stage1/output/autofill-pairs.txt", Content: buildAutofillPairsText(stage1Response.Stage2Init.Rows)},
-		FileArtifact{RelativePath: "stage1/output/chain-targets.txt", Content: buildChainTargetsText(stage1Response.Stage2Init.ChainTargets)},
-		FileArtifact{RelativePath: "stage1/output/forward-relays.txt", Content: buildForwardRelaysText(stage1Response.Stage2Init.ForwardRelays)},
+		FileArtifact{RelativePath: "stage1/output/review-summary.md", Content: buildSummaryMarkdown(testCase.Name, stage1Response.Stage2.Catalog)},
+		FileArtifact{RelativePath: "stage1/output/autofill-pairs.txt", Content: buildAutofillPairsText(stage1Response.Stage2.Catalog)},
+		FileArtifact{RelativePath: "stage1/output/chain-targets.txt", Content: buildChainTargetsText(stage1Response.Stage2.Catalog.ChainTargets)},
+		FileArtifact{RelativePath: "stage1/output/forward-relays.txt", Content: buildForwardRelaysText(stage1Response.Stage2.Catalog.ForwardRelays)},
 	)
 
-	return ArtifactBundle{Files: files, Rows: snapshotRowsFromInit(stage1Response.Stage2Init.Rows)}, nil
+	return ArtifactBundle{Files: files, Snapshot: defaultSnapshot}, nil
 }
 
 func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, testCase Case, publicBaseURL string, maxLongURLLength int) (ArtifactBundle, error) {
 	request := service.GenerateRequest{
-		Stage1Input:    testCase.Stage1Input,
-		Stage2Snapshot: testCase.Stage2Input,
+		Stage1Input: testCase.Stage1Input,
+		Stage2:      service.GenerateRequestStage2{Snapshot: testCase.Stage2Input},
 	}
 	response, err := service.BuildGenerateResponseFromSource(
 		ctx,
@@ -127,29 +127,7 @@ func BuildStage2Artifacts(ctx context.Context, source service.ConversionSource, 
 		{RelativePath: "stage2/output/complete-config.chain.yaml", Content: ensureTrailingNewline(renderedConfig)},
 	}
 
-	return ArtifactBundle{Files: files, Rows: cloneRows(testCase.Stage2Input.Rows)}, nil
-}
-
-func cloneRows(rows []service.Stage2Row) []service.Stage2Row {
-	cloned := make([]service.Stage2Row, 0, len(rows))
-	for _, row := range rows {
-		cloned = append(cloned, row)
-	}
-	return cloned
-}
-
-func snapshotRowsFromInit(rows []service.Stage2InitRow) []service.Stage2Row {
-	snapshotRows := make([]service.Stage2Row, 0, len(rows))
-	for _, row := range rows {
-		snapshotRows = append(snapshotRows, service.Stage2Row{
-			RowID:                 row.RowID,
-			SourceLandingNodeName: row.SourceLandingNodeName,
-			ProxyName:             row.ProxyName,
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
-		})
-	}
-	return snapshotRows
+	return ArtifactBundle{Files: files, Snapshot: testCase.Stage2Input}, nil
 }
 
 func loadStage1InitResult(ctx context.Context, source service.ConversionSource, stage1Input service.Stage1Input) (subconverter.ThreePassResult, service.ConversionFixtures, error) {
@@ -167,23 +145,27 @@ func mustMarshalJSON(value any) string {
 	return string(data) + "\n"
 }
 
-func buildSummaryMarkdown(scenarioName string, stage2Init service.Stage2Init) string {
+func buildSummaryMarkdown(scenarioName string, catalog service.Stage2Catalog) string {
 	var builder strings.Builder
 	builder.WriteString("# Fixture Summary\n\n")
 	builder.WriteString("- Case: ")
 	builder.WriteString(scenarioName)
 	builder.WriteString("\n")
-	builder.WriteString("- Landing rows: ")
-	builder.WriteString(fmt.Sprintf("%d", len(stage2Init.Rows)))
+	sourceCount := 0
+	for _, server := range catalog.Servers {
+		sourceCount += len(server.Sources)
+	}
+	builder.WriteString("- Landing sources: ")
+	builder.WriteString(fmt.Sprintf("%d", sourceCount))
 	builder.WriteString("\n")
 	builder.WriteString("- Chain targets: ")
-	builder.WriteString(fmt.Sprintf("%d", len(stage2Init.ChainTargets)))
+	builder.WriteString(fmt.Sprintf("%d", len(catalog.ChainTargets)))
 	builder.WriteString("\n")
 	builder.WriteString("- Forward relays: ")
-	builder.WriteString(fmt.Sprintf("%d", len(stage2Init.ForwardRelays)))
+	builder.WriteString(fmt.Sprintf("%d", len(catalog.ForwardRelays)))
 	builder.WriteString("\n\n")
 	builder.WriteString("## Available Modes\n\n")
-	for _, mode := range stage2Init.AvailableModes {
+	for _, mode := range catalog.AvailableModes {
 		builder.WriteString("- ")
 		builder.WriteString(mode)
 		builder.WriteString("\n")
@@ -191,36 +173,39 @@ func buildSummaryMarkdown(scenarioName string, stage2Init service.Stage2Init) st
 	builder.WriteString("\n## Default Autofill\n\n")
 	builder.WriteString("| Landing Node | Type | Mode | Target |\n")
 	builder.WriteString("| --- | --- | --- | --- |\n")
-	for _, row := range stage2Init.Rows {
-		targetName := ""
-		if row.TargetName != nil {
-			targetName = *row.TargetName
+	for _, server := range catalog.Servers {
+		for _, source := range server.Sources {
+			targetName := ""
+			if source.DefaultTargetName != nil {
+				targetName = *source.DefaultTargetName
+			}
+			builder.WriteString("| ")
+			builder.WriteString(source.DefaultProxyName)
+			builder.WriteString(" | ")
+			builder.WriteString(source.LandingNodeType)
+			builder.WriteString(" | ")
+			builder.WriteString(source.DefaultMode)
+			builder.WriteString(" | ")
+			builder.WriteString(targetName)
+			builder.WriteString(" |\n")
 		}
-		builder.WriteString("| ")
-		builder.WriteString(row.ProxyName)
-		builder.WriteString(" | ")
-		builder.WriteString(row.LandingNodeType)
-		builder.WriteString(" | ")
-		builder.WriteString(row.Mode)
-		builder.WriteString(" | ")
-		builder.WriteString(targetName)
-		builder.WriteString(" |\n")
 	}
 	return builder.String()
 }
 
-func buildAutofillPairsText(rows []service.Stage2InitRow) string {
-	if len(rows) == 0 {
-		return "(none)\n"
-	}
-
-	lines := make([]string, 0, len(rows))
-	for _, row := range rows {
-		line := row.ProxyName + " | " + row.LandingNodeType + " | " + row.Mode
-		if row.TargetName != nil {
-			line += " | " + *row.TargetName
+func buildAutofillPairsText(catalog service.Stage2Catalog) string {
+	lines := make([]string, 0)
+	for _, server := range catalog.Servers {
+		for _, source := range server.Sources {
+			line := source.DefaultProxyName + " | " + source.LandingNodeType + " | " + source.DefaultMode
+			if source.DefaultTargetName != nil {
+				line += " | " + *source.DefaultTargetName
+			}
+			lines = append(lines, line)
 		}
-		lines = append(lines, line)
+	}
+	if len(lines) == 0 {
+		return "(none)\n"
 	}
 	return strings.Join(lines, "\n") + "\n"
 }
@@ -249,14 +234,13 @@ func buildChainTargetsText(targets []service.ChainTarget) string {
 		}
 		lines = append(lines, "")
 	}
-	return strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n"
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func buildForwardRelaysText(relays []service.ForwardRelay) string {
 	if len(relays) == 0 {
 		return "(none)\n"
 	}
-
 	lines := make([]string, 0, len(relays))
 	for _, relay := range relays {
 		lines = append(lines, relay.Name)
@@ -264,54 +248,23 @@ func buildForwardRelaysText(relays []service.ForwardRelay) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
-func ensureTrailingNewline(content string) string {
-	if strings.HasSuffix(content, "\n") {
-		return content
+func ensureTrailingNewline(value string) string {
+	if strings.HasSuffix(value, "\n") {
+		return value
 	}
-	return content + "\n"
+	return value + "\n"
 }
 
 func normalizeManagedTemplateRequestURL(rawURL string) string {
-	parsedURL, err := url.Parse(rawURL)
+	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return rawURL
 	}
-	if parsedURL.RawQuery == "" {
+	query := parsed.Query()
+	if query.Get("config") == "" {
 		return rawURL
 	}
-
-	parts := strings.Split(parsedURL.RawQuery, "&")
-	changed := false
-	for index, part := range parts {
-		name, value, ok := strings.Cut(part, "=")
-		if !ok || name != "config" {
-			continue
-		}
-		decodedValue, err := url.QueryUnescape(value)
-		if err != nil || !isManagedTemplateConfigURL(decodedValue) {
-			continue
-		}
-		parts[index] = name + "=" + url.QueryEscape(managedTemplateArtifactURLPlaceholder)
-		changed = true
-	}
-	if !changed {
-		return rawURL
-	}
-
-	normalizedURL := *parsedURL
-	normalizedURL.RawQuery = strings.Join(parts, "&")
-	return normalizedURL.String()
-}
-
-func isManagedTemplateConfigURL(rawURL string) bool {
-	parsedURL, err := url.Parse(rawURL)
-	if err != nil {
-		return false
-	}
-	trimmedPath := strings.TrimSpace(parsedURL.EscapedPath())
-	if !strings.Contains(trimmedPath, "/internal/templates/") {
-		return false
-	}
-	lastSegment := trimmedPath[strings.LastIndex(trimmedPath, "/")+1:]
-	return strings.HasSuffix(lastSegment, ".ini") && lastSegment != ".ini"
+	query.Set("config", managedTemplateArtifactURLPlaceholder)
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }

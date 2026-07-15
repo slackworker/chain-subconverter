@@ -1724,18 +1724,6 @@
 	box-shadow: 0 0 0 2px var(--color-elevated);
 }
 
-.a-stage2-row-inline.is-source::after {
-	background: var(--color-accent);
-	border-color: var(--color-accent);
-}
-
-.a-stage2-row-inline.is-derived::after {
-	/* 副本行：与原节点同尺寸的单色实心灰点 */
-	background: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
-	border-color: color-mix(in srgb, var(--color-muted) 38%, var(--color-line));
-	box-shadow: none;
-}
-
 .a-stage2-row-inline.is-server::after {
 	/* Git 图轨迹式：空心环 + 竖线贯穿圆心，与节点实心圆点区分 */
 	width: 0.78rem;

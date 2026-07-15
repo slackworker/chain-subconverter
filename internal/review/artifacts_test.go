@@ -112,14 +112,14 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/chain-targets.txt", "🇺🇸 美国节点")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/landing-discovery.yaml", "SS2022-Test-256-US")
 	assertArtifactContains(t, stage1Bundle.Files, filepath.Join("stage2", "input", Stage2SnapshotFileName), "stage2Snapshot")
-	if len(stage1Bundle.Rows) != 1 {
-		t.Fatalf("len(stage1Bundle.Rows) = %d, want 1", len(stage1Bundle.Rows))
+	if len(service.FlatStage2Rows(stage1Bundle.Snapshot)) != 1 {
+		t.Fatalf("len(service.FlatStage2Rows(stage1Bundle.Snapshot)) = %d, want 1", len(service.FlatStage2Rows(stage1Bundle.Snapshot)))
 	}
-	if stage1Bundle.Rows[0].Mode != "chain" {
-		t.Fatalf("stage1Bundle.Rows[0].Mode = %q, want %q", stage1Bundle.Rows[0].Mode, "chain")
+	if service.FlatStage2Rows(stage1Bundle.Snapshot)[0].Mode != "chain" {
+		t.Fatalf("service.FlatStage2Rows(stage1Bundle.Snapshot)[0].Mode = %q, want %q", service.FlatStage2Rows(stage1Bundle.Snapshot)[0].Mode, "chain")
 	}
-	if stage1Bundle.Rows[0].TargetName == nil || *stage1Bundle.Rows[0].TargetName != "🇺🇸 美国节点" {
-		t.Fatalf("stage1Bundle.Rows[0].TargetName = %v, want %q", stage1Bundle.Rows[0].TargetName, "🇺🇸 美国节点")
+	if service.FlatStage2Rows(stage1Bundle.Snapshot)[0].TargetName == nil || *service.FlatStage2Rows(stage1Bundle.Snapshot)[0].TargetName != "🇺🇸 美国节点" {
+		t.Fatalf("service.FlatStage2Rows(stage1Bundle.Snapshot)[0].TargetName = %v, want %q", service.FlatStage2Rows(stage1Bundle.Snapshot)[0].TargetName, "🇺🇸 美国节点")
 	}
 	if findArtifact(stage1Bundle.Files, "stage1/output/forward-relays.txt").Content != "(none)\n" {
 		t.Fatalf("stage1/output/forward-relays.txt = %q, want %q", findArtifact(stage1Bundle.Files, "stage1/output/forward-relays.txt").Content, "(none)\n")
@@ -127,7 +127,7 @@ func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
 	if findArtifact(stage1Bundle.Files, "stage1/output/stage1-convert.response.json").Content == "" {
 		t.Fatal("stage1/output/stage1-convert.response.json should not be empty")
 	}
-	testCase.Stage2Input.Rows = cloneRows(stage1Bundle.Rows)
+	testCase.Stage2Input = stage1Bundle.Snapshot
 
 	stage2Bundle, err := BuildStage2Artifacts(context.Background(), &fakeConversionSource{
 		result: loadThreePassResult(t, fixtureDir),
@@ -169,8 +169,8 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 		t.Fatalf("BuildStage1Artifacts() error = %v", err)
 	}
 
-	if len(stage1Bundle.Rows) != 5 {
-		t.Fatalf("len(stage1Bundle.Rows) = %d, want 5", len(stage1Bundle.Rows))
+	if len(service.FlatStage2Rows(stage1Bundle.Snapshot)) != 5 {
+		t.Fatalf("len(service.FlatStage2Rows(stage1Bundle.Snapshot)) = %d, want 5", len(service.FlatStage2Rows(stage1Bundle.Snapshot)))
 	}
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇸🇬 Alpha-SS-SG | SS | chain | 🇸🇬 新加坡节点 |")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/review-summary.md", "| 🇸🇬 Alpha-Reality-SG | Reality | chain | 🇸🇬 新加坡节点 |")
@@ -199,7 +199,10 @@ func TestBuildStage2Artifacts_UsesManagedPass3SourcePathWhenAvailable(t *testing
 	if err != nil {
 		t.Fatalf("LoadCase() error = %v", err)
 	}
-	testCase.Stage2Input.ServerAggregationGroups = nil
+	// Disable aggregation for this managed-pass3 path coverage.
+	for i := range testCase.Stage2Input.Servers {
+		testCase.Stage2Input.Servers[i].Aggregation = service.Stage2Aggregation{Enabled: false}
+	}
 
 	fixtureDir := filepath.Join("testdata", "dual-landing-chain-port-forward")
 	source := &fakeManagedSnapshotSource{
@@ -308,8 +311,8 @@ func TestBuildStage1Artifacts_UsesPreparedTemplateConfigAndNormalizesManagedTemp
 	if strings.Contains(findArtifact(bundle.Files, "stage1/output/landing-discovery.url.txt").Content, "abc123.ini") {
 		t.Fatalf("landing-discovery url should not expose raw managed template ID: %q", findArtifact(bundle.Files, "stage1/output/landing-discovery.url.txt").Content)
 	}
-	if len(bundle.Rows) != 1 || bundle.Rows[0].TargetName == nil || *bundle.Rows[0].TargetName != "🇩🇪 德国节点" {
-		t.Fatalf("bundle.Rows = %#v, want default chain target 🇩🇪 德国节点", bundle.Rows)
+	if len(service.FlatStage2Rows(bundle.Snapshot)) != 1 || service.FlatStage2Rows(bundle.Snapshot)[0].TargetName == nil || *service.FlatStage2Rows(bundle.Snapshot)[0].TargetName != "🇩🇪 德国节点" {
+		t.Fatalf("service.FlatStage2Rows(bundle.Snapshot) = %#v, want default chain target 🇩🇪 德国节点", service.FlatStage2Rows(bundle.Snapshot))
 	}
 }
 
@@ -372,8 +375,8 @@ func TestBuildStage1Artifacts_ReportsMissingRecognizedRegionGroupAsUnavailable(t
 	if _, ok := findArtifactOK(bundle.Files, "stage1/output/stage1-convert.response.json"); ok {
 		t.Fatal("stage1/output/stage1-convert.response.json should be absent when Stage 1 auto-fill fails")
 	}
-	if len(bundle.Rows) != 0 {
-		t.Fatalf("len(bundle.Rows) = %d, want 0", len(bundle.Rows))
+	if len(service.FlatStage2Rows(bundle.Snapshot)) != 0 {
+		t.Fatalf("len(service.FlatStage2Rows(bundle.Snapshot)) = %d, want 0", len(service.FlatStage2Rows(bundle.Snapshot)))
 	}
 }
 

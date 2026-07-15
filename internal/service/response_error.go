@@ -11,10 +11,13 @@ type ResponseError struct {
 	cause         error
 }
 
-type stage2RowErrorRef struct {
-	RowID                 string
-	SourceLandingNodeName string
-	ProxyName             string
+type stage2InstanceErrorRef struct {
+	SourceID  string
+	ProxyName string
+}
+
+type stage2ServerErrorRef struct {
+	ServerKey string
 }
 
 func (err *ResponseError) Error() string {
@@ -86,21 +89,18 @@ func newStage1FieldInvalidRequestError(message string, field string, cause error
 	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage1_field", map[string]any{"field": field}, nil, cause)
 }
 
-func newStage2RowValidationError(code string, message string, ref stage2RowErrorRef, field string, cause error) error {
-	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage2_row", newStage2RowErrorContext(ref, field), nil, cause)
+func newStage2InstanceValidationError(code string, message string, ref stage2InstanceErrorRef, field string, cause error) error {
+	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage2_instance", newStage2InstanceErrorContext(ref, field), nil, cause)
 }
 
-func newStage2RowInvalidRequestError(message string, ref stage2RowErrorRef, field string, cause error) error {
-	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage2_row", newStage2RowErrorContext(ref, field), nil, cause)
+func newStage2InstanceInvalidRequestError(message string, ref stage2InstanceErrorRef, field string, cause error) error {
+	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage2_instance", newStage2InstanceErrorContext(ref, field), nil, cause)
 }
 
-func newStage2RowErrorContext(ref stage2RowErrorRef, field string) map[string]any {
+func newStage2InstanceErrorContext(ref stage2InstanceErrorRef, field string) map[string]any {
 	context := map[string]any{}
-	if ref.RowID != "" {
-		context["rowId"] = ref.RowID
-	}
-	if ref.SourceLandingNodeName != "" {
-		context["sourceLandingNodeName"] = ref.SourceLandingNodeName
+	if ref.SourceID != "" {
+		context["sourceId"] = ref.SourceID
 	}
 	if ref.ProxyName != "" {
 		context["proxyName"] = ref.ProxyName
@@ -112,6 +112,25 @@ func newStage2RowErrorContext(ref stage2RowErrorRef, field string) map[string]an
 		return nil
 	}
 	return context
+}
+
+func newStage2ServerValidationError(code string, message string, serverKey string, cause error) error {
+	context := map[string]any{}
+	if serverKey != "" {
+		context["serverKey"] = serverKey
+	}
+	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage2_server", context, nil, cause)
+}
+
+func newStage2ServerInvalidRequestError(message string, serverKey string, field string, cause error) error {
+	context := map[string]any{}
+	if serverKey != "" {
+		context["serverKey"] = serverKey
+	}
+	if field != "" {
+		context["field"] = field
+	}
+	return newResponseError(http.StatusBadRequest, "INVALID_REQUEST", message, "stage2_server", context, nil, cause)
 }
 
 func newStage3FieldValidationError(code string, message string, field string, cause error) error {

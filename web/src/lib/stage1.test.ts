@@ -10,7 +10,6 @@ import {
 	normalizeServerAddress,
 	parseSocks5URIToManualSocks5FormState,
 	removeForwardRelayItem,
-	setPortForwardEnabled,
 } from "./stage1";
 import { initialStage1Input } from "./state";
 
@@ -68,26 +67,6 @@ describe("stage1 helpers", () => {
 		);
 	});
 
-	it("clears forward relays when port forward is disabled", () => {
-		const stage1Input = {
-			...initialStage1Input,
-			forwardRelayItems: ["relay-a.example.com:7443", "relay-b.example.com:8443"],
-			advancedOptions: {
-				...initialStage1Input.advancedOptions,
-				enablePortForward: true,
-			},
-		};
-
-		expect(setPortForwardEnabled(stage1Input, false)).toEqual({
-			...stage1Input,
-			forwardRelayItems: [],
-			advancedOptions: {
-				...stage1Input.advancedOptions,
-				enablePortForward: false,
-			},
-		});
-	});
-
 	it("appends multiple forward relays in normalized order", () => {
 		expect(
 			appendForwardRelayItems(initialStage1Input, [
@@ -100,14 +79,10 @@ describe("stage1 helpers", () => {
 		});
 	});
 
-	it("does not auto-disable port forward when the last relay item is removed", () => {
+	it("removes forward relay items by index", () => {
 		const stage1Input = {
 			...initialStage1Input,
 			forwardRelayItems: ["relay-a.example.com:7443"],
-			advancedOptions: {
-				...initialStage1Input.advancedOptions,
-				enablePortForward: true,
-			},
 		};
 
 		expect(removeForwardRelayItem(stage1Input, 0)).toEqual({

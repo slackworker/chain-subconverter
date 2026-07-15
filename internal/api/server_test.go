@@ -79,7 +79,7 @@ func TestStage1ConvertHandler_HappyPath(t *testing.T) {
 	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
 		t.Fatalf("stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
-	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
+	assertStage2InitRowsHaveServer(t, service.LegacyInitFromCatalog(response.Stage2.Catalog).Rows)
 }
 
 func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
@@ -113,72 +113,16 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	if !reflect.DeepEqual(normalizeStage1ConvertResponseForContract(response), normalizeStage1ConvertResponseForContract(expected)) {
 		t.Fatalf("dual-landing stage1 response mismatch:\n--- got ---\n%s\n--- want ---\n%s", mustMarshalIndented(t, response), mustMarshalIndented(t, expected))
 	}
-	assertStage2InitRowsHaveServer(t, response.Stage2Init.Rows)
-	if len(response.Stage2Init.Rows) != 5 {
-		t.Fatalf("len(response.Stage2Init.Rows) = %d, want 5", len(response.Stage2Init.Rows))
+	assertStage2InitRowsHaveServer(t, service.LegacyInitFromCatalog(response.Stage2.Catalog).Rows)
+	if len(service.LegacyInitFromCatalog(response.Stage2.Catalog).Rows) != 5 {
+		t.Fatalf("len(service.LegacyInitFromCatalog(response.Stage2.Catalog).Rows) = %d, want 5", len(service.LegacyInitFromCatalog(response.Stage2.Catalog).Rows))
 	}
-	if len(response.Stage2Init.ForwardRelays) != 2 {
-		t.Fatalf("len(response.Stage2Init.ForwardRelays) = %d, want 2", len(response.Stage2Init.ForwardRelays))
-	}
-}
-
-func TestStage2ResetHandler_AllScopeHappyPath(t *testing.T) {
-	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
-	var stage1Request service.Stage1ConvertRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "stage1", "output", "stage1-convert.request.json"), &stage1Request)
-	var generateRequest service.GenerateRequest
-	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &generateRequest)
-
-	handler := mustNewTestHandler(t, &fakeConversionSource{
-		result: loadThreePassResult(t, fixtureDir),
-	})
-
-	requestBody := mustMarshalIndented(t, service.Stage2ResetRequest{
-		Stage1Input:    stage1Request.Stage1Input,
-		Stage2Snapshot: generateRequest.Stage2Snapshot,
-		Reset: service.Stage2ResetAction{
-			Scope: "all",
-		},
-	})
-	request := httptest.NewRequest(http.MethodPost, "/api/stage2/reset", strings.NewReader(requestBody))
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
-	}
-	var response service.Stage2ResetResponse
-	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
-		t.Fatalf("decode response JSON: %v", err)
-	}
-	if len(response.Stage2Snapshot.Rows) != len(response.Stage2Init.Rows) {
-		t.Fatalf("len(stage2Snapshot.rows) = %d, want %d", len(response.Stage2Snapshot.Rows), len(response.Stage2Init.Rows))
-	}
-	if len(response.Stage2Snapshot.ServerAggregationGroups) != 0 {
-		t.Fatalf("len(stage2Snapshot.serverAggregationGroups) = %d, want 0", len(response.Stage2Snapshot.ServerAggregationGroups))
-	}
-	if len(response.Messages) == 0 || response.Messages[len(response.Messages)-1].Code != "STAGE2_RESET" {
-		t.Fatalf("reset messages mismatch: got %v", response.Messages)
+	if len(service.LegacyInitFromCatalog(response.Stage2.Catalog).ForwardRelays) != 2 {
+		t.Fatalf("len(service.LegacyInitFromCatalog(response.Stage2.Catalog).ForwardRelays) = %d, want 2", len(service.LegacyInitFromCatalog(response.Stage2.Catalog).ForwardRelays))
 	}
 }
 
-func TestStage2ResetHandler_InvalidScope(t *testing.T) {
-	handler := mustNewTestHandler(t, &fakeConversionSource{})
 
-	request := httptest.NewRequest(
-		http.MethodPost,
-		"/api/stage2/reset",
-		strings.NewReader(`{"stage1Input":{"landingRawText":"","transitRawText":"","forwardRelayItems":[],"advancedOptions":{"emoji":true,"udp":true,"skipCertVerify":null,"config":"https://templates.example.com/default.ini","include":null,"exclude":null}},"stage2Snapshot":{"rows":[],"serverAggregationGroups":[]},"reset":{"scope":"unsupported"}}`),
-	)
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
-
-	assertBlockingError(t, recorder, http.StatusBadRequest, service.BlockingError{
-		Code:    "INVALID_REQUEST",
-		Message: "unsupported reset scope",
-		Scope:   "global",
-	})
-}
 
 func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
@@ -357,7 +301,7 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 
 	storedLongURL, err := service.EncodeLongURL(
 		"https://legacy.example.com/base",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -386,7 +330,7 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 
 	wantLongURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -402,10 +346,10 @@ func TestResolveURLHandler_ResolvesShortURL(t *testing.T) {
 	if response.RestoreStatus != "replayable" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "replayable")
 	}
-	if len(response.Stage2Snapshot.Rows) != 1 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 1", len(response.Stage2Snapshot.Rows))
+	if len(service.FlatStage2Rows(response.Stage2.Snapshot)) != 1 {
+		t.Fatalf("len(service.FlatStage2Rows(response.Stage2.Snapshot)) = %d, want 1", len(service.FlatStage2Rows(response.Stage2.Snapshot)))
 	}
-	row := response.Stage2Snapshot.Rows[0]
+	row := service.FlatStage2Rows(response.Stage2.Snapshot)[0]
 	if row.RowID != "🇺🇸 SS2022-Test-256-US" || row.SourceLandingNodeName != "🇺🇸 SS2022-Test-256-US" || row.ProxyName != "🇺🇸 SS2022-Test-256-US" {
 		t.Fatalf("derived row identity mismatch: got %+v", row)
 	}
@@ -427,7 +371,7 @@ func TestResolveURLHandler_DualLandingChainPortForwardLongURL(t *testing.T) {
 
 	legacyLongURL, err := service.EncodeLongURL(
 		"https://legacy.example.com/base",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -495,8 +439,8 @@ func TestResolveURLHandler_DualLandingChainPortForwardShortURL(t *testing.T) {
 	if response.LongURL != expectedShortLinkResponse.LongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, expectedShortLinkResponse.LongURL)
 	}
-	if len(response.Stage2Snapshot.Rows) != 8 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 8", len(response.Stage2Snapshot.Rows))
+	if len(service.FlatStage2Rows(response.Stage2.Snapshot)) != 8 {
+		t.Fatalf("len(service.FlatStage2Rows(response.Stage2.Snapshot)) = %d, want 8", len(service.FlatStage2Rows(response.Stage2.Snapshot)))
 	}
 }
 
@@ -578,7 +522,7 @@ func TestShortLinksHandler_HappyPath(t *testing.T) {
 
 	legacyLongURL, err := service.EncodeLongURL(
 		"https://legacy.example.com/base",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -604,7 +548,7 @@ func TestShortLinksHandler_HappyPath(t *testing.T) {
 
 	wantLongURL, err := service.EncodeLongURL(
 		"http://localhost:11200",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -657,7 +601,7 @@ func TestShortLinksHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
 
 	legacyLongURL, err := service.EncodeLongURL(
 		"https://legacy.example.com/base",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -706,7 +650,7 @@ func TestShortLinksHandler_UsesTrustedForwardedHeadersForPublicShortURL(t *testi
 
 	legacyLongURL, err := service.EncodeLongURL(
 		"https://legacy.example.com/base",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -1004,7 +948,7 @@ func TestShortSubscriptionHandler_HappyPath(t *testing.T) {
 
 	storedLongURL, err := service.EncodeLongURL(
 		"https://legacy.example.com/base",
-		service.BuildLongURLPayload(requestPayload.Stage1Input, requestPayload.Stage2Snapshot),
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
 		0,
 	)
 	if err != nil {
@@ -1403,7 +1347,7 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "STAGE2_ROWSET_MISMATCH",
-		Message: "stage2 rowset mismatch",
+		Message: "stage2 instance set mismatch",
 		Scope:   "global",
 	})
 }
@@ -1476,12 +1420,11 @@ func TestGenerateHandler_MapsEmptyChainTargetToSpecModel(t *testing.T) {
 	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
 		Code:    "EMPTY_CHAIN_TARGET",
 		Message: "chain target is empty",
-		Scope:   "stage2_row",
+		Scope:   "stage2_instance",
 		Context: map[string]any{
-			"rowId":                 "Unknown Landing",
-			"sourceLandingNodeName": "Unknown Landing",
-			"proxyName":             "Unknown Landing",
-			"field":                 "targetName",
+			"sourceId":  "Unknown Landing",
+			"proxyName": "Unknown Landing",
+			"field":     "targetName",
 		},
 	})
 }
@@ -1874,8 +1817,8 @@ func assertResolveURLReplayableResponse(t *testing.T, response service.ResolveUR
 	if !reflect.DeepEqual(response.Stage1Input, requestPayload.Stage1Input) {
 		t.Fatalf("stage1Input mismatch: got %#v want %#v", response.Stage1Input, requestPayload.Stage1Input)
 	}
-	if !reflect.DeepEqual(normalizeStage2SnapshotForContract(response.Stage2Snapshot), normalizeStage2SnapshotForContract(requestPayload.Stage2Snapshot)) {
-		t.Fatalf("stage2Snapshot mismatch: got %#v want %#v", response.Stage2Snapshot, requestPayload.Stage2Snapshot)
+	if !reflect.DeepEqual(normalizeStage2SnapshotForContract(response.Stage2.Snapshot), normalizeStage2SnapshotForContract(stage2SnapshotFromGenerateRequest(requestPayload))) {
+		t.Fatalf("stage2Snapshot mismatch: got %#v want %#v", response.Stage2.Snapshot, stage2SnapshotFromGenerateRequest(requestPayload))
 	}
 	if !reflect.DeepEqual(response.Messages, []service.Message{{
 		Level:   "info",
@@ -1899,11 +1842,22 @@ func normalizeStage2SnapshotForContract(snapshot service.Stage2Snapshot) service
 
 func normalizeStage1ConvertResponseForContract(response service.Stage1ConvertResponse) service.Stage1ConvertResponse {
 	normalized := response
-	normalized.Stage2Init.Rows = append([]service.Stage2InitRow(nil), response.Stage2Init.Rows...)
-	for index := range normalized.Stage2Init.Rows {
-		normalized.Stage2Init.Rows[index].Server = ""
+	servers := append([]service.Stage2CatalogServer(nil), response.Stage2.Catalog.Servers...)
+	for si := range servers {
+		sources := append([]service.Stage2CatalogSource(nil), servers[si].Sources...)
+		servers[si].Sources = sources
+		servers[si].ServerKey = ""
 	}
+	normalized.Stage2.Catalog.Servers = servers
 	return normalized
+}
+
+
+func stage2SnapshotFromGenerateRequest(request service.GenerateRequest) service.Stage2Snapshot {
+	if len(request.Stage2.Snapshot.Servers) > 0 {
+		return request.Stage2.Snapshot
+	}
+	return request.Stage2Snapshot
 }
 
 func assertStage2InitRowsHaveServer(t *testing.T, rows []service.Stage2InitRow) {

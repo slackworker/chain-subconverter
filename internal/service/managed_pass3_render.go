@@ -11,7 +11,7 @@ type SnapshotPass3RenderingSource interface {
 	RenderManagedPass3(ctx context.Context, prepared PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error)
 }
 
-func buildManagedLandingConfigYAML(landingDiscoveryYAML string, rows []Stage2Row) (string, error) {
+func buildManagedLandingConfigYAML(landingDiscoveryYAML string, snapshot Stage2Snapshot) (string, error) {
 	linesByName, err := indexInlineProxyLinesByName(landingDiscoveryYAML)
 	if err != nil {
 		return "", err
@@ -19,15 +19,15 @@ func buildManagedLandingConfigYAML(landingDiscoveryYAML string, rows []Stage2Row
 
 	var builder strings.Builder
 	builder.WriteString("proxies:\n")
-	for _, row := range rows {
-		sourceLandingName := stage2SourceLandingNodeName(row)
-		line, ok := linesByName[sourceLandingName]
+	for _, ref := range FlattenStage2Instances(snapshot) {
+		sourceID := strings.TrimSpace(ref.SourceID)
+		line, ok := linesByName[sourceID]
 		if !ok {
-			return "", fmt.Errorf("landing discovery proxy %q not found", sourceLandingName)
+			return "", fmt.Errorf("landing discovery proxy %q not found", sourceID)
 		}
-		renderedLine, err := applyRowToManagedLandingProxyLine(line, row)
+		renderedLine, err := applyInstanceToManagedLandingProxyLine(line, ref.Instance)
 		if err != nil {
-			return "", fmt.Errorf("apply stage2 row for source landing node %q: %w", sourceLandingName, err)
+			return "", fmt.Errorf("apply stage2 instance for sourceId %q: %w", sourceID, err)
 		}
 		builder.WriteString(renderedLine)
 		builder.WriteString("\n")
@@ -80,13 +80,13 @@ func indexInlineProxyLinesByName(raw string) (map[string]string, error) {
 	return linesByName, nil
 }
 
-func applyRowToManagedLandingProxyLine(line string, row Stage2Row) (string, error) {
+func applyInstanceToManagedLandingProxyLine(line string, row Stage2Instance) (string, error) {
 	prefix, fields, err := parseInlineProxyLine(line)
 	if err != nil {
 		return "", err
 	}
 
-	fields = upsertInlineProxyField(fields, "name", stage2ProxyName(row))
+	fields = upsertInlineProxyField(fields, "name", strings.TrimSpace(row.ProxyName))
 
 	switch row.Mode {
 	case "none":
@@ -143,16 +143,17 @@ func recognizedRegionGroupSet(fixtures ConversionFixtures) (map[string]struct{},
 	return result, nil
 }
 
-func stage2StripLandingNames(landingProxies []resolvedLandingProxy, rows []Stage2Row) map[string]struct{} {
-	stripNames := make(map[string]struct{}, len(landingProxies)+len(rows)*2)
+func stage2StripLandingNames(landingProxies []resolvedLandingProxy, snapshot Stage2Snapshot) map[string]struct{} {
+	refs := FlattenStage2Instances(snapshot)
+	stripNames := make(map[string]struct{}, len(landingProxies)+len(refs)*2)
 	for _, landing := range landingProxies {
 		stripNames[landing.Name] = struct{}{}
 	}
-	for _, row := range rows {
-		if sourceLandingName := stage2SourceLandingNodeName(row); sourceLandingName != "" {
-			stripNames[sourceLandingName] = struct{}{}
+	for _, ref := range refs {
+		if sourceID := strings.TrimSpace(ref.SourceID); sourceID != "" {
+			stripNames[sourceID] = struct{}{}
 		}
-		if proxyName := stage2ProxyName(row); proxyName != "" {
+		if proxyName := strings.TrimSpace(ref.Instance.ProxyName); proxyName != "" {
 			stripNames[proxyName] = struct{}{}
 		}
 	}

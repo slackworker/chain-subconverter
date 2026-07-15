@@ -1,83 +1,73 @@
 package service
 
-import (
-	"sort"
-	"strings"
-)
+import "strings"
 
-// CanonicalizeStage2SnapshotForLinkEncoding maps session rowIds to deterministic
-// encoded rowIds derived from proxyName before long URL / short link state encoding.
-// Presentation order is preserved; aggregation member order is preserved only when
-// enabled=true and strategy=fallback. Validation must use the original snapshot
-// before this transform.
+// CanonicalizeStage2SnapshotForLinkEncoding produces the v5 encoding-form tree:
+// - strip instanceId (never serialized on wire)
+// - enabled=false aggregation -> {enabled:false} only
+// - enabled=true fallback: memberProxyNames panel order
+// - enabled=true non-fallback: memberProxyNames from DFS presentation order
 func CanonicalizeStage2SnapshotForLinkEncoding(snapshot Stage2Snapshot) Stage2Snapshot {
 	snapshot = NormalizeStage2Snapshot(snapshot)
-
-	rowIDToEncoded := make(map[string]string, len(snapshot.Rows))
-	rows := make([]Stage2Row, len(snapshot.Rows))
-	for index, row := range snapshot.Rows {
-		encodedRowID := stage2ProxyName(row)
-		oldRowID := stage2RowID(row)
-		rowIDToEncoded[oldRowID] = encodedRowID
-
-		canonicalRow := row
-		canonicalRow.RowID = encodedRowID
-		canonicalRow.ProxyName = encodedRowID
-		canonicalRow.SourceLandingNodeName = stage2SourceLandingNodeName(row)
-		rows[index] = canonicalRow
-	}
-
-	groups := make([]ServerAggregationGroup, len(snapshot.ServerAggregationGroups))
-	for index, group := range snapshot.ServerAggregationGroups {
-		memberRowIDs := make([]string, 0, len(group.MemberRowIDs))
-		for _, memberRowID := range group.MemberRowIDs {
-			memberRowID = strings.TrimSpace(memberRowID)
-			if memberRowID == "" {
-				continue
-			}
-			if encodedRowID, ok := rowIDToEncoded[memberRowID]; ok {
-				memberRowIDs = append(memberRowIDs, encodedRowID)
-				continue
-			}
-			memberRowIDs = append(memberRowIDs, memberRowID)
-		}
-		memberRowIDs = canonicalizeServerAggregationMemberRowIDs(group, memberRowIDs)
-		groups[index] = ServerAggregationGroup{
-			Server:       group.Server,
-			GroupName:    strings.TrimSpace(group.GroupName),
-			Enabled:      group.Enabled,
-			Strategy:     group.Strategy,
-			MemberRowIDs: memberRowIDs,
-		}
-	}
-
-	return Stage2Snapshot{
-		Rows: rows,
+	out := Stage2Snapshot{
 		ChainProxyTargetGroupSwitchOptimizationEnabled: snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
-		ServerAggregationGroups:                        groups,
+		Servers: make([]Stage2SnapshotServer, 0, len(snapshot.Servers)),
 	}
+	for _, server := range snapshot.Servers {
+		encodedServer := Stage2SnapshotServer{
+			ServerKey: strings.TrimSpace(server.ServerKey),
+			Sources:   make([]Stage2SnapshotSource, 0, len(server.Sources)),
+		}
+		if !server.Aggregation.Enabled {
+			encodedServer.Aggregation = Stage2Aggregation{Enabled: false}
+		} else {
+			agg := Stage2Aggregation{
+				Enabled:   true,
+				GroupName: strings.TrimSpace(server.Aggregation.GroupName),
+				Strategy:  strings.TrimSpace(server.Aggregation.Strategy),
+			}
+			memberProxyNames := append([]string(nil), server.Aggregation.MemberProxyNames...)
+			if agg.Strategy != "fallback" {
+				memberProxyNames = DFSMemberProxyNames(server, memberProxyNames)
+			}
+			agg.MemberProxyNames = memberProxyNames
+			encodedServer.Aggregation = agg
+		}
+		for _, source := range server.Sources {
+			encodedSource := Stage2SnapshotSource{
+				SourceID:  strings.TrimSpace(source.SourceID),
+				Instances: make([]Stage2Instance, 0, len(source.Instances)),
+			}
+			for _, inst := range source.Instances {
+				encodedInst := Stage2Instance{
+					ProxyName:  strings.TrimSpace(inst.ProxyName),
+					Mode:       strings.TrimSpace(inst.Mode),
+					TargetName: inst.TargetName,
+				}
+				if encodedInst.TargetName != nil {
+					trimmed := strings.TrimSpace(*encodedInst.TargetName)
+					if trimmed == "" {
+						encodedInst.TargetName = nil
+					} else {
+						encodedInst.TargetName = &trimmed
+					}
+				}
+				encodedSource.Instances = append(encodedSource.Instances, encodedInst)
+			}
+			encodedServer.Sources = append(encodedServer.Sources, encodedSource)
+		}
+		out.Servers = append(out.Servers, encodedServer)
+	}
+	return out
 }
 
-func shouldPreserveServerAggregationMemberOrder(group ServerAggregationGroup) bool {
-	return group.Enabled && strings.TrimSpace(group.Strategy) == "fallback"
-}
-
-func canonicalizeServerAggregationMemberRowIDs(group ServerAggregationGroup, memberRowIDs []string) []string {
-	canonical := make([]string, 0, len(memberRowIDs))
-	seen := make(map[string]struct{}, len(memberRowIDs))
-	for _, memberRowID := range memberRowIDs {
-		memberRowID = strings.TrimSpace(memberRowID)
-		if memberRowID == "" {
-			continue
+func RestoreStage2SnapshotFromEncoding(snapshot Stage2Snapshot) Stage2Snapshot {
+	snapshot = NormalizeStage2Snapshot(snapshot)
+	for si := range snapshot.Servers {
+		server := &snapshot.Servers[si]
+		if !server.Aggregation.Enabled {
+			server.Aggregation = Stage2Aggregation{Enabled: false}
 		}
-		if _, exists := seen[memberRowID]; exists {
-			continue
-		}
-		seen[memberRowID] = struct{}{}
-		canonical = append(canonical, memberRowID)
 	}
-	if !shouldPreserveServerAggregationMemberOrder(group) {
-		sort.Strings(canonical)
-	}
-	return canonical
+	return snapshot
 }

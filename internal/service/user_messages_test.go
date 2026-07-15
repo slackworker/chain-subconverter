@@ -6,7 +6,7 @@ import (
 )
 
 func TestRestoreConflictMessage_TargetNotFound(t *testing.T) {
-	err := newStage2RowValidationError("TARGET_NOT_FOUND", "target not found", stage2RowErrorRef{
+	err := newStage2InstanceValidationError("TARGET_NOT_FOUND", "target not found", stage2InstanceErrorRef{
 		ProxyName: "HK 01",
 	}, "targetName", nil)
 	message := restoreConflictMessage(err)
@@ -17,13 +17,16 @@ func TestRestoreConflictMessage_TargetNotFound(t *testing.T) {
 
 func TestBuildStage1ConvertMessages_IncludesSummary(t *testing.T) {
 	target := "🇭🇰 香港节点"
-	messages := buildStage1ConvertMessages(Stage2Init{
-		Rows: []Stage2InitRow{
-			{
-				Mode:            "chain",
-				TargetName:      &target,
-			},
-		},
+	messages := buildStage1ConvertMessages(Stage2Catalog{
+		Servers: []Stage2CatalogServer{{
+			ServerKey: "source:demo",
+			Sources: []Stage2CatalogSource{{
+				SourceID:         "demo",
+				DefaultProxyName: "demo",
+				DefaultMode:      "chain",
+				DefaultTargetName: &target,
+			}},
+		}},
 		ForwardRelays: []ForwardRelay{{Name: "relay.example.com:7443"}},
 	}, nil)
 

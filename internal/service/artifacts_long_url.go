@@ -14,7 +14,7 @@ import (
 
 const (
 	defaultLongURLMaxLength = 8192
-	longURLSchemaVersion    = 4
+	longURLSchemaVersion    = 5
 	longURLPath             = "/sub"
 	NoLongURLLengthLimit    = -1
 )
@@ -64,25 +64,32 @@ type longURLAdvancedOptions struct {
 }
 
 type longURLStage2Snapshot struct {
-	Rows                                           []longURLStage2Row              `json:"rows"`
-	ChainProxyTargetGroupSwitchOptimizationEnabled *bool                           `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
-	ServerAggregationGroups                        []longURLServerAggregationGroup `json:"serverAggregationGroups,omitempty"`
+	Servers                                        []longURLStage2Server `json:"servers"`
+	ChainProxyTargetGroupSwitchOptimizationEnabled *bool                 `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
 }
 
-type longURLStage2Row struct {
-	RowID                 string  `json:"rowId"`
-	SourceLandingNodeName string  `json:"sourceLandingNodeName"`
-	ProxyName             string  `json:"proxyName"`
-	Mode                  string  `json:"mode"`
-	TargetName            *string `json:"targetName"`
+type longURLStage2Server struct {
+	ServerKey   string                 `json:"serverKey"`
+	Aggregation longURLStage2Aggregation `json:"aggregation"`
+	Sources     []longURLStage2Source  `json:"sources"`
 }
 
-type longURLServerAggregationGroup struct {
-	Server       string   `json:"server"`
-	GroupName    string   `json:"groupName,omitempty"`
-	Enabled      bool     `json:"enabled"`
-	Strategy     string   `json:"strategy"`
-	MemberRowIDs []string `json:"memberRowIds,omitempty"`
+type longURLStage2Aggregation struct {
+	Enabled          bool     `json:"enabled"`
+	GroupName        string   `json:"groupName,omitempty"`
+	Strategy         string   `json:"strategy,omitempty"`
+	MemberProxyNames []string `json:"memberProxyNames,omitempty"`
+}
+
+type longURLStage2Source struct {
+	SourceID  string               `json:"sourceId"`
+	Instances []longURLStage2Instance `json:"instances"`
+}
+
+type longURLStage2Instance struct {
+	ProxyName  string  `json:"proxyName"`
+	Mode       string  `json:"mode"`
+	TargetName *string `json:"targetName"`
 }
 
 func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLength int) (string, error) {
@@ -152,7 +159,7 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 
 	// Canonicalize decoded payload to the current in-memory schema version.
 	payload.V = longURLSchemaVersion
-	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
+	payload.Stage2Snapshot = RestoreStage2SnapshotFromEncoding(payload.Stage2Snapshot)
 
 	if err := ValidateStage1InputLimits(payload.Stage1Input, limits); err != nil {
 		return LongURLPayload{}, fmt.Errorf("validate stage1 input limits: %w", err)
@@ -214,32 +221,38 @@ func unmarshalLongURLPayload(payloadJSON []byte, payload *LongURLPayload) error 
 }
 
 func (schema longURLPayloadSchema) payload() LongURLPayload {
-	rows := make([]Stage2Row, len(schema.Stage2Snapshot.Rows))
 	chainProxyTargetGroupSwitchOptimizationEnabled := false
 	if schema.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled != nil {
 		chainProxyTargetGroupSwitchOptimizationEnabled = *schema.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled
 	}
-	for index, row := range schema.Stage2Snapshot.Rows {
-		rows[index] = Stage2Row{
-			RowID:                 row.RowID,
-			SourceLandingNodeName: row.SourceLandingNodeName,
-			ProxyName:             row.ProxyName,
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
-		}
-	}
-	var serverAggregationGroups []ServerAggregationGroup
-	if len(schema.Stage2Snapshot.ServerAggregationGroups) > 0 {
-		serverAggregationGroups = make([]ServerAggregationGroup, len(schema.Stage2Snapshot.ServerAggregationGroups))
-		for index, group := range schema.Stage2Snapshot.ServerAggregationGroups {
-			serverAggregationGroups[index] = ServerAggregationGroup{
-				Server:       group.Server,
-				GroupName:    group.GroupName,
-				Enabled:      group.Enabled,
-				Strategy:     group.Strategy,
-				MemberRowIDs: append([]string(nil), group.MemberRowIDs...),
+	servers := make([]Stage2SnapshotServer, 0, len(schema.Stage2Snapshot.Servers))
+	for _, server := range schema.Stage2Snapshot.Servers {
+		sources := make([]Stage2SnapshotSource, 0, len(server.Sources))
+		for _, source := range server.Sources {
+			instances := make([]Stage2Instance, 0, len(source.Instances))
+			for _, inst := range source.Instances {
+				instances = append(instances, Stage2Instance{
+					ProxyName:  inst.ProxyName,
+					Mode:       inst.Mode,
+					TargetName: inst.TargetName,
+				})
 			}
+			sources = append(sources, Stage2SnapshotSource{
+				SourceID:  source.SourceID,
+				Instances: instances,
+			})
 		}
+		agg := Stage2Aggregation{Enabled: server.Aggregation.Enabled}
+		if server.Aggregation.Enabled {
+			agg.GroupName = server.Aggregation.GroupName
+			agg.Strategy = server.Aggregation.Strategy
+			agg.MemberProxyNames = append([]string(nil), server.Aggregation.MemberProxyNames...)
+		}
+		servers = append(servers, Stage2SnapshotServer{
+			ServerKey:   server.ServerKey,
+			Aggregation: agg,
+			Sources:     sources,
+		})
 	}
 
 	return LongURLPayload{
@@ -258,9 +271,8 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 			},
 		},
 		Stage2Snapshot: Stage2Snapshot{
-			Rows: rows,
 			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
-			ServerAggregationGroups:                        serverAggregationGroups,
+			Servers: servers,
 		},
 	}
 }
@@ -288,85 +300,60 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 		return fmt.Errorf("advancedOptions.config must include host")
 	}
 
-	rowsByID := make(map[string]Stage2Row, len(payload.Stage2Snapshot.Rows))
-	rowsByProxyName := make(map[string]struct{}, len(payload.Stage2Snapshot.Rows))
-	for _, row := range payload.Stage2Snapshot.Rows {
-		rowID := strings.TrimSpace(stage2RowID(row))
-		if rowID == "" {
-			return fmt.Errorf("rowId must not be empty")
+	proxyNames := map[string]struct{}{}
+	for _, server := range payload.Stage2Snapshot.Servers {
+		serverKey := strings.TrimSpace(server.ServerKey)
+		if serverKey == "" {
+			return fmt.Errorf("serverKey must not be empty")
 		}
-		if _, exists := rowsByID[rowID]; exists {
-			return fmt.Errorf("duplicate rowId %q", rowID)
-		}
-		rowsByID[rowID] = row
-		sourceLandingNodeName := strings.TrimSpace(stage2SourceLandingNodeName(row))
-		if sourceLandingNodeName == "" {
-			return fmt.Errorf("sourceLandingNodeName must not be empty")
-		}
-		proxyName := strings.TrimSpace(stage2ProxyName(row))
-		if proxyName == "" {
-			return fmt.Errorf("proxyName must not be empty")
-		}
-		if _, exists := rowsByProxyName[proxyName]; exists {
-			return fmt.Errorf("duplicate proxy name %q", proxyName)
-		}
-		rowsByProxyName[proxyName] = struct{}{}
-
-		targetName := ""
-		if row.TargetName != nil {
-			targetName = strings.TrimSpace(*row.TargetName)
-		}
-
-		switch row.Mode {
-		case "none":
-			if targetName != "" {
-				return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
+		for _, source := range server.Sources {
+			sourceID := strings.TrimSpace(source.SourceID)
+			if sourceID == "" {
+				return fmt.Errorf("sourceId must not be empty")
 			}
-		case "chain":
-			if targetName == "" {
-				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			if len(source.Instances) == 0 {
+				return fmt.Errorf("source %q must contain at least one instance", sourceID)
 			}
-		case "port_forward":
-			if targetName == "" {
-				return fmt.Errorf("missing targetName for proxy %q", proxyName)
+			for _, inst := range source.Instances {
+				proxyName := strings.TrimSpace(inst.ProxyName)
+				if proxyName == "" {
+					return fmt.Errorf("proxyName must not be empty")
+				}
+				if _, exists := proxyNames[proxyName]; exists {
+					return fmt.Errorf("duplicate proxy name %q", proxyName)
+				}
+				proxyNames[proxyName] = struct{}{}
+
+				targetName := ""
+				if inst.TargetName != nil {
+					targetName = strings.TrimSpace(*inst.TargetName)
+				}
+				switch inst.Mode {
+				case "none":
+					if targetName != "" {
+						return fmt.Errorf("targetName must be empty for proxy %q when mode is none", proxyName)
+					}
+				case "chain", "port_forward":
+					if targetName == "" {
+						return fmt.Errorf("missing targetName for proxy %q", proxyName)
+					}
+				default:
+					return fmt.Errorf("unsupported mode %q for proxy %q", inst.Mode, proxyName)
+				}
 			}
-		default:
-			return fmt.Errorf("unsupported mode %q for proxy %q", row.Mode, proxyName)
 		}
-	}
-
-	seenServerGroups := make(map[string]struct{}, len(payload.Stage2Snapshot.ServerAggregationGroups))
-	for _, group := range payload.Stage2Snapshot.ServerAggregationGroups {
-		server := strings.TrimSpace(group.Server)
-		if server == "" {
-			return fmt.Errorf("serverAggregationGroups.server must not be empty")
-		}
-		if _, exists := seenServerGroups[server]; exists {
-			return fmt.Errorf("duplicate server aggregation group for server %q", server)
-		}
-		seenServerGroups[server] = struct{}{}
-
-		if !group.Enabled {
+		agg := server.Aggregation
+		if !agg.Enabled {
 			continue
 		}
-		switch strings.TrimSpace(group.Strategy) {
+		switch strings.TrimSpace(agg.Strategy) {
 		case "fallback", "url-test", "select", "load-balance":
 		default:
-			return fmt.Errorf("unsupported server aggregation strategy %q for server %q", group.Strategy, server)
+			return fmt.Errorf("unsupported server aggregation strategy %q for server %q", agg.Strategy, serverKey)
 		}
-		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
-		for _, memberRowID := range group.MemberRowIDs {
-			rowID := strings.TrimSpace(memberRowID)
-			if rowID == "" {
-				return fmt.Errorf("server aggregation group for server %q contains empty memberRowId", server)
-			}
-			memberSeen[rowID] = struct{}{}
-			if _, exists := rowsByID[rowID]; !exists {
-				return fmt.Errorf("server aggregation group for server %q references unknown rowId %q", server, rowID)
-			}
-		}
-		if len(memberSeen) < 2 {
-			return fmt.Errorf("server aggregation group for server %q must include at least 2 memberRowIds", server)
+		memberNames := agg.MemberProxyNames
+		if len(memberNames) < 2 {
+			return fmt.Errorf("server aggregation for %q must include at least 2 members", serverKey)
 		}
 	}
 
@@ -448,29 +435,39 @@ func encodeLongURLStateKey(payload LongURLPayload) (string, error) {
 }
 
 func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
-	rows := make([]longURLStage2Row, len(payload.Stage2Snapshot.Rows))
-	for index, row := range payload.Stage2Snapshot.Rows {
-		rows[index] = longURLStage2Row{
-			RowID:                 stage2RowID(row),
-			SourceLandingNodeName: stage2SourceLandingNodeName(row),
-			ProxyName:             stage2ProxyName(row),
-			Mode:                  row.Mode,
-			TargetName:            row.TargetName,
+	canonical := CanonicalizeStage2SnapshotForLinkEncoding(payload.Stage2Snapshot)
+	servers := make([]longURLStage2Server, 0, len(canonical.Servers))
+	for _, server := range canonical.Servers {
+		sources := make([]longURLStage2Source, 0, len(server.Sources))
+		for _, source := range server.Sources {
+			instances := make([]longURLStage2Instance, 0, len(source.Instances))
+			for _, inst := range source.Instances {
+				instances = append(instances, longURLStage2Instance{
+					ProxyName:  inst.ProxyName,
+					Mode:       inst.Mode,
+					TargetName: inst.TargetName,
+				})
+			}
+			sources = append(sources, longURLStage2Source{
+				SourceID:  source.SourceID,
+				Instances: instances,
+			})
 		}
-	}
-	serverAggregationGroups := make([]longURLServerAggregationGroup, len(payload.Stage2Snapshot.ServerAggregationGroups))
-	for index, group := range payload.Stage2Snapshot.ServerAggregationGroups {
-		serverAggregationGroups[index] = longURLServerAggregationGroup{
-			Server:       group.Server,
-			GroupName:    group.GroupName,
-			Enabled:      group.Enabled,
-			Strategy:     group.Strategy,
-			MemberRowIDs: append([]string(nil), group.MemberRowIDs...),
+		agg := longURLStage2Aggregation{Enabled: server.Aggregation.Enabled}
+		if server.Aggregation.Enabled {
+			agg.GroupName = server.Aggregation.GroupName
+			agg.Strategy = server.Aggregation.Strategy
+			agg.MemberProxyNames = append([]string(nil), server.Aggregation.MemberProxyNames...)
 		}
+		servers = append(servers, longURLStage2Server{
+			ServerKey:   server.ServerKey,
+			Aggregation: agg,
+			Sources:     sources,
+		})
 	}
 
 	var chainProxyTargetGroupSwitchOptimizationEnabled *bool
-	if payload.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled {
+	if canonical.ChainProxyTargetGroupSwitchOptimizationEnabled {
 		enabled := true
 		chainProxyTargetGroupSwitchOptimizationEnabled = &enabled
 	}
@@ -489,9 +486,8 @@ func newLongURLPayloadSchema(payload LongURLPayload) longURLPayloadSchema {
 			TransitRawText:    payload.Stage1Input.TransitRawText,
 		},
 		Stage2Snapshot: longURLStage2Snapshot{
-			Rows: rows,
+			Servers: servers,
 			ChainProxyTargetGroupSwitchOptimizationEnabled: chainProxyTargetGroupSwitchOptimizationEnabled,
-			ServerAggregationGroups:                        serverAggregationGroups,
 		},
 		V: payload.V,
 	}

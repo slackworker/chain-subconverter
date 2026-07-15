@@ -54,10 +54,10 @@ func TestResolveURLFromSource_Replayable(t *testing.T) {
 	if response.LongURL != generateResponse.LongURL {
 		t.Fatalf("longUrl mismatch: got %q want %q", response.LongURL, generateResponse.LongURL)
 	}
-	if len(response.Stage2Snapshot.Rows) != 1 {
-		t.Fatalf("len(response.Stage2Snapshot.Rows) = %d, want 1", len(response.Stage2Snapshot.Rows))
+	if len(FlatStage2Rows(response.Stage2.Snapshot)) != 1 {
+		t.Fatalf("len(FlatStage2Rows(response.Stage2.Snapshot)) = %d, want 1", len(FlatStage2Rows(response.Stage2.Snapshot)))
 	}
-	row := response.Stage2Snapshot.Rows[0]
+	row := FlatStage2Rows(response.Stage2.Snapshot)[0]
 	if row.RowID != "🇺🇸 SS2022-Test-256-US" || row.SourceLandingNodeName != "🇺🇸 SS2022-Test-256-US" || row.ProxyName != "🇺🇸 SS2022-Test-256-US" {
 		t.Fatalf("derived row identity mismatch: got %+v", row)
 	}
@@ -136,8 +136,8 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 		t.Fatalf("restore conflict message should be business-facing, got %q", response.Messages[0].Message)
 	}
 	// Original snapshot should still be returned.
-	if len(response.Stage2Snapshot.Rows) != 1 || response.Stage2Snapshot.Rows[0].ProxyName != "HK 01" {
-		t.Fatalf("snapshot should preserve original data, got %+v", response.Stage2Snapshot)
+	if len(FlatStage2Rows(response.Stage2.Snapshot)) != 1 || FlatStage2Rows(response.Stage2.Snapshot)[0].ProxyName != "HK 01" {
+		t.Fatalf("snapshot should preserve original data, got %+v", response.Stage2.Snapshot)
 	}
 }
 
@@ -480,11 +480,11 @@ func TestResolveURLFromSource_DowngradesTemplateUnavailableToConflicted(t *testi
 	if strings.TrimSpace(*response.Stage1Input.AdvancedOptions.Config) != strings.TrimSpace(*stage1Input.AdvancedOptions.Config) {
 		t.Fatalf("config mismatch: got %q want %q", *response.Stage1Input.AdvancedOptions.Config, *stage1Input.AdvancedOptions.Config)
 	}
-	if len(response.Stage2Snapshot.Rows) != 1 {
-		t.Fatalf("stage2Snapshot rows mismatch: got %d want 1", len(response.Stage2Snapshot.Rows))
+	if len(FlatStage2Rows(response.Stage2.Snapshot)) != 1 {
+		t.Fatalf("stage2Snapshot rows mismatch: got %d want 1", len(FlatStage2Rows(response.Stage2.Snapshot)))
 	}
-	if response.Stage2Snapshot.Rows[0].RowID != "HK 01" || response.Stage2Snapshot.Rows[0].Mode != "chain" {
-		t.Fatalf("stage2 row mismatch: got %+v", response.Stage2Snapshot.Rows[0])
+	if FlatStage2Rows(response.Stage2.Snapshot)[0].RowID != "HK 01" || FlatStage2Rows(response.Stage2.Snapshot)[0].Mode != "chain" {
+		t.Fatalf("stage2 row mismatch: got %+v", FlatStage2Rows(response.Stage2.Snapshot)[0])
 	}
 	if len(response.BlockingErrors) != 0 {
 		t.Fatalf("expected no blocking errors, got %v", response.BlockingErrors)

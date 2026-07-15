@@ -5,8 +5,6 @@ import type {
 	ResolveURLResponse,
 	RuntimeConfigResponse,
 	RuntimeStatusResponse,
-	Stage2ResetRequest,
-	Stage2ResetResponse,
 	ShortLinkResponse,
 	Stage1ConvertRequest,
 	Stage1ConvertResponse,
@@ -148,10 +146,6 @@ export function postStage1Convert(payload: Stage1ConvertRequest) {
 
 export function postGenerate(payload: GenerateRequest) {
 	return postJSON<GenerateResponse, GenerateRequest>("/api/generate", payload);
-}
-
-export function postStage2Reset(payload: Stage2ResetRequest) {
-	return postJSON<Stage2ResetResponse, Stage2ResetRequest>("/api/stage2/reset", payload);
 }
 
 export function postResolveURL(url: string) {

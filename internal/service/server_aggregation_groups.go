@@ -22,6 +22,7 @@ type managedServerAggregationGroup struct {
 }
 
 func appendServerAggregationGroupsToCompleteConfigYAML(fullYAML string, snapshot Stage2Snapshot) (string, error) {
+	snapshot = NormalizeStage2Snapshot(snapshot)
 	managedGroups, err := buildManagedServerAggregationGroups(fullYAML, snapshot)
 	if err != nil {
 		return "", err
@@ -251,10 +252,6 @@ func proxyGroupMemberIndent(lines []string, startIndex int, endIndex int) string
 }
 
 func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapshot) ([]managedServerAggregationGroup, error) {
-	if len(snapshot.ServerAggregationGroups) == 0 {
-		return nil, nil
-	}
-
 	inlineProxies, err := parseInlineProxyList(fullYAML)
 	if err != nil {
 		return nil, fmt.Errorf("parse complete config proxies: %w", err)
@@ -268,50 +265,50 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 	if err != nil {
 		return nil, fmt.Errorf("parse complete config proxy-groups: %w", err)
 	}
-	usedNames := make(map[string]struct{}, len(proxyGroups)+len(snapshot.ServerAggregationGroups))
+	usedNames := make(map[string]struct{}, len(proxyGroups)+len(snapshot.Servers))
 	for name := range proxyGroups {
 		usedNames[name] = struct{}{}
 	}
 
-	rowsByID := make(map[string]Stage2Row, len(snapshot.Rows))
-	for _, row := range snapshot.Rows {
-		rowsByID[stage2RowID(row)] = row
-	}
-
-	managedGroups := make([]managedServerAggregationGroup, 0, len(snapshot.ServerAggregationGroups))
-	for _, group := range snapshot.ServerAggregationGroups {
-		if !group.Enabled {
+	managedGroups := make([]managedServerAggregationGroup, 0, len(snapshot.Servers))
+	for _, server := range snapshot.Servers {
+		if !server.Aggregation.Enabled {
 			continue
 		}
-		memberSeen := make(map[string]struct{}, len(group.MemberRowIDs))
-		members := make([]string, 0, len(group.MemberRowIDs))
-		memberRows := make([]Stage2Row, 0, len(group.MemberRowIDs))
-		for _, memberRowID := range group.MemberRowIDs {
-			trimmedMemberRowID := strings.TrimSpace(memberRowID)
-			if _, exists := memberSeen[trimmedMemberRowID]; exists {
+		memberProxyNames := append([]string(nil), server.Aggregation.MemberProxyNames...)
+		if strings.TrimSpace(server.Aggregation.Strategy) != "fallback" {
+			memberProxyNames = DFSMemberProxyNames(server, memberProxyNames)
+		}
+		members := make([]string, 0, len(memberProxyNames))
+		memberInstances := make([]Stage2Instance, 0, len(memberProxyNames))
+		seen := map[string]struct{}{}
+		instanceByName := map[string]Stage2Instance{}
+		for _, source := range server.Sources {
+			for _, inst := range source.Instances {
+				instanceByName[strings.TrimSpace(inst.ProxyName)] = inst
+			}
+		}
+		for _, name := range memberProxyNames {
+			if _, dup := seen[name]; dup {
 				continue
 			}
-			memberSeen[trimmedMemberRowID] = struct{}{}
-
-			row, exists := rowsByID[trimmedMemberRowID]
-			if !exists {
-				return nil, fmt.Errorf("server aggregation group member rowId %q is missing from stage2Snapshot.rows", memberRowID)
+			seen[name] = struct{}{}
+			if _, exists := proxyNames[name]; !exists {
+				return nil, fmt.Errorf("server aggregation group member proxy %q is missing from complete config", name)
 			}
-			memberName := stage2ProxyName(row)
-			if _, exists := proxyNames[memberName]; !exists {
-				return nil, fmt.Errorf("server aggregation group member proxy %q is missing from complete config", memberName)
+			members = append(members, name)
+			if inst, ok := instanceByName[name]; ok {
+				memberInstances = append(memberInstances, inst)
 			}
-			memberRows = append(memberRows, row)
-			members = append(members, memberName)
 		}
 		managedName := nextManagedServerAggregationGroupName(
-			deriveManagedServerAggregationGroupBaseName(group.Server, group.GroupName, memberRows),
+			deriveManagedServerAggregationGroupBaseName(server.ServerKey, server.Aggregation.GroupName, memberInstances),
 			usedNames,
 		)
 		usedNames[managedName] = struct{}{}
 		managedGroups = append(managedGroups, managedServerAggregationGroup{
 			Name:    managedName,
-			Type:    group.Strategy,
+			Type:    server.Aggregation.Strategy,
 			Members: members,
 		})
 	}
@@ -319,7 +316,7 @@ func buildManagedServerAggregationGroups(fullYAML string, snapshot Stage2Snapsho
 	return managedGroups, nil
 }
 
-func deriveManagedServerAggregationGroupBaseName(server string, groupName string, memberRows []Stage2Row) string {
+func deriveManagedServerAggregationGroupBaseName(server string, groupName string, memberInstances []Stage2Instance) string {
 	if trimmedGroupName := strings.TrimSpace(groupName); trimmedGroupName != "" {
 		return trimmedGroupName
 	}
@@ -328,7 +325,7 @@ func deriveManagedServerAggregationGroupBaseName(server string, groupName string
 		baseName = "server"
 	}
 	defaultDisplayName := baseName
-	if sourceFlagEmoji := detectServerGroupSourceFlagEmoji(memberRows); sourceFlagEmoji != "" {
+	if sourceFlagEmoji := detectServerGroupSourceFlagEmoji(memberInstances); sourceFlagEmoji != "" {
 		defaultDisplayName = sourceFlagEmoji + " " + baseName
 	}
 	return defaultDisplayName
@@ -368,15 +365,12 @@ func nextManagedServerAggregationGroupName(baseName string, usedNames map[string
 	}
 }
 
-func detectServerGroupSourceFlagEmoji(rows []Stage2Row) string {
+func detectServerGroupSourceFlagEmoji(instances []Stage2Instance) string {
 	var sourceFlagEmoji string
-	foundSourceRow := false
-	for _, row := range rows {
-		if !isServerGroupSourceRow(row) {
-			continue
-		}
-		foundSourceRow = true
-		currentFlagEmoji := leadingFlagEmoji(stage2ProxyName(row))
+	found := false
+	for _, inst := range instances {
+		found = true
+		currentFlagEmoji := leadingFlagEmoji(stage2ProxyName(inst))
 		if currentFlagEmoji == "" {
 			return ""
 		}
@@ -388,18 +382,10 @@ func detectServerGroupSourceFlagEmoji(rows []Stage2Row) string {
 			return ""
 		}
 	}
-	if !foundSourceRow {
+	if !found {
 		return ""
 	}
 	return sourceFlagEmoji
-}
-
-func isServerGroupSourceRow(row Stage2Row) bool {
-	sourceLandingName := stage2SourceLandingNodeName(row)
-	if sourceLandingName == "" {
-		return false
-	}
-	return stage2RowID(row) == sourceLandingName
 }
 
 func leadingFlagEmoji(name string) string {

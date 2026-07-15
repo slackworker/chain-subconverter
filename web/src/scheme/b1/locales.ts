@@ -44,7 +44,6 @@ export interface LocaleDict {
 	excludeTags: string;
 	tagPlaceholder: string;
 	skipCertVerify: string;
-	enablePortForward: string;
 	converting: string;
 	convertAndFill: string;
 	stageChangedNotice: string;
@@ -74,8 +73,8 @@ export interface LocaleDict {
 	rowSourceLabel: string;
 	cloneRow: string;
 	deleteRow: string;
-	keepOneDerivedRow: string;
-	sourceRowLocked: string;
+	keepOneInstance: string;
+	defaultInstanceLocked: string;
 	commonGroups: string;
 	fixedNodes: string;
 	noCommonChoices: string;
@@ -170,7 +169,6 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		excludeTags: "排除节点 (exclude)",
 		tagPlaceholder: "输入节点匹配规则",
 		skipCertVerify: "跳过证书验证",
-		enablePortForward: "启用端口转发",
 		converting: "转换中…",
 		convertAndFill: "转换并自动填充",
 		stageChangedNotice: "已变更：请重新执行转换后再生成链接。",
@@ -200,8 +198,8 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		rowSourceLabel: "来源：{name}",
 		cloneRow: "复制",
 		deleteRow: "删除",
-		keepOneDerivedRow: "至少保留一行",
-		sourceRowLocked: "源节点不可删除",
+		keepOneInstance: "至少保留一行",
+		defaultInstanceLocked: "默认实例不可删除",
 		commonGroups: "区域策略组",
 		fixedNodes: "固定节点",
 		noCommonChoices: "暂无常用候选",
@@ -294,7 +292,6 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		excludeTags: "Exclude (exclude)",
 		tagPlaceholder: "Enter tag pattern",
 		skipCertVerify: "Skip Cert Verify",
-		enablePortForward: "Enable Port Forward",
 		converting: "Converting...",
 		convertAndFill: "Convert & Auto-Fill",
 		stageChangedNotice: "Changed: please re-convert before generating link.",
@@ -324,8 +321,8 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		rowSourceLabel: "Source: {name}",
 		cloneRow: "Copy",
 		deleteRow: "Delete",
-		keepOneDerivedRow: "Keep at least one row",
-		sourceRowLocked: "Source row cannot be deleted",
+		keepOneInstance: "Keep at least one row",
+		defaultInstanceLocked: "Default instances cannot be deleted",
 		commonGroups: "Region Groups",
 		fixedNodes: "Fixed Nodes",
 		noCommonChoices: "No common targets",

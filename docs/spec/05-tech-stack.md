@@ -72,7 +72,7 @@
 - 构建工具默认使用 `Vite`
 - 当前定位为单页应用；不引入 `Next.js`、SSR、服务端组件或全栈 React 框架
 - 状态管理以页面局部状态和轻量请求状态为主；不预设 Redux 一类全局状态方案
-- 前端只消费后端返回的 `stage2Init`、`messages[]`、`blockingErrors[]` 等权威数据，不复制后端规则
+- 前端只消费后端返回的 `stage2`（`catalog` / `snapshot`）、`messages[]`、`blockingErrors[]` 等权威数据，不复制后端规则；Stage2 树模型见 [06-stage2-model](06-stage2-model.md)
 
 ## 6. 部署拓扑
 

@@ -3,7 +3,9 @@ import { expect, test } from "@playwright/test";
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
 import {
 	applyDefaultUiPreferences,
+	assertWireSnapshotHasNoClientIds,
 	expectHTTPResponseOK,
+	flattenWireSnapshotInstances,
 	locateStage2Row,
 	selectStage2MenuOption,
 } from "./helpers";
@@ -58,12 +60,13 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	expect(stage1ConvertRequest.stage1Input.forwardRelayItems).toEqual([relayA, relayB]);
 
 	const stage1ConvertPayload = (await stage1ConvertResponse.json()) as Stage1ConvertResponse;
-	const firstRowName = stage1ConvertPayload.stage2Init.rows[0]?.proxyName;
-	const secondRowName = stage1ConvertPayload.stage2Init.rows[1]?.proxyName;
+	const catalogSources = stage1ConvertPayload.stage2.catalog.servers.flatMap((server) => server.sources);
+	const firstRowName = catalogSources[0]?.defaultProxyName;
+	const secondRowName = catalogSources[1]?.defaultProxyName;
 	if (!firstRowName || !secondRowName) {
 		throw new Error("dual-landing full flow requires at least two stage2 rows");
 	}
-	const preferredChainTarget = stage1ConvertPayload.stage2Init.chainTargets.find((target) => !target.isEmpty)?.name;
+	const preferredChainTarget = stage1ConvertPayload.stage2.catalog.chainTargets.find((target) => !target.isEmpty)?.name;
 	if (!preferredChainTarget) {
 		throw new Error("dual-landing full flow requires a non-empty chain target");
 	}
@@ -102,14 +105,16 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	await expectHTTPResponseOK(generateResponse, "generate");
 
 	const generateRequest = generateResponse.request().postDataJSON() as GenerateRequest;
-	const sourceSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.proxyName === firstRowName);
-	const replicaSnapshotRow = generateRequest.stage2Snapshot.rows.find((row) => row.proxyName === replicaRowName);
-	if (sourceSnapshotRow?.rowId === undefined || replicaSnapshotRow?.rowId === undefined) {
-		throw new Error("real dual-landing full flow requires row IDs for aggregation assertions");
+	assertWireSnapshotHasNoClientIds(generateRequest);
+	const generatedInstances = flattenWireSnapshotInstances(generateRequest.stage2.snapshot);
+	const sourceSnapshotRow = generatedInstances.find((row) => row.proxyName === firstRowName);
+	const replicaSnapshotRow = generatedInstances.find((row) => row.proxyName === replicaRowName);
+	if (sourceSnapshotRow === undefined || replicaSnapshotRow === undefined) {
+		throw new Error("real dual-landing full flow requires source/replica wire snapshot rows");
 	}
-	expect(generateRequest.stage2Snapshot.serverAggregationGroups).toBeInstanceOf(Array);
-	expect(sourceSnapshotRow.rowId).not.toBe(replicaSnapshotRow.rowId);
-	expect(generateRequest.stage2Snapshot.rows).toEqual(
+	expect(generateRequest.stage2.snapshot.servers.map((server) => server.aggregation)).toBeInstanceOf(Array);
+	expect(sourceSnapshotRow.proxyName).not.toBe(replicaSnapshotRow.proxyName);
+	expect(generatedInstances).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				mode: "chain",
@@ -141,7 +146,8 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 	expect(resolveResponse.ok()).toBeTruthy();
 	const resolvePayload = (await resolveResponse.json()) as ResolveURLResponse;
 	expect(resolvePayload.restoreStatus).toBe("replayable");
-	expect(resolvePayload.stage2Snapshot.rows).toEqual(
+	const resolvedInstances = flattenWireSnapshotInstances(resolvePayload.stage2.snapshot);
+	expect(resolvedInstances).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
 				mode: "chain",
@@ -157,7 +163,8 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 			}),
 		]),
 	);
-	expect(resolvePayload.stage2Snapshot.serverAggregationGroups).toEqual(generateRequest.stage2Snapshot.serverAggregationGroups);
+	expect(resolvePayload.stage2.snapshot.servers.map((server) => server.aggregation))
+		.toEqual(generateRequest.stage2.snapshot.servers.map((server) => server.aggregation));
 
 	await page.getByRole("button", { name: "反向解析" }).click();
 	await expect(firstRow.locator(".a-target-menu__trigger").nth(0)).toContainText("链式代理");

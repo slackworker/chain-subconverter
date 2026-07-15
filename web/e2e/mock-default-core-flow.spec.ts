@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-import { applyDefaultUiPreferences, locateStage2Row, mockReplayableResolveRoute, mockRuntimeConfig } from "./helpers";
+import {
+	applyDefaultUiPreferences,
+	flattenStage2Instances,
+	locateStage2Row,
+	mockReplayableResolveRoute,
+	mockRuntimeConfig,
+} from "./helpers";
 
 import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
 
@@ -9,21 +15,37 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 	const transitInput = "https://example.com/transit-happy-path.txt";
 	const longURL = "http://127.0.0.1:11200/sub?target=clash&url=https%3A%2F%2Fexample.com%2Ftransit-happy-path.txt";
 	const shortURL = "http://127.0.0.1:11200/s/happy-path";
-	const stage2Init: Stage1ConvertResponse["stage2Init"] = {
-		availableModes: ["none", "chain", "port_forward"],
-		chainTargets: [],
-		forwardRelays: [],
-		rows: [
-			{
-				rowId: "landing-happy",
-				sourceLandingNodeName: "landing-happy",
-				proxyName: "landing-happy",
-				landingNodeType: "ss",
-				server: "landing-happy.example.com",
-				mode: "none",
-				targetName: null,
-			},
-		],
+	const stage2: Stage1ConvertResponse["stage2"] = {
+		catalog: {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [],
+			forwardRelays: [],
+			servers: [{
+				serverKey: "landing-happy.example.com",
+				sources: [{
+					sourceId: "landing-happy",
+					landingNodeType: "ss",
+					defaultProxyName: "landing-happy",
+					defaultMode: "none",
+					defaultTargetName: null,
+				}],
+			}],
+		},
+		snapshot: {
+			chainProxyTargetGroupSwitchOptimizationEnabled: false,
+			servers: [{
+				serverKey: "landing-happy.example.com",
+				aggregation: { enabled: false },
+				sources: [{
+					sourceId: "landing-happy",
+					instances: [{
+						proxyName: "landing-happy",
+						mode: "none",
+						targetName: null,
+					}],
+				}],
+			}],
+		},
 	};
 
 	const stage1Requests: Stage1ConvertRequest[] = [];
@@ -39,7 +61,7 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 		stage1Requests.push(request);
 		await route.fulfill({
 			json: {
-				stage2Init,
+				stage2,
 				messages: [],
 				blockingErrors: [],
 			},
@@ -81,6 +103,7 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 		resolveRequests,
 		longURL,
 		shortURL,
+		stage2Catalog: stage2.catalog,
 		messages: [
 			{ level: "info", code: "RESTORE_METADATA_READY", message: "已读取恢复快照。" },
 		],
@@ -118,21 +141,20 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 	await expect(logPanel.getByText("已准备好短链接。", { exact: true })).toBeVisible();
 	await expect(logPanel.getByText("已读取恢复快照。", { exact: true })).toBeVisible();
 
-	expect(stage1Requests).toHaveLength(2);
+	expect(stage1Requests).toHaveLength(1);
 	expect(generateRequests).toHaveLength(1);
 	expect(shortLinkRequests).toEqual([longURL]);
 	expect(resolveRequests).toEqual([shortURL]);
 	expect(stage1Requests[0]?.stage1Input.landingRawText).toBe(landingInput);
 	expect(stage1Requests[0]?.stage1Input.transitRawText).toBe(transitInput);
-	expect(generateRequests[0]?.stage2Snapshot.rows).toEqual([
+	expect(generateRequests[0]!.stage2.snapshot.servers[0].sources[0].instances).toEqual([
 		{
-			rowId: "landing-happy",
-			sourceLandingNodeName: "landing-happy",
 			proxyName: "landing-happy",
 			mode: "none",
 			targetName: null,
 		},
 	]);
+	expect(JSON.stringify(generateRequests[0])).not.toMatch(/instanceId|memberInstanceIds|memberLocalInstanceIds/);
 });
 
 test("mock default restore conflict keeps stage2 snapshot readonly", async ({ page }) => {
@@ -155,7 +177,7 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 				shortUrl: shortURL,
 				restoreStatus: "conflicted",
 				restoreConflicts: [
-					{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { rowId: "HK 01", field: "targetName" } },
+					{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { proxyName: "HK 01", sourceId: "HK 01", field: "targetName" } },
 				],
 				stage1Input: {
 					landingRawText: landingInput,
@@ -170,17 +192,36 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 						exclude: null,
 					},
 				},
-				stage2Snapshot: {
-					rows: [
-						{
-							rowId: "HK 01",
-							sourceLandingNodeName: "HK 01",
-							proxyName: "HK 01",
-							mode: "chain",
-							targetName: "HK Relay Group",
-						},
-					],
-					serverAggregationGroups: [],
+				stage2: {
+					catalog: {
+						availableModes: ["none", "chain"],
+						chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+						forwardRelays: [],
+						servers: [{
+							serverKey: "source:HK 01",
+							sources: [{
+								sourceId: "HK 01",
+								landingNodeType: "ss",
+								defaultProxyName: "HK 01",
+								defaultMode: "chain",
+								defaultTargetName: "HK Relay Group",
+							}],
+						}],
+					},
+					snapshot: {
+						servers: [{
+							serverKey: "source:HK 01",
+							aggregation: { enabled: false },
+							sources: [{
+								sourceId: "HK 01",
+								instances: [{
+									proxyName: "HK 01",
+									mode: "chain",
+									targetName: "HK Relay Group",
+								}],
+							}],
+						}],
+					},
 				},
 				messages: [
 					{ level: "warning", code: "RESTORE_CONFLICT", message: "restore conflict: target not found" },

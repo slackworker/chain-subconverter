@@ -1,26 +1,59 @@
 {
   "stage2Snapshot": {
-    "rows": [
+    "servers": [
       {
-        "mode": "chain",
-        "targetName": "🇺🇸 美国节点",
-        "rowId": "🇺🇸 SS2022-Test-256-US",
-        "sourceLandingNodeName": "🇺🇸 SS2022-Test-256-US",
-        "proxyName": "🇺🇸 SS2022-Test-256-US"
+        "serverKey": "source:🇺🇸 SS2022-Test-256-US",
+        "aggregation": {
+          "enabled": false
+        },
+        "sources": [
+          {
+            "sourceId": "🇺🇸 SS2022-Test-256-US",
+            "instances": [
+              {
+                "proxyName": "🇺🇸 SS2022-Test-256-US",
+                "mode": "chain",
+                "targetName": "🇺🇸 美国节点"
+              }
+            ]
+          }
+        ]
       },
       {
-        "mode": "none",
-        "targetName": null,
-        "rowId": "SS2022-Test-256",
-        "sourceLandingNodeName": "SS2022-Test-256",
-        "proxyName": "SS2022-Test-256"
+        "serverKey": "source:SS2022-Test-256",
+        "aggregation": {
+          "enabled": false
+        },
+        "sources": [
+          {
+            "sourceId": "SS2022-Test-256",
+            "instances": [
+              {
+                "proxyName": "SS2022-Test-256",
+                "mode": "none",
+                "targetName": null
+              }
+            ]
+          }
+        ]
       },
       {
-        "mode": "none",
-        "targetName": null,
-        "rowId": "Example3",
-        "sourceLandingNodeName": "Example3",
-        "proxyName": "Example3"
+        "serverKey": "source:Example3",
+        "aggregation": {
+          "enabled": false
+        },
+        "sources": [
+          {
+            "sourceId": "Example3",
+            "instances": [
+              {
+                "proxyName": "Example3",
+                "mode": "none",
+                "targetName": null
+              }
+            ]
+          }
+        ]
       }
     ]
   }

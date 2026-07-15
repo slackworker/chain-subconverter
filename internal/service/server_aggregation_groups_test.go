@@ -28,11 +28,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_ProxyGroupsAtEnd(t *t
 				RowID:           "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing",
+				Server:          "landing.example.com",
 			},
 			{
 				RowID:           "hk-2",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing Copy",
+				Server:          "landing.example.com",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -94,11 +96,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_DeduplicatesMembersBy
 				RowID:           "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing",
+				Server:          "landing.example.com",
 			},
 			{
 				RowID:           "hk-2",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:       "HK Landing Copy",
+				Server:          "landing.example.com",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -156,11 +160,13 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_PrefersFrontEndEdited
 				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK 按延迟分组",
 				ProxyName:             "HK 按延迟分组",
+				Server:                "landing.example.com",
 			},
 			{
 				RowID:                 "hk-2",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing Copy",
+				Server:                "landing.example.com",
 			},
 		},
 		ServerAggregationGroups: []ServerAggregationGroup{
@@ -642,6 +648,7 @@ func aggregationInjectionTestSnapshot(server string, memberRowIDs ...string) Sta
 			RowID:                 memberRowID,
 			SourceLandingNodeName: proxyName,
 			ProxyName:             proxyName,
+			Server:                server,
 		})
 	}
 	return Stage2Snapshot{

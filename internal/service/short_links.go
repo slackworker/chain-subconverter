@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"sort"
 	"strings"
 )
 
@@ -185,56 +184,7 @@ func canonicalizeShortLinkTarget(publicBaseURL string, rawLongURL string, maxLon
 func canonicalizeLongURLPayloadForShortLinkStateKey(payload LongURLPayload) LongURLPayload {
 	canonical := payload
 	canonical.Stage2Snapshot = CanonicalizeStage2SnapshotForLinkEncoding(payload.Stage2Snapshot)
-
-	rows := make([]Stage2Row, len(canonical.Stage2Snapshot.Rows))
-	copy(rows, canonical.Stage2Snapshot.Rows)
-
-	for index, row := range rows {
-		rows[index].RowID = strings.TrimSpace(stage2RowID(row))
-		rows[index].SourceLandingNodeName = strings.TrimSpace(stage2SourceLandingNodeName(row))
-		rows[index].ProxyName = strings.TrimSpace(stage2ProxyName(row))
-	}
-
-	groups := make([]ServerAggregationGroup, len(canonical.Stage2Snapshot.ServerAggregationGroups))
-	for index, group := range canonical.Stage2Snapshot.ServerAggregationGroups {
-		memberRowIDs := canonicalizeServerAggregationMemberRowIDs(group, group.MemberRowIDs)
-		groups[index] = ServerAggregationGroup{
-			Server:       strings.TrimSpace(group.Server),
-			GroupName:    strings.TrimSpace(group.GroupName),
-			Enabled:      group.Enabled,
-			Strategy:     strings.TrimSpace(group.Strategy),
-			MemberRowIDs: memberRowIDs,
-		}
-	}
-
-	sort.Slice(groups, func(left, right int) bool {
-		return compareServerAggregationGroupCanonicalOrder(groups[left], groups[right]) < 0
-	})
-
-	canonical.Stage2Snapshot = Stage2Snapshot{
-		Rows: rows,
-		ChainProxyTargetGroupSwitchOptimizationEnabled: canonical.Stage2Snapshot.ChainProxyTargetGroupSwitchOptimizationEnabled,
-		ServerAggregationGroups:                        groups,
-	}
 	return canonical
-}
-
-func compareServerAggregationGroupCanonicalOrder(left ServerAggregationGroup, right ServerAggregationGroup) int {
-	leftFields := []string{
-		strings.TrimSpace(left.Server),
-		strings.TrimSpace(left.GroupName),
-		boolToCanonicalString(left.Enabled),
-		strings.TrimSpace(left.Strategy),
-		strings.Join(left.MemberRowIDs, "\x00"),
-	}
-	rightFields := []string{
-		strings.TrimSpace(right.Server),
-		strings.TrimSpace(right.GroupName),
-		boolToCanonicalString(right.Enabled),
-		strings.TrimSpace(right.Strategy),
-		strings.Join(right.MemberRowIDs, "\x00"),
-	}
-	return compareStringFields(leftFields, rightFields)
 }
 
 func compareStringFields(left []string, right []string) int {

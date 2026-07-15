@@ -100,47 +100,67 @@ type Stage2SnapshotFixture struct {
 	Stage2Snapshot Stage2Snapshot `json:"stage2Snapshot"`
 }
 
+// Stage2Bundle is the unified API shell: catalog (readonly) + snapshot (editable).
+type Stage2Bundle struct {
+	Catalog  Stage2Catalog  `json:"catalog"`
+	Snapshot Stage2Snapshot `json:"snapshot"`
+}
+
+type Stage2Catalog struct {
+	AvailableModes []string             `json:"availableModes"`
+	ChainTargets   []ChainTarget        `json:"chainTargets"`
+	ForwardRelays  []ForwardRelay       `json:"forwardRelays"`
+	Servers        []Stage2CatalogServer `json:"servers"`
+}
+
+type Stage2CatalogServer struct {
+	ServerKey string                `json:"serverKey"`
+	Sources   []Stage2CatalogSource `json:"sources"`
+}
+
+type Stage2CatalogSource struct {
+	SourceID          string                     `json:"sourceId"`
+	LandingNodeType   string                     `json:"landingNodeType"`
+	RestrictedModes   map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+	ModeWarnings      map[string]ModeRestriction `json:"modeWarnings,omitempty"`
+	DefaultProxyName  string                     `json:"defaultProxyName"`
+	DefaultMode       string                     `json:"defaultMode"`
+	DefaultTargetName *string                    `json:"defaultTargetName"`
+}
+
 type Stage2Snapshot struct {
-	Rows                                           []Stage2Row              `json:"rows"`
-	ChainProxyTargetGroupSwitchOptimizationEnabled bool                     `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
-	ServerAggregationGroups                        []ServerAggregationGroup `json:"serverAggregationGroups"`
+	ChainProxyTargetGroupSwitchOptimizationEnabled bool                   `json:"chainProxyTargetGroupSwitchOptimizationEnabled,omitempty"`
+	Servers                                        []Stage2SnapshotServer `json:"servers"`
+	// Deprecated flat fields accepted only via struct literals / legacy fixtures; stripped on normalize.
+	Rows                    []Stage2Row               `json:"-"`
+	ServerAggregationGroups []ServerAggregationGroup  `json:"-"`
 }
 
-type ServerAggregationGroup struct {
-	Server       string   `json:"server"`
-	GroupName    string   `json:"groupName,omitempty"`
-	Enabled      bool     `json:"enabled"`
-	Strategy     string   `json:"strategy"`
-	MemberRowIDs []string `json:"memberRowIds,omitempty"`
+type Stage2SnapshotServer struct {
+	ServerKey   string                 `json:"serverKey"`
+	Aggregation Stage2Aggregation      `json:"aggregation"`
+	Sources     []Stage2SnapshotSource `json:"sources"`
 }
 
-type Stage2Init struct {
-	AvailableModes []string        `json:"availableModes"`
-	ChainTargets   []ChainTarget   `json:"chainTargets"`
-	ForwardRelays  []ForwardRelay  `json:"forwardRelays"`
-	Rows           []Stage2InitRow `json:"rows"`
+type Stage2Aggregation struct {
+	Enabled          bool     `json:"enabled"`
+	GroupName        string   `json:"groupName,omitempty"`
+	Strategy         string   `json:"strategy,omitempty"`
+	MemberProxyNames []string `json:"memberProxyNames,omitempty"`
 }
 
-type Stage2Row struct {
-	RowID                 string                     `json:"rowId"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName"`
-	ProxyName             string                     `json:"proxyName"`
-	Mode                  string                     `json:"mode"`
-	TargetName            *string                    `json:"targetName"`
-	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
+type Stage2SnapshotSource struct {
+	SourceID  string           `json:"sourceId"`
+	Instances []Stage2Instance `json:"instances"`
 }
 
-type Stage2InitRow struct {
-	RowID                 string                     `json:"rowId"`
-	SourceLandingNodeName string                     `json:"sourceLandingNodeName"`
-	ProxyName             string                     `json:"proxyName"`
-	LandingNodeType       string                     `json:"landingNodeType"`
-	Server                string                     `json:"server"`
-	Mode                  string                     `json:"mode"`
-	TargetName            *string                    `json:"targetName"`
-	RestrictedModes       map[string]ModeRestriction `json:"restrictedModes,omitempty"`
-	ModeWarnings          map[string]ModeRestriction `json:"modeWarnings,omitempty"`
+type Stage2Instance struct {
+	InstanceID string  `json:"-"`
+	ProxyName  string  `json:"proxyName"`
+	Mode       string  `json:"mode"`
+	TargetName *string `json:"targetName"`
 }
+
 
 type ModeRestriction struct {
 	ReasonCode string         `json:"reasonCode"`
@@ -196,24 +216,42 @@ type regionMatcher struct {
 
 const recommendedChainLandingPortMax = 10000
 
-func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
+func BuildStage2Bundle(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Bundle, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
-	return buildStage2Init(stage1Input, fixtures, loadRegionMatchers)
+	return buildStage2Bundle(stage1Input, fixtures, loadRegionMatchers)
+}
+
+// BuildStage2Init returns a flat catalog projection for older call sites/tests.
+// Prefer BuildStage2Bundle for API responses.
+func BuildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures) (Stage2Init, error) {
+	bundle, err := BuildStage2Bundle(stage1Input, fixtures)
+	if err != nil {
+		return Stage2Init{}, err
+	}
+	return LegacyInitFromCatalog(bundle.Catalog), nil
 }
 
 func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func(string) ([]regionMatcher, error)) (Stage2Init, error) {
+	bundle, err := buildStage2Bundle(stage1Input, fixtures, regionMatcherLoader)
+	if err != nil {
+		return Stage2Init{}, err
+	}
+	return LegacyInitFromCatalog(bundle.Catalog), nil
+}
+
+func buildStage2Bundle(stage1Input Stage1Input, fixtures ConversionFixtures, regionMatcherLoader func(string) ([]regionMatcher, error)) (Stage2Bundle, error) {
 	landingProxies, err := parseInlineProxyList(fixtures.LandingDiscoveryYAML)
 	if err != nil {
-		return Stage2Init{}, fmt.Errorf("parse landing discovery fixture: %w", err)
+		return Stage2Bundle{}, fmt.Errorf("parse landing discovery fixture: %w", err)
 	}
 
 	transitProxies, err := parseInlineProxyList(fixtures.TransitDiscoveryYAML)
 	if err != nil {
-		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture: %w", err)
+		return Stage2Bundle{}, fmt.Errorf("parse transit discovery fixture: %w", err)
 	}
 	transitDiscoveryGroups, err := parseProxyGroups(fixtures.TransitDiscoveryYAML)
 	if err != nil {
-		return Stage2Init{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
+		return Stage2Bundle{}, fmt.Errorf("parse transit discovery fixture proxy-groups: %w", err)
 	}
 
 	useFullBase := strings.TrimSpace(fixtures.FullBaseYAML) != ""
@@ -224,17 +262,17 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 	if useFullBase {
 		fullBaseProxies, err := parseInlineProxyList(fixtures.FullBaseYAML)
 		if err != nil {
-			return Stage2Init{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
+			return Stage2Bundle{}, fmt.Errorf("parse full-base fixture proxies: %w", err)
 		}
 
 		resolvedLandingProxies, err = resolveLandingDiscoveryProxies(landingProxies, fullBaseProxies)
 		if err != nil {
-			return Stage2Init{}, err
+			return Stage2Bundle{}, err
 		}
 	} else {
 		resolvedLandingProxies, err = resolveLandingDiscoveryProxiesWithoutFullBase(landingProxies)
 		if err != nil {
-			return Stage2Init{}, err
+			return Stage2Bundle{}, err
 		}
 	}
 
@@ -245,21 +283,21 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 
 	regionMatchers, err := regionMatcherLoader(fixtures.TemplateConfig)
 	if err != nil {
-		return Stage2Init{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
+		return Stage2Bundle{}, newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
 	emojiProcessor, _, err := buildChainEmojiProcessor(fixtures.TemplateConfig, stage1Input.AdvancedOptions)
 	if err != nil {
-		return Stage2Init{}, newInternalResponseError("failed to build chain emoji processor", fmt.Errorf("build chain emoji processor: %w", err))
+		return Stage2Bundle{}, newInternalResponseError("failed to build chain emoji processor", fmt.Errorf("build chain emoji processor: %w", err))
 	}
 
 	chainTargets, err := buildChainTargetsFromTransitDiscovery(regionMatchers, landingNames, transitProxies, transitDiscoveryGroups, emojiProcessor)
 	if err != nil {
-		return Stage2Init{}, err
+		return Stage2Bundle{}, err
 	}
 
 	forwardRelays, err := parseForwardRelays(stage1Input)
 	if err != nil {
-		return Stage2Init{}, err
+		return Stage2Bundle{}, err
 	}
 
 	hasChainMode := hasSelectableChainTargets(chainTargets)
@@ -280,62 +318,85 @@ func buildStage2Init(stage1Input Stage1Input, fixtures ConversionFixtures, regio
 		}
 		chainTargetNames[target.Name] = struct{}{}
 	}
-	rows := make([]Stage2InitRow, 0, len(resolvedLandingProxies))
+
+	serverOrder := make([]string, 0)
+	serverIndex := map[string]int{}
+	servers := make([]Stage2CatalogServer, 0)
+
 	for _, landing := range resolvedLandingProxies {
 		proxyName := landing.Name
 		if emojiProcessor.enabled {
 			proxyName, err = emojiProcessor.Apply(landing.Name)
 			if err != nil {
-				return Stage2Init{}, newInternalResponseError(
+				return Stage2Bundle{}, newInternalResponseError(
 					"failed to apply chain emoji rules",
 					fmt.Errorf("apply chain emoji rules for %q: %w", landing.Name, err),
 				)
 			}
 		}
 
-		row := Stage2InitRow{
-			RowID:                 landing.Name,
-			SourceLandingNodeName: landing.Name,
-			ProxyName:             proxyName,
-			LandingNodeType:       landing.TypeLabel,
-			Server:                landing.Server,
-			Mode:                  "none",
-			TargetName:            nil,
-		}
 		restrictedModes := buildRestrictedModes(landing.ProtocolType, availableModes)
-		if len(restrictedModes) > 0 {
-			row.RestrictedModes = restrictedModes
-		}
 		modeWarnings := buildModeWarnings(landing.ProtocolType, landing.Port, availableModes)
-		if len(modeWarnings) > 0 {
-			row.ModeWarnings = modeWarnings
-		}
 
+		defaultMode := "none"
+		var defaultTarget *string
 		finalAvailableModes := filterRestrictedModes(availableModes, restrictedModes)
 		if containsString(finalAvailableModes, "chain") {
-			targetName, ok, err := detectDefaultChainTarget(proxyName, regionMatchers, chainTargetNames)
-			if err != nil {
-				return Stage2Init{}, newInternalResponseError(
+			targetName, ok, detectErr := detectDefaultChainTarget(proxyName, regionMatchers, chainTargetNames)
+			if detectErr != nil {
+				return Stage2Bundle{}, newInternalResponseError(
 					"failed to detect default chain target",
-					fmt.Errorf("detect default chain target for %q: %w", proxyName, err),
+					fmt.Errorf("detect default chain target for %q: %w", proxyName, detectErr),
 				)
 			}
 			if ok {
-				row.Mode = "chain"
-				row.TargetName = stringPtr(targetName)
+				defaultMode = "chain"
+				defaultTarget = stringPtr(targetName)
 			}
 		} else if containsString(finalAvailableModes, "port_forward") {
-			row.Mode = "port_forward"
+			defaultMode = "port_forward"
 		}
 
-		rows = append(rows, row)
-	}
+		source := Stage2CatalogSource{
+			SourceID:          landing.Name,
+			LandingNodeType:   landing.TypeLabel,
+			RestrictedModes:   restrictedModes,
+			ModeWarnings:      modeWarnings,
+			DefaultProxyName:  proxyName,
+			DefaultMode:       defaultMode,
+			DefaultTargetName: defaultTarget,
+		}
+		if len(source.RestrictedModes) == 0 {
+			source.RestrictedModes = nil
+		}
+		if len(source.ModeWarnings) == 0 {
+			source.ModeWarnings = nil
+		}
 
-	return Stage2Init{
+		serverKey := stage2ServerKey(landing.Server, landing.Name)
+		idx, ok := serverIndex[serverKey]
+		if !ok {
+			serverIndex[serverKey] = len(servers)
+			serverOrder = append(serverOrder, serverKey)
+			servers = append(servers, Stage2CatalogServer{
+				ServerKey: serverKey,
+				Sources:   []Stage2CatalogSource{source},
+			})
+			continue
+		}
+		servers[idx].Sources = append(servers[idx].Sources, source)
+	}
+	_ = serverOrder
+
+	catalog := Stage2Catalog{
 		AvailableModes: availableModes,
 		ChainTargets:   chainTargets,
 		ForwardRelays:  forwardRelays,
-		Rows:           rows,
+		Servers:        servers,
+	}
+	return Stage2Bundle{
+		Catalog:  catalog,
+		Snapshot: DefaultSnapshotFromCatalog(catalog),
 	}, nil
 }
 

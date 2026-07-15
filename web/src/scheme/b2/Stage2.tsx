@@ -1,11 +1,13 @@
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
+import type { Stage2Row } from "../../types/api";
 import {
 	getStage2DisplayModeOptions,
 	getStage2RowEditableName,
+	getStage2RowStableKey,
 	getStage2RowStrictKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
-	isStage2SourceRow,
+	isStage2DefaultInstance,
 } from "../../lib/stage2";
 import { formatModeReason } from "../../lib/mode-reason";
 import { NoticeRenderer } from "./Notice";
@@ -99,7 +101,7 @@ export function Stage2({ workflow, colorMode }: { workflow: AppWorkflowViewModel
 							<tbody className={tableBodyDivide(colorMode)}>
 								{stage2Rows.map((row) => (
 									<Stage2RowItem
-										key={getStage2RowStrictKey(row)}
+										key={getStage2RowStableKey(row)}
 										row={row}
 										workflow={workflow}
 										disabled={!isStage2Editable}
@@ -143,15 +145,15 @@ function Stage2RowItem({
 	disabled,
 	colorMode,
 }: {
-	row: (typeof import("../../lib/state").initialAppState.stage2Snapshot.rows)[0];
+	row: Stage2Row;
 	workflow: AppWorkflowViewModel;
 	disabled: boolean;
 	colorMode: ColorMode;
 }) {
 	const rowKey = getStage2RowStrictKey(row);
 	const sourceLandingName = getStage2RowSourceLandingName(row);
-	const sourceRow = isStage2SourceRow(row);
-	const canDeleteRow = !sourceRow && workflow.canDeleteStage2Row(rowKey);
+	const isDefaultInstance = isStage2DefaultInstance(row);
+	const canDeleteRow = !isDefaultInstance && workflow.canDeleteStage2Row(rowKey);
 	const meta = workflow.getStage2RowMeta(rowKey);
 	const errors = workflow.getStage2RowErrors(rowKey);
 	const isSnapshotOnly = workflow.state.stage2Init === null;
@@ -244,9 +246,10 @@ function Stage2RowItem({
 							disabled={disabled}
 							aria-label="节点名"
 							onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}
+							onBlur={() => workflow.handleProxyNameBlur()}
 						/>
 						<div className="flex flex-wrap gap-2">
-							{sourceRow ? (
+							{isDefaultInstance ? (
 								<button
 									type="button"
 									className={secondaryButton(colorMode)}

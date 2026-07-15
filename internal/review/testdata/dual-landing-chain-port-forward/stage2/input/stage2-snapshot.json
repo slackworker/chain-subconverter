@@ -1,74 +1,101 @@
 {
   "stage2Snapshot": {
-    "rows": [
-      {
-        "rowId": "🇸🇬 Alpha-SS-SG",
-        "sourceLandingNodeName": "Alpha-SS-SG",
-        "proxyName": "🇸🇬 Alpha-SS-SG",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      },
-      {
-        "rowId": "🇸🇬 Alpha-SS-SG 2",
-        "sourceLandingNodeName": "Alpha-SS-SG",
-        "proxyName": "🇸🇬 Alpha-SS-SG 2",
-        "mode": "chain",
-        "targetName": "🇸🇬 新加坡节点"
-      },
-      {
-        "rowId": "🇸🇬 Alpha-Reality-SG",
-        "sourceLandingNodeName": "Alpha-Reality-SG",
-        "proxyName": "🇸🇬 Alpha-Reality-SG",
-        "mode": "none",
-        "targetName": null
-      },
-      {
-        "rowId": "🇸🇬 Alpha-Reality-SG 2",
-        "sourceLandingNodeName": "Alpha-Reality-SG",
-        "proxyName": "🇸🇬 Alpha-Reality-SG 2",
-        "mode": "port_forward",
-        "targetName": "relay-a.example.com:7443"
-      },
-      {
-        "rowId": "🇸🇬 Alpha-Reality-SG 3",
-        "sourceLandingNodeName": "Alpha-Reality-SG",
-        "proxyName": "🇸🇬 Alpha-Reality-SG 3",
-        "mode": "port_forward",
-        "targetName": "relay-b.example.com:8443"
-      },
-      {
-        "rowId": "🇯🇵 Beta-SS-JP",
-        "sourceLandingNodeName": "Beta-SS-JP",
-        "proxyName": "🇯🇵 Beta-SS-JP",
-        "mode": "chain",
-        "targetName": "🇯🇵 日本节点"
-      },
-      {
-        "rowId": "🇯🇵 Beta-Reality-JP",
-        "sourceLandingNodeName": "Beta-Reality-JP",
-        "proxyName": "🇯🇵 Beta-Reality-JP",
-        "mode": "none",
-        "targetName": null
-      },
-      {
-        "rowId": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-        "sourceLandingNodeName": "Manual-SOCKS5-HK-Fallback",
-        "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
-        "mode": "chain",
-        "targetName": "🇭🇰 香港节点"
-      }
-    ],
     "chainProxyTargetGroupSwitchOptimizationEnabled": true,
-    "serverAggregationGroups": [
+    "servers": [
       {
-        "server": "198.51.100.10",
-        "enabled": true,
-        "strategy": "fallback",
-        "memberRowIds": [
-          "🇸🇬 Alpha-Reality-SG 2",
-          "🇸🇬 Alpha-Reality-SG 3",
-          "🇸🇬 Alpha-SS-SG",
-          "🇸🇬 Alpha-SS-SG 2"
+        "serverKey": "198.51.100.10",
+        "aggregation": {
+          "enabled": true,
+          "strategy": "fallback",
+          "memberProxyNames": [
+            "🇸🇬 Alpha-Reality-SG 2",
+            "🇸🇬 Alpha-Reality-SG 3",
+            "🇸🇬 Alpha-SS-SG",
+            "🇸🇬 Alpha-SS-SG 2"
+          ]
+        },
+        "sources": [
+          {
+            "sourceId": "Alpha-SS-SG",
+            "instances": [
+              {
+                "proxyName": "🇸🇬 Alpha-SS-SG",
+                "mode": "chain",
+                "targetName": "🇭🇰 香港节点"
+              },
+              {
+                "proxyName": "🇸🇬 Alpha-SS-SG 2",
+                "mode": "chain",
+                "targetName": "🇸🇬 新加坡节点"
+              }
+            ]
+          },
+          {
+            "sourceId": "Alpha-Reality-SG",
+            "instances": [
+              {
+                "proxyName": "🇸🇬 Alpha-Reality-SG",
+                "mode": "none",
+                "targetName": null
+              },
+              {
+                "proxyName": "🇸🇬 Alpha-Reality-SG 2",
+                "mode": "port_forward",
+                "targetName": "relay-a.example.com:7443"
+              },
+              {
+                "proxyName": "🇸🇬 Alpha-Reality-SG 3",
+                "mode": "port_forward",
+                "targetName": "relay-b.example.com:8443"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "serverKey": "198.51.100.11",
+        "aggregation": {
+          "enabled": false
+        },
+        "sources": [
+          {
+            "sourceId": "Beta-SS-JP",
+            "instances": [
+              {
+                "proxyName": "🇯🇵 Beta-SS-JP",
+                "mode": "chain",
+                "targetName": "🇯🇵 日本节点"
+              }
+            ]
+          },
+          {
+            "sourceId": "Beta-Reality-JP",
+            "instances": [
+              {
+                "proxyName": "🇯🇵 Beta-Reality-JP",
+                "mode": "none",
+                "targetName": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "serverKey": "manual-socks-hk.example.test",
+        "aggregation": {
+          "enabled": false
+        },
+        "sources": [
+          {
+            "sourceId": "Manual-SOCKS5-HK-Fallback",
+            "instances": [
+              {
+                "proxyName": "🇭🇰 Manual-SOCKS5-HK-Fallback",
+                "mode": "chain",
+                "targetName": "🇭🇰 香港节点"
+              }
+            ]
+          }
         ]
       }
     ]

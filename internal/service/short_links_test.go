@@ -631,6 +631,8 @@ func TestCanonicalShortLinkStateKey_ChangesWhenGroupNameChanges(t *testing.T) {
 					ProxyName:             "🇸🇬 Alpha",
 					Mode:                  "chain",
 					TargetName:            &targetSG,
+				
+					Server:                "198.51.100.10",
 				},
 				{
 					RowID:                 "row-derived",

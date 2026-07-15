@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert, postStage2Reset } from "../lib/api";
+import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
 import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
@@ -17,17 +17,18 @@ import {
 } from "../lib/notices";
 import {
 	findStage2RowByKey,
+	findCatalogSource,
+	flattenInstances,
 	getServerAggregationGroup,
 	getServerAggregationStrategy,
 	getChainTargetChoiceGroups,
 	getForwardRelayChoices,
 	getStage2RowDisplayName,
 	getStage2RowKey,
-	getStage2RowSourceLandingName,
-	isStage2SourceRow,
-	matchesStage2RowKey,
+	normalizeSnapshotForRequest,
 	pickNextTarget,
 } from "../lib/stage2";
+import { collectDuplicateProxyNameErrors } from "../lib/stage2Validation";
 import {
 	hydrateStage1Input,
 	initialAppState,
@@ -46,7 +47,16 @@ import {
 } from "../lib/workflow-log";
 import type { ResponseOriginStage, WorkflowLogEntry } from "../lib/state";
 import { WORKFLOW_EVENTS, type WorkflowEventCode } from "../lib/workflow-log-events";
-import type { BlockingError, Message, ServerAggregationGroup, Stage1Input, Stage2Init, Stage2Row } from "../types/api";
+import type {
+	AggregationStrategy,
+	BlockingError,
+	Message,
+	Stage1Input,
+	Stage2CatalogSource,
+	Stage2Instance,
+	Stage2Mode,
+	Stage2Row,
+} from "../types/api";
 import type { APIRequestError } from "../lib/api";
 import type { ChainTargetChoiceGroup, TargetChoice } from "../lib/stage2";
 import {
@@ -55,12 +65,10 @@ import {
 	applyGenerateShortURLSuccessState,
 	applyRestoreConflictState,
 	applyRestoreReinitializedState,
-	applyRestoreReinitFailedState,
 	applyShortURLCreationFailureState,
 	applyShortURLCreationSuccessState,
 	applyShortURLPreferenceToggleState,
 	applyStage1ConvertSuccessState,
-	applyStage2ResetSuccessState,
 	cloneStage2RowState,
 	clearServerAggregationGroupsState,
 	completeWorkflowRequestState,
@@ -76,7 +84,9 @@ import {
 	updateServerAggregationGroupNameState,
 	updateServerAggregationStrategyState,
 	updateStage1InputState,
+	applyDuplicateProxyNameValidationState,
 	applySwitchOptimizationState,
+	updateStage2ProxyNameState,
 	updateStage2RowState,
 } from "./useAppWorkflow.state";
 import type { Stage2SnapshotMergeReport } from "./useAppWorkflow.state";
@@ -94,32 +104,17 @@ interface RequestFailureContext {
 	requestPath: string;
 }
 
-type Stage2SnapshotRows = typeof initialAppState.stage2Snapshot.rows;
-type AggregationStrategy = ServerAggregationGroup["strategy"];
+type Stage2SnapshotRows = Stage2Row[];
 
 function buildStage2MergeMessages(
 	report: Stage2SnapshotMergeReport,
 ): Message[] {
 	const messages: Message[] = [];
-	if (report.droppedDerivedRows > 0) {
+	if (report.droppedSources > 0) {
 		messages.push({
 			level: "warning",
 			code: "STAGE2_MERGE_ROW_DROPPED",
-			message: `已移除 ${report.droppedDerivedRows} 条失效副本：其来源落地节点在最新转换结果中不存在。`,
-		});
-	}
-	if (report.resetModes > 0) {
-		messages.push({
-			level: "warning",
-			code: "STAGE2_MERGE_MODE_RESET",
-			message: `${report.resetModes} 行的配置方式已按最新可选模式回退。`,
-		});
-	}
-	if (report.clearedTargets > 0) {
-		messages.push({
-			level: "warning",
-			code: "STAGE2_MERGE_TARGET_CLEARED",
-			message: `${report.clearedTargets} 行的目标已清空：原目标在最新候选中不可用。`,
+			message: `已移除 ${report.droppedSources} 个失效来源及其实例。`,
 		});
 	}
 	if (report.filteredAggregationMembers > 0) {
@@ -129,27 +124,13 @@ function buildStage2MergeMessages(
 			message: `聚合组已移除 ${report.filteredAggregationMembers} 个失效成员引用。`,
 		});
 	}
-	if (report.disabledAggregationGroups > 0) {
-		messages.push({
-			level: "warning",
-			code: "STAGE2_MERGE_AGG_GROUP_DISABLED",
-			message: `${report.disabledAggregationGroups} 个聚合组因成员不足 2 个而自动关闭。`,
-		});
-	}
-	if (report.removedAggregationGroups > 0) {
-		messages.push({
-			level: "warning",
-			code: "STAGE2_MERGE_AGG_GROUP_REMOVED",
-			message: `${report.removedAggregationGroups} 个无效聚合组已移除。`,
-		});
-	}
 	return messages;
 }
 
 export interface AppWorkflowViewModel {
 	state: typeof initialAppState;
-	stage2Rows: typeof initialAppState.stage2Snapshot.rows;
-	modeOptions: Stage2Init["availableModes"];
+	stage2Rows: Stage2Row[];
+	modeOptions: Stage2Mode[];
 	responseOriginStage: ResponseOriginStage | null;
 	originStageLabel?: string;
 	visibleMessages: Message[];
@@ -172,7 +153,7 @@ export interface AppWorkflowViewModel {
 	updateStage1Input: (updater: (current: Stage1Input) => Stage1Input) => void;
 	getStage1FieldErrors: (field: string) => BlockingError[];
 	getStage3FieldErrors: (field: string) => BlockingError[];
-	getStage2RowMeta: (rowKey: string) => Stage2Init["rows"][number] | null;
+	getStage2RowMeta: (rowKey: string) => Stage2CatalogSource | null;
 	getStage2RowErrors: (rowKey: string) => BlockingError[];
 	getPrimaryBlockingErrorsForStage: (stage: ResponseOriginStage) => BlockingError[];
 	getStageMessages: (stage: ResponseOriginStage) => Message[];
@@ -184,12 +165,13 @@ export interface AppWorkflowViewModel {
 	handleServerAggregationGroupNameChange: (rowKey: string, groupName: string) => void;
 	getServerAggregationOrderedMembers: (
 		rowKey: string,
-	) => Array<{ rowId: string; displayName: string; isSource: boolean }>;
+	) => Array<{ instanceId: string; displayName: string; isDefaultInstance: boolean }>;
 	handleStage1Convert: () => Promise<void>;
 	handleStage1Reset: () => void;
 	isStage1AtInitial: boolean;
 	handleRestore: () => Promise<void>;
 	handleProxyNameChange: (rowKey: string, proxyName: string) => void;
+	handleProxyNameBlur: () => void;
 	handleCloneStage2Row: (rowKey: string) => void;
 	handleDeleteStage2Row: (rowKey: string) => void;
 	canDeleteStage2Row: (rowKey: string) => boolean;
@@ -200,12 +182,12 @@ export interface AppWorkflowViewModel {
 	handleServerAggregationEnableWithDefaults: (rowKey: string, payload: { enabled: boolean; strategy: AggregationStrategy }) => void;
 	handleServerAggregationMemberReorder: (
 		rowKey: string,
-		memberRowId: string,
+		memberInstanceId: string,
 		direction: "up" | "down",
 	) => void;
 	handleServerAggregationMemberMoveTo: (
 		rowKey: string,
-		memberRowId: string,
+		memberInstanceId: string,
 		toIndex: number,
 	) => void;
 	handleSwitchOptimizationChange: (enabled: boolean) => void;
@@ -262,11 +244,11 @@ function exceedsPublicLongURLBudget(longUrl: string, maxPublicLongURLLength: num
 	return maxPublicLongURLLength > 0 && longUrl.length > maxPublicLongURLLength;
 }
 
-function getModeOptions(stage2Init: Stage2Init | null) {
+function getModeOptions(stage2Init: typeof initialAppState.stage2Catalog) {
 	return stage2Init?.availableModes ?? [];
 }
 
-function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2SnapshotRows, rowKey: string, mode: Stage2Row["mode"]) {
+function getSelectableChoices(stage2Init: typeof initialAppState.stage2Catalog, stage2Rows: Stage2SnapshotRows, rowKey: string, mode: Stage2Row["mode"]) {
 	if (mode === "chain") {
 		return getChainTargetChoiceGroups(stage2Init)
 			.flatMap((group) => group.choices)
@@ -278,38 +260,28 @@ function getSelectableChoices(stage2Init: Stage2Init | null, stage2Rows: Stage2S
 	return [];
 }
 
-function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialAppState.stage2Snapshot): BlockingError[] {
-	const rowsByID = new Map(
-		stage2Snapshot.rows
-			.map((row) => [getStage2RowKey(row), row] as const)
-			.filter(([rowID]) => rowID !== ""),
-	);
-	const errors: BlockingError[] = [];
-	const orderedAggregationGroups = [...stage2Snapshot.serverAggregationGroups].sort((left, right) =>
-		left.server.trim().localeCompare(right.server.trim()),
-	);
-
-	for (const group of orderedAggregationGroups) {
-		if (!group.enabled) {
+function collectGeneratePrecheckBlockingErrors(
+	stage2Snapshot: typeof initialAppState.stage2Snapshot,
+	catalog: typeof initialAppState.stage2Catalog,
+): BlockingError[] {
+	const errors = collectDuplicateProxyNameErrors(flattenInstances(stage2Snapshot, catalog));
+	for (const server of stage2Snapshot.servers) {
+		const aggregation = server.aggregation;
+		if (!aggregation.enabled) {
 			continue;
 		}
-		const server = group.server.trim();
-		const memberRowIDs = Array.from(new Set((group.memberRowIds ?? []).map((rowID) => rowID.trim()).filter(Boolean)));
-		if (memberRowIDs.length >= 2) {
+		const memberLocalInstanceIds = Array.from(new Set(
+			(aggregation.memberLocalInstanceIds ?? []).map((id) => id.trim()).filter(Boolean),
+		));
+		if (memberLocalInstanceIds.length >= 2) {
 			continue;
 		}
-
-		const singleMember = memberRowIDs[0];
-		const singleMemberRow = singleMember ? rowsByID.get(singleMember) : undefined;
-		const serverLabel = server === "" ? "--" : server;
 		errors.push({
 			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
-			message: `聚合/策略组（${serverLabel}）至少需要入组 2 个成员，当前为 ${memberRowIDs.length} 个。`,
-			scope: "stage2_row",
+			message: `聚合/策略组（${server.serverKey || "--"}）至少需要入组 2 个成员，当前为 ${memberLocalInstanceIds.length} 个。`,
+			scope: "stage2_server",
 			context: {
-				server,
-				rowId: singleMember ?? "",
-				sourceLandingNodeName: singleMemberRow?.sourceLandingNodeName ?? "",
+				serverKey: server.serverKey,
 			},
 		});
 	}
@@ -319,13 +291,9 @@ function collectGeneratePrecheckBlockingErrors(stage2Snapshot: typeof initialApp
 
 function resolveServerAggregationServer(
 	row: Stage2Row,
-	rowMeta: Stage2Init["rows"][number] | null,
+	rowMeta: Stage2CatalogSource | null,
 ): string {
-	if (rowMeta === null) {
-		return "";
-	}
-	const sourceLandingNodeName = getStage2RowSourceLandingName(row);
-	return (rowMeta.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+	return rowMeta === null ? "" : row.serverKey;
 }
 
 function sameStringArray(current: string[] | null | undefined, next: string[] | null | undefined) {
@@ -389,8 +357,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	const [isResettingStage2, setIsResettingStage2] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
 
-	const stage2Rows = state.stage2Snapshot.rows;
-	const modeOptions = getModeOptions(state.stage2Init);
+	const stage2Rows = flattenInstances(state.stage2Snapshot, state.stage2Catalog);
+	const modeOptions = getModeOptions(state.stage2Catalog);
 	const isConflictReadonly = state.restoreStatus === "conflicted";
 	const isStage2Editable = state.stage2Init !== null && !state.stage2Stale && !isConflictReadonly;
 	const canGenerate = stage2Rows.length > 0 && !state.stage2Stale && !isConflictReadonly && !isGenerating && !isResettingStage2;
@@ -502,16 +470,15 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function getStage2RowMeta(rowKey: string) {
-		const snapshotRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
-		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : rowKey;
-		return state.stage2Init?.rows.find((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName) ?? null;
+		const snapshotRow = findStage2RowByKey(stage2Rows, rowKey);
+		return snapshotRow ? findCatalogSource(state.stage2Catalog, snapshotRow.sourceId)?.source ?? null : null;
 	}
 
 	function getStage2RowErrors(rowKey: string) {
 		if (!isStage2Editable) {
 			return [];
 		}
-		const row = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
+		const row = findStage2RowByKey(stage2Rows, rowKey);
 		return row ? getRowErrors(state.blockingErrors, row) : getRowErrors(state.blockingErrors, rowKey);
 	}
 
@@ -531,7 +498,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		try {
 			const response = await postStage1Convert({ stage1Input: toStage1InputPayload(stage1Input) });
 			setState((current) => {
-				const mergeResult = mergeStage2SnapshotAfterConvert(current, response.stage2Init);
+				const mergeResult = mergeStage2SnapshotAfterConvert(current, response.stage2.catalog, response.stage2.snapshot);
 				const mergeMessages = buildStage2MergeMessages(mergeResult.report);
 				const mergedMessages = response.messages.concat(mergeMessages);
 				const logEntries = backendMessagesToWorkflowLog(response.messages, "stage1").concat(
@@ -541,11 +508,11 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				);
 				return applyStage1ConvertSuccessState(
 					current,
-					response.stage2Init,
+					response.stage2,
 					mergedMessages,
 					response.blockingErrors,
 					logEntries,
-					mergeResult.snapshot,
+					false,
 				);
 			});
 		} catch (error) {
@@ -588,45 +555,21 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 					restoreStatus: restoreResponse.restoreStatus,
 					resolvedLongUrl: restoreResponse.longUrl,
 					resolvedShortUrl: restoreResponse.shortUrl,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
+					stage2Snapshot: restoreResponse.stage2.snapshot,
 				}));
 				return;
 			}
-
-			try {
-				const convertResponse = await postStage1Convert({ stage1Input: restoreResponse.stage1Input });
-				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3");
-				setState((current) => applyRestoreReinitializedState(current, convertResponse.stage2Init, {
-					blockingErrors: restoreResponse.blockingErrors.length > 0 ? restoreResponse.blockingErrors : convertResponse.blockingErrors,
-					logEntries,
-					messages: restoreResponse.messages,
-					restoredStage1Input,
-					restoreStatus: restoreResponse.restoreStatus,
-					resolvedLongUrl: restoreResponse.longUrl,
-					resolvedShortUrl: restoreResponse.shortUrl,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-				}));
-			} catch (convertError) {
-				const errorResponse = getErrorResponse(convertError);
-				const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(convertError, {
-					stageLabel: "Stage 3 / 输出区",
-					actionLabel: "恢复后的转换并自动填充",
-					requestPath: "POST /api/stage1/convert",
-				})];
-				const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3").concat(
-					frontendWorkflowFailureEvent("RESTORE_REINIT_FAILED", summarizeBlockingErrors(blockingErrors, "请求失败。")),
-				);
-				setState((current) => applyRestoreReinitFailedState(current, {
-					blockingErrors,
-					logEntries,
-					messages: restoreResponse.messages,
-					restoredStage1Input,
-					restoreStatus: restoreResponse.restoreStatus,
-					resolvedLongUrl: restoreResponse.longUrl,
-					resolvedShortUrl: restoreResponse.shortUrl,
-					stage2Snapshot: restoreResponse.stage2Snapshot,
-				}));
-			}
+			const logEntries = backendMessagesToWorkflowLog(restoreResponse.messages, "stage3");
+			setState((current) => applyRestoreReinitializedState(current, restoreResponse.stage2.catalog, {
+				blockingErrors: restoreResponse.blockingErrors,
+				logEntries,
+				messages: restoreResponse.messages,
+				restoredStage1Input,
+				restoreStatus: restoreResponse.restoreStatus,
+				resolvedLongUrl: restoreResponse.longUrl,
+				resolvedShortUrl: restoreResponse.shortUrl,
+				stage2Snapshot: restoreResponse.stage2.snapshot,
+			}));
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
 			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
@@ -646,15 +589,16 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}
 	}
 
-	function updateStage2Row(rowKey: string, updater: (row: Stage2Row) => Stage2Row) {
+	function updateStage2Row(rowKey: string, updater: (row: Stage2Instance) => Stage2Instance) {
 		setState((current) => updateStage2RowState(current, rowKey, updater));
 	}
 
 	function handleProxyNameChange(rowKey: string, proxyName: string) {
-		updateStage2Row(rowKey, (row) => ({
-			...row,
-			proxyName,
-		}));
+		setState((current) => updateStage2ProxyNameState(current, rowKey, proxyName));
+	}
+
+	function handleProxyNameBlur() {
+		setState((current) => applyDuplicateProxyNameValidationState(current));
 	}
 
 	function handleCloneStage2Row(rowKey: string) {
@@ -662,12 +606,9 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function canDeleteStage2Row(rowKey: string) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
-		if (matchedRow === null) {
-			return false;
-		}
-		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-		return state.stage2Snapshot.rows.filter((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName).length > 1;
+		const matchedRow = findStage2RowByKey(stage2Rows, rowKey);
+		return matchedRow !== null
+			&& stage2Rows.filter((row) => row.sourceId === matchedRow.sourceId).length > 1;
 	}
 
 	function handleDeleteStage2Row(rowKey: string) {
@@ -678,7 +619,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		updateStage2Row(rowKey, (row) => ({
 			...row,
 			mode,
-			targetName: pickNextTarget(state.stage2Init, state.stage2Snapshot.rows, getStage2RowKey(row), mode, row.targetName),
+			targetName: pickNextTarget(state.stage2Catalog, stage2Rows, getStage2RowKey(row), mode, row.targetName),
 		}));
 	}
 
@@ -691,24 +632,16 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function getServerAggregationGroupForRow(rowKey: string) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
-		if (matchedRow === null) {
-			return null;
-		}
-		const rowMeta = getStage2RowMeta(rowKey);
-		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
-		if (server === "") {
-			return null;
-		}
-		const rowID = getStage2RowKey(matchedRow);
+		const matchedRow = findStage2RowByKey(stage2Rows, rowKey);
+		if (matchedRow === null) return null;
+		const server = matchedRow.serverKey;
 		const group = getServerAggregationGroup(state.stage2Snapshot, server);
 		return {
 			server,
 			groupName: group?.groupName?.trim() ?? "",
 			enabled: group?.enabled ?? false,
 			strategy: getServerAggregationStrategy(state.stage2Snapshot, server) ?? "fallback",
-			memberChecked: rowID !== "" && (group?.memberRowIds ?? []).includes(rowID),
+			memberChecked: (group?.memberLocalInstanceIds ?? []).includes(matchedRow.instanceId),
 		};
 	}
 
@@ -724,60 +657,26 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (!canConfigureServerAggregationGroup(rowKey)) {
 			return null;
 		}
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
-		if (matchedRow === null) {
-			return null;
-		}
-		const rowMeta = getStage2RowMeta(rowKey);
-		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
-		return getServerAggregationStrategy(state.stage2Snapshot, server);
+		const matchedRow = findStage2RowByKey(stage2Rows, rowKey);
+		return matchedRow ? getServerAggregationStrategy(state.stage2Snapshot, matchedRow.serverKey) : null;
 	}
 
 	function canConfigureServerAggregationGroup(rowKey: string) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
-		if (matchedRow === null) {
-			return false;
-		}
-		const rowMeta = getStage2RowMeta(rowKey);
-		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-		const server = rowMeta?.server?.trim() ?? "";
-		let count = 0;
-		for (const row of state.stage2Snapshot.rows) {
-			if (server === "") {
-				if (getStage2RowSourceLandingName(row) === sourceLandingNodeName) {
-					count += 1;
-				}
-				continue;
-			}
-			const rowKey = getStage2RowKey(row);
-			if ((getStage2RowMeta(rowKey)?.server?.trim() ?? "") === server) {
-				count += 1;
-			}
-		}
-		return count > 1;
+		const matchedRow = findStage2RowByKey(stage2Rows, rowKey);
+		return matchedRow !== null
+			&& stage2Rows.filter((row) => row.serverKey === matchedRow.serverKey).length > 1;
 	}
 
 	function handleServerAggregationStrategyChange(rowKey: string, strategy: AggregationStrategy | null) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
-		if (matchedRow === null) {
-			return;
-		}
-		const rowMeta = getStage2RowMeta(rowKey);
-		const sourceLandingNodeName = getStage2RowSourceLandingName(matchedRow);
-		const server = (rowMeta?.server?.trim() ?? "") || `source:${sourceLandingNodeName}`;
+		const matchedRow = findStage2RowByKey(stage2Rows, rowKey);
+		if (matchedRow === null) return;
+		const server = matchedRow.serverKey;
 		if (strategy === null) {
 			setState((current) => updateServerAggregationStrategyState(current, server, null));
 			return;
 		}
-		const memberRowIDs = state.stage2Snapshot.rows
-			.filter((row) => {
-				if ((rowMeta?.server?.trim() ?? "") === "") {
-					return getStage2RowSourceLandingName(row) === sourceLandingNodeName;
-				}
-				const rowKey = getStage2RowKey(row);
-				return (getStage2RowMeta(rowKey)?.server?.trim() ?? "") === rowMeta?.server?.trim();
-			})
+		const memberRowIDs = stage2Rows
+			.filter((row) => row.serverKey === server)
 			.map((row) => getStage2RowKey(row))
 			.filter((rowID) => rowID !== "");
 		setState((current) => {
@@ -793,7 +692,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		rowKey: string,
 		payload: { enabled: boolean; strategy: AggregationStrategy; memberChecked: boolean },
 	) {
-		const matchedRow = findStage2RowByKey(state.stage2Snapshot.rows, rowKey);
+		const matchedRow = findStage2RowByKey(stage2Rows, rowKey);
 		const rowMeta = getStage2RowMeta(rowKey);
 		if (matchedRow === null || rowMeta === null) {
 			return;
@@ -816,12 +715,6 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		});
 	}
 
-	function getStage2RowMetaFromState(current: typeof state, rowKey: string) {
-		const snapshotRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
-		const sourceLandingNodeName = snapshotRow ? getStage2RowSourceLandingName(snapshotRow) : rowKey;
-		return current.stage2Init?.rows.find((row) => getStage2RowSourceLandingName(row) === sourceLandingNodeName) ?? null;
-	}
-
 	function handleServerAggregationEnableWithDefaults(
 		rowKey: string,
 		payload: { enabled: boolean; strategy: AggregationStrategy },
@@ -840,13 +733,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}
 
 		const targetServer = anchorGroup.server;
-		const memberRows = state.stage2Snapshot.rows.filter((row) => {
-			const rowKey = getStage2RowKey(row);
-			if (rowKey === "") {
-				return false;
-			}
-			return getServerAggregationGroupForRow(rowKey)?.server === targetServer;
-		});
+		const memberRows = stage2Rows.filter((row) => row.serverKey === targetServer);
 		const shouldAutoSelectByMode = memberRows.length >= 2;
 
 		setState((current) => {
@@ -856,18 +743,15 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 				if (rowKey === "") {
 					continue;
 				}
-				const matchedRow = findStage2RowByKey(current.stage2Snapshot.rows, rowKey);
-				const rowMeta = getStage2RowMetaFromState(current, rowKey);
-				if (matchedRow === null || rowMeta === null) {
-					continue;
-				}
-				const server = resolveServerAggregationServer(matchedRow, rowMeta);
+				const matchedRow = findStage2RowByKey(flattenInstances(current.stage2Snapshot), rowKey);
+				if (matchedRow === null) continue;
+				const server = matchedRow.serverKey;
 				const rowID = getStage2RowKey(matchedRow);
 				if (server === "" || rowID === "") {
 					continue;
 				}
 				const group = getServerAggregationGroup(next.stage2Snapshot, server);
-				const currentChecked = rowID !== "" && (group?.memberRowIds ?? []).includes(rowID);
+				const currentChecked = rowID !== "" && (group?.memberLocalInstanceIds ?? []).includes(rowID);
 				const defaultChecked = shouldAutoSelectByMode && row.mode !== "none";
 				next = updateServerAggregationGroupState(
 					next,
@@ -891,32 +775,25 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (group === null) {
 			return [];
 		}
-		const rowsByID = new Map(
-			state.stage2Snapshot.rows
-				.map((row) => {
-					const rowID = getStage2RowKey(row);
-					return rowID === "" ? null : ([rowID, row] as const);
-				})
-				.filter((entry): entry is readonly [string, Stage2Row] => entry !== null),
-		);
-		return group.memberRowIds
+		const rowsByID = new Map(stage2Rows.map((row) => [row.instanceId, row] as const));
+		return (group.memberLocalInstanceIds ?? [])
 			.map((rowID) => {
 				const row = rowsByID.get(rowID.trim());
 				if (row === undefined) {
 					return null;
 				}
 				return {
-					rowId: rowID.trim(),
+					instanceId: rowID.trim(),
 					displayName: getStage2RowDisplayName(row),
-					isSource: isStage2SourceRow(row),
+					isDefaultInstance: row.instanceIndex === 0,
 				};
 			})
-			.filter((member): member is { rowId: string; displayName: string; isSource: boolean } => member !== null);
+			.filter((member): member is { instanceId: string; displayName: string; isDefaultInstance: boolean } => member !== null);
 	}
 
 	function handleServerAggregationMemberReorder(
 		rowKey: string,
-		memberRowId: string,
+		memberInstanceId: string,
 		direction: "up" | "down",
 	) {
 		const anchorGroup = getServerAggregationGroupForRow(rowKey);
@@ -924,13 +801,13 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return;
 		}
 		setState((current) =>
-			reorderServerAggregationMemberState(current, anchorGroup.server, memberRowId, direction),
+			reorderServerAggregationMemberState(current, anchorGroup.server, memberInstanceId, direction),
 		);
 	}
 
 	function handleServerAggregationMemberMoveTo(
 		rowKey: string,
-		memberRowId: string,
+		memberInstanceId: string,
 		toIndex: number,
 	) {
 		const anchorGroup = getServerAggregationGroupForRow(rowKey);
@@ -938,7 +815,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			return;
 		}
 		setState((current) =>
-			moveServerAggregationMemberToIndexState(current, anchorGroup.server, memberRowId, toIndex),
+			moveServerAggregationMemberToIndexState(current, anchorGroup.server, memberInstanceId, toIndex),
 		);
 	}
 
@@ -956,31 +833,26 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		}
 
 		const stage1Input = state.stage1Input;
-		const stage2Snapshot = state.stage2Snapshot;
 		setIsResettingStage2(true);
 		setState((current) => startWorkflowRequestState(current, "stage2", workflowActionSeparator("ACTION_STAGE2_RESET")));
 
 		try {
-			const response = await postStage2Reset({
-				stage1Input: toStage1InputPayload(stage1Input),
-				stage2Snapshot,
-				reset: { scope: "all" },
-			});
+			const response = await postStage1Convert({ stage1Input: toStage1InputPayload(stage1Input) });
 			const logEntries = backendMessagesToWorkflowLog(response.messages, "stage2");
-			setState((current) => applyStage2ResetSuccessState(
+			setState((current) => applyStage1ConvertSuccessState(
 				current,
-				response.stage2Init,
-				response.stage2Snapshot,
+				response.stage2,
 				response.messages,
 				response.blockingErrors,
 				logEntries,
+				true,
 			));
 		} catch (error) {
 			const errorResponse = getErrorResponse(error);
 			const blockingErrors = errorResponse?.blockingErrors ?? [fallbackBlockingError(error, {
 				stageLabel: "Stage 2 / 配置区",
 				actionLabel: "重置",
-				requestPath: "POST /api/stage2/reset",
+				requestPath: "POST /api/stage1/convert",
 			})];
 			const messages = errorResponse?.messages ?? [];
 			const logEntries = backendMessagesToWorkflowLog(messages, "stage2").concat(
@@ -996,7 +868,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		const stage1Input = state.stage1Input;
 		const stage2Snapshot = state.stage2Snapshot;
 		const preferShortUrl = state.preferShortUrl;
-		const precheckBlockingErrors = collectGeneratePrecheckBlockingErrors(stage2Snapshot);
+		const precheckBlockingErrors = collectGeneratePrecheckBlockingErrors(stage2Snapshot, state.stage2Catalog);
 		if (precheckBlockingErrors.length > 0) {
 			setState((current) => completeWorkflowRequestState(
 				current,
@@ -1017,7 +889,9 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		try {
 			const response = await postGenerate({
 				stage1Input: toStage1InputPayload(stage1Input),
-				stage2Snapshot,
+				stage2: {
+					snapshot: normalizeSnapshotForRequest(stage2Snapshot),
+				},
 			});
 			const forceShortUrl = exceedsPublicLongURLBudget(response.longUrl, maxPublicLongURLLength);
 			if (!preferShortUrl && !forceShortUrl) {
@@ -1165,8 +1039,8 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		getStage2RowErrors,
 		getPrimaryBlockingErrorsForStage: getPrimaryBlockingErrors,
 		getStageMessages,
-		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Init),
-		getForwardRelayChoices: (rowKey: string) => getForwardRelayChoices(state.stage2Init, state.stage2Snapshot.rows, rowKey),
+		getChainTargetChoiceGroups: () => getChainTargetChoiceGroups(state.stage2Catalog),
+		getForwardRelayChoices: (rowKey: string) => getForwardRelayChoices(state.stage2Catalog, stage2Rows, rowKey),
 		getServerAggregationStrategy: getServerAggregationStrategyForRow,
 		canConfigureServerAggregationGroup,
 		getServerAggregationGroup: getServerAggregationGroupForRow,
@@ -1177,6 +1051,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		isStage1AtInitial,
 		handleRestore,
 		handleProxyNameChange,
+		handleProxyNameBlur,
 		handleCloneStage2Row,
 		handleDeleteStage2Row,
 		canDeleteStage2Row,

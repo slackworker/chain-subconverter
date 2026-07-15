@@ -5,7 +5,6 @@ import {
 	appendForwardRelayItems,
 	buildManualSocks5URI,
 	removeForwardRelayItem,
-	setPortForwardEnabled,
 	type ManualSocks5FormState,
 } from "../../lib/stage1";
 import { Socks5Modal, PortForwardModal } from "./Modals";
@@ -29,7 +28,6 @@ import {
 	sectionLabel,
 	tagListShell,
 	textInput,
-	verticalRule,
 } from "./theme";
 
 function appendMultilineLine(currentValue: string, nextLine: string) {
@@ -55,7 +53,6 @@ export function Stage1({
 
 	const { state, updateStage1Input, isConverting, shouldShowStage2StaleNotice } = workflow;
 	const stage1Input = state.stage1Input;
-	const portForwardEnabled = stage1Input.advancedOptions.enablePortForward;
 	const stage1Empty =
 		stage1Input.landingRawText.trim() === "" && stage1Input.transitRawText.trim() === "";
 	const currentTemplateURL = stage1Input.advancedOptions.config ?? "";
@@ -122,11 +119,9 @@ export function Stage1({
 						colorMode={colorMode}
 						label="中转信息"
 						labelAction={
-							portForwardEnabled ? (
-								<button type="button" onClick={openPortForwardModal} className={accentLink()}>
-									+ 端口转发
-								</button>
-							) : null
+							<button type="button" onClick={openPortForwardModal} className={accentLink()}>
+								+ 端口转发
+							</button>
 						}
 						value={stage1Input.transitRawText}
 						onChange={(next) => updateStage1Input((current) => ({ ...current, transitRawText: next }))}
@@ -134,7 +129,7 @@ export function Stage1({
 						hasError={workflow.getStage1FieldErrors("transitRawText").length > 0}
 						errorText={workflow.getStage1FieldErrors("transitRawText")[0]?.message}
 						bottomContent={
-							portForwardEnabled && stage1Input.forwardRelayItems.length > 0 ? (
+							stage1Input.forwardRelayItems.length > 0 ? (
 								<ul className={tagListShell(colorMode)} aria-label="端口转发标签">
 									{stage1Input.forwardRelayItems.map((item, index) => (
 										<li
@@ -284,34 +279,6 @@ export function Stage1({
 								}
 							/>
 
-							<div className={verticalRule(colorMode)} />
-
-							<label className="flex items-center gap-2 cursor-pointer group">
-								<div
-									className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-										portForwardEnabled ? "bg-indigo-600" : dark ? "bg-zinc-700" : "bg-slate-300"
-									}`}
-								>
-									<span
-										className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-											portForwardEnabled ? "translate-x-5" : "translate-x-1"
-										}`}
-									/>
-									<input
-										type="checkbox"
-										className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-										checked={portForwardEnabled}
-										onChange={(event) => {
-											const enabled = event.target.checked;
-											updateStage1Input((current) => setPortForwardEnabled(current, enabled));
-											if (!enabled) {
-												setIsPortForwardOpen(false);
-											}
-										}}
-									/>
-								</div>
-								<span className={checkboxLabel(colorMode)}>启用端口转发服务</span>
-							</label>
 						</div>
 					</div>
 				) : null}

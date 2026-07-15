@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { loadCanonicalStage1Inputs } from "./canonicalStage1";
-import { addTagInField, applyDefaultUiPreferences, expectHTTPResponseOK } from "./helpers";
+import { addTagInField, applyDefaultUiPreferences, assertWireSnapshotHasNoClientIds, expectHTTPResponseOK } from "./helpers";
 
 import type { GenerateRequest, ResolveURLResponse, Stage1ConvertRequest } from "../src/types/api";
 
@@ -32,7 +32,7 @@ test("mock dual-landing filters keep include and exclude through replay", async 
 	await page.getByLabel("中转信息").fill(canonicalStage1Inputs.transitInput);
 
 	await page.getByRole("button", { name: "高级选项" }).click();
-	await addTagInField(page, "包含节点", "hk");
+	await addTagInField(page, "包含节点", "SS");
 	await addTagInField(page, "排除节点", "JP");
 
 	const stage1ConvertResponsePromise = page.waitForResponse(
@@ -43,7 +43,7 @@ test("mock dual-landing filters keep include and exclude through replay", async 
 	await expectHTTPResponseOK(stage1ConvertResponse, "stage1 convert");
 
 	const stage1ConvertRequest = stage1ConvertResponse.request().postDataJSON() as Stage1ConvertRequest;
-	expect(stage1ConvertRequest.stage1Input.advancedOptions.include).toEqual(["hk"]);
+	expect(stage1ConvertRequest.stage1Input.advancedOptions.include).toEqual(["SS"]);
 	expect(stage1ConvertRequest.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 	await expect(page.locator(".a-table tbody tr").first()).toBeVisible({ timeout: 30_000 });
 
@@ -56,7 +56,8 @@ test("mock dual-landing filters keep include and exclude through replay", async 
 	await expectHTTPResponseOK(generateResponse, "generate");
 
 	const generateRequest = generateResponse.request().postDataJSON() as GenerateRequest;
-	expect(generateRequest.stage1Input.advancedOptions.include).toEqual(["hk"]);
+	assertWireSnapshotHasNoClientIds(generateRequest);
+	expect(generateRequest.stage1Input.advancedOptions.include).toEqual(["SS"]);
 	expect(generateRequest.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 
 	const currentLink = page.getByLabel("当前链接");
@@ -74,10 +75,10 @@ test("mock dual-landing filters keep include and exclude through replay", async 
 	expect(generatedResolveResponse.ok()).toBeTruthy();
 	const generatedResolvePayload = (await generatedResolveResponse.json()) as ResolveURLResponse;
 	expect(generatedResolvePayload.restoreStatus).toBe("replayable");
-	expect(generatedResolvePayload.stage1Input.advancedOptions.include).toEqual(["hk"]);
+	expect(generatedResolvePayload.stage1Input.advancedOptions.include).toEqual(["SS"]);
 	expect(generatedResolvePayload.stage1Input.advancedOptions.exclude).toEqual(["JP"]);
 
 	await page.getByRole("button", { name: "反向解析" }).click();
-	await expect(page.locator(".a-field").filter({ has: page.getByText("包含节点", { exact: true }) }).getByText("hk", { exact: true })).toBeVisible();
+	await expect(page.locator(".a-field").filter({ has: page.getByText("包含节点", { exact: true }) }).getByText("SS", { exact: true })).toBeVisible();
 	await expect(page.locator(".a-field").filter({ has: page.getByText("排除节点", { exact: true }) }).getByText("JP", { exact: true })).toBeVisible();
 });

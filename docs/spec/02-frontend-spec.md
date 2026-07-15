@@ -59,7 +59,7 @@
 - 优先验证不同的信息架构、操作路径、布局节奏与视觉风格；**不作为**本章对方案层交互/呈现细节的权威样板，也不要求与 `default` 在壳层或视觉上对齐。
 - **允许**：在不影响业务正确性的前提下，脱离本章对交互方式、分步/平铺节奏、通知区具体形态、按钮分组与文案层级等的描述，自行定义交互与风格。
 - **不得**：削弱或改写上文「共享层必须定义的内容」、[04-business-rules](04-business-rules.md) 业务规则、[03-backend-api](03-backend-api.md) 接口契约，以及共享业务层状态语义（含 `blockingErrors[]` / `messages[]`、`restoreStatus`、阶段 2 只读冲突态等）。
-- **验收口径（业务能力）**：须能完整走通主线——阶段 1「转换并自动填充」→ 阶段 2 配置（含 stale、复制行、`conflicted` 只读冲突等）→ 阶段 3 生成与消费（长/短链、打开预览、复制、下载、反向解析）→ 必要时经 `resolve-url` 恢复；错误须按 `scope` 可定位且可阻断错误操作。不要求与 spec 02 的交互细节或文案一一对应。
+- **验收口径（业务能力）**：须能完整走通主线——阶段 1「转换并自动填充」→ 阶段 2 配置（含 stale、复制 instance、`conflicted` 只读冲突等）→ 阶段 3 生成与消费（长/短链、打开预览、复制、下载、反向解析）→ 必要时经 `resolve-url` 恢复；错误须按 `scope` 可定位且可阻断错误操作。不要求与 spec 02 的交互细节或文案一一对应。
 - **提升为 default**：探索性方案经回归与产品确认后，仍可通过 promote 脚本整体复制为 `default`；提升时须重新评估是否收敛到发布级交互约定。
 
 各 scheme 的 `interactionTier` 在 `web/src/scheme/<id>/index.ts` 元数据中声明；共享层与 CI 不据此改变行为，仅作文档与维护者约定。
@@ -128,25 +128,21 @@
 
 #### 1.2.1 端口转发服务
 
-- `default` 方案无启用开关，端口转发入口默认暴露；探索性方案（`b1`、`b2`、`c1`、`c2`）仍可通过各自 UI 开关控制
+- `default` 方案与探索性方案（`b1`、`b2`、`c1`、`c2`）均直接暴露端口转发入口；用户可通过「+端口转发」添加条目，无需先开启开关
 - 端口转发服务在业务语义上是阶段 1 的独立逻辑块
 - 端口转发服务不写入 `transitRawText`，而是以独立字段 `forwardRelayItems` 进入阶段 1 快照
 - 端口转发服务的后续消费链路独立于中转节点文本输入；其输入、校验、去重与阶段 2 消费均按独立业务语义处理
 - 提交阶段 1 快照时，端口转发服务必须以 `forwardRelayItems: string[]` 传递；每个 Tag 对应数组中的一个输入项，保留输入顺序
-- `enablePortForward` 是前端本地 UI 控制字段，不进入后端 API 请求体，也不进入长链接共享状态
-- `default` 方案：不提供 `enablePortForward` switch；用户可直接使用“+端口转发”入口而无需先开启开关
-- 探索性方案：`enablePortForward` 初始值默认 `false`；用户开启 switch 后可先进入“显示端口转发入口但尚未录入条目”的状态；用户关闭 switch 后必须清空 `forwardRelayItems`；仅因用户删除或移除全部端口转发条目时，前端不得自动将该 switch 反向关闭
-- 从 `resolve-url` 恢复页面时，`enablePortForward` 仅作为前端本地派生字段恢复：按 `forwardRelayItems.length > 0` 派生；`default` 方案的端口转发入口始终可见，不依赖该字段
 - 校验与去重口径：统一遵循 [04-business-rules](04-business-rules.md) `1.1.2 端口转发服务输入校验（权威口径）`
 - 前端可在 modal 录入或确认提交时复用同一口径做预校验，并阻止非法值进入 `forwardRelayItems`；但后端返回的校验结果仍是最终裁决
 
 ### 1.3 高级菜单区
 
 - 形态：默认折叠/隐藏
-- 阶段 1 中可配置的 `subconverter` 参数，以及探索性方案使用的端口转发开关，收纳在此区域
-- 前端控件集合：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`、`enablePortForward`
+- 阶段 1 中可配置的 `subconverter` 参数收纳在此区域
+- 前端控件集合：`emoji`、`udp`、`skipCertVerify`（与 `GET /sub` 查询参数 `scv` 对应）、`config`、`include`、`exclude`
 - `emoji` 对外仍表现为 subconverter 风格高级选项（参数名与勾选语义不变）；前端仅负责采集该字段，处理规则以 [04 §0.2.3](04-business-rules.md) 为准
-- 阶段 1 提交模型必须保持结构化：高级菜单区中的 API 字段作为 `advancedOptions` 对象提交；端口转发服务作为 `forwardRelayItems` 数组提交；`enablePortForward` 不提交
+- 阶段 1 提交模型必须保持结构化：高级菜单区中的 API 字段作为 `advancedOptions` 对象提交；端口转发服务作为 `forwardRelayItems` 数组提交
 - `config` 的界面语义是“模板 URL”；字段名保留 `config` 仅为了兼容后端 API 与 `subconverter` 上游查询参数
 - “模板 URL”输入框默认填入 `GET /api/runtime-config` 返回的 `defaultTemplateURL`
 - 前端同时从 `GET /api/runtime-config` 读取 `maxPublicLongURLLength`，用于决定何时必须强制切换为短链接展示
@@ -157,7 +153,7 @@
 ### 1.4 转换动作
 
 - 功能：调用 `POST /api/stage1/convert`
-- 成功后：使用后端返回的 `stage2Init` 直接初始化阶段 2
+- 成功后：使用后端返回的 `stage2.catalog` + 默认 `stage2.snapshot` 初始化阶段 2；若为 reconvert，前端按 [06 §9](06-stage2-model.md) 本地 merge（全局 reset 则整份覆盖）
 - 当接口返回失败时，前端按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - 阶段 1 成功不代表前端已拿到 `completeConfig`；前端只消费初始化结果
 
@@ -173,62 +169,58 @@
 
 ## 阶段 2：配置区
 
-阶段 2 以配置行列表渲染：初始化来自 `stage2Init`（每落地一行），用户快照为 `stage2Snapshot`（可含复制行）；字段语义见 [04 §2.1.2](04-business-rules.md)。
+阶段 2 以嵌套树 `stage2.snapshot`（`servers → sources → instances`）为权威数据；平铺表仅为 DFS 投影。初始化来自 convert 返回的 `stage2.catalog` + 默认 `snapshot`；字段与操作语义见 [06-stage2-model](06-stage2-model.md)。
 
 ### 2.1 数据模型
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `availableModes` | `mode[]` | 阶段 2 第三列的全局模式基线 |
-| `chainTargets[]` | object[] | 链式候选列表；每项包含 `name`、`kind`，空策略组额外返回 `isEmpty = true` |
-| `rows[].rowId` | string | 会话行稳定 ID（必填）；复制行默认与派生 `proxyName` 一致（见 §2.3） |
-| `rows[].proxyName` | string | 可编辑节点名（最终 YAML `proxies[].name`，必填） |
-| `rows[].sourceLandingNodeName` | string | Pass 1 原始落地名（复制行共享，必填） |
-| `rows[].landingNodeType` | string | 本行对应的落地节点类型展示值 |
-| `rows[].server` | string | 落地 server；只读，用于按 server 分组；见 [03](03-backend-api.md) / [04 §2.1](04-business-rules.md) |
-| `rows[].restrictedModes` | object，可选 | 本行额外禁用的模式及原因（`reasonCode` / `reasonArgs`）；缺失表示该行无额外限制 |
-| `rows[].modeWarnings` | object，可选 | 本行额外 warning 的模式及原因（`reasonCode` / `reasonArgs`）；缺失表示该行无额外提示 |
-| `rows[].mode` | `none \| chain \| port_forward` | 当前选择的配置方式 |
-| `rows[].targetName` | `string \| null` | 第四列当前值；`chain` 时为 `chainTargets[].name`，`port_forward` 时为规范化 `server:port` |
-| `serverAggregationGroups[]` | object[] | 按 server 的聚合配置；字段见 [03](03-backend-api.md) §2；业务规则见 [04 §2.7](04-business-rules.md) |
-| `chainProxyTargetGroupSwitchOptimizationEnabled` | `boolean` | 全局开关；开启后对所有符合条件的 `proxy-groups` 目标统一覆写 `timeout` 与 `max-failed-times` |
+| `catalog.availableModes` | `mode[]` | 阶段 2 第三列的全局模式基线 |
+| `catalog.chainTargets[]` | object[] | 链式候选；每项含 `name`、`kind`，空策略组可有 `isEmpty = true` |
+| `catalog.forwardRelays[]` | object[] | 端口转发候选 |
+| `catalog.servers[].serverKey` | string | 落地 server 键（只读） |
+| `catalog.servers[].sources[]` | object[] | 源元数据：`sourceId`、`landingNodeType`、`default*`、可选 `restrictedModes` / `modeWarnings` |
+| `snapshot.servers[].aggregation` | object | **Client**：`enabled` / `groupName` / `strategy` / `memberLocalInstanceIds`（值为 `sourceId::iN`）；**Wire** 发请求时用 `memberProxyNames[]` |
+| `snapshot...instances[]` | object[] | **Client** 可编辑行：`instanceId`（`sourceId::iN`）/ `proxyName` / `mode` / `targetName`；**Wire** 无 `instanceId`；每源长度 ≥ 1 |
+| `chainProxyTargetGroupSwitchOptimizationEnabled` | `boolean` | 全局开关；开启后对符合条件的 `proxy-groups` 目标统一覆写 |
 
-- 行序由 `rows[]` presentation order 决定；聚合组成员序由 `memberRowIds[]` 决定（三顺序域见 [04 §2.1.2a](04-business-rules.md)）
-- 平铺表与聚合树均按 `stage2Snapshot.rows[]` presentation order 渲染（业务规则见 [04 §2.1.3](04-business-rules.md)）
-- 聚合组内成员顺序不来自 `rows[]` 顺序，而来自 `serverAggregationGroups[].memberRowIds[]`
-- 行级拖拽若未来启用，只能通过重排 `rows[]` 写入 presentation order；语义见 [04 §2.1.4](04-business-rules.md)
+- 顺序域：嵌套数组下标即权威；聚合成员集合/序见 [06 §6](06-stage2-model.md)
+- 平铺表与聚合树均对同一棵 snapshot 树做 DFS；聚合开时画 server/source/instance，聚合关时只画 instance 行
+- **关闭聚合不得清空** server 上的业务意图：草稿进 `aggregationDraftsByServerKey`；发往后端的 snapshot 该 server 仅 `{ enabled: false }`（见 [06 §8](06-stage2-model.md)）
 
 ### 2.2 共享业务槽位
 
 | 槽位 | 内容 | 交互 |
 |------|------|------|
-| 节点名 | `proxyName` | 可编辑；复制行默认 `原名 2`… |
-| 节点类型展示 | `landingNodeType` | 只读 |
+| 节点名 | `proxyName` | 可编辑；复制实例默认 `原名 2`… |
+| 节点类型展示 | catalog `landingNodeType` | 只读 |
 | 配置方式选择 | `mode` | 按后端返回的模式结果渲染；禁用项展示对应原因 |
 | 目标选择 | `targetName` | 由 `mode` 决定数据源与控件状态 |
 
 ### 2.3 第一列：节点名
 
-- 展示/编辑 `proxyName`；初始化时与 `stage2Init` 源行 `proxyName` 一致
-- 提供复制行、删除行（至少保留每个 `sourceLandingNodeName` 一行）
-- 复制行时：`proxyName` 按 `原名 2`、`原名 3`… 派生；`rowId` 默认设为与派生 `proxyName` 相同，以保证会话内定位与链接编码语义一致（编码期后端仍会按 [04 §2.1.2b](04-business-rules.md) 规范化）
+- 展示/编辑 instance `proxyName`；初始化时与 catalog `defaultProxyName` 一致
+- 提供复制/删除实例（至少保留每个 `sourceId` 一个 instance）
+- 复制时：`proxyName` 按 `原名 2`、`原名 3`… 派生；`instanceId` 分配新 ordinal（见 [06 §5](06-stage2-model.md)）
+- 改名时仅改 `proxyName`；`instanceId` 与 `memberLocalInstanceIds` **不变**
+- convert/resolve 响应后须 `hydrateInstanceIds`；`generate` 前须 `normalizeSnapshotForRequest`（strip `instanceId`，`memberLocalInstanceIds` → `memberProxyNames`）
 
 ### 2.4 第二列：节点类型
 
-- 数据来源：`stage2Init.rows[].landingNodeType`
+- 数据来源：catalog 同 `sourceId` 的 `landingNodeType`
 - 展示语义：只展示，不允许编辑
 
 ### 2.5 第三列：配置方式
 
 - `none`：不修改该落地节点
-- `chain`：第四列从 `stage2Init.chainTargets[]` 中选择
-- `port_forward`：第四列从 `stage2Init.forwardRelays[]` 中选择
-- 模式可用性、行级限制、warning 与对应原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前行 `restrictedModes`、`modeWarnings` 及其 `reasonCode` / `reasonArgs`
-- 前端必须基于 `reasonCode` 与 `reasonArgs` 本地映射展示文案（含 `restrictedModes` 禁用原因与 `modeWarnings` 不推荐提示）；不得依赖后端返回人类可读 `reasonText` 字段，也不得自行补算额外规则
-- 前端不得自行解析落地节点协议、端口或其他隐藏字段去补算 `modeWarnings`；若后端已将多个 warning 原因合并到同一个 `modeWarnings.chain`，前端须基于合并后的 `reasonCode` / `reasonArgs` 映射展示
+- `chain`：第四列从 `catalog.chainTargets[]` 中选择
+- `port_forward`：第四列从 `catalog.forwardRelays[]` 中选择
+- 模式可用性、源级限制、warning 与对应原因由后端按 [04-business-rules](04-business-rules.md) 产出；前端只消费 `availableModes`、当前源 `restrictedModes`、`modeWarnings` 及其 `reasonCode` / `reasonArgs`
+- 前端必须基于 `reasonCode` 与 `reasonArgs` 本地映射展示文案；不得依赖后端返回人类可读 `reasonText` 字段，也不得自行补算额外规则
+- 前端不得自行解析落地节点协议、端口或其他隐藏字段去补算 `modeWarnings`
 - `restoreConflicts[]` 的 `reasonCode` / `reasonArgs` 与 `blockingErrors[].code` / `reasonArgs` 共用同一映射表；只读冲突态下前端基于 `restoreConflicts[]` 展示失效原因
 - `restrictedModes` 表示该模式不可选；`modeWarnings` 表示该模式仍可选，但必须展示 warning 提示
-- 当某行的 `chain` 同时存在于 `availableModes` 且 `modeWarnings.chain` 已返回时，前端不得禁用该模式，也不得阻止用户提交；只允许以 Tooltip、辅助文案或等价方式提示“不推荐”原因
+- 当某源的 `chain` 同时存在于 `availableModes` 且 `modeWarnings.chain` 已返回时，前端不得禁用该模式，也不得阻止用户提交；只允许以 Tooltip、辅助文案或等价方式提示“不推荐”原因
 
 ### 2.6 第四列：目标（单项选择器）
 
@@ -238,38 +230,45 @@
 - 折叠/展开语义可以是菜单内/组内交互（如展开、折叠、二级列表等）
 - 前端使用后端返回的 `chainTargets[].name` 作为选项值
 - `chainTargets[].isEmpty = true` 的 `proxy-groups` 候选保留展示、禁止选择，并提示“策略组为空，不允许作为中转策略组”
-- 当 `mode = port_forward` 时，第四列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`；提示用户端口转发服务必须在中转机上完成与落地节点一一对应的配置；不可多个落地节点选择同一个端口转化服务，当一个端口转发服务已被其他落地节点选择时保留展示、禁止选择
+- 当 `mode = port_forward` 时，第四列展示端口转发服务列表；每个选项值都是后端返回的规范化 `server:port`；提示用户端口转发服务必须在中转机上完成与落地节点一一对应的配置；不可多个 instance 选择同一个端口转发服务，当一个端口转发服务已被其他 instance 选择时保留展示、禁止选择
 - 前端直接使用后端返回的候选列表与默认值
 
 ### 2.6.1 链式地域组节点切换优化（基线路由）
 
 - 本阶段只提供**全局开关**，不提供每行选择器；切换优化控件属于阶段 2 的**基线路由**能力：当前只在 `/`（`default`）暴露；探索性路由 `/ui/b*`、`/ui/c*` 本轮不复制该控件
-- 全局开关开启时，前端必须写入 `stage2Snapshot.chainProxyTargetGroupSwitchOptimizationEnabled = true`；关闭时写入 `false`（沿用模板默认）
-- 符合条件的行指：`mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups`
-- 当用户把链式目标从 `proxy-groups` 切到 `proxies`（固定节点）、切换到 `none` / `port_forward`，或第四列被清空时，前端不需要额外写入行级字段；后端仅按当前符合条件行与全局开关状态决定是否覆写目标策略组
+- 全局开关开启时，前端必须写入 `snapshot.chainProxyTargetGroupSwitchOptimizationEnabled = true`；关闭时写入 `false`（沿用模板默认）
+- 符合条件的 instance：`mode = chain` 且当前 `targetName` 对应 `chainTargets[].kind = proxy-groups`
+- 当用户把链式目标从 `proxy-groups` 切到 `proxies`（固定节点）、切换到 `none` / `port_forward`，或第四列被清空时，前端不需要额外写入行级字段；后端仅按当前符合条件 instance 与全局开关状态决定是否覆写目标策略组
 
 ### 2.6.2 线路聚合模式（基线路由 UI）
 
 - 表格上方 toolbar 提供「线路聚合模式」开关；开启后平铺表 ↔ 聚合树切换（非高级选项内）
-- 关闭聚合模式时清空 `serverAggregationGroups[]`
-- 聚合组配置写入 `serverAggregationGroups[]`；渲染语义见 [04 §2.7 / §3.3.2](04-business-rules.md)
-- 组内成员顺序（`memberRowIds[]`）与 `rows[]` presentation order 是独立顺序域：前者由聚合树「成员顺序」面板配置，后者决定平铺表行序与聚合树 server 块顺序（见 [04 §2.1.3 / §2.7](04-business-rules.md)）
-- 不自动为所有 server 批量建组；用户须在聚合树内显式启用
+- **关闭聚合模式时不得清空**聚合配置意图：将当前 `aggregation` 挪入前端临时草稿 `aggregationDraftsByServerKey`，snapshot 写回 `{ enabled: false }`；请求体永不带关聚合草稿（见 [06 §8](06-stage2-model.md)）
+- 聚合组配置写入 `servers[].aggregation`；渲染语义见 [04 §2.7 / §3.3.2](04-business-rules.md) 与 [06](06-stage2-model.md)
+- `memberLocalInstanceIds` 序与嵌套展示序是独立顺序域：前者在 `strategy=fallback` 时由顺序面板写入；发请求时映射为 `memberProxyNames`；后者决定平铺/聚合树行序（见 [06 §6](06-stage2-model.md)）
+- 不自动为所有 server 批量启用；用户须在聚合树内显式启用
 
 ### 2.6.3 两种故障转移能力的分工
 
 | 能力 | 开关位置 | 作用对象 | 典型场景 |
 |------|----------|----------|----------|
 | 策略组节点切换优化 | 高级选项 | 链式目标为**既有地域策略组**（`proxy-groups`） | 加快该策略组内中转节点切换 |
-| 线路聚合 | 表格 toolbar | 同一 **server** 下多行（副本/不同中转） | 多线路互为 backup，追加新策略组 |
+| 线路聚合 | 表格 toolbar | 同一 **server** 下多 instance（副本/不同中转） | 多线路互为 backup，追加新策略组 |
 
 - **允许同时开启**；后端顺序：§3.3.1 覆写既有组 → §3.3.2 追加聚合组 → §3.3.3 注入 select 策略组（见 [04 §3.5](04-business-rules.md)）
 - **不做互斥**；两者解决不同层级问题，非二选一
 - 链式目标选固定节点/端口转发时，仅聚合能力 relevant；选地域策略组时，切换优化 relevant
 
+### 2.6.4 重置语义
+
+- **全局 reset**：再调 `POST /api/stage1/convert`，用返回的默认 `snapshot` **整份覆盖**本地状态（跳过 merge），并替换 `catalog`、清空聚合草稿；**不**调用已废弃的 `/api/stage2/reset`
+- **局部 reset**：纯前端，从 catalog 同 `sourceId` 的 `default*` 恢复目标 instance
+- **reconvert merge**：convert 成功后按 `sourceId` 保留既有 instances；规则见 [06 §9](06-stage2-model.md)
+
 ### 2.7 生成动作
 
-- 功能：提交阶段 1 输入快照与阶段 2 配置快照，调用 `POST /api/generate`，获取可消费的长链接
+- 功能：提交阶段 1 输入快照与 `stage2.snapshot`，调用 `POST /api/generate`，获取可消费的长链接
+- 提交前必须将所有 `enabled=false` 的 aggregation 规范为仅 `{ enabled: false }`
 - 成功后：进入阶段 3
 - 请求进行中时对应触发控件必须禁用，避免重复提交
 - 当接口返回失败时，按钮恢复默认文案；前端按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
@@ -328,9 +327,9 @@
 
 - 业务流程通常按“Stage 1 -> Stage 2 -> Stage 3”推进；恢复能力由阶段 3 输出域拥有，但可在需要时回放已有链接并重建页面状态
 - 前端界面可采用自上而下平铺、分段滚动、分栏或其他不改变业务边界的组织方式
-- 重新执行阶段 1 后，阶段 2 必须完全按新的 `stage2Init` 重建
+- 重新执行阶段 1 后，阶段 2 按 [06 §9](06-stage2-model.md) 处理：reconvert 默认 merge；显式全局 reset 则整份覆盖默认 snapshot
 - 阶段 3 的长/短链接可作为页面状态恢复来源
-- 前端通过 `resolve-url` 恢复页面时，成功响应只消费后端返回的 `stage1Input`、`stage2Snapshot`、`restoreStatus` 与 `messages[]`；其中 `messages[]` 作为后端消息源追加到 workflow log，而不是覆盖整个历史；失败响应按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
+- 前端通过 `resolve-url` 恢复页面时，成功响应只消费后端返回的 `stage1Input`、`stage2`（`catalog` + `snapshot`）、`restoreStatus` 与 `messages[]`；其中 `messages[]` 作为后端消息源追加到 workflow log，而不是覆盖整个历史；失败响应按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - `restoreStatus = replayable` 时，前端按正常可编辑态恢复阶段 1 与阶段 2，用户可直接继续编辑和生成
 - `restoreStatus = conflicted` 时，前端仍恢复阶段 1 输入与阶段 2 快照用于展示，但阶段 2 必须进入只读冲突态
 - 只读冲突态下，前端必须禁用阶段 2 编辑控件与“生成链接”按钮，并显著提示“当前恢复快照引用的目标已失效，恢复结果仅供查看；请重新执行转换并自动填充后再继续”

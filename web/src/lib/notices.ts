@@ -19,6 +19,21 @@ function hasOperationalBlockingErrors(errors: BlockingError[]) {
 	return errors.some((error) => error.scope !== "global");
 }
 
+/** 主阻断反馈位只展示摘要；同 code+message 的多条行级错误（如 DUPLICATE_PROXY_NAME）合并为一条。 */
+export function dedupeBlockingErrorsForDisplay(errors: BlockingError[]): BlockingError[] {
+	const seen = new Set<string>();
+	const deduped: BlockingError[] = [];
+	for (const error of errors) {
+		const key = `${error.code}\0${error.message}`;
+		if (seen.has(key)) {
+			continue;
+		}
+		seen.add(key);
+		deduped.push(error);
+	}
+	return deduped;
+}
+
 export function getPrimaryBlockingErrorsForStage(
 	errors: BlockingError[],
 	responseOriginStage: ResponseOriginStage | null,
@@ -28,7 +43,7 @@ export function getPrimaryBlockingErrorsForStage(
 		return [];
 	}
 
-	return errors;
+	return dedupeBlockingErrorsForDisplay(errors);
 }
 
 export function getGlobalPrimaryBlockingErrors(
@@ -40,12 +55,12 @@ export function getGlobalPrimaryBlockingErrors(
 		return [];
 	}
 	if (placement === "global") {
-		return errors;
+		return dedupeBlockingErrorsForDisplay(errors);
 	}
 	if (responseOriginStage !== null && hasOperationalBlockingErrors(errors)) {
 		return [];
 	}
-	return errors;
+	return dedupeBlockingErrorsForDisplay(errors);
 }
 
 export function getOriginStageLabel(stage: ResponseOriginStage | null) {
@@ -72,7 +87,7 @@ export function getStage3FieldErrors(errors: BlockingError[], field: string) {
 function getStage2RowMatchKeys(row: Stage2Row | string) {
 	const values = typeof row === "string"
 		? [row]
-		: [row.rowId, row.proxyName, row.sourceLandingNodeName];
+		: [row.instanceId, row.proxyName, row.sourceId];
 	const keys = new Set<string>();
 	for (const value of values) {
 		const trimmed = String(value ?? "").trim();
@@ -84,14 +99,14 @@ function getStage2RowMatchKeys(row: Stage2Row | string) {
 }
 
 function matchesStage2RowError(error: BlockingError, row: Stage2Row | string) {
-	if (error.scope !== "stage2_row") {
+	if (error.scope !== "stage2_instance") {
 		return false;
 	}
 	const keys = getStage2RowMatchKeys(row);
 	if (keys.size === 0) {
 		return false;
 	}
-	return ["rowId", "proxyName", "sourceLandingNodeName"]
+	return ["proxyName", "sourceId"]
 		.some((contextKey) => keys.has(String(error.context?.[contextKey] ?? "").trim()));
 }
 
@@ -112,6 +127,21 @@ export function clearStage2RowErrors(errors: BlockingError[], row: Stage2Row | s
 	return errors.filter((error) => !matchesStage2RowError(error, row));
 }
 
+export function isDuplicateProxyNameError(error: BlockingError) {
+	return error.code === "DUPLICATE_PROXY_NAME" && error.scope === "stage2_instance";
+}
+
+export function clearDuplicateProxyNameErrors(errors: BlockingError[]) {
+	return errors.filter((error) => !isDuplicateProxyNameError(error));
+}
+
+export function mergeDuplicateProxyNameErrors(
+	errors: BlockingError[],
+	duplicateErrors: BlockingError[],
+) {
+	return [...clearDuplicateProxyNameErrors(errors), ...duplicateErrors];
+}
+
 export function clearStage3FieldErrors(errors: BlockingError[], fields: string | string[]) {
 	const targetFields = new Set(toArray(fields));
 	if (targetFields.size === 0) {
@@ -130,7 +160,8 @@ export function clearBlockingErrorsSupersededByStage2Stale(
 	errors: BlockingError[],
 	responseOriginStage: ResponseOriginStage | null,
 ): BlockingError[] {
-	const withoutRow = errors.filter((error) => error.scope !== "stage2_row");
+	const withoutRow = errors.filter((error) =>
+		error.scope !== "stage2_instance" && error.scope !== "stage2_server");
 	if (responseOriginStage === "stage2") {
 		return [];
 	}

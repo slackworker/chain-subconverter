@@ -1,10 +1,11 @@
 import {
 	detectServerGroupSourceFlagEmoji,
+	flattenInstances,
 	getStage2RowSourceLandingName,
+	getStage2RowStableKey,
 	getStage2RowStrictKey,
-	isStage2SourceRow,
 } from "../../lib/stage2";
-import type { Stage2InitRow, Stage2Row } from "../../types/api";
+import type { Stage2Catalog, Stage2Row, Stage2Snapshot } from "../../types/api";
 
 export type Stage2TreeBranch = "mid" | "last";
 
@@ -13,7 +14,7 @@ export type Stage2TreeGlyphParts = {
 	continuation: "│" | "";
 	branch: Stage2TreeBranch;
 	depth: 1 | 2;
-	/** depth 1 源行下方仍有派生行时，向下引出子级竖线导轨。 */
+	/** depth 1 默认实例行下方仍有副本时，向下引出子级竖线导轨。 */
 	childGuide?: boolean;
 };
 
@@ -36,45 +37,43 @@ export type Stage2TreeRowNode = {
 	kind: "row";
 	row: Stage2Row;
 	rowKey: string;
+	stableKey: string;
 	depth: 1 | 2;
 	glyphParts: Stage2TreeGlyphParts;
-	isSource: boolean;
+	isDefaultInstance: boolean;
 };
 
 export type Stage2TreeNode = Stage2TreeServerNode | Stage2TreeRowNode;
 
-export type Stage2RowMetaLookup = (rowKey: string) => Pick<Stage2InitRow, "server"> | null | undefined;
+export type Stage2RowMetaLookup = (rowKey: string) => unknown;
 
-function getRowServerKey(row: Stage2Row, getRowMeta: Stage2RowMetaLookup): string {
-	const rowKey = getStage2RowStrictKey(row);
-	const server = getRowMeta(rowKey)?.server?.trim() ?? "";
-	if (server !== "") {
-		return server;
-	}
-	return `source:${getStage2RowSourceLandingName(row)}`;
+function getRowServerKey(row: Stage2Row, _getRowMeta: Stage2RowMetaLookup): string {
+	return row.serverKey.trim() || `source:${getStage2RowSourceLandingName(row)}`;
 }
 
-function getRowDisplayServer(row: Stage2Row, getRowMeta: Stage2RowMetaLookup): string {
-	const rowKey = getStage2RowStrictKey(row);
-	return getRowMeta(rowKey)?.server?.trim() ?? "";
+function getRowDisplayServer(row: Stage2Row, _getRowMeta: Stage2RowMetaLookup): string {
+	return row.serverKey.trim();
 }
 
-function buildSourceGlyphParts(sourceBranch: Stage2TreeBranch, hasDerivedBelow: boolean): Stage2TreeGlyphParts {
+function buildDefaultInstanceGlyphParts(
+	sourceBranch: Stage2TreeBranch,
+	hasDuplicatesBelow: boolean,
+): Stage2TreeGlyphParts {
 	return {
 		continuation: "",
 		branch: sourceBranch,
 		depth: 1,
-		childGuide: hasDerivedBelow,
+		childGuide: hasDuplicatesBelow,
 	};
 }
 
-function buildDerivedGlyphParts(
+function buildDuplicateInstanceGlyphParts(
 	sourceBranch: Stage2TreeBranch,
-	derivedBranch: Stage2TreeBranch,
+	duplicateBranch: Stage2TreeBranch,
 ): Stage2TreeGlyphParts {
 	return {
 		continuation: sourceBranch === "mid" ? "│" : "",
-		branch: derivedBranch,
+		branch: duplicateBranch,
 		depth: 2,
 	};
 }
@@ -111,7 +110,7 @@ function partitionSourceGroups(rows: Stage2Row[]): Map<string, Stage2Row[]> {
 	return groups;
 }
 
-/** 源节点组按在 server 块内首次出现的顺序排列，组内行保持 rows 原始顺序。 */
+/** 按 sourceId 分组；组内行保持 rows 原始顺序。 */
 function getSourceGroupsInRowOrder(serverRows: Stage2Row[]): Stage2Row[][] {
 	const groups = partitionSourceGroups(serverRows);
 	const ordered: Stage2Row[][] = [];
@@ -187,40 +186,94 @@ export function buildStage2AggregationTree(
 		sourceGroups.forEach((groupRows, sourceIndex) => {
 			const sourceBranch: Stage2TreeBranch = sourceIndex < sourceGroups.length - 1 ? "mid" : "last";
 			const orderedRows = groupRows;
-			const derivedInGroup = orderedRows.filter((candidate) => !isStage2SourceRow(candidate));
+			const defaultInstanceRowKey = getStage2RowStrictKey(orderedRows[0]);
+			const duplicateRowsInGroup = orderedRows.slice(1);
 
 			orderedRows.forEach((row) => {
 				const rowKey = getStage2RowStrictKey(row);
-				const isSource = isStage2SourceRow(row);
-				if (isSource) {
+				const isDefaultInstance = rowKey === defaultInstanceRowKey;
+				if (isDefaultInstance) {
 					nodes.push({
 						kind: "row",
 						row,
 						rowKey,
+						stableKey: getStage2RowStableKey(row),
 						depth: 1,
-						glyphParts: buildSourceGlyphParts(sourceBranch, derivedInGroup.length > 0),
-						isSource: true,
+						glyphParts: buildDefaultInstanceGlyphParts(sourceBranch, duplicateRowsInGroup.length > 0),
+						isDefaultInstance: true,
 					});
 					return;
 				}
 
-				const derivedRows = derivedInGroup;
-				const derivedIndex = derivedRows.findIndex((candidate) => getStage2RowStrictKey(candidate) === rowKey);
-				const derivedBranch: Stage2TreeBranch =
-					derivedIndex >= 0 && derivedIndex < derivedRows.length - 1 ? "mid" : "last";
+				const duplicateRows = duplicateRowsInGroup;
+				const duplicateIndex = duplicateRows.findIndex((candidate) => getStage2RowStrictKey(candidate) === rowKey);
+				const duplicateBranch: Stage2TreeBranch =
+					duplicateIndex >= 0 && duplicateIndex < duplicateRows.length - 1 ? "mid" : "last";
 
 				nodes.push({
 					kind: "row",
 					row,
 					rowKey,
+					stableKey: getStage2RowStableKey(row),
 					depth: 2,
-					glyphParts: buildDerivedGlyphParts(sourceBranch, derivedBranch),
-					isSource: false,
+					glyphParts: buildDuplicateInstanceGlyphParts(sourceBranch, duplicateBranch),
+					isDefaultInstance: false,
 				});
 			});
 		});
 	}
 
+	return nodes;
+}
+
+/** Default scheme projection that preserves the snapshot's server/source/instance nesting. */
+export function buildStage2AggregationTreeFromSnapshot(
+	snapshot: Stage2Snapshot,
+	catalog: Stage2Catalog | null,
+): Stage2TreeNode[] {
+	const flatById = new Map(
+		flattenInstances(snapshot, catalog).map((row) => [row.instanceId, row] as const),
+	);
+	const nodes: Stage2TreeNode[] = [];
+	for (const server of snapshot.servers) {
+		const serverRows = server.sources.flatMap((source) =>
+			source.instances.flatMap((instance) => {
+				const row = flatById.get(instance.instanceId);
+				return row ? [row] : [];
+			}),
+		);
+		const anchorRow = serverRows[0];
+		if (!anchorRow) continue;
+		nodes.push({
+			kind: "server",
+			server: server.serverKey,
+			displayServer: server.serverKey,
+			anchorRowKey: getStage2RowStrictKey(anchorRow),
+			sourceFlagEmoji: detectServerGroupSourceFlagEmoji(serverRows),
+		});
+		server.sources.forEach((source, sourceIndex) => {
+			const sourceBranch: Stage2TreeBranch = sourceIndex < server.sources.length - 1 ? "mid" : "last";
+			source.instances.forEach((instance, instanceIndex) => {
+				const row = flatById.get(instance.instanceId);
+				if (!row) return;
+				const isDefaultInstance = instanceIndex === 0;
+				nodes.push({
+					kind: "row",
+					row,
+					rowKey: getStage2RowStrictKey(row),
+					stableKey: getStage2RowStableKey(row),
+					depth: isDefaultInstance ? 1 : 2,
+					glyphParts: isDefaultInstance
+						? buildDefaultInstanceGlyphParts(sourceBranch, source.instances.length > 1)
+						: buildDuplicateInstanceGlyphParts(
+							sourceBranch,
+							instanceIndex < source.instances.length - 1 ? "mid" : "last",
+						),
+					isDefaultInstance,
+				});
+			});
+		});
+	}
 	return nodes;
 }
 
@@ -266,7 +319,7 @@ function getFlatSourceGroupInlineClassName(blockRowNodes: Stage2TreeRowNode[], r
 	return [
 		"a-stage2-row-inline",
 		groupedBySource ? "is-grouped" : "is-solo",
-		rowNode.isSource ? "is-source" : "is-derived",
+		rowNode.isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
 		groupStart ? "is-group-start" : "",
 		groupEnd ? "is-group-end" : "",
 	]
@@ -314,12 +367,12 @@ export function getStage2AggregationTreeRowInlineClassName(
 	const hasSiblings = blockEnd > blockStart;
 	const isBlockStart = index === blockStart;
 	const isBlockEnd = index === blockEnd;
-	const role = node.isSource ? "source" : "derived";
+	const role = node.isDefaultInstance ? "default-instance" : "duplicate-instance";
 
 	return [
 		"a-stage2-row-inline",
 		hasSiblings ? "is-grouped" : "is-solo",
-		role === "source" ? "is-source" : "is-derived",
+		role === "default-instance" ? "is-default-instance" : "is-duplicate-instance",
 		isBlockStart ? "is-group-start" : "",
 		isBlockEnd ? "is-group-end" : "",
 	]

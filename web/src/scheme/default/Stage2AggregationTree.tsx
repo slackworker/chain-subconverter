@@ -8,11 +8,10 @@ import {
 	getStage2RowDisplayName,
 	getStage2RowStrictKey,
 	getStage2TargetDisplayLabel,
-	isStage2SourceRow,
 } from "../../lib/stage2";
 import { formatModeReason } from "../../lib/mode-reason";
 import {
-	buildStage2AggregationTree,
+	buildStage2AggregationTreeFromSnapshot,
 	formatStage2TreeGlyphMeasureSpacer,
 	getServerBlockAggregationEnabled,
 	getStage2AggregationTreeRowInlineClassName,
@@ -104,6 +103,7 @@ export function Stage2AggregationTree({
 		getChainTargetChoiceGroups,
 		getForwardRelayChoices,
 		handleProxyNameChange,
+		handleProxyNameBlur,
 		handleCloneStage2Row,
 		handleDeleteStage2Row,
 		canDeleteStage2Row,
@@ -117,8 +117,8 @@ export function Stage2AggregationTree({
 	} = workflow;
 
 	const treeNodes = useMemo(
-		() => buildStage2AggregationTree(stage2Rows, getStage2RowMeta),
-		[stage2Rows, getStage2RowMeta],
+		() => buildStage2AggregationTreeFromSnapshot(state.stage2Snapshot, state.stage2Catalog),
+		[state.stage2Snapshot, state.stage2Catalog],
 	);
 
 	const stage2ColumnMeasureInput = useMemo(() => {
@@ -203,7 +203,7 @@ export function Stage2AggregationTree({
 				<tbody>
 					{treeNodes.map((node, nodeIndex) => (
 						<Stage2AggregationTreeRow
-							key={node.kind === "server" ? `server:${node.server}` : node.rowKey}
+							key={node.kind === "server" ? `server:${node.server}` : node.stableKey}
 							node={node}
 							nodeIndex={nodeIndex}
 							treeNodes={treeNodes}
@@ -270,6 +270,7 @@ function Stage2AggregationTreeRow({
 		getChainTargetChoiceGroups,
 		getForwardRelayChoices,
 		handleProxyNameChange,
+		handleProxyNameBlur,
 		handleCloneStage2Row,
 		handleDeleteStage2Row,
 		canDeleteStage2Row,
@@ -321,7 +322,7 @@ function Stage2AggregationTreeRow({
 						rowErrors={[]}
 						copy={copy}
 						wrapperClassName={rowInlineClassName}
-						isSource={true}
+						isDefaultInstance={false}
 						canDeleteRow={false}
 						rowNameInputId={`a-s2-server-name-${node.server}`}
 						onProxyNameChange={handleProxyNameChange}
@@ -403,10 +404,10 @@ function Stage2AggregationTreeRow({
 	const meta = getStage2RowMeta(rowKey);
 	const rowErrors = getStage2RowErrors(rowKey);
 	const serverAggregation = getServerAggregationGroup(rowKey);
-	const memberChecked = row.rowId ? (serverAggregation?.memberChecked ?? false) : false;
-	const sourceRow = isStage2SourceRow(row);
-	const canDeleteRow = !sourceRow && canDeleteStage2Row(rowKey);
-	const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneDerivedRow;
+	const memberChecked = row.instanceId ? (serverAggregation?.memberChecked ?? false) : false;
+	const isDefaultInstance = node.isDefaultInstance;
+	const canDeleteRow = canDeleteStage2Row(rowKey);
+	const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneInstance;
 	const supplementGroup = getChainTargetChoiceGroups().find((group) => group.kind === "proxies") ?? null;
 	const selectedInSupplement = Boolean(
 		supplementGroup?.choices.some((choice) => choice.value === row.targetName),
@@ -427,17 +428,18 @@ function Stage2AggregationTreeRow({
 					rowErrors={rowErrors}
 					copy={copy}
 					wrapperClassName={rowInlineClassName}
-					isSource={sourceRow}
+					isDefaultInstance={isDefaultInstance}
 					canDeleteRow={canDeleteRow}
 					deleteRowTitle={deleteRowTitle}
 					rowNameInputId={rowNameInputId}
 					onProxyNameChange={handleProxyNameChange}
+					onProxyNameBlur={() => handleProxyNameBlur()}
 					onCloneRow={handleCloneStage2Row}
 					onDeleteRow={handleDeleteStage2Row}
 				/>
 			</td>
 			<td>
-				{row.rowId ? (
+				{row.instanceId ? (
 					<Stage2AggregationCell
 						hint={copy.aggregationInclude}
 						checked={memberChecked}

@@ -117,11 +117,11 @@ export function Stage2Section({
 	const chainTargetMenuPortalRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
-		const hasEnabledAggregation = state.stage2Snapshot.serverAggregationGroups.some((group) => group.enabled);
+		const hasEnabledAggregation = state.stage2Snapshot.servers.some((server) => server.aggregation.enabled);
 		if (hasEnabledAggregation) {
 			setStage2AggregationMode(true);
 		}
-	}, [state.stage2Snapshot.serverAggregationGroups, setStage2AggregationMode]);
+	}, [state.stage2Snapshot.servers, setStage2AggregationMode]);
 
 	useEffect(() => {
 		if (openTargetMenuRow === null) {

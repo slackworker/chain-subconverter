@@ -168,7 +168,7 @@ tracked testdata:  internal/review/testdata/3pass-ss2022-test-subscription/
   - 手动 SOCKS5 默认 `chain -> 🇭🇰 香港节点`
 - `stage2-snapshot` 在上述基础上固定为 `8` 行（含 3 条副本）：
   - `Alpha-SS-SG` 追加 1 条副本：分别指向 `🇭🇰 香港节点` 与 `🇸🇬 新加坡节点`
-  - `Alpha-Reality-SG` 保留源行 `none`，并追加 2 条副本分别指向两条 `port_forward` relay
+  - `Alpha-Reality-SG` 保留默认实例 `none`，并追加 2 条副本分别指向两条 `port_forward` relay
   - `Beta-SS-JP` 保持 `chain -> 🇯🇵 日本节点`
   - `Beta-Reality-JP` 固定为 `none`
   - 手动 SOCKS5 保持 `chain -> 🇭🇰 香港节点`

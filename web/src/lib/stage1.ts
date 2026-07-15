@@ -251,14 +251,3 @@ export function removeForwardRelayItem(stage1Input: Stage1Input, index: number):
 		forwardRelayItems: stage1Input.forwardRelayItems.filter((_, itemIndex) => itemIndex !== index),
 	};
 }
-
-export function setPortForwardEnabled(stage1Input: Stage1Input, enabled: boolean): Stage1Input {
-	return {
-		...stage1Input,
-		forwardRelayItems: enabled ? stage1Input.forwardRelayItems : [],
-		advancedOptions: {
-			...stage1Input.advancedOptions,
-			enablePortForward: enabled,
-		},
-	};
-}

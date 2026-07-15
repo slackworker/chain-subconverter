@@ -12,14 +12,49 @@
       "exclude": null
     }
   },
+  "stage2": {
+    "snapshot": {
+      "servers": [
+        {
+          "serverKey": "source:🇺🇸 SS2022-Test-256-US",
+          "aggregation": {
+            "enabled": false
+          },
+          "sources": [
+            {
+              "sourceId": "🇺🇸 SS2022-Test-256-US",
+              "instances": [
+                {
+                  "proxyName": "🇺🇸 SS2022-Test-256-US",
+                  "mode": "chain",
+                  "targetName": "🇺🇸 美国节点"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
   "stage2Snapshot": {
-    "rows": [
+    "servers": [
       {
-        "rowId": "🇺🇸 SS2022-Test-256-US",
-        "sourceLandingNodeName": "🇺🇸 SS2022-Test-256-US",
-        "proxyName": "🇺🇸 SS2022-Test-256-US",
-        "mode": "chain",
-        "targetName": "🇺🇸 美国节点"
+        "serverKey": "source:🇺🇸 SS2022-Test-256-US",
+        "aggregation": {
+          "enabled": false
+        },
+        "sources": [
+          {
+            "sourceId": "🇺🇸 SS2022-Test-256-US",
+            "instances": [
+              {
+                "proxyName": "🇺🇸 SS2022-Test-256-US",
+                "mode": "chain",
+                "targetName": "🇺🇸 美国节点"
+              }
+            ]
+          }
+        ]
       }
     ]
   }

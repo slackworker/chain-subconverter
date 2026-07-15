@@ -25,7 +25,7 @@ export type Stage2Copy = {
 	serverGroupNameEditableHint: string;
 	cloneRow: string;
 	deleteRow: string;
-	keepOneDerivedRow: string;
+	keepOneInstance: string;
 	selectTarget: string;
 	commonGroups: string;
 	fixedNodes: string;
@@ -37,8 +37,8 @@ export type Stage2Copy = {
 	memberOrderUrlTestHint: string;
 	memberOrderEmpty: string;
 	memberOrderPrimaryBadge: string;
-	memberOrderSourceBadge: string;
-	memberOrderDerivedBadge: string;
+	memberOrderDefaultInstanceBadge: string;
+	memberOrderDuplicateBadge: string;
 	memberOrderDragHandle: string;
 	memberOrderDragHandleAria: string;
 };
@@ -83,11 +83,12 @@ interface Stage2RowNameCellProps {
 	reserveTreeGlyphColumn?: boolean;
 	wrapperClassName?: string;
 	sourceLandingName?: string;
-	isSource: boolean;
+	isDefaultInstance: boolean;
 	canDeleteRow: boolean;
 	deleteRowTitle?: string;
 	rowNameInputId: string;
 	onProxyNameChange: (rowKey: string, value: string) => void;
+	onProxyNameBlur?: (rowKey: string) => void;
 	onNameChange?: (rowKey: string, value: string) => void;
 	onCloneRow: (rowKey: string) => void;
 	onDeleteRow: (rowKey: string) => void;
@@ -226,11 +227,12 @@ export function Stage2RowNameCell({
 	reserveTreeGlyphColumn = false,
 	wrapperClassName = "a-stage2-tree-name",
 	sourceLandingName,
-	isSource,
+	isDefaultInstance,
 	canDeleteRow,
 	deleteRowTitle,
 	rowNameInputId,
 	onProxyNameChange,
+	onProxyNameBlur,
 	onNameChange,
 	onCloneRow,
 	onDeleteRow,
@@ -240,7 +242,7 @@ export function Stage2RowNameCell({
 	return (
 		<div
 			className={wrapperClassName}
-			title={sourceLandingName && !isSource && !readOnlyLabel ? sourceLandingName : undefined}
+			title={sourceLandingName && !isDefaultInstance && !readOnlyLabel ? sourceLandingName : undefined}
 		>
 			{glyphParts || reserveTreeGlyphColumn ? (
 				<Stage2TreeGlyph parts={glyphParts ?? { continuation: "", branch: "last", depth: 1 }} placeholder={reserveTreeGlyphColumn} />
@@ -259,6 +261,11 @@ export function Stage2RowNameCell({
 							disabled={!editable}
 							aria-label={copy.proxyNameLabel}
 							onChange={(event) => (onNameChange ?? onProxyNameChange)(rowKey, event.target.value)}
+							onBlur={() => {
+								if (onNameChange === undefined) {
+									onProxyNameBlur?.(rowKey);
+								}
+							}}
 						/>
 						<label
 							className="a-stage2-row-edit-hint"
@@ -275,7 +282,7 @@ export function Stage2RowNameCell({
 				className={`a-stage2-row-icon-actions a-stage2-row-icon-actions--toolbar${toolbarPlaceholder ? " a-stage2-row-icon-actions--placeholder" : ""}`}
 				aria-hidden={toolbarPlaceholder ? true : undefined}
 			>
-				{toolbarPlaceholder ? null : isSource ? (
+				{toolbarPlaceholder ? null : isDefaultInstance ? (
 					<button
 						type="button"
 						className="a-btn a-btn--secondary a-btn--icon"
@@ -673,8 +680,8 @@ interface Stage2ServerMemberOrderCellProps {
 	enabled: boolean;
 	strategy: ServerAggregationGroup["strategy"];
 	copy: Stage2Copy;
-	members: Array<{ rowId: string; displayName: string; isSource: boolean }>;
-	onMemberMoveTo: (memberRowId: string, toIndex: number) => void;
+	members: Array<{ instanceId: string; displayName: string; isDefaultInstance: boolean }>;
+	onMemberMoveTo: (memberInstanceId: string, toIndex: number) => void;
 	openTargetMenuRow: string | null;
 	setOpenTargetMenuRow: (rowKey: string | null) => void;
 	chainTargetMenuTriggerRef: React.MutableRefObject<HTMLButtonElement | null>;

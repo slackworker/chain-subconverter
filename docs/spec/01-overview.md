@@ -9,10 +9,10 @@
 ## 核心设计原则
 
 - **三阶段固定流程**：阶段 1 输入、阶段 2 配置、阶段 3 输出
-- **统一 Pipeline（hard-break）**：`convert` 只执行至 `buildStage2Init`；`generate`、`resolve` 与 `GET /sub*` 必须执行同一条完整 Pipeline（含双托管 Pass 3）；步骤表见 [04 §1.1.1](04-business-rules.md)
-- **单一状态载荷**：长链接仅承载 `statePayload v4`，不接受旧版本载荷与外层 query 覆写
+- **统一 Pipeline（hard-break）**：`convert` 只执行至 `buildStage2Bundle`；`generate`、`resolve` 与 `GET /sub*` 必须执行同一条完整 Pipeline（含双托管 Pass 3）；步骤表见 [04 §1.1.1](04-business-rules.md)
+- **单一状态载荷**：长链接仅承载 `statePayload v5`，不接受 v4/旧版本载荷与外层 query 覆写
 - **最终配置延迟交付**：`convert` 与 `generate` 不返回 YAML；`completeConfig` 只在订阅链接被打开或下载时即时生成
-- **输入职责清晰**：所有原始输入在阶段 1 完成；阶段 2 只编辑 `stage2Snapshot`
+- **输入职责清晰**：所有原始输入在阶段 1 完成；阶段 2 只编辑 `stage2.snapshot`
 - **恢复可裁决**：`resolve` 只返回 `replayable` 或 `conflicted`；`conflicted` 仅允许只读恢复
 
 ## 数据流概览
@@ -55,8 +55,8 @@ flowchart LR
 
 | 阶段 | 职责 |
 |------|------|
-| 阶段 1：输入区 | 收集 `stage1Input`；执行 `pass1Discover` + `pass2Discover` + `applyEmoji` 并产出 `stage2Init` |
-| 阶段 2：配置区 | 基于 `stage2Init` 编辑 `stage2Snapshot`（复制、改名、模式与目标、聚合组）；通过主按钮发起 `generate` |
+| 阶段 1：输入区 | 收集 `stage1Input`；执行 `pass1Discover` + `pass2Discover` + `applyEmoji` 并产出 `stage2`（`catalog` + 默认 `snapshot`） |
+| 阶段 2：配置区 | 基于 `catalog` 编辑嵌套 `snapshot`（复制/改名 instance、模式与目标、server 聚合）；通过主按钮发起 `generate` |
 | 阶段 3：输出区 | `generate` 产出规范长链接；`resolve` 恢复并裁决可重放性；`GET /sub`/`GET /sub/<id>` 经双托管 Pass 3 即时渲染 `completeConfig` |
 
 ## 关键术语
@@ -68,21 +68,20 @@ flowchart LR
 | 端口转发服务（Port Forward Relay） | `server:port` 字面量；仅用于 `mode = port_forward`，不进入 `subconverter` |
 | 模板 URL（Template URL） | `stage1Input.advancedOptions.config` 的业务语义；指定本次转换使用的远程模板来源 |
 | 模板内容（TemplateConfig） | 后端拉取、校验并托管后的模板文本；用于地域策略组识别与转换 |
-| 节点 emoji 处理 | `emoji = true` 时在 Pass 1/2 后、`buildStage2Init` 前执行的链路内命名改写；处理 Pass 1 与 Pass 2 的 `proxies[].name` |
-| 托管 landing（ManagedLanding） | Pass 3 前按 `stage2Snapshot` 合并的落地 `proxies[]` YAML；经内部短链传入 Pass 3 |
+| 节点 emoji 处理 | `emoji = true` 时在 Pass 1/2 后、`buildStage2Bundle` 前执行的链路内命名改写；处理 Pass 1 与 Pass 2 的 `proxies[].name` |
+| 托管 landing（ManagedLanding） | Pass 3 前按 `stage2.snapshot` 合并的落地 `proxies[]` YAML；经内部短链传入 Pass 3 |
 | 托管 transit proxies（ManagedTransitProxies） | Pass 2 emoji 处理后的 transit `proxies[]` 片段；仅 `proxies:` 段、不含 `proxy-groups`；经内部短链传入 Pass 3 |
-| 阶段 2 初始化数据（Stage2Init） | `convert` 返回的初始化结果，包含 `availableModes`、候选列表与默认行 |
-| 阶段 2 配置快照（Stage2Snapshot） | 用户可编辑快照；`rowId` 是行主键，`sourceLandingNodeName` 是连接参数绑定键，`proxyName` 是最终 YAML 节点名 |
-| 状态载荷（StatePayload v4） | 长链接 `data` 解码后的唯一规范结构，仅包含 `stage1Input` 与 `stage2Snapshot` |
+| Stage2 catalog / snapshot / instance | 见 [06-stage2-model](06-stage2-model.md)（嵌套树权威） |
+| 状态载荷（StatePayload v5） | 长链接 `data` 解码后的唯一规范结构，含 `stage1Input` 与编码态 `stage2.snapshot` 树 |
 | 恢复状态（RestoreStatus） | `resolve` 的裁决结果：`replayable` 可继续编辑/生成，`conflicted` 仅可只读查看 |
 | 原因参数（ReasonArgs） | 与 `reasonCode` 配套的结构化参数；文案由前端本地映射 |
 
 ## 全局约束
 
 - 阶段 1 是唯一原始输入入口；阶段 2 不允许自由手填节点或服务
-- `stage2Init` 每落地一行；`stage2Snapshot` 可含复制行，`rowId` 与 `proxyName` 全表唯一
-- `stage2Snapshot` 的行身份、展示顺序与聚合组成员顺序彼此独立；权威定义见 [04 §2.1.2a](04-business-rules.md)
+- `catalog` 按 Pass 1 落地组织嵌套源；`snapshot` 可含同一 `sourceId` 下多个 instance；`proxyName` 全表唯一；前端独占 `instanceId = sourceId::iN`（不进 API/v5）；Wire 聚合成员用 `memberProxyNames[]`
+- 权威形状与顺序域见 [06-stage2-model](06-stage2-model.md)；UI 平铺仅为投影
 - 端口转发输入独立于中转输入，且不参与 `subconverter`
 - `resolve` 返回 `conflicted` 时，页面必须进入只读冲突态，不得继续 `generate`
-- 规范长链接仅接受 `data`（以及订阅读取时可选 `download=1`），不接受状态覆写 query
-- 规则定义在 [04-business-rules](04-business-rules.md)；HTTP 契约定义在 [03-backend-api](03-backend-api.md)
+- 规范长链接仅接受 `data`（以及订阅读取时可选 `download=1`），不接受状态覆写 query；**拒绝 v4**
+- 规则定义在 [04-business-rules](04-business-rules.md) 与 [06-stage2-model](06-stage2-model.md)；HTTP 契约定义在 [03-backend-api](03-backend-api.md)

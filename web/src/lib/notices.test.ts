@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import type { BlockingError } from "../types/api";
 import {
 	clearStage1FieldErrors,
+	clearDuplicateProxyNameErrors,
 	clearStage2RowErrors,
 	clearStage3ActionErrors,
+	dedupeBlockingErrorsForDisplay,
 	getGlobalPrimaryBlockingErrors,
 	getPrimaryBlockingErrorsForStage,
+	mergeDuplicateProxyNameErrors,
 	shouldPromoteStage2StaleNotice,
 } from "./notices";
 
@@ -26,14 +29,21 @@ const stage1FieldError: BlockingError = {
 const stage2RowError: BlockingError = {
 	code: "INVALID_STAGE2_ROW",
 	message: "invalid stage2 row",
-	scope: "stage2_row",
-	context: { rowId: "HK Landing" },
+	scope: "stage2_instance",
+	context: { sourceId: "landing", proxyName: "HK Landing" },
 };
 
 const stage3ActionError: BlockingError = {
 	code: "SHORT_LINK_FAILED",
 	message: "short link failed",
 	scope: "stage3_action",
+};
+
+const duplicateProxyNameError: BlockingError = {
+	code: "DUPLICATE_PROXY_NAME",
+	message: "duplicate proxy name",
+	scope: "stage2_instance",
+	context: { sourceId: "landing", proxyName: "HK Landing", field: "proxyName" },
 };
 
 describe("notice helpers", () => {
@@ -55,7 +65,7 @@ describe("notice helpers", () => {
 		const errors = [globalError, stage1FieldError, stage2RowError, stage3ActionError];
 
 		expect(clearStage1FieldErrors(errors, "landingRawText")).toEqual([globalError, stage2RowError, stage3ActionError]);
-		expect(clearStage2RowErrors(errors, "HK Landing")).toEqual([globalError, stage1FieldError, stage3ActionError]);
+		expect(clearStage2RowErrors(errors, { instanceId: "landing::i1", proxyName: "HK Landing", sourceId: "landing", instanceIndex: 0, serverKey: "edge", mode: "none", targetName: null })).toEqual([globalError, stage1FieldError, stage3ActionError]);
 		expect(clearStage3ActionErrors(errors)).toEqual([globalError, stage1FieldError, stage2RowError]);
 	});
 
@@ -75,5 +85,29 @@ describe("notice helpers", () => {
 			isRequestInFlight: false,
 			isConflictReadonly: false,
 		})).toBe(false);
+	});
+
+	it("replaces duplicate proxy name errors while preserving other stage2 errors", () => {
+		const merged = mergeDuplicateProxyNameErrors(
+			[stage2RowError, duplicateProxyNameError],
+			[duplicateProxyNameError],
+		);
+
+		expect(merged).toEqual([stage2RowError, duplicateProxyNameError]);
+		expect(clearDuplicateProxyNameErrors(merged)).toEqual([stage2RowError]);
+	});
+
+	it("dedupes identical primary feedback messages while keeping distinct errors", () => {
+		const duplicateSecondRow: BlockingError = {
+			...duplicateProxyNameError,
+			context: { sourceId: "landing", proxyName: "HK Landing", field: "proxyName" },
+		};
+		const errors = [duplicateProxyNameError, duplicateSecondRow, stage2RowError];
+
+		expect(dedupeBlockingErrorsForDisplay(errors)).toEqual([duplicateProxyNameError, stage2RowError]);
+		expect(getPrimaryBlockingErrorsForStage(errors, "stage2", "stage2")).toEqual([
+			duplicateProxyNameError,
+			stage2RowError,
+		]);
 	});
 });

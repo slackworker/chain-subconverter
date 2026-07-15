@@ -82,6 +82,8 @@ func TestRenderCompleteConfig_NoneModeRemovesDialerProxy(t *testing.T) {
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "none",
+				
+					Server:                "landing.example.com",
 				},
 			},
 		},
@@ -112,14 +114,16 @@ func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
 			"  - {name: HK Landing, type: ss, server: landing.example.com, port: 443, dialer-proxy: transit-a}",
 			"",
 		}, "\n"),
-		[]Stage2Row{
+		SnapshotFromLegacyRows([]Stage2Row{
 			{
 				RowID:                 "hk-1",
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
 				Mode:                  "chain",
 				TargetName:            &chainTarget,
-			},
+			
+					Server:                "landing.example.com",
+				},
 			{
 				RowID:                 "hk-2",
 				SourceLandingNodeName: "HK Landing",
@@ -127,7 +131,7 @@ func TestBuildManagedLandingConfigYAML_DerivesClonedRows(t *testing.T) {
 				Mode:                  "port_forward",
 				TargetName:            &relayTarget,
 			},
-		},
+		}, nil, false),
 	)
 	if err != nil {
 		t.Fatalf("buildManagedLandingConfigYAML() error = %v", err)
@@ -195,6 +199,8 @@ func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
+				
+					Server:                "landing.example.com",
 				},
 				{
 					RowID:                 "hk-2",
@@ -404,6 +410,8 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationAndServerAggregation(t *t
 					ProxyName:             "HK Landing",
 					Mode:                  "chain",
 					TargetName:            &chainTarget,
+				
+					Server:                "landing.example.com",
 				},
 				{
 					RowID:                 "hk-2",
@@ -584,7 +592,9 @@ func TestRenderCompleteConfig_StripsLandingFromNonRegionURLTestAndSmartGroups(t 
 				SourceLandingNodeName: "HK Landing",
 				ProxyName:             "HK Landing",
 				Mode:                  "none",
-			}},
+			
+					Server:                "landing.example.com",
+				}},
 		},
 		fixtures,
 	)
@@ -674,6 +684,8 @@ func TestRenderCompleteConfig_KeepsLandingMembersInManagedURLTestAggregation(t *
 					SourceLandingNodeName: "HK Landing",
 					ProxyName:             "HK Landing",
 					Mode:                  "none",
+				
+					Server:                "landing.example.com",
 				},
 				{
 					RowID:                 "hk-2",

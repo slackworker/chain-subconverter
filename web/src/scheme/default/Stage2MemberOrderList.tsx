@@ -22,13 +22,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripHorizontalIcon } from "./Icons";
 import type { Stage2Copy } from "./Stage2RowCells";
 
-type MemberOrderItem = { rowId: string; displayName: string; isSource: boolean };
+type MemberOrderItem = { instanceId: string; displayName: string; isDefaultInstance: boolean };
 
 interface Stage2MemberOrderListProps {
 	canManageOrder: boolean;
 	copy: Stage2Copy;
 	members: MemberOrderItem[];
-	onMemberMoveTo: (memberRowId: string, toIndex: number) => void;
+	onMemberMoveTo: (memberInstanceId: string, toIndex: number) => void;
 }
 
 function MemberOrderOverlayItem({ index, member }: { index: number; member: MemberOrderItem }) {
@@ -53,7 +53,7 @@ interface SortableMemberOrderItemProps {
 
 function SortableMemberOrderItem({ canManageOrder, copy, index, member }: SortableMemberOrderItemProps) {
 	const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-		id: member.rowId,
+		id: member.instanceId,
 		disabled: !canManageOrder,
 	});
 
@@ -105,10 +105,10 @@ export function Stage2MemberOrderList({
 	);
 
 	const activeMember = activeMemberId
-		? members.find((member) => member.rowId === activeMemberId) ?? null
+		? members.find((member) => member.instanceId === activeMemberId) ?? null
 		: null;
 	const activeMemberIndex = activeMember
-		? members.findIndex((member) => member.rowId === activeMember.rowId)
+		? members.findIndex((member) => member.instanceId === activeMember.instanceId)
 		: -1;
 
 	function handleDragStart(event: DragStartEvent) {
@@ -121,8 +121,8 @@ export function Stage2MemberOrderList({
 		if (!over || active.id === over.id) {
 			return;
 		}
-		const fromIndex = members.findIndex((member) => member.rowId === active.id);
-		const toIndex = members.findIndex((member) => member.rowId === over.id);
+		const fromIndex = members.findIndex((member) => member.instanceId === active.id);
+		const toIndex = members.findIndex((member) => member.instanceId === over.id);
 		if (fromIndex < 0 || toIndex < 0) {
 			return;
 		}
@@ -138,11 +138,11 @@ export function Stage2MemberOrderList({
 			onDragEnd={handleDragEnd}
 			onDragCancel={() => setActiveMemberId(null)}
 		>
-			<SortableContext items={members.map((member) => member.rowId)} strategy={verticalListSortingStrategy}>
+			<SortableContext items={members.map((member) => member.instanceId)} strategy={verticalListSortingStrategy}>
 				<ul className="a-member-order__list">
 					{members.map((member, index) => (
 						<SortableMemberOrderItem
-							key={member.rowId}
+							key={member.instanceId}
 							canManageOrder={canManageOrder}
 							copy={copy}
 							index={index}

@@ -8,7 +8,6 @@ import {
 	initialManualSocks5FormState,
 	parseSocks5URIToManualSocks5FormState,
 	removeForwardRelayItem,
-	setPortForwardEnabled,
 	type ManualSocks5FormState,
 } from "../../lib/stage1";
 import { formatModeReason } from "../../lib/mode-reason";
@@ -16,9 +15,10 @@ import {
 	getStage2RowEditableName,
 	getStage2RowDisplayName,
 	getStage2RowKey,
+	getStage2RowStableKey,
 	getStage2RowSourceLandingName,
 	getStage2TargetDisplayLabel,
-	isStage2SourceRow,
+	isStage2DefaultInstance,
 } from "../../lib/stage2";
 import type { BlockingError, Stage2Row } from "../../types/api";
 import type { WorkflowLogEntry } from "../../lib/state";
@@ -388,11 +388,9 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					<div className="c-field">
 						<div className="c-field-label-row">
 							<label htmlFor="c-s1-transit">中转信息</label>
-							{stage1Input.advancedOptions.enablePortForward ? (
-								<button type="button" className="c-link-btn" onClick={() => setShowRelayModal(true)}>
-									＋ 端口转发服务
-								</button>
-							) : null}
+							<button type="button" className="c-link-btn" onClick={() => setShowRelayModal(true)}>
+								＋ 端口转发服务
+							</button>
 						</div>
 						<textarea
 							id="c-s1-transit"
@@ -404,17 +402,15 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							className="c-mono"
 						/>
 						<ErrorBlock errors={workflow.getStage1FieldErrors("transitRawText")} />
-						{stage1Input.advancedOptions.enablePortForward ? (
-							<div className="c-relay-row">
-								<span className="c-field-sub">端口转发服务</span>
-								<TagChips
-									items={stage1Input.forwardRelayItems}
-									empty="尚未添加"
-									onRemove={(i) => workflow.updateStage1Input((cur) => removeForwardRelayItem(cur, i))}
-								/>
-								<ErrorBlock errors={workflow.getStage1FieldErrors("forwardRelayItems")} />
-							</div>
-						) : null}
+						<div className="c-relay-row">
+							<span className="c-field-sub">端口转发服务</span>
+							<TagChips
+								items={stage1Input.forwardRelayItems}
+								empty="尚未添加"
+								onRemove={(i) => workflow.updateStage1Input((cur) => removeForwardRelayItem(cur, i))}
+							/>
+							<ErrorBlock errors={workflow.getStage1FieldErrors("forwardRelayItems")} />
+						</div>
 					</div>
 				</div>
 
@@ -561,26 +557,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										/>
 										skip cert verify
 									</label>
-								<label className="c-toggle-label">
-									<input
-										type="checkbox"
-										role="switch"
-										className="c-toggle-input"
-										checked={stage1Input.advancedOptions.enablePortForward}
-										onChange={(e) =>
-											workflow.updateStage1Input((cur) => setPortForwardEnabled(cur, e.target.checked))
-										}
-									/>
-									<span className="c-toggle-track" aria-hidden="true">
-										<span className="c-toggle-thumb" />
-									</span>
-									<span className="c-toggle-text">启用端口转发服务</span>
-									</label>
-									<div>
-										<ErrorBlock errors={workflow.getStage1FieldErrors("emoji")} />
-										<ErrorBlock errors={workflow.getStage1FieldErrors("udp")} />
-										<ErrorBlock errors={workflow.getStage1FieldErrors("skipCertVerify")} />
-									</div>
+								</div>
+								<div>
+									<ErrorBlock errors={workflow.getStage1FieldErrors("emoji")} />
+									<ErrorBlock errors={workflow.getStage1FieldErrors("udp")} />
+									<ErrorBlock errors={workflow.getStage1FieldErrors("skipCertVerify")} />
 								</div>
 							</div>
 						</div>
@@ -622,12 +603,12 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							const rowKey = getStage2RowKey(row);
 							const displayName = getStage2RowDisplayName(row);
 							const sourceLandingName = getStage2RowSourceLandingName(row);
-							const sourceRow = isStage2SourceRow(row);
-							const canDeleteRow = !sourceRow && workflow.canDeleteStage2Row(rowKey);
+							const isDefaultInstance = isStage2DefaultInstance(row);
+							const canDeleteRow = !isDefaultInstance && workflow.canDeleteStage2Row(rowKey);
 							const meta = workflow.getStage2RowMeta(rowKey);
 							const rowErrors = workflow.getStage2RowErrors(rowKey);
 							return (
-								<div key={rowKey} className={`c-row-item${rowErrors.length > 0 ? " c-row-item--error" : ""}`}>
+								<div key={getStage2RowStableKey(row)} className={`c-row-item${rowErrors.length > 0 ? " c-row-item--error" : ""}`}>
 									<div className="c-row-head">
 										<div className="c-row-title">
 											<input
@@ -637,13 +618,14 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 												disabled={!workflow.isStage2Editable}
 												aria-label="节点名"
 												onChange={(event) => workflow.handleProxyNameChange(rowKey, event.target.value)}
+												onBlur={() => workflow.handleProxyNameBlur()}
 											/>
 											<p className="c-row-source">来源：{sourceLandingName}</p>
 										</div>
 										<div className="c-row-head-side">
 											<span className="c-node-type">{meta?.landingNodeType ?? "—"}</span>
 											<div className="c-row-actions">
-												{sourceRow ? (
+												{isDefaultInstance ? (
 													<button
 														type="button"
 														className="c-btn c-btn--sm"

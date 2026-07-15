@@ -22,7 +22,7 @@ type ResolveURLResponse struct {
 	RestoreStatus    string            `json:"restoreStatus"`
 	RestoreConflicts []RestoreConflict `json:"restoreConflicts,omitempty"`
 	Stage1Input      Stage1Input       `json:"stage1Input"`
-	Stage2Snapshot   Stage2Snapshot    `json:"stage2Snapshot"`
+	Stage2           Stage2Bundle      `json:"stage2"`
 	Messages         []Message         `json:"messages"`
 	BlockingErrors   []BlockingError   `json:"blockingErrors"`
 }
@@ -60,7 +60,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 				RestoreStatus:    restoreStatus,
 				RestoreConflicts: restoreConflicts,
 				Stage1Input:      payload.Stage1Input,
-				Stage2Snapshot:   payload.Stage2Snapshot,
+				Stage2:           Stage2Bundle{Snapshot: payload.Stage2Snapshot},
 				Messages:         messages,
 				BlockingErrors:   []BlockingError{},
 			}, nil
@@ -72,7 +72,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 				RestoreStatus:    "conflicted",
 				RestoreConflicts: []RestoreConflict{RestoreConflictFromError(err)},
 				Stage1Input:      payload.Stage1Input,
-				Stage2Snapshot:   payload.Stage2Snapshot,
+				Stage2:           Stage2Bundle{Snapshot: payload.Stage2Snapshot},
 				Messages: []Message{{
 					Level:   "warning",
 					Code:    "RESTORE_CONFLICT",
@@ -84,13 +84,23 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		return ResolveURLResponse{}, err
 	}
 
+	bundle := Stage2Bundle{Snapshot: payload.Stage2Snapshot}
+	// Prefer catalog rebuilt from the same dry-run fixtures when available.
+	if fixtures, err := pipeline.LoadGenerateValidationFixtures(); err == nil {
+		if rebuilt, err := BuildStage2Bundle(payload.Stage1Input, fixtures); err == nil {
+			bundle.Catalog = rebuilt.Catalog
+		}
+	} else if rebuilt, err := BuildStage2Bundle(payload.Stage1Input, ConversionFixtures{}); err == nil {
+		bundle.Catalog = rebuilt.Catalog
+	}
+
 	return ResolveURLResponse{
 		LongURL:          resolved,
 		ShortURL:         shortURL,
 		RestoreStatus:    "replayable",
 		RestoreConflicts: nil,
 		Stage1Input:      payload.Stage1Input,
-		Stage2Snapshot:   payload.Stage2Snapshot,
+		Stage2:           bundle,
 		Messages: append(
 			append([]Message{}, validationMessages...),
 			restoreWorkflowMessages("replayable")...,

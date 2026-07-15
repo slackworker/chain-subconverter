@@ -35,7 +35,7 @@ proxy-groups:
   - name: 🚀 手动选择
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - ♻️ 自动选择
       - 🇭🇰 香港节点
       - 🇺🇸 美国节点
@@ -93,7 +93,7 @@ proxy-groups:
   - name: 💬 即时通讯
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -106,7 +106,7 @@ proxy-groups:
   - name: 🌐 社交媒体
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -142,7 +142,7 @@ proxy-groups:
   - name: 🚀 GitHub
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -155,7 +155,7 @@ proxy-groups:
   - name: 🤖 ChatGPT
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -190,7 +190,7 @@ proxy-groups:
   - name: 🤖 AI服务
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -225,7 +225,7 @@ proxy-groups:
   - name: 🎶 TikTok
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -260,7 +260,7 @@ proxy-groups:
   - name: 📹 YouTube
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -295,7 +295,7 @@ proxy-groups:
   - name: 🎥 Netflix
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -330,7 +330,7 @@ proxy-groups:
   - name: 🎥 DisneyPlus
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -365,7 +365,7 @@ proxy-groups:
   - name: 🎥 HBO
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -400,7 +400,7 @@ proxy-groups:
   - name: 🎥 PrimeVideo
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -435,7 +435,7 @@ proxy-groups:
   - name: 🎥 AppleTV+
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇸🇬 新加坡节点
@@ -471,7 +471,7 @@ proxy-groups:
   - name: 🎥 Emby
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🎯 全球直连
@@ -507,7 +507,7 @@ proxy-groups:
   - name: 🎻 Spotify
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🎯 全球直连
@@ -543,7 +543,7 @@ proxy-groups:
   - name: 📺 Bahamut
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🇼🇸 台湾节点
       - 🚀 手动选择
       - 🎯 全球直连
@@ -573,7 +573,7 @@ proxy-groups:
   - name: 🌎 国外媒体
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -608,7 +608,7 @@ proxy-groups:
   - name: 🛒 国外电商
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🎯 全球直连
@@ -644,7 +644,7 @@ proxy-groups:
   - name: 📢 谷歌FCM
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -656,7 +656,7 @@ proxy-groups:
   - name: 🇬 谷歌服务
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🇭🇰 香港节点
@@ -691,7 +691,7 @@ proxy-groups:
   - name: 🍎 苹果服务
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🎯 全球直连
       - 🚀 手动选择
       - ♻️ 自动选择
@@ -727,7 +727,7 @@ proxy-groups:
   - name: Ⓜ️ 微软服务
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🎯 全球直连
       - 🚀 手动选择
       - ♻️ 自动选择
@@ -763,7 +763,7 @@ proxy-groups:
   - name: 🎮 游戏平台
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🎯 全球直连
       - 🚀 手动选择
       - ♻️ 自动选择
@@ -799,7 +799,7 @@ proxy-groups:
   - name: 🎮 Steam
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🎯 全球直连
       - 🚀 手动选择
       - ♻️ 自动选择
@@ -835,7 +835,7 @@ proxy-groups:
   - name: 🚀 测速工具
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🎯 全球直连
       - 🚀 手动选择
       - ♻️ 自动选择
@@ -871,7 +871,7 @@ proxy-groups:
   - name: 🐟 漏网之鱼
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🚀 手动选择
       - ♻️ 自动选择
       - 🎯 全球直连
@@ -907,7 +907,7 @@ proxy-groups:
   - name: 🔀 非标端口
     type: select
     proxies:
-      - 198.51.100.10
+      - 🇸🇬 198.51.100.10
       - 🐟 漏网之鱼
       - 🎯 全球直连
   - name: 🇭🇰 香港节点
@@ -974,7 +974,7 @@ proxy-groups:
     type: select
     proxies:
       - DIRECT
-  - name: 198.51.100.10
+  - name: 🇸🇬 198.51.100.10
     type: fallback
     url: https://cp.cloudflare.com/generate_204
     interval: 300

@@ -23,7 +23,7 @@
 ## 开发者与 AI Agent
 
 1. [spec/00-governance.md](spec/00-governance.md) → [spec/01-overview.md](spec/01-overview.md)
-2. 按改动面：`spec/02`–`05`
+2. 按改动面：`spec/02`–`05`；Stage2 嵌套树模型以 [spec/06-stage2-model.md](spec/06-stage2-model.md) 为唯一事实源
 3. 测试体系与入口：[testing/README.md](testing/README.md)
 其余 `spec/`、`testing/` 文件按任务打开（包括操作手册、fixture 细则）。
 
