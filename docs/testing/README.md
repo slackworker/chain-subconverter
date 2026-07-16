@@ -71,7 +71,7 @@ non-blocking job：
   - 副本创建后 `stage2Snapshot.rows` 行语义正确；
   - 聚合组写入 `stage2Snapshot.serverAggregationGroups`；
   - fallback 顺序重排后 `memberRowIds` 顺序与 UI 配置一致。
-- `real-full` 对齐 [preview-inputs.md](preview-inputs.md)：
+- `real-full` 一比一还原 [preview-inputs.md](preview-inputs.md)（不接受 Stage1 env 覆盖；覆盖时 skip）：
   - Stage1：落地 URI + SOCKS5 + Worker 中转 URL（含 Sub-2 `?target=ClashMeta`）+ 端口转发；
   - Stage2：按文档操作要点配置副本 / 模式 / 入组（按金样 fallback 顺序勾选入组，避免脆弱拖拽）/ 切换优化；
   - 断言 generate / resolve 的 snapshot 与 short ID、long URL payload 金样一致（见 `real-dual-landing-full-flow.spec.ts`）。

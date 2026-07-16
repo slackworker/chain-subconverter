@@ -132,6 +132,28 @@ export function loadDualLandingGoldenArtifacts(): DualLandingGoldenArtifacts {
 	};
 }
 
+export function hasEnvInputOverride(name: string) {
+	if (process.env[name]?.trim()) {
+		return true;
+	}
+	const suffixPattern = new RegExp(`^${name}_(\\d+)$`);
+	for (const [key, rawValue] of Object.entries(process.env)) {
+		if (!suffixPattern.test(key)) {
+			continue;
+		}
+		if (rawValue?.trim()) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** real-full 金样路径禁止 Stage1 覆盖；real-smoke 仍可用 inputFromEnv。 */
+export function hasPreviewStage1EnvOverride() {
+	return hasEnvInputOverride("CHAIN_SUBCONVERTER_E2E_LANDING_INPUT")
+		|| hasEnvInputOverride("CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT");
+}
+
 export function inputFromEnv(name: string, fallback: string) {
 	const values: Array<{ index: number; value: string }> = [];
 	const primary = process.env[name]?.trim();

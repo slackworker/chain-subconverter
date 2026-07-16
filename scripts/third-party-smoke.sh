@@ -2,7 +2,7 @@
 # 对已部署的一体化 Compose 实例跑真实 UI/API 冒烟（Playwright，不 mock）。
 # 必填：
 #   CHAIN_SUBCONVERTER_E2E_BASE_URL
-# 可选覆盖：
+# 可选覆盖（仅影响 real-smoke；real-full 遇覆盖会 skip 以保住 preview 金样）：
 #   CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2,_3...]
 #   CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2,_3...]
 set -euo pipefail

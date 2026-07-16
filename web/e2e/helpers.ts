@@ -179,6 +179,21 @@ export async function mockReplayableResolveRoute({
 	});
 }
 
+/** Stage2 区块（aria-labelledby →「阶段 2 — 配置」）。勿用 getByLabel 当 section 定位。 */
+export function locateStage2Section(page: Page) {
+	return page.locator('section[aria-labelledby="a-stage2-h"]');
+}
+
+export async function ensureStage2AdvancedOpen(page: Page) {
+	const stage2 = locateStage2Section(page);
+	const advancedToggle = stage2.getByRole("button", { name: "高级选项" });
+	if ((await advancedToggle.getAttribute("aria-expanded")) !== "true") {
+		await advancedToggle.click();
+	}
+	await expect(advancedToggle).toHaveAttribute("aria-expanded", "true");
+	return stage2;
+}
+
 export async function addManualSocks5FromURI(page: Page, socks5URI: string) {
 	await page.getByRole("button", { name: "+ 添加 SOCKS5" }).click();
 	const dialog = page.getByRole("dialog", { name: "添加 / 转换 SOCKS5 节点" });

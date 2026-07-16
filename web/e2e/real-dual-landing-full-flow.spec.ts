@@ -8,6 +8,7 @@ import {
 	assertWireSnapshotHasNoClientIds,
 	cloneStage2Row,
 	ensureChecked,
+	ensureStage2AdvancedOpen,
 	expectAggregationFallbackOrder,
 	expectHTTPResponseOK,
 	locateStage2Row,
@@ -15,11 +16,15 @@ import {
 	selectStage2MenuOption,
 	type ResolveURLWireResponse,
 } from "./helpers";
-import { inputFromEnv, loadDualLandingGoldenArtifacts, loadPreviewManualStage1Inputs } from "./previewInputs";
+import {
+	hasPreviewStage1EnvOverride,
+	loadDualLandingGoldenArtifacts,
+	loadPreviewManualStage1Inputs,
+} from "./previewInputs";
 
 /**
- * 真实部署 Full：按 docs/testing/preview-inputs.md 手工路径输入与 Stage2 操作，
- * 并核对 stage2-snapshot / short ID / long URL payload 金样。
+ * 真实部署 Full：一比一还原 docs/testing/preview-inputs.md 手工路径与金样。
+ * 不接受 CHAIN_SUBCONVERTER_E2E_{LANDING,TRANSIT}_INPUT* 覆盖（那些仅给 real-smoke）。
  */
 const previewStage1 = loadPreviewManualStage1Inputs();
 const golden = loadDualLandingGoldenArtifacts();
@@ -37,6 +42,10 @@ const ROW = {
 
 test("real dual-landing full flow matches preview-inputs golden path", async ({ page, baseURL }) => {
 	test.setTimeout(240_000);
+	test.skip(
+		hasPreviewStage1EnvOverride(),
+		"real-full 必须一比一还原 preview-inputs；请 unset CHAIN_SUBCONVERTER_E2E_{LANDING,TRANSIT}_INPUT*",
+	);
 
 	const origin = baseURL?.trim();
 	if (!origin) {
@@ -48,9 +57,7 @@ test("real dual-landing full flow matches preview-inputs golden path", async ({ 
 		throw new Error("dual-landing canonical scenario must provide two forward relay items");
 	}
 
-	const landingOverride = process.env.CHAIN_SUBCONVERTER_E2E_LANDING_INPUT?.trim();
-	const landingInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_LANDING_INPUT", previewStage1.landingInput);
-	const transitInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT", previewStage1.transitInput);
+	const { landingInput, transitInput } = previewStage1;
 
 	await applyDefaultUiPreferences(page);
 
@@ -64,10 +71,8 @@ test("real dual-landing full flow matches preview-inputs golden path", async ({ 
 	});
 
 	await page.getByLabel("落地信息").fill(landingInput);
-	if (!landingOverride) {
-		await addManualSocks5FromURI(page, previewStage1.socks5URI);
-		await expect(page.getByLabel("落地信息")).toContainText(previewStage1.expectedSocksGeneratedURI);
-	}
+	await addManualSocks5FromURI(page, previewStage1.socks5URI);
+	await expect(page.getByLabel("落地信息")).toContainText(previewStage1.expectedSocksGeneratedURI);
 	await page.getByLabel("中转信息").fill(transitInput);
 	await addForwardRelays(page, [relayA, relayB]);
 
@@ -131,12 +136,9 @@ test("real dual-landing full flow matches preview-inputs golden path", async ({ 
 		ROW.alphaSS2,
 	]);
 
-	const advancedToggle = page.getByLabel("2配置").getByRole("button", { name: "高级选项" });
-	if ((await advancedToggle.getAttribute("aria-expanded")) !== "true") {
-		await advancedToggle.click();
-	}
+	const stage2 = await ensureStage2AdvancedOpen(page);
 	await ensureChecked(
-		page.getByRole("checkbox", { name: /目标策略组节点切换优化/ }),
+		stage2.getByRole("checkbox", { name: /目标策略组节点切换优化/ }),
 		true,
 	);
 

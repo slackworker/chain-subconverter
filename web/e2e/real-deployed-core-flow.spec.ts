@@ -23,7 +23,7 @@ import type { ShortLinkResponse } from "../src/types/api";
  *   CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
  *   npm run test:e2e:real:smoke
  *
- * 可选覆盖：
+ * 可选覆盖（仅本 smoke；real-full 禁止覆盖）：
  *   CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2,_3...]  （设置后跳过默认 SOCKS5 添加）
  *   CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2,_3...]
  */

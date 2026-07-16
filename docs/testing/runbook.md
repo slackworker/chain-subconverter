@@ -152,7 +152,7 @@ cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_
 cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:full
 ```
 
-可选覆盖：`CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2…]`（设置后跳过默认 SOCKS5 添加）、`CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2…]`。取值仍以 [preview-inputs.md](preview-inputs.md) 为准。
+可选覆盖（**仅 `real-smoke`**）：`CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2…]`（设置后跳过默认 SOCKS5 添加）、`CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2…]`。`real-full` 必须一比一还原 [preview-inputs.md](preview-inputs.md) 金样，设置上述变量时会 skip。
 
 ## 高频排障
 
