@@ -705,6 +705,60 @@ func TestParseResolveURLInput(t *testing.T) {
 	}
 }
 
+func TestResolveURLFromSource_LegacyPayloadRestoresStage1Only(t *testing.T) {
+	stage1Input := stage1InputWithTemplate(Stage1Input{
+		LandingRawText:    "ss://legacy-landing#Legacy",
+		TransitRawText:    "https://example.com/airport",
+		ForwardRelayItems: []string{"relay-a.example.com:7443"},
+	})
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(stage1Input, Stage2Snapshot{}),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+	legacyURL := mustMutateLongURLPayloadVersion(t, longURL, 4)
+
+	response, err := ResolveURLFromSource(
+		context.Background(),
+		"http://localhost:11200",
+		&fakeConversionSource{},
+		nil,
+		legacyURL,
+		0,
+		InputLimits{},
+	)
+	if err != nil {
+		t.Fatalf("ResolveURLFromSource() error = %v", err)
+	}
+	if response.RestoreStatus != "conflicted" {
+		t.Fatalf("restoreStatus mismatch: got %q want conflicted", response.RestoreStatus)
+	}
+	if len(response.RestoreConflicts) != 1 || response.RestoreConflicts[0].ReasonCode != "LEGACY_PAYLOAD_VERSION" {
+		t.Fatalf("restoreConflicts mismatch: got %#v", response.RestoreConflicts)
+	}
+	if response.RestoreConflicts[0].ReasonArgs["payloadVersion"] != 4 {
+		t.Fatalf("payloadVersion mismatch: got %#v", response.RestoreConflicts[0].ReasonArgs)
+	}
+	if response.RestoreConflicts[0].ReasonArgs["currentVersion"] != longURLSchemaVersion {
+		t.Fatalf("currentVersion mismatch: got %#v", response.RestoreConflicts[0].ReasonArgs)
+	}
+	if response.Stage1Input.LandingRawText != stage1Input.LandingRawText {
+		t.Fatalf("stage1 LandingRawText not restored: got %q", response.Stage1Input.LandingRawText)
+	}
+	if len(response.Stage2.Snapshot.Servers) != 0 {
+		t.Fatalf("expected empty stage2 snapshot, got %#v", response.Stage2.Snapshot)
+	}
+	if len(response.Messages) != 1 || response.Messages[0].Code != "RESTORE_CONFLICT" {
+		t.Fatalf("messages mismatch: got %#v", response.Messages)
+	}
+	if !strings.Contains(response.Messages[0].Message, "已还原阶段 1") {
+		t.Fatalf("message should mention stage1 restore, got %q", response.Messages[0].Message)
+	}
+}
+
 type fakeShortLinkResolver struct {
 	longURLByID    map[string]string
 	err            error

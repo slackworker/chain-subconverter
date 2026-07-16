@@ -10,10 +10,10 @@
 
 - **三阶段固定流程**：阶段 1 输入、阶段 2 配置、阶段 3 输出
 - **统一 Pipeline（hard-break）**：`convert` 只执行至 `buildStage2Bundle`；`generate`、`resolve` 与 `GET /sub*` 必须执行同一条完整 Pipeline（含双托管 Pass 3）；步骤表见 [04 §1.1.1](04-business-rules.md)
-- **单一状态载荷**：长链接仅承载 `statePayload v5`，不接受 v4/旧版本载荷与外层 query 覆写
+- **单一状态载荷**：长链接规范态仅承载 `statePayload v5`；订阅读取 / 短链创建 / 完整恢复拒绝非当前版本。`resolve-url` 对旧版载荷可尽力还原 `stage1Input`（见 [06 §7](06-stage2-model.md)）
 - **最终配置延迟交付**：`convert` 与 `generate` 不返回 YAML；`completeConfig` 只在订阅链接被打开或下载时即时生成
 - **输入职责清晰**：所有原始输入在阶段 1 完成；阶段 2 只编辑 `stage2.snapshot`
-- **恢复可裁决**：`resolve` 只返回 `replayable` 或 `conflicted`；`conflicted` 仅允许只读恢复
+- **恢复可裁决**：`resolve` 只返回 `replayable` 或 `conflicted`；`conflicted` 仅允许只读恢复（含旧版载荷仅还原 Stage1 的情形）
 
 ## 数据流概览
 
@@ -83,5 +83,5 @@ flowchart LR
 - 权威形状与顺序域见 [06-stage2-model](06-stage2-model.md)；UI 平铺仅为投影
 - 端口转发输入独立于中转输入，且不参与 `subconverter`
 - `resolve` 返回 `conflicted` 时，页面必须进入只读冲突态，不得继续 `generate`
-- 规范长链接仅接受 `data`（以及订阅读取时可选 `download=1`），不接受状态覆写 query；**拒绝 v4**
+- 规范长链接仅接受 `data`（以及订阅读取时可选 `download=1`），不接受状态覆写 query；**订阅读取拒绝非当前 `v`**；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](06-stage2-model.md)
 - 规则定义在 [04-business-rules](04-business-rules.md) 与 [06-stage2-model](06-stage2-model.md)；HTTP 契约定义在 [03-backend-api](03-backend-api.md)

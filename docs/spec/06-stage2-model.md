@@ -217,10 +217,17 @@ instanceId = trim(sourceId) + "::i" + N
 ## 7. statePayload v5
 
 - `longURLSchemaVersion = 5`
-- **拒绝 v4**（及更旧版本）→ `INVALID_REQUEST` / `INVALID_LONG_URL`
+- **路径分流**：
+  - `GET /sub`、短链创建、以及按当前版本完整解码校验：非当前 `v`（含 v4 及更旧、或更新的未支持版本）→ `INVALID_REQUEST` / `INVALID_LONG_URL`
+  - `POST /api/resolve-url`：**默认**假定 `stage1Input` 跨版本仍可解析；若旧/新 `v` 的 Stage2 不兼容，则仅还原 Stage1，`restoreStatus = conflicted`，`reasonCode = LEGACY_PAYLOAD_VERSION`，Stage2 为空；仅当发版明确声明「Stage1 输入亦完全丢失」时，才对 `resolve-url` 也整包拒绝
 - 载荷存**编码态树**（可见字段 + 嵌套数组序）
 - 编码态 `instances[]` 不得包含 `instanceId`
 - 编码态聚合成员仅 `memberProxyNames[]`（不允许 `memberInstanceIds` / `memberLocalInstanceIds`）
+
+**协议切换声明（发版必填）**：每次 bump `longURLSchemaVersion` 时，必须在 [RELEASES.md](../../RELEASES.md) 写明：
+
+1. **Stage1**：`兼容还原`（默认）或 `完全丢失`（`stage1Input` 字段/语义已破坏）
+2. **Convert 及后续**（Stage2 / generate / 订阅读取）：通常为 `不兼容`；不得静默迁移旧 Stage2
 
 **语义等价**：同 `stage1Input` + 同树结构/各层数组序/各 instance `(sourceId, proxyName, mode, targetName)` + 各 server 聚合在 canonicalize 后的可见字段 → 同 `data` / `shortId`。
 

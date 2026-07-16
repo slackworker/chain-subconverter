@@ -41,12 +41,16 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		return ResolveURLResponse{}, newStage3FieldInvalidRequestError("url must not be empty", "currentLinkInput", nil)
 	}
 
-	resolved, shortURL, payload, err := resolveLongURLPayload(ctx, publicBaseURL, shortLinkResolver, rawURL, maxLongURLLength, limits)
+	resolved, shortURL, payload, legacyStage1Only, err := resolveLongURLPayload(ctx, publicBaseURL, shortLinkResolver, rawURL, maxLongURLLength, limits)
 	if err != nil {
 		return ResolveURLResponse{}, err
 	}
 
 	payload.Stage1Input = NormalizeStage1Input(payload.Stage1Input)
+	if legacyStage1Only {
+		return buildLegacyStage1OnlyResolveResponse(resolved, shortURL, payload), nil
+	}
+
 	payload.Stage2Snapshot = NormalizeStage2Snapshot(payload.Stage2Snapshot)
 
 	pipeline := NewCorePipeline(ctx, source, payload.Stage1Input, limits).
@@ -109,6 +113,31 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 	}, nil
 }
 
+func buildLegacyStage1OnlyResolveResponse(longURL, shortURL string, payload LongURLPayload) ResolveURLResponse {
+	return ResolveURLResponse{
+		LongURL:  longURL,
+		ShortURL: shortURL,
+		RestoreStatus: "conflicted",
+		RestoreConflicts: []RestoreConflict{{
+			ReasonCode: "LEGACY_PAYLOAD_VERSION",
+			ReasonArgs: map[string]any{
+				"payloadVersion": payload.V,
+				"currentVersion": longURLSchemaVersion,
+			},
+		}},
+		Stage1Input: payload.Stage1Input,
+		Stage2: Stage2Bundle{
+			Snapshot: Stage2Snapshot{Servers: []Stage2SnapshotServer{}},
+		},
+		Messages: []Message{{
+			Level:   "warning",
+			Code:    "RESTORE_CONFLICT",
+			Message: legacyPayloadVersionRestoreMessage(payload.V),
+		}},
+		BlockingErrors: []BlockingError{},
+	}
+}
+
 func downgradeRestoreTemplateFixtureError(err error) (string, []Message, []RestoreConflict, bool) {
 	responseErr, ok := AsResponseError(err)
 	if !ok {
@@ -133,10 +162,10 @@ func downgradeRestoreTemplateFixtureError(err error) (string, []Message, []Resto
 	return "", nil, nil, false
 }
 
-func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, error) {
+func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, bool, error) {
 	input, err := parseResolveURLInput(rawURL)
 	if err != nil {
-		return "", "", LongURLPayload{}, newResponseError(
+		return "", "", LongURLPayload{}, false, newResponseError(
 			http.StatusBadRequest, "INVALID_URL", "unsupported URL format", "stage3_field", map[string]any{"field": "currentLinkInput"}, nil, err,
 		)
 	}
@@ -146,7 +175,7 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 	if !input.IsLong {
 		if shortLinkResolver == nil {
 			retryable := true
-			return "", "", LongURLPayload{}, newResponseError(
+			return "", "", LongURLPayload{}, false, newResponseError(
 				http.StatusServiceUnavailable,
 				"SHORT_LINK_STORE_UNAVAILABLE",
 				"short link store is unavailable",
@@ -160,10 +189,10 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 		resolvedLongURL, err := shortLinkResolver.ResolveShortID(ctx, input.ShortID)
 		if err != nil {
 			if errors.Is(err, ErrShortURLNotFound) {
-				return "", "", LongURLPayload{}, newStage3FieldValidationError("SHORT_URL_NOT_FOUND", "short URL not found", "currentLinkInput", err)
+				return "", "", LongURLPayload{}, false, newStage3FieldValidationError("SHORT_URL_NOT_FOUND", "short URL not found", "currentLinkInput", err)
 			}
 			retryable := true
-			return "", "", LongURLPayload{}, newResponseError(
+			return "", "", LongURLPayload{}, false, newResponseError(
 				http.StatusServiceUnavailable,
 				"SHORT_LINK_STORE_UNAVAILABLE",
 				"short link store is unavailable",
@@ -176,21 +205,30 @@ func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkR
 		longURL = resolvedLongURL
 		shortURL, err = BuildShortURL(publicBaseURL, input.ShortID)
 		if err != nil {
-			return "", "", LongURLPayload{}, newInternalResponseError("failed to build short URL", err)
+			return "", "", LongURLPayload{}, false, newInternalResponseError("failed to build short URL", err)
 		}
 	}
 
 	payload, err := DecodeLongURLPayload(longURL, limits)
 	if err != nil {
-		return "", "", LongURLPayload{}, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
+		if _, ok := AsUnsupportedLongURLPayloadVersion(err); ok {
+			stage1, version, extractErr := ExtractStage1InputFromLegacyLongURL(longURL, limits)
+			if extractErr == nil {
+				return longURL, shortURL, LongURLPayload{
+					V:           version,
+					Stage1Input: stage1,
+				}, true, nil
+			}
+		}
+		return "", "", LongURLPayload{}, false, newStage3FieldValidationError("INVALID_LONG_URL", "long URL payload is invalid", "currentLinkInput", err)
 	}
 
 	canonicalLongURL, err := EncodeLongURL(publicBaseURL, BuildLongURLPayload(payload.Stage1Input, payload.Stage2Snapshot), maxLongURLLength)
 	if err != nil {
-		return "", "", LongURLPayload{}, err
+		return "", "", LongURLPayload{}, false, err
 	}
 
-	return canonicalLongURL, shortURL, payload, nil
+	return canonicalLongURL, shortURL, payload, false, nil
 }
 
 func parseResolveURLInput(rawURL string) (resolveURLInput, error) {

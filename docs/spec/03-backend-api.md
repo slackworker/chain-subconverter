@@ -622,10 +622,11 @@
 - 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理
 - 若传入长链接携带 `data` 与可选 `download=1` 之外的 query，必须返回 `INVALID_LONG_URL`
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
-- 本接口执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，完成至 `postProcess` 的内部校验；不得走兼容分支或旧版（含 v4）载荷解码路径
+- 本接口对**当前版本**载荷执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，完成至 `postProcess` 的内部校验
+- **旧版载荷特例**（`v` ≠ 当前）：不得把旧 Stage2 当成当前树解码或迁移；若 `stage1Input` 仍可按现行契约解析，则返回 `200` + `restoreStatus = conflicted` + `restoreConflicts[]` 含 `LEGACY_PAYLOAD_VERSION`（`reasonArgs.payloadVersion` / `reasonArgs.currentVersion`），并返回该 `stage1Input` 与空 `stage2.snapshot`（无 catalog）；**不**执行 generate 同口径 Pipeline。若 Stage1 亦不可解析，则失败且无 `restoreStatus`
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
-- `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复，不能直接继续编辑和继续生成
+- `restoreStatus = conflicted` 表示该恢复快照只能用于页面展示恢复（含仅 Stage1 可用），不能直接继续编辑 Stage2 和继续生成
 - `restoreStatus = conflicted` 时，仍必须返回原始 `stage1Input`、`stage2` 与 `restoreConflicts[]`
 - `restoreConflicts[].reasonCode` 必填；`reasonArgs` 可选且必须是对象
 - `restoreStatus = conflicted` 时，`messages[]` 必须包含 `RESTORE_CONFLICT`，供前端进入只读冲突态
@@ -737,7 +738,7 @@
 
 规则：
 
-- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 5`；**拒绝** `v = 4` 及更旧版本或缺失 `v`
+- `v` 是长链接编码版本字段；当前 hard-break 版本固定 `v = 5`；`GET /sub` / 短链创建 / 完整解码**拒绝**非当前 `v`；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](06-stage2-model.md) 与上文 `resolve-url` 规则
 - 当前版本的规范长链接只编码 `stage1Input` 与编码态嵌套 `stage2Snapshot`（字段名可与 API 外壳 `stage2.snapshot` 对应；载荷内不含 `instanceId`）
 - `enablePortForward` 不进入规范长链接；若 `data` 解码后的 payload 仍含该字段，必须视为无效长链接
 - 编码态聚合：`enabled=true` 时用 `memberProxyNames[]`；`enabled=false` 时仅 `{ "enabled": false }`

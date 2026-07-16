@@ -278,7 +278,7 @@ func TestDecodeLongURLPayload_AcceptsExtendedServerAggregationStrategies(t *test
 }
 
 func TestDecodeLongURLPayload_RejectsLegacyEnablePortForwardField(t *testing.T) {
-	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"rows":[]},"v":1}`)
+	payloadJSON := []byte(`{"stage1Input":{"advancedOptions":{"config":"https://templates.example.com/default.ini","emoji":true,"udp":true,"skipCertVerify":null,"include":null,"exclude":null,"enablePortForward":true},"forwardRelayItems":[],"landingRawText":"","transitRawText":""},"stage2Snapshot":{"servers":[]},"v":5}`)
 	encodedData, err := encodeCompressedData(payloadJSON)
 	if err != nil {
 		t.Fatalf("encodeCompressedData() error = %v", err)
@@ -342,9 +342,74 @@ func TestDecodeLongURLPayload_RejectsLegacyPayloadVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version 2") {
-		t.Fatalf("error mismatch: got %v", err)
+	version, ok := AsUnsupportedLongURLPayloadVersion(err)
+	if !ok || version != 2 {
+		t.Fatalf("AsUnsupportedLongURLPayloadVersion() = (%d, %v), want (2, true); err=%v", version, ok, err)
 	}
+}
+
+func TestExtractStage1InputFromLegacyLongURL_RestoresStage1(t *testing.T) {
+	stage1 := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "ss://legacy-landing",
+		TransitRawText: "https://example.com/transit",
+		ForwardRelayItems: []string{"relay.example.com:7443"},
+	})
+	longURL, err := EncodeLongURL(
+		"http://localhost:11200",
+		BuildLongURLPayload(stage1, Stage2Snapshot{}),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+	legacyURL := mustMutateLongURLPayloadVersion(t, longURL, 4)
+
+	extracted, version, err := ExtractStage1InputFromLegacyLongURL(legacyURL, InputLimits{})
+	if err != nil {
+		t.Fatalf("ExtractStage1InputFromLegacyLongURL() error = %v", err)
+	}
+	if version != 4 {
+		t.Fatalf("version = %d, want 4", version)
+	}
+	if extracted.LandingRawText != stage1.LandingRawText {
+		t.Fatalf("LandingRawText mismatch: got %q want %q", extracted.LandingRawText, stage1.LandingRawText)
+	}
+	if extracted.TransitRawText != stage1.TransitRawText {
+		t.Fatalf("TransitRawText mismatch: got %q want %q", extracted.TransitRawText, stage1.TransitRawText)
+	}
+	if len(extracted.ForwardRelayItems) != 1 || extracted.ForwardRelayItems[0] != "relay.example.com:7443" {
+		t.Fatalf("ForwardRelayItems mismatch: got %#v", extracted.ForwardRelayItems)
+	}
+}
+
+func mustMutateLongURLPayloadVersion(t *testing.T, longURL string, version int) string {
+	t.Helper()
+	parsedURL, err := url.Parse(longURL)
+	if err != nil {
+		t.Fatalf("url.Parse() error = %v", err)
+	}
+	payloadJSON, err := decodeCompressedData(parsedURL.Query().Get(longURLParamData))
+	if err != nil {
+		t.Fatalf("decodeCompressedData() error = %v", err)
+	}
+	var schema longURLPayloadSchema
+	if err := json.Unmarshal(payloadJSON, &schema); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	schema.V = version
+	mutatedPayloadJSON, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+	mutatedData, err := encodeCompressedData(mutatedPayloadJSON)
+	if err != nil {
+		t.Fatalf("encodeCompressedData() error = %v", err)
+	}
+	mutatedLongURL, err := joinSubURL("http://localhost:11200", mutatedData)
+	if err != nil {
+		t.Fatalf("joinSubURL() error = %v", err)
+	}
+	return mutatedLongURL
 }
 
 func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
@@ -392,8 +457,9 @@ func TestDecodeLongURLPayload_RejectsUnsupportedPayloadVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "validate long URL payload schema: unsupported long URL payload version") {
-		t.Fatalf("error mismatch: got %v", err)
+	version, ok := AsUnsupportedLongURLPayloadVersion(err)
+	if !ok || version != longURLSchemaVersion+1 {
+		t.Fatalf("AsUnsupportedLongURLPayloadVersion() = (%d, %v), want (%d, true); err=%v", version, ok, longURLSchemaVersion+1, err)
 	}
 }
 

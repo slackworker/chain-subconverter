@@ -83,6 +83,18 @@ function formatRestoreConflictReason(
 			return locale === "zh"
 				? "当前快照使用的模板 URL 暂时不可用"
 				: "The template URL used by this snapshot is temporarily unavailable";
+		case "LEGACY_PAYLOAD_VERSION": {
+			const payloadVersion = asNumber(reasonArgs?.payloadVersion);
+			const currentVersion = asNumber(reasonArgs?.currentVersion);
+			if (payloadVersion !== undefined && currentVersion !== undefined) {
+				return locale === "zh"
+					? `链接载荷版本 v${payloadVersion} 与当前 v${currentVersion} 不兼容：已还原阶段 1，阶段 2 及之后需重新转换`
+					: `Payload version v${payloadVersion} is incompatible with current v${currentVersion}: Stage 1 was restored; re-run convert for Stage 2+`;
+			}
+			return locale === "zh"
+				? "链接载荷版本不兼容：已还原阶段 1，阶段 2 及之后需重新转换"
+				: "Payload version is incompatible: Stage 1 was restored; re-run convert for Stage 2+";
+		}
 		case "INVALID_REQUEST":
 			if (reasonArgs?.field === "config") {
 				return locale === "zh"
@@ -128,6 +140,7 @@ export function formatModeReason(
 		case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
 		case "SERVER_AGGREGATION_SERVER_MISMATCH":
 		case "TEMPLATE_CONFIG_UNAVAILABLE":
+		case "LEGACY_PAYLOAD_VERSION":
 		case "INVALID_REQUEST":
 			return formatRestoreConflictReason(reasonCode, reasonArgs, locale);
 		default:

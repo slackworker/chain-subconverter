@@ -27,7 +27,7 @@
 - `subconverter` 调用若出现超时、连接失败、非成功 HTTP 响应或不可解析结果，均视为该 pass 失败
 - `landing-discovery pass`、`transit-discovery pass`、`full-base pass` 中任一必需 pass 失败时，当前请求必须整体失败；不做跨 pass 降级，不复用旧结果
 - 若本次有效模板已识别出某地域策略组，但该地域策略组在同一条转换管线的 `full-base pass` 产物（经 `1.3` 后处理后的 `baseCompleteConfig`）中完全不存在，必须视为 `full-base pass` 失败；不得按空组静默降级
-- 长链接状态载荷固定为 `statePayload v5`；**拒绝 v4**；`resolve-url`、`short-links` 与 `GET /sub?...` 不再接受外层 query 的状态覆写
+- 长链接状态载荷固定为 `statePayload v5`；`GET /sub`、`short-links` 与完整可重放恢复**拒绝非当前版本**；`resolve-url` 对旧版可尽力还原 `stage1Input`（见 [06 §7](06-stage2-model.md)）；`resolve-url`、`short-links` 与 `GET /sub?...` 不再接受外层 query 的状态覆写
 
 ### 0.2.1 pass 级参数约束
 
@@ -188,7 +188,7 @@
 |------|----------|
 | `POST /api/stage1/convert` | `prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Bundle` |
 | `POST /api/generate` | 完整 Pipeline 至 `postProcess` 的内部 dry-run 校验；编码 `statePayload v5`，但不返回 `completeConfig` |
-| `POST /api/resolve-url` | 先解码 v5 载荷，再执行与 `generate` 同口径的完整内部校验；成功后返回 `replayable` 或 `conflicted` |
+| `POST /api/resolve-url` | 先解码 v5 载荷并执行与 `generate` 同口径的完整内部校验；成功后返回 `replayable` 或 `conflicted`。若载荷 `v` 非当前版本但 `stage1Input` 仍可按现行契约解析，则返回 `conflicted` 且仅还原 Stage1（Stage2 为空），不得迁移旧 Stage2 |
 | `GET /sub?...` 与 `GET /sub/<id>` | 完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig` |
 
 硬约束：
@@ -450,6 +450,7 @@
 - 若某 instance 的 `sourceId` 缺失、`proxyName` 冲突或 `targetName` 引用失效，则判冲突
 - 若启用聚合违反 `2.7`（未知成员、跨 server、成员数不足 2 等），则判冲突
 - `restoreStatus = conflicted` 时仍返回恢复出的 `stage1Input` 与 `stage2`；前端必须进入只读冲突态，不得继续生成
+- **旧版载荷（`v` ≠ 当前）**：不得走完整 Stage2 兼容迁移。若 `stage1Input` 满足现行契约与输入上限，则 `restoreStatus = conflicted`，`restoreConflicts[].reasonCode = LEGACY_PAYLOAD_VERSION`（`reasonArgs` 含 `payloadVersion` / `currentVersion`），返回原始 `stage1Input`，`stage2.snapshot` 为空树，且**不**执行 Pipeline dry-run；若 `stage1Input` 亦无法按现行契约解析，则按失败响应返回（无 `restoreStatus`）。`GET /sub` 与短链创建仍整包拒绝非当前版本
 
 ### 3.3 快照应用（Pass 3 前）
 

@@ -24,7 +24,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 	const [portForwardDraftTags, setPortForwardDraftTags] = useState<string[] | null>(null);
 
-	const { state, updateStage1Input, isConverting, isConflictReadonly } = workflow;
+	const { state, updateStage1Input, isConverting } = workflow;
 	const stage1Input = state.stage1Input;
 	const copy = LOCALES[locale];
 
@@ -103,7 +103,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 							<button
 								type="button"
 								onClick={() => setIsSocks5Open(true)}
-								disabled={isConflictReadonly}
 								className={accentLink()}
 							>
 								{copy.addSocks5}
@@ -112,7 +111,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 						value={stage1Input.landingRawText}
 						onChange={(next) => updateStage1Input((current) => ({ ...current, landingRawText: next }))}
 						placeholder={copy.landingPlaceholder}
-						disabled={isConflictReadonly}
 						hasError={workflow.getStage1FieldErrors("landingRawText").length > 0}
 						errorText={workflow.getStage1FieldErrors("landingRawText")[0]?.message}
 					/>
@@ -127,7 +125,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 							<button
 								type="button"
 								onClick={handleOpenPortForward}
-								disabled={isConflictReadonly}
 								className={accentLink()}
 							>
 								{copy.addPortForward}
@@ -136,7 +133,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 						value={stage1Input.transitRawText}
 						onChange={(next) => updateStage1Input((current) => ({ ...current, transitRawText: next }))}
 						placeholder={copy.transitPlaceholder}
-						disabled={isConflictReadonly}
 						hasError={workflow.getStage1FieldErrors("transitRawText").length > 0}
 						errorText={workflow.getStage1FieldErrors("transitRawText")[0]?.message}
 						bottomContent={
@@ -185,14 +181,13 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 								<input 
 									className={`flex-1 border rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all ${isDark ? "bg-zinc-950 border-zinc-800 text-zinc-200 focus:border-indigo-500/50" : "bg-white border-slate-200 text-slate-800 focus:border-indigo-500/50"}`}
 									placeholder={copy.templatePlaceholder}
-									disabled={isConflictReadonly}
 									value={stage1Input.advancedOptions.config ?? ""}
 									onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, config: e.target.value || null } }))}
 								/>
 								<button
 									type="button"
 									onClick={handleResetTemplateURL}
-									disabled={currentTemplateURL.trim() === defaultTemplateURL.trim() || isConflictReadonly}
+									disabled={currentTemplateURL.trim() === defaultTemplateURL.trim()}
 									className={`px-3.5 py-2.5 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${isDark ? "border-zinc-800 hover:border-zinc-700 bg-zinc-900 disabled:opacity-40 text-zinc-300" : "border-slate-200 hover:border-slate-300 bg-slate-100 disabled:opacity-40 text-slate-700"}`}
 									title={copy.templateResetDefault}
 								>
@@ -233,7 +228,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 								<div className="relative flex items-center justify-center">
 									<input type="checkbox" className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${isDark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"}`}
 										checked={stage1Input.advancedOptions.emoji ?? false}
-										disabled={isConflictReadonly}
 										onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, emoji: e.target.checked || null } }))}
 									/>
 									<svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100" viewBox="0 0 14 10" fill="none"><path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -245,7 +239,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 								<div className="relative flex items-center justify-center">
 									<input type="checkbox" className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${isDark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"}`}
 										checked={stage1Input.advancedOptions.udp ?? false}
-										disabled={isConflictReadonly}
 										onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, udp: e.target.checked || null } }))}
 									/>
 									<svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100" viewBox="0 0 14 10" fill="none"><path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -257,7 +250,6 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 								<div className="relative flex items-center justify-center">
 									<input type="checkbox" className={`peer appearance-none w-5 h-5 border rounded transition-colors cursor-pointer disabled:opacity-50 checked:bg-indigo-600 checked:border-indigo-500 ${isDark ? "border-zinc-700 bg-zinc-950" : "border-slate-300 bg-white"}`}
 										checked={stage1Input.advancedOptions.skipCertVerify ?? false}
-										disabled={isConflictReadonly}
 										onChange={e => updateStage1Input(c => ({ ...c, advancedOptions: { ...c.advancedOptions, skipCertVerify: e.target.checked || null } }))}
 									/>
 									<svg className="absolute w-3 h-3 text-white pointer-events-none opacity-0 peer-checked:opacity-100" viewBox="0 0 14 10" fill="none"><path d="M1 5L4.5 8.5L13 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -272,7 +264,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 			<div className="flex justify-end pt-2">
 				<button 
 					onClick={() => workflow.handleStage1Convert()}
-					disabled={isConverting || isConflictReadonly || (stage1Input.landingRawText.trim() === "" && stage1Input.transitRawText.trim() === "")}
+					disabled={isConverting || (stage1Input.landingRawText.trim() === "" && stage1Input.transitRawText.trim() === "")}
 					className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center min-w-[140px]"
 				>
 					{isConverting ? (

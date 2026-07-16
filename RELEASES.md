@@ -19,7 +19,17 @@
 
 ## Unreleased
 
-（暂无）
+### 变更摘要
+
+- **`resolve-url` 旧版载荷**：非当前 `statePayload` 版本时，若 `stage1Input` 仍可解析则还原 Stage1，Stage2 为空并以 `LEGACY_PAYLOAD_VERSION` 进入只读冲突态；`GET /sub` / 短链创建仍整包拒绝旧版。
+- **协议切换约定**：以后 bump 长链版本时，发版说明须声明 Stage1 是「兼容还原」（默认）还是「完全丢失」，以及 Convert 及后续是否不兼容（见 [06 §7](docs/spec/06-stage2-model.md)）。
+
+### 相对 v5 的兼容声明（本轮行为澄清，未 bump `v`）
+
+| 层 | 结论 |
+|----|------|
+| Stage1 输入 | **兼容还原**（`resolve-url` 尽力填回） |
+| Convert 及后续（Stage2 / generate / 订阅读取） | **不兼容**旧 `v`（含 v4 平铺行载荷）；须重新转换并生成 |
 
 ---
 

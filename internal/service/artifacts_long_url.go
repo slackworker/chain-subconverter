@@ -5,12 +5,34 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
 	"strings"
 	"time"
 )
+
+// unsupportedLongURLPayloadVersionError marks a payload whose v is not the
+// current wire schema. GET /sub and short-link creation reject it; resolve-url
+// may still best-effort restore stage1Input when that field remains compatible.
+type unsupportedLongURLPayloadVersionError struct {
+	Version int
+}
+
+func (e *unsupportedLongURLPayloadVersionError) Error() string {
+	return fmt.Sprintf("unsupported long URL payload version %d", e.Version)
+}
+
+// AsUnsupportedLongURLPayloadVersion reports whether err (possibly wrapped)
+// is an unsupported payload version error.
+func AsUnsupportedLongURLPayloadVersion(err error) (int, bool) {
+	var target *unsupportedLongURLPayloadVersionError
+	if !errors.As(err, &target) || target == nil {
+		return 0, false
+	}
+	return target.Version, true
+}
 
 const (
 	defaultLongURLMaxLength = 8192
@@ -130,22 +152,17 @@ func EncodeLongURL(publicBaseURL string, payload LongURLPayload, maxLongURLLengt
 }
 
 func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, error) {
-	parsedURL, err := url.Parse(longURL)
+	payloadJSON, err := decodeLongURLPayloadJSON(longURL)
 	if err != nil {
-		return LongURLPayload{}, fmt.Errorf("parse long URL: %w", err)
-	}
-	if err := validateLongURLDecodeQuery(parsedURL.Query()); err != nil {
-		return LongURLPayload{}, fmt.Errorf("validate long URL query: %w", err)
+		return LongURLPayload{}, err
 	}
 
-	data, err := parseRequiredStringQueryValue(parsedURL.Query(), longURLParamData)
+	version, err := peekLongURLPayloadVersion(payloadJSON)
 	if err != nil {
-		return LongURLPayload{}, fmt.Errorf("parse long URL data: %w", err)
+		return LongURLPayload{}, fmt.Errorf("unmarshal long URL payload version: %w", err)
 	}
-
-	payloadJSON, err := decodeCompressedData(data)
-	if err != nil {
-		return LongURLPayload{}, fmt.Errorf("decode long URL payload: %w", err)
+	if version != longURLSchemaVersion {
+		return LongURLPayload{}, fmt.Errorf("validate long URL payload schema: %w", &unsupportedLongURLPayloadVersionError{Version: version})
 	}
 
 	var payload LongURLPayload
@@ -166,6 +183,81 @@ func DecodeLongURLPayload(longURL string, limits InputLimits) (LongURLPayload, e
 	}
 
 	return payload, nil
+}
+
+// ExtractStage1InputFromLegacyLongURL best-effort restores stage1Input from a
+// non-current payload version. Stage2 is intentionally not migrated.
+func ExtractStage1InputFromLegacyLongURL(longURL string, limits InputLimits) (Stage1Input, int, error) {
+	payloadJSON, err := decodeLongURLPayloadJSON(longURL)
+	if err != nil {
+		return Stage1Input{}, 0, err
+	}
+
+	var partial struct {
+		V           int                `json:"v"`
+		Stage1Input longURLStage1Input `json:"stage1Input"`
+	}
+	if err := json.Unmarshal(payloadJSON, &partial); err != nil {
+		return Stage1Input{}, 0, fmt.Errorf("unmarshal legacy long URL stage1Input: %w", err)
+	}
+	if partial.V == 0 {
+		return Stage1Input{}, 0, fmt.Errorf("validate long URL payload schema: missing payload version")
+	}
+	if partial.V == longURLSchemaVersion {
+		return Stage1Input{}, partial.V, fmt.Errorf("payload version %d is current; use DecodeLongURLPayload", partial.V)
+	}
+
+	stage1 := Stage1Input{
+		LandingRawText:    partial.Stage1Input.LandingRawText,
+		TransitRawText:    partial.Stage1Input.TransitRawText,
+		ForwardRelayItems: partial.Stage1Input.ForwardRelayItems,
+		AdvancedOptions: AdvancedOptions{
+			Emoji:          partial.Stage1Input.AdvancedOptions.Emoji,
+			UDP:            partial.Stage1Input.AdvancedOptions.UDP,
+			SkipCertVerify: partial.Stage1Input.AdvancedOptions.SkipCertVerify,
+			Config:         partial.Stage1Input.AdvancedOptions.Config,
+			Include:        partial.Stage1Input.AdvancedOptions.Include,
+			Exclude:        partial.Stage1Input.AdvancedOptions.Exclude,
+		},
+	}
+	if err := validateStage1InputInLongURLPayload(stage1); err != nil {
+		return Stage1Input{}, partial.V, fmt.Errorf("validate long URL payload schema: %w", err)
+	}
+	if err := ValidateStage1InputLimits(stage1, limits); err != nil {
+		return Stage1Input{}, partial.V, fmt.Errorf("validate stage1 input limits: %w", err)
+	}
+	return NormalizeStage1Input(stage1), partial.V, nil
+}
+
+func decodeLongURLPayloadJSON(longURL string) ([]byte, error) {
+	parsedURL, err := url.Parse(longURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse long URL: %w", err)
+	}
+	if err := validateLongURLDecodeQuery(parsedURL.Query()); err != nil {
+		return nil, fmt.Errorf("validate long URL query: %w", err)
+	}
+
+	data, err := parseRequiredStringQueryValue(parsedURL.Query(), longURLParamData)
+	if err != nil {
+		return nil, fmt.Errorf("parse long URL data: %w", err)
+	}
+
+	payloadJSON, err := decodeCompressedData(data)
+	if err != nil {
+		return nil, fmt.Errorf("decode long URL payload: %w", err)
+	}
+	return payloadJSON, nil
+}
+
+func peekLongURLPayloadVersion(payloadJSON []byte) (int, error) {
+	var versionPeek struct {
+		V int `json:"v"`
+	}
+	if err := json.Unmarshal(payloadJSON, &versionPeek); err != nil {
+		return 0, err
+	}
+	return versionPeek.V, nil
 }
 
 func encodeCompressedData(payload []byte) (string, error) {
@@ -277,15 +369,11 @@ func (schema longURLPayloadSchema) payload() LongURLPayload {
 	}
 }
 
-func validateLongURLPayloadSchema(payload LongURLPayload) error {
-	if payload.V != longURLSchemaVersion {
-		return fmt.Errorf("unsupported long URL payload version %d", payload.V)
-	}
-
-	if payload.Stage1Input.AdvancedOptions.Config == nil {
+func validateStage1InputInLongURLPayload(stage1Input Stage1Input) error {
+	if stage1Input.AdvancedOptions.Config == nil {
 		return fmt.Errorf("advancedOptions.config must not be empty")
 	}
-	configURL := strings.TrimSpace(*payload.Stage1Input.AdvancedOptions.Config)
+	configURL := strings.TrimSpace(*stage1Input.AdvancedOptions.Config)
 	if configURL == "" {
 		return fmt.Errorf("advancedOptions.config must not be empty")
 	}
@@ -298,6 +386,17 @@ func validateLongURLPayloadSchema(payload LongURLPayload) error {
 	}
 	if parsedConfigURL.Host == "" {
 		return fmt.Errorf("advancedOptions.config must include host")
+	}
+	return nil
+}
+
+func validateLongURLPayloadSchema(payload LongURLPayload) error {
+	if payload.V != longURLSchemaVersion {
+		return &unsupportedLongURLPayloadVersionError{Version: payload.V}
+	}
+
+	if err := validateStage1InputInLongURLPayload(payload.Stage1Input); err != nil {
+		return err
 	}
 
 	proxyNames := map[string]struct{}{}

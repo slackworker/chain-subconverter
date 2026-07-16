@@ -90,3 +90,11 @@ func restoreConflictMessage(err error) string {
 		return "恢复的配置已无法直接复用，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	}
 }
+
+func legacyPayloadVersionRestoreMessage(payloadVersion int) string {
+	return fmt.Sprintf(
+		"链接载荷版本 v%d 与当前 v%d 不兼容：已还原阶段 1 输入，阶段 2 及之后配置无法恢复。请重新执行转换并自动填充。",
+		payloadVersion,
+		longURLSchemaVersion,
+	)
+}

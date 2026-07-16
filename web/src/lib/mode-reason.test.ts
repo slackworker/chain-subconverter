@@ -50,6 +50,15 @@ describe("formatModeReason", () => {
 		).toBe("当前快照使用的模板 URL 已失效或不再可用");
 	});
 
+	it("formats legacy payload version restore conflicts", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "LEGACY_PAYLOAD_VERSION",
+				reasonArgs: { payloadVersion: 4, currentVersion: 5 },
+			}),
+		).toBe("链接载荷版本 v4 与当前 v5 不兼容：已还原阶段 1，阶段 2 及之后需重新转换");
+	});
+
 	it("falls back to reasonCode for unknown codes", () => {
 		expect(formatModeReason({ reasonCode: "CUSTOM_REASON" })).toBe("CUSTOM_REASON");
 	});

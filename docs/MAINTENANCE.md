@@ -10,6 +10,7 @@
 | 例行第三方 smoke（滚动 tag） | **只**覆盖 [third-party-deployments.md](testing/third-party-deployments.md) 与 STATUS「第三方部署」一行；不追加历史段、不重复 digest 到 STATUS 表 |
 | E2E spec 变更 | [testing/README.md](testing/README.md) §`real-full`；既有第三方结论视为无效，须重跑 `real-smoke` + `real-full` 后再覆盖 [third-party-deployments.md](testing/third-party-deployments.md) |
 | 行为或 API 变更 | `docs/spec/02–05`；[STATUS.md](STATUS.md) 仅一句指向 spec |
+| 长链 `statePayload` 版本 bump | [06 §7](spec/06-stage2-model.md) 协议切换声明：在 [RELEASES.md](../RELEASES.md) 写明 Stage1 是「兼容还原」还是「完全丢失」，以及 Convert 及后续是否不兼容 |
 | 场景 / 金样变更 | `testdata/canonical-scenarios/`（`*.stage1.json` 与/或 transit `*.uri.txt` 等）→ 按 [testing/README.md](testing/README.md) §fixture 维护流水线：`testfixturegen` → **`npm run sync && npm run check`（勿漏；会更新/校验 [preview-inputs.md](testing/preview-inputs.md)）** → 叙述改 [fixtures.md](testing/fixtures.md) |
 | 新 backlog | [STATUS.md](STATUS.md) backlog 表 |
 | 用户可见能力或部署 | [README.md](../README.md)、[deploy/README.md](../deploy/README.md) |
