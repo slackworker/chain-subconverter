@@ -1,33 +1,38 @@
 # 项目状态
 
-> 最近更新：2026-07-12 · **3.2 Beta 线** 最新 tag [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3) 已发布 · **main** 已同步 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4) · **dev** 对齐 beta · **3.1 线** 止于 [`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)
+> 最近更新：2026-07-16 · **3.2 Beta 线** 最新 tag [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.2 Beta 线最新 tag**：[`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)（beta 线重整：v3.1 聚合 + v3.2 行身份 + 聚合组注入 + Docker CI；`main` 止于 v3.0.0-beta.4）
+- **3.2 Beta 线最新 tag**：[`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)（beta 线重整：v3.1 聚合 + v3.2 行身份 + 聚合组注入 + Docker CI；Beta 发版不同步 `main`）
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
 - **Phase 0–4 已完成**；维护期以 3.2 Beta 发版收口、回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
-- 分支：`dev`（`dev-latest` 手动）· `beta`（`beta-latest`）· `main`（`latest`）
+- 分支：`dev`（日常集成 · `dev-latest` 手动）· `beta`（预发布 · `beta-latest`）· `main`（稳定线 · `latest`；当前止于 v3.0.0-beta.4，**无 v3.0 GA**）
 - 契约与实现边界： [spec/02–05](spec/)（含 Pipeline hard-break、长链 v4、恢复冲突、snapshot-first 三 pass、stage2 复制/改名/行序、server 聚合，见 [04 §1.1.3 / §1.3 / §2.1.2 / §2.7 / §3.2.1](spec/04-business-rules.md)）
 
 ## 分支与提交流程
 
-| 分支 | 用途 | 镜像 |
-|------|------|------|
-| `main` | 共享层、后端、脚本、部署、文档等**非单一 scheme** 改动 | `latest`（CI） |
-| `dev` | `web/src/scheme/b1|b2|c1|c2` 方案演进 | `dev-latest`（手动） |
-| `beta` | 预发布回归与 Beta tag 收口 | `beta-latest` |
+日常开发走 **dev → beta →（择机）main**。Beta 维护期内**不要求**按路径拆分「公共上 main、方案留 dev」。
 
-- **纯公共改动**：提交 `main`，再将 `dev` rebase 到最新 `main`。
-- **纯方案改动**：提交 `dev`。
-- **同轮两类改动**：公共部分先上 `main` 并同步 `dev`，方案部分再上 `dev`；勿混在一个提交里。
-- **`beta`**：不作日常开发分支；仅在选定已回归快照后更新，用于 `beta-latest` / Beta tag。
+| 分支 | 用途 | 镜像 | 日常开发 |
+|------|------|------|----------|
+| `dev` | 全产品集成：后端、共享前端、`default`、探索方案 `b1`–`c2` | `dev-latest`（手动） | **是** |
+| `beta` | 选定 `dev` 快照后的预发布回归与 Beta tag | `beta-latest` | 否 |
+| `main` | 稳定线；`latest` 镜像；Beta 晋级前刻意落后 | `latest`（CI） | 否 |
 
-同一分支可同时预览 `/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2`；多 worktree 并行须设 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（见 [runbook.md](testing/runbook.md)）。
+### 提交约定
+
+- **日常改动**：直接提交 `dev`。后端、共享层、`default`、探索方案可在同一 commit 内集成验证。
+- **推 `dev`**：触发 CI；需要预览镜像时手动发布 `dev-latest`。
+- **`beta` 收口**：回归通过后，将已验证 `dev` 快照合入 `beta` 并打 Beta tag（见 [runbook.md](testing/runbook.md)）。Beta 发版**不同步** `main`（见 [RELEASES.md](../RELEASES.md)）。
+- **同步 `main`**：单独里程碑（如 v3.0 GA 或整条 Beta 线晋级稳定线）。当前 `main` 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)，仓库**从未发布 v3.0 正式版**；届时整包快进或 merge，而非日常按目录拆分提交。
+- **可选工具**：需把部分已 stage 改动单独落到 `main` 时，可用 `scripts/commit-current-changes-to-main.sh` 或 VS Code 任务 `git: commit staged changes to main`；非日常流程。
+
+同一 `dev` 分支可同时预览 `/`、`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2`；多 worktree 并行须设 `CHAIN_SUBCONVERTER_DEV_UP_PORT_OFFSET`（见 [runbook.md](testing/runbook.md)）。
 
 ## 已稳定范围
 
