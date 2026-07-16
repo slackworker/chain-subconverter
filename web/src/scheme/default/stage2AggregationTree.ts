@@ -207,16 +207,52 @@ function getServerBlockBounds(
 
 const SOURCE_TONE_COUNT = 6;
 
-function hashSourceTone(sourceLandingName: string): number {
-	let hash = 0;
-	for (let index = 0; index < sourceLandingName.length; index += 1) {
-		hash = (hash * 31 + sourceLandingName.charCodeAt(index)) | 0;
+/** 按行序提取 source 组边界上的 sourceId（同组内重复跳过）。 */
+function getSourceGroupOrderFromRows(rows: Stage2Row[]): string[] {
+	const ordered: string[] = [];
+	let previousSourceId: string | null = null;
+	for (const row of rows) {
+		const sourceId = getStage2RowSourceLandingName(row);
+		if (sourceId !== previousSourceId) {
+			ordered.push(sourceId);
+			previousSourceId = sourceId;
+		}
 	}
-	return Math.abs(hash) % SOURCE_TONE_COUNT;
+	return ordered;
 }
 
-export function getStage2SourceToneClassName(sourceLandingName: string): string {
-	return `is-source-tone-${hashSourceTone(sourceLandingName)}`;
+/** 为 source 组序列分配 tone：相邻不同 source 必异色；同一 sourceId 全局同色。 */
+export function buildStage2SourceToneMap(rows: Stage2Row[]): Map<string, number> {
+	const groupOrder = getSourceGroupOrderFromRows(rows);
+	const toneBySourceId = new Map<string, number>();
+	let previousTone = -1;
+	let assignIndex = 0;
+
+	for (const sourceId of groupOrder) {
+		const existingTone = toneBySourceId.get(sourceId);
+		if (existingTone !== undefined) {
+			previousTone = existingTone;
+			continue;
+		}
+
+		let tone = assignIndex % SOURCE_TONE_COUNT;
+		if (tone === previousTone) {
+			tone = (tone + 1) % SOURCE_TONE_COUNT;
+		}
+		toneBySourceId.set(sourceId, tone);
+		previousTone = tone;
+		assignIndex += 1;
+	}
+
+	return toneBySourceId;
+}
+
+function getStage2SourceToneClassNameFromMap(
+	sourceLandingName: string,
+	toneBySourceId: Map<string, number>,
+): string {
+	const tone = toneBySourceId.get(sourceLandingName) ?? 0;
+	return `is-source-tone-${tone}`;
 }
 
 type Stage2InstanceInlineContext = {
@@ -231,6 +267,7 @@ type Stage2InstanceInlineContext = {
 function buildStage2InstanceRowInlineClassName(context: Stage2InstanceInlineContext): string {
 	const { blockRowNodes, rowNode, serverAggregationEnabled, isAggInstance, isAggInstanceTail, isAggMember } =
 		context;
+	const toneBySourceId = buildStage2SourceToneMap(blockRowNodes.map((node) => node.row));
 	const rowIndexInBlock = blockRowNodes.findIndex((candidate) => candidate.rowKey === rowNode.rowKey);
 	const sourceLandingName = getStage2RowSourceLandingName(rowNode.row);
 	const previousSourceLandingName =
@@ -250,7 +287,7 @@ function buildStage2InstanceRowInlineClassName(context: Stage2InstanceInlineCont
 		rowNode.isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
 		sourceSpineStart ? "is-source-spine-start" : "",
 		sourceSpineEnd ? "is-source-spine-end" : "",
-		getStage2SourceToneClassName(sourceLandingName),
+		getStage2SourceToneClassNameFromMap(sourceLandingName, toneBySourceId),
 		isAggInstance && serverAggregationEnabled ? "is-agg-instance" : "",
 		isAggInstance && serverAggregationEnabled && sourceSpineStart && rowIndexInBlock > 0
 			? "is-agg-source-boundary"
@@ -268,6 +305,7 @@ export function getStage2FlatRowInlineClassName(
 	rowIndex: number,
 	row: Stage2Row,
 	isDefaultInstance: boolean,
+	toneBySourceId: Map<string, number> = buildStage2SourceToneMap(stage2Rows),
 ): string {
 	const sourceLandingName = getStage2RowSourceLandingName(row);
 	const previousSourceLandingName =
@@ -285,7 +323,7 @@ export function getStage2FlatRowInlineClassName(
 		isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
 		sourceSpineStart ? "is-source-spine-start" : "",
 		sourceSpineEnd ? "is-source-spine-end" : "",
-		getStage2SourceToneClassName(sourceLandingName),
+		getStage2SourceToneClassNameFromMap(sourceLandingName, toneBySourceId),
 	]
 		.filter(Boolean)
 		.join(" ");

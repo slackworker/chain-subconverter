@@ -7,7 +7,7 @@ import {
 	formatServerGroupLabel,
 	getStage2AggregationTreeRowInlineClassName,
 	getStage2FlatRowInlineClassName,
-	getStage2SourceToneClassName,
+	buildStage2SourceToneMap,
 } from "./stage2AggregationTree";
 
 const rows: Stage2Row[] = [
@@ -106,8 +106,25 @@ describe("default nested aggregation tree projection", () => {
 		).toContain("is-agg-non-member");
 	});
 
-	it("assigns stable source tone classes", () => {
-		expect(getStage2SourceToneClassName("source-a")).toBe(getStage2SourceToneClassName("source-a"));
-		expect(getStage2FlatRowInlineClassName(rows, 0, rows[0], true)).toContain("is-source-tone-");
+	it("assigns adjacent-aware source tone classes", () => {
+		const toneBySourceId = buildStage2SourceToneMap(rows);
+		expect(toneBySourceId.get("source-a")).not.toBe(toneBySourceId.get("source-b"));
+		expect(getStage2FlatRowInlineClassName(rows, 0, rows[0], true, toneBySourceId)).toContain(
+			`is-source-tone-${toneBySourceId.get("source-a")}`,
+		);
+		expect(getStage2FlatRowInlineClassName(rows, 2, rows[2], true, toneBySourceId)).toContain(
+			`is-source-tone-${toneBySourceId.get("source-b")}`,
+		);
+	});
+
+	it("keeps adjacent different sources on distinct tones in aggregation tree blocks", () => {
+		const nodes = buildStage2AggregationTree(rows, () => null);
+		const sourceAClasses = getStage2AggregationTreeRowInlineClassName(nodes, 1);
+		const sourceBClasses = getStage2AggregationTreeRowInlineClassName(nodes, 3);
+		const sourceATone = sourceAClasses.match(/is-source-tone-(\d)/)?.[1];
+		const sourceBTone = sourceBClasses.match(/is-source-tone-(\d)/)?.[1];
+		expect(sourceATone).toBeDefined();
+		expect(sourceBTone).toBeDefined();
+		expect(sourceATone).not.toBe(sourceBTone);
 	});
 });

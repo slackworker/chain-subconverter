@@ -21,7 +21,7 @@ import {
 } from "./Stage2RowCells";
 import { useStage2TableColumns } from "./useStage2TableColumns";
 import { collectStage2TargetOptionLabels } from "./stage2TargetMeasureLabels";
-import { getStage2FlatRowInlineClassName } from "./stage2AggregationTree";
+import { getStage2FlatRowInlineClassName, buildStage2SourceToneMap } from "./stage2AggregationTree";
 
 interface Stage2FlatTableProps {
 	workflow: AppWorkflowViewModel;
@@ -101,6 +101,7 @@ export function Stage2FlatTable({
 	]);
 
 	const stage2ColumnStyle = useStage2TableColumns(tableWrapRef, stage2ColumnMeasureInput);
+	const sourceToneBySourceId = useMemo(() => buildStage2SourceToneMap(stage2Rows), [stage2Rows]);
 
 	return (
 		<div className="a-table-wrap a-table-wrap--stage2-adaptive" ref={tableWrapRef} style={stage2ColumnStyle}>
@@ -138,6 +139,7 @@ export function Stage2FlatTable({
 							supplementOpenByRow={supplementOpenByRow}
 							setPrimaryOpen={setPrimaryOpen}
 							setSupplementOpen={setSupplementOpen}
+							sourceToneBySourceId={sourceToneBySourceId}
 						/>
 					))}
 				</tbody>
@@ -162,6 +164,7 @@ function Stage2FlatTableRow({
 	supplementOpenByRow,
 	setPrimaryOpen,
 	setSupplementOpen,
+	sourceToneBySourceId,
 }: {
 	row: Stage2Row;
 	rowIndex: number;
@@ -178,6 +181,7 @@ function Stage2FlatTableRow({
 	supplementOpenByRow: Record<string, boolean>;
 	setPrimaryOpen: (rowKey: string, open: boolean) => void;
 	setSupplementOpen: (rowKey: string, open: boolean) => void;
+	sourceToneBySourceId: Map<string, number>;
 }) {
 	const {
 		state,
@@ -215,7 +219,13 @@ function Stage2FlatTableRow({
 	const rowErrorId = `a-s2-row-error-${rowKey}`;
 	const rowNameInputId = `a-s2-row-name-${rowKey}`;
 
-	const rowInlineClassName = getStage2FlatRowInlineClassName(stage2Rows, rowIndex, row, isDefaultInstance);
+	const rowInlineClassName = getStage2FlatRowInlineClassName(
+		stage2Rows,
+		rowIndex,
+		row,
+		isDefaultInstance,
+		sourceToneBySourceId,
+	);
 
 	return (
 		<tr className={rowErrors.length > 0 ? "a-table__row--error" : ""}>
