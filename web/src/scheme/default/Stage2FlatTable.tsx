@@ -21,6 +21,7 @@ import {
 } from "./Stage2RowCells";
 import { useStage2TableColumns } from "./useStage2TableColumns";
 import { collectStage2TargetOptionLabels } from "./stage2TargetMeasureLabels";
+import { getStage2FlatRowInlineClassName } from "./stage2AggregationTree";
 
 interface Stage2FlatTableProps {
 	workflow: AppWorkflowViewModel;
@@ -198,13 +199,7 @@ function Stage2FlatTableRow({
 	const sourceLandingName = getStage2RowSourceLandingName(row);
 	const previousSourceLandingName =
 		rowIndex > 0 ? getStage2RowSourceLandingName(stage2Rows[rowIndex - 1]) : null;
-	const nextSourceLandingName =
-		rowIndex + 1 < stage2Rows.length ? getStage2RowSourceLandingName(stage2Rows[rowIndex + 1]) : null;
-	const groupedBySource =
-		previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
-	const groupStart = previousSourceLandingName !== sourceLandingName;
-	const groupEnd = nextSourceLandingName !== sourceLandingName;
-	const isDefaultInstance = groupStart;
+	const isDefaultInstance = previousSourceLandingName !== sourceLandingName;
 	const meta = getStage2RowMeta(rowKey);
 	const rowErrors = getStage2RowErrors(rowKey);
 	const canDeleteRow = canDeleteStage2Row(rowKey);
@@ -220,15 +215,7 @@ function Stage2FlatTableRow({
 	const rowErrorId = `a-s2-row-error-${rowKey}`;
 	const rowNameInputId = `a-s2-row-name-${rowKey}`;
 
-	const rowInlineClassName = [
-		"a-stage2-row-inline",
-		groupedBySource ? "is-grouped" : "is-solo",
-		isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
-		groupStart ? "is-group-start" : "",
-		groupEnd ? "is-group-end" : "",
-	]
-		.filter(Boolean)
-		.join(" ");
+	const rowInlineClassName = getStage2FlatRowInlineClassName(stage2Rows, rowIndex, row, isDefaultInstance);
 
 	return (
 		<tr className={rowErrors.length > 0 ? "a-table__row--error" : ""}>

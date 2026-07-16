@@ -288,11 +288,11 @@ function Stage2AggregationTreeRow({
 		nodeIndex,
 		(anchorRowKey) => getServerAggregationGroup(anchorRowKey)?.enabled ?? false,
 	);
-	const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex, {
-		serverAggregationEnabled,
-	});
 
 	if (node.kind === "server") {
+		const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex, {
+			serverAggregationEnabled,
+		});
 		const anchorRow = stage2Rows.find((candidate) => getStage2RowStrictKey(candidate) === node.anchorRowKey);
 		if (!anchorRow) {
 			return null;
@@ -405,6 +405,10 @@ function Stage2AggregationTreeRow({
 	const serverAggregation = getServerAggregationGroup(rowKey);
 	const memberChecked = row.instanceId ? (serverAggregation?.memberChecked ?? false) : false;
 	const isDefaultInstance = node.isDefaultInstance;
+	const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex, {
+		serverAggregationEnabled,
+		isAggMember: row.instanceId ? memberChecked : undefined,
+	});
 	const canDeleteRow = canDeleteStage2Row(rowKey);
 	const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneInstance;
 	const supplementGroup = getChainTargetChoiceGroups().find((group) => group.kind === "proxies") ?? null;

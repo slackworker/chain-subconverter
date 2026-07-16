@@ -1688,6 +1688,32 @@
 	position: relative;
 	padding-left: 0.9rem;
 	--a-stage2-node-gap: 0.68rem;
+	--s2-source-ink: color-mix(in srgb, var(--color-accent) 48%, var(--color-line));
+	--s2-spine-ink: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-source-tone-0 {
+	--s2-source-ink: color-mix(in srgb, #4a7fd4 62%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-source-tone-1 {
+	--s2-source-ink: color-mix(in srgb, #3a9e6f 62%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-source-tone-2 {
+	--s2-source-ink: color-mix(in srgb, #b07a2a 62%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-source-tone-3 {
+	--s2-source-ink: color-mix(in srgb, #9b5bb8 62%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-source-tone-4 {
+	--s2-source-ink: color-mix(in srgb, #c45b7a 62%, var(--color-line));
+}
+
+.a-stage2-row-inline.is-source-tone-5 {
+	--s2-source-ink: color-mix(in srgb, #3f9aa8 62%, var(--color-line));
 }
 
 .a-stage2-row-inline::before,
@@ -1704,13 +1730,17 @@
 	width: 2px;
 	background: linear-gradient(
 		to bottom,
-		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) 0,
-		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) calc(50% - var(--a-stage2-node-gap)),
+		var(--s2-spine-ink) 0,
+		var(--s2-spine-ink) calc(50% - var(--a-stage2-node-gap)),
 		transparent calc(50% - var(--a-stage2-node-gap)),
 		transparent calc(50% + var(--a-stage2-node-gap)),
-		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) calc(50% + var(--a-stage2-node-gap)),
-		color-mix(in srgb, var(--color-accent) 38%, var(--color-line)) 100%
+		var(--s2-spine-ink) calc(50% + var(--a-stage2-node-gap)),
+		var(--s2-spine-ink) 100%
 	);
+}
+
+.a-stage2-row-inline.is-grouped::before {
+	--s2-spine-ink: color-mix(in srgb, var(--s2-source-ink) 72%, var(--color-line));
 }
 
 .a-stage2-row-inline::after {
@@ -1719,7 +1749,7 @@
 	height: 0.65rem;
 	border-radius: 999px;
 	transform: translate(-50%, -50%);
-	border: 2px solid color-mix(in srgb, var(--color-accent) 48%, var(--color-line));
+	border: 2px solid var(--s2-source-ink);
 	background: var(--color-elevated);
 	box-shadow: 0 0 0 2px var(--color-elevated);
 }
@@ -1739,18 +1769,51 @@
 	background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
-.a-stage2-row-inline.is-solo::before {
+/* server 行（聚合开启）：仅空心环，不参与 instance 竖轨 */
+.a-stage2-row-inline.is-server:not(.is-aggregation-off)::before {
 	display: none;
 }
 
-.a-stage2-row-inline.is-group-start::before {
-	top: calc(50% + var(--a-stage2-node-gap));
-	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
+.a-stage2-row-inline.is-agg-member:not(.is-server)::after {
+	background: var(--color-accent);
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 2px var(--color-elevated);
 }
 
-.a-stage2-row-inline.is-group-end::before {
+.a-stage2-row-inline.is-solo:not(.is-agg-instance)::before {
+	display: none;
+}
+
+/* source 组竖轨端点（仅 instance 行；server 行不得挂此类） */
+.a-stage2-row-inline.is-source-spine-start::before {
+	top: calc(50% + var(--a-stage2-node-gap));
+	background: var(--s2-spine-ink);
+}
+
+.a-stage2-row-inline.is-source-spine-end::before {
 	bottom: calc(50% + var(--a-stage2-node-gap));
-	background: color-mix(in srgb, var(--color-accent) 38%, var(--color-line));
+	background: var(--s2-spine-ink);
+}
+
+.a-stage2-row-inline.is-agg-instance.is-solo::before {
+	display: block;
+	background: linear-gradient(
+		to bottom,
+		var(--s2-spine-ink) 0,
+		var(--s2-spine-ink) calc(50% - var(--a-stage2-node-gap)),
+		transparent calc(50% - var(--a-stage2-node-gap)),
+		transparent calc(50% + var(--a-stage2-node-gap)),
+		var(--s2-spine-ink) calc(50% + var(--a-stage2-node-gap)),
+		var(--s2-spine-ink) 100%
+	);
+}
+
+.a-stage2-row-inline.is-agg-instance.is-agg-source-boundary::before {
+	top: calc(50% + var(--a-stage2-node-gap) + 0.18rem);
+}
+
+.a-stage2-row-inline.is-agg-instance.is-agg-instance-tail::before {
+	bottom: calc(50% + var(--a-stage2-node-gap));
 }
 
 .a-stage2-row-name-field {

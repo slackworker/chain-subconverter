@@ -6,6 +6,8 @@ import {
 	buildStage2AggregationTreeFromSnapshot,
 	formatServerGroupLabel,
 	getStage2AggregationTreeRowInlineClassName,
+	getStage2FlatRowInlineClassName,
+	getStage2SourceToneClassName,
 } from "./stage2AggregationTree";
 
 const rows: Stage2Row[] = [
@@ -58,8 +60,54 @@ describe("default nested aggregation tree projection", () => {
 
 	it("keeps row inline classes stable", () => {
 		const nodes = buildStage2AggregationTree(rows, () => null);
-		expect(getStage2AggregationTreeRowInlineClassName(nodes, 0)).toContain("is-server");
-		expect(getStage2AggregationTreeRowInlineClassName(nodes, 3)).toContain("is-group-end");
+		const serverClasses = getStage2AggregationTreeRowInlineClassName(nodes, 0);
+		expect(serverClasses).toContain("is-server");
+		expect(serverClasses).not.toContain("is-source-spine-start");
+		expect(serverClasses).not.toContain("is-agg-instance");
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 3)).toContain("is-source-spine-end");
 		expect(formatServerGroupLabel(" edge ")).toBe("edge");
+	});
+
+	it("does not draw spine upward from the first instance toward server", () => {
+		const nodes = buildStage2AggregationTree(rows, () => null);
+		const firstInstanceClasses = getStage2AggregationTreeRowInlineClassName(nodes, 1, {
+			serverAggregationEnabled: true,
+		});
+		expect(firstInstanceClasses).toContain("is-source-spine-start");
+		expect(firstInstanceClasses).not.toContain("is-agg-instance-tail");
+	});
+
+	it("keeps source grouping when aggregation is enabled", () => {
+		const nodes = buildStage2AggregationTree(rows, () => null);
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 1, { serverAggregationEnabled: true })).toContain(
+			"is-grouped",
+		);
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 1, { serverAggregationEnabled: true })).toContain(
+			"is-agg-instance",
+		);
+		expect(getStage2AggregationTreeRowInlineClassName(nodes, 3, { serverAggregationEnabled: true })).toContain(
+			"is-agg-source-boundary",
+		);
+	});
+
+	it("marks aggregation membership on instance dots", () => {
+		const nodes = buildStage2AggregationTree(rows, () => null);
+		expect(
+			getStage2AggregationTreeRowInlineClassName(nodes, 1, {
+				serverAggregationEnabled: true,
+				isAggMember: true,
+			}),
+		).toContain("is-agg-member");
+		expect(
+			getStage2AggregationTreeRowInlineClassName(nodes, 2, {
+				serverAggregationEnabled: true,
+				isAggMember: false,
+			}),
+		).toContain("is-agg-non-member");
+	});
+
+	it("assigns stable source tone classes", () => {
+		expect(getStage2SourceToneClassName("source-a")).toBe(getStage2SourceToneClassName("source-a"));
+		expect(getStage2FlatRowInlineClassName(rows, 0, rows[0], true)).toContain("is-source-tone-");
 	});
 });

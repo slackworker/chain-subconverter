@@ -205,7 +205,32 @@ function getServerBlockBounds(
 	return { blockStart, blockEnd };
 }
 
-function getFlatSourceGroupInlineClassName(blockRowNodes: Stage2TreeRowNode[], rowNode: Stage2TreeRowNode): string {
+const SOURCE_TONE_COUNT = 6;
+
+function hashSourceTone(sourceLandingName: string): number {
+	let hash = 0;
+	for (let index = 0; index < sourceLandingName.length; index += 1) {
+		hash = (hash * 31 + sourceLandingName.charCodeAt(index)) | 0;
+	}
+	return Math.abs(hash) % SOURCE_TONE_COUNT;
+}
+
+export function getStage2SourceToneClassName(sourceLandingName: string): string {
+	return `is-source-tone-${hashSourceTone(sourceLandingName)}`;
+}
+
+type Stage2InstanceInlineContext = {
+	blockRowNodes: Stage2TreeRowNode[];
+	rowNode: Stage2TreeRowNode;
+	serverAggregationEnabled: boolean;
+	isAggInstance: boolean;
+	isAggInstanceTail: boolean;
+	isAggMember?: boolean;
+};
+
+function buildStage2InstanceRowInlineClassName(context: Stage2InstanceInlineContext): string {
+	const { blockRowNodes, rowNode, serverAggregationEnabled, isAggInstance, isAggInstanceTail, isAggMember } =
+		context;
 	const rowIndexInBlock = blockRowNodes.findIndex((candidate) => candidate.rowKey === rowNode.rowKey);
 	const sourceLandingName = getStage2RowSourceLandingName(rowNode.row);
 	const previousSourceLandingName =
@@ -216,25 +241,66 @@ function getFlatSourceGroupInlineClassName(blockRowNodes: Stage2TreeRowNode[], r
 			: null;
 	const groupedBySource =
 		previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
-	const groupStart = previousSourceLandingName !== sourceLandingName;
-	const groupEnd = nextSourceLandingName !== sourceLandingName;
+	const sourceSpineStart = previousSourceLandingName !== sourceLandingName;
+	const sourceSpineEnd = nextSourceLandingName !== sourceLandingName;
 
 	return [
 		"a-stage2-row-inline",
 		groupedBySource ? "is-grouped" : "is-solo",
 		rowNode.isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
-		groupStart ? "is-group-start" : "",
-		groupEnd ? "is-group-end" : "",
+		sourceSpineStart ? "is-source-spine-start" : "",
+		sourceSpineEnd ? "is-source-spine-end" : "",
+		getStage2SourceToneClassName(sourceLandingName),
+		isAggInstance && serverAggregationEnabled ? "is-agg-instance" : "",
+		isAggInstance && serverAggregationEnabled && sourceSpineStart && rowIndexInBlock > 0
+			? "is-agg-source-boundary"
+			: "",
+		isAggInstance && serverAggregationEnabled && isAggInstanceTail ? "is-agg-instance-tail" : "",
+		serverAggregationEnabled && isAggMember === true ? "is-agg-member" : "",
+		serverAggregationEnabled && isAggMember === false ? "is-agg-non-member" : "",
 	]
 		.filter(Boolean)
 		.join(" ");
 }
 
-/** 与非聚合 `.a-stage2-row-inline` 一致的 dot + 竖线轨道类名；聚合开启时 server 块内枝干贯通至末行。 */
+export function getStage2FlatRowInlineClassName(
+	stage2Rows: Stage2Row[],
+	rowIndex: number,
+	row: Stage2Row,
+	isDefaultInstance: boolean,
+): string {
+	const sourceLandingName = getStage2RowSourceLandingName(row);
+	const previousSourceLandingName =
+		rowIndex > 0 ? getStage2RowSourceLandingName(stage2Rows[rowIndex - 1]) : null;
+	const nextSourceLandingName =
+		rowIndex + 1 < stage2Rows.length ? getStage2RowSourceLandingName(stage2Rows[rowIndex + 1]) : null;
+	const groupedBySource =
+		previousSourceLandingName === sourceLandingName || nextSourceLandingName === sourceLandingName;
+	const sourceSpineStart = previousSourceLandingName !== sourceLandingName;
+	const sourceSpineEnd = nextSourceLandingName !== sourceLandingName;
+
+	return [
+		"a-stage2-row-inline",
+		groupedBySource ? "is-grouped" : "is-solo",
+		isDefaultInstance ? "is-default-instance" : "is-duplicate-instance",
+		sourceSpineStart ? "is-source-spine-start" : "",
+		sourceSpineEnd ? "is-source-spine-end" : "",
+		getStage2SourceToneClassName(sourceLandingName),
+	]
+		.filter(Boolean)
+		.join(" ");
+}
+
+/** instance 行 dot + 竖线；聚合开启时竖线仅在 instance 行之间贯通，server 行只画空心环、不画轨。
+ *
+ * 竖轨类名分两层，勿混用：
+ * - source 组：`is-source-spine-start` / `is-source-spine-end`（同 flat 表）
+ * - server 聚合块：`is-agg-instance` / `is-agg-instance-tail` / `is-agg-source-boundary`（仅 instance 行）
+ */
 export function getStage2AggregationTreeRowInlineClassName(
 	nodes: Stage2TreeNode[],
 	index: number,
-	options?: { serverAggregationEnabled?: boolean },
+	options?: { serverAggregationEnabled?: boolean; isAggMember?: boolean },
 ): string {
 	const node = nodes[index];
 	const serverAggregationEnabled = options?.serverAggregationEnabled ?? true;
@@ -246,41 +312,29 @@ export function getStage2AggregationTreeRowInlineClassName(
 
 		const { blockStart, blockEnd } = getServerBlockBounds(nodes, index);
 		const hasSiblings = blockEnd > blockStart;
-		const isBlockStart = index === blockStart;
 
 		return [
 			"a-stage2-row-inline",
 			hasSiblings ? "is-grouped" : "is-solo",
 			"is-server",
-			isBlockStart ? "is-group-start" : "",
 		]
 			.filter(Boolean)
 			.join(" ");
 	}
 
-	if (!serverAggregationEnabled) {
-		const { blockStart, blockEnd } = getServerBlockBounds(nodes, index);
-		const blockRowNodes = nodes
-			.slice(blockStart + 1, blockEnd + 1)
-			.filter((candidate): candidate is Stage2TreeRowNode => candidate.kind === "row");
-		return getFlatSourceGroupInlineClassName(blockRowNodes, node);
-	}
-
 	const { blockStart, blockEnd } = getServerBlockBounds(nodes, index);
-	const hasSiblings = blockEnd > blockStart;
-	const isBlockStart = index === blockStart;
-	const isBlockEnd = index === blockEnd;
-	const role = node.isDefaultInstance ? "default-instance" : "duplicate-instance";
+	const blockRowNodes = nodes
+		.slice(blockStart + 1, blockEnd + 1)
+		.filter((candidate): candidate is Stage2TreeRowNode => candidate.kind === "row");
 
-	return [
-		"a-stage2-row-inline",
-		hasSiblings ? "is-grouped" : "is-solo",
-		role === "default-instance" ? "is-default-instance" : "is-duplicate-instance",
-		isBlockStart ? "is-group-start" : "",
-		isBlockEnd ? "is-group-end" : "",
-	]
-		.filter(Boolean)
-		.join(" ");
+	return buildStage2InstanceRowInlineClassName({
+		blockRowNodes,
+		rowNode: node,
+		serverAggregationEnabled,
+		isAggInstance: serverAggregationEnabled,
+		isAggInstanceTail: index === blockEnd,
+		isAggMember: options?.isAggMember,
+	});
 }
 
 export function getServerBlockAggregationEnabled(
