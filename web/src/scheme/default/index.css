@@ -1693,27 +1693,27 @@
 }
 
 .a-stage2-row-inline.is-source-tone-0 {
-	--s2-source-ink: color-mix(in srgb, #4a7fd4 62%, var(--color-line));
+	--s2-source-ink: color-mix(in srgb, #4a7fd4 72%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-source-tone-1 {
-	--s2-source-ink: color-mix(in srgb, #3a9e6f 62%, var(--color-line));
+	--s2-source-ink: color-mix(in srgb, #d4822a 72%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-source-tone-2 {
-	--s2-source-ink: color-mix(in srgb, #b07a2a 62%, var(--color-line));
+	--s2-source-ink: color-mix(in srgb, #c04faa 72%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-source-tone-3 {
-	--s2-source-ink: color-mix(in srgb, #9b5bb8 62%, var(--color-line));
+	--s2-source-ink: color-mix(in srgb, #5a4ad4 72%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-source-tone-4 {
-	--s2-source-ink: color-mix(in srgb, #c45b7a 62%, var(--color-line));
+	--s2-source-ink: color-mix(in srgb, #c45b7a 72%, var(--color-line));
 }
 
 .a-stage2-row-inline.is-source-tone-5 {
-	--s2-source-ink: color-mix(in srgb, #3f9aa8 62%, var(--color-line));
+	--s2-source-ink: color-mix(in srgb, #8ab82e 72%, var(--color-line));
 }
 
 .a-stage2-row-inline::before,
@@ -1740,7 +1740,7 @@
 }
 
 .a-stage2-row-inline.is-grouped::before {
-	--s2-spine-ink: color-mix(in srgb, var(--s2-source-ink) 72%, var(--color-line));
+	--s2-spine-ink: color-mix(in srgb, var(--s2-source-ink) 48%, var(--color-line));
 }
 
 .a-stage2-row-inline::after {

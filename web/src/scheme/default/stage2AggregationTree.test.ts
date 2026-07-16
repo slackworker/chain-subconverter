@@ -10,6 +10,27 @@ import {
 	buildStage2SourceToneMap,
 } from "./stage2AggregationTree";
 
+/** 与 stage2AggregationTree.ts 中 SOURCE_TONE_HUES 对齐，供相邻对比测试使用。 */
+const SOURCE_TONE_HUES = [215, 30, 305, 250, 348, 75];
+
+function hueDistance(a: number, b: number): number {
+	const diff = Math.abs(a - b) % 360;
+	return Math.min(diff, 360 - diff);
+}
+
+function minAdjacentHueDistance(toneBySourceId: Map<string, number>, sourceIds: string[]): number {
+	let minDistance = 360;
+	for (let index = 1; index < sourceIds.length; index += 1) {
+		const previousTone = toneBySourceId.get(sourceIds[index - 1]);
+		const currentTone = toneBySourceId.get(sourceIds[index]);
+		if (previousTone === undefined || currentTone === undefined) {
+			continue;
+		}
+		minDistance = Math.min(minDistance, hueDistance(SOURCE_TONE_HUES[previousTone], SOURCE_TONE_HUES[currentTone]));
+	}
+	return minDistance;
+}
+
 const rows: Stage2Row[] = [
 	{
 		instanceId: "source-a::i1",
@@ -106,8 +127,50 @@ describe("default nested aggregation tree projection", () => {
 		).toContain("is-agg-non-member");
 	});
 
+	it("assigns high-contrast tones for six adjacent sources", () => {
+		const sixSourceRows: Stage2Row[] = Array.from({ length: 6 }, (_, index) => ({
+			instanceId: `source-${index}::i1`,
+			instanceIndex: 0,
+			sourceId: `source-${index}`,
+			serverKey: "edge",
+			proxyName: `Source ${index}`,
+			mode: "none",
+			targetName: null,
+		}));
+		const sourceIds = sixSourceRows.map((row) => row.sourceId);
+		const toneBySourceId = buildStage2SourceToneMap(sixSourceRows);
+		const adjacentTones = sourceIds.map((sourceId) => toneBySourceId.get(sourceId));
+		expect(new Set(adjacentTones).size).toBe(6);
+		for (let index = 1; index < adjacentTones.length; index += 1) {
+			expect(adjacentTones[index]).not.toBe(adjacentTones[index - 1]);
+		}
+		expect(minAdjacentHueDistance(toneBySourceId, sourceIds)).toBeGreaterThanOrEqual(60);
+	});
+
+	it("keeps fifth through seventh adjacent sources visually separable", () => {
+		const sevenSourceRows: Stage2Row[] = Array.from({ length: 7 }, (_, index) => ({
+			instanceId: `source-${index}::i1`,
+			instanceIndex: 0,
+			sourceId: `source-${index}`,
+			serverKey: "edge",
+			proxyName: `Source ${index}`,
+			mode: "none",
+			targetName: null,
+		}));
+		const sourceIds = sevenSourceRows.map((row) => row.sourceId);
+		const toneBySourceId = buildStage2SourceToneMap(sevenSourceRows);
+		const adjacentTones = sourceIds.map((sourceId) => toneBySourceId.get(sourceId));
+		expect(adjacentTones.slice(4, 7)).toEqual([3, 4, 0]);
+		expect(
+			hueDistance(SOURCE_TONE_HUES[adjacentTones[4] ?? 0], SOURCE_TONE_HUES[adjacentTones[5] ?? 0]),
+		).toBeGreaterThanOrEqual(90);
+		expect(minAdjacentHueDistance(toneBySourceId, sourceIds)).toBeGreaterThanOrEqual(60);
+	});
+
 	it("assigns adjacent-aware source tone classes", () => {
 		const toneBySourceId = buildStage2SourceToneMap(rows);
+		expect(toneBySourceId.get("source-a")).toBe(0);
+		expect(toneBySourceId.get("source-b")).toBe(1);
 		expect(toneBySourceId.get("source-a")).not.toBe(toneBySourceId.get("source-b"));
 		expect(getStage2FlatRowInlineClassName(rows, 0, rows[0], true, toneBySourceId)).toContain(
 			`is-source-tone-${toneBySourceId.get("source-a")}`,

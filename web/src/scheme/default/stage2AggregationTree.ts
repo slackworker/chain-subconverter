@@ -205,7 +205,45 @@ function getServerBlockBounds(
 	return { blockStart, blockEnd };
 }
 
-const SOURCE_TONE_COUNT = 6;
+/** tone 槽位对应的色相（°），与 `index.css` 中 `is-source-tone-*` 一一对应。 */
+const SOURCE_TONE_HUES = [215, 30, 305, 250, 348, 75];
+
+/** 6 色环路：相邻槽位在色相环上尽量拉开（蓝→橙→品红→黄绿→靛蓝→玫红）。 */
+const NEW_SOURCE_TONE_SEQUENCE = [0, 1, 2, 5, 3, 4];
+
+function hueDistance(a: number, b: number): number {
+	const diff = Math.abs(a - b) % 360;
+	return Math.min(diff, 360 - diff);
+}
+
+function pickToneForNewSource(previousTone: number, assignIndex: number): number {
+	const sequenceIndex = assignIndex % NEW_SOURCE_TONE_SEQUENCE.length;
+	for (let offset = 0; offset < NEW_SOURCE_TONE_SEQUENCE.length; offset += 1) {
+		const candidate = NEW_SOURCE_TONE_SEQUENCE[(sequenceIndex + offset) % NEW_SOURCE_TONE_SEQUENCE.length];
+		if (candidate !== previousTone) {
+			return candidate;
+		}
+	}
+
+	if (previousTone < 0) {
+		return NEW_SOURCE_TONE_SEQUENCE[sequenceIndex];
+	}
+
+	const previousHue = SOURCE_TONE_HUES[previousTone];
+	let bestTone = NEW_SOURCE_TONE_SEQUENCE[sequenceIndex];
+	let bestDistance = -1;
+	for (let candidate = 0; candidate < SOURCE_TONE_HUES.length; candidate += 1) {
+		if (candidate === previousTone) {
+			continue;
+		}
+		const distance = hueDistance(previousHue, SOURCE_TONE_HUES[candidate]);
+		if (distance > bestDistance || (distance === bestDistance && candidate < bestTone)) {
+			bestDistance = distance;
+			bestTone = candidate;
+		}
+	}
+	return bestTone;
+}
 
 /** 按行序提取 source 组边界上的 sourceId（同组内重复跳过）。 */
 function getSourceGroupOrderFromRows(rows: Stage2Row[]): string[] {
@@ -235,10 +273,7 @@ export function buildStage2SourceToneMap(rows: Stage2Row[]): Map<string, number>
 			continue;
 		}
 
-		let tone = assignIndex % SOURCE_TONE_COUNT;
-		if (tone === previousTone) {
-			tone = (tone + 1) % SOURCE_TONE_COUNT;
-		}
+		const tone = pickToneForNewSource(previousTone, assignIndex);
 		toneBySourceId.set(sourceId, tone);
 		previousTone = tone;
 		assignIndex += 1;
