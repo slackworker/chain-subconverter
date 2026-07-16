@@ -9,7 +9,7 @@
 
 手工联调与 E2E 应使用的订阅 URL（中转两行等）以 [preview-inputs.md](../../docs/testing/preview-inputs.md) 为唯一来源；该文件由 `npm run sync` 从 canonical 自动生成，勿在本文重复维护 URL 表。
 
-公网 chain-subconverter 测试时，单中转订阅 smoke 优先使用 `Airport-Subscription-1` 或 `Airport-Subscription-2`；需要兼容既有单 URL 聚合输入时，可继续使用 `Airport-Subscription`。若要模拟双中转输入，则把 `Airport-Subscription-1` 与 `Airport-Subscription-2` 分两行填入同一个文本框即可。仅 URI + ClashMeta 混用时中转节点数可能为 **19**（review golden 为 **18**，因 golden 两条 transit 均走 URI）；见 [fixtures.md §Full 边界](../../docs/testing/fixtures.md#full-边界)。
+公网 chain-subconverter 测试时，单中转订阅 smoke 优先使用 `Airport-Subscription-1` 或 `Airport-Subscription-2`；需要兼容既有单 URL 聚合输入时，可继续使用 `Airport-Subscription`。若要模拟双中转输入，则把 `Airport-Subscription-1` 与 `Airport-Subscription-2` 分两行填入同一个文本框即可。中转节点数基线为 **10+10=20**（URI 与 ClashMeta 混用一致）；见 [fixtures.md §Full 边界](../../docs/testing/fixtures.md#full-边界)。
 
 ## 目录与静态文件
 
@@ -44,7 +44,7 @@ npm run sync
 npm run check
 ```
 
-`npm run sync` 从仓库内 canonical 基线生成静态快照，不从外部私有订阅服务拉取。当前会生成 12 个静态文件：3 个 landing 变体、3 个 transit A 变体、3 个 transit B 变体，以及 3 个聚合兼容别名变体。
+`npm run sync` 从仓库内 canonical 基线生成静态快照，不从外部私有订阅服务拉取；并重写 [preview-inputs.md](../../docs/testing/preview-inputs.md)。`npm run check`（CI `Worker Fixture Freshness`）校验 worker 静态文件与该文档均与 sync 输出一致。当前会生成 12 个静态文件：3 个 landing 变体、3 个 transit A 变体、3 个 transit B 变体，以及 3 个聚合兼容别名变体。
 
 若你在这次 landing 修正之前已经执行过一次 `npx wrangler deploy`，需要再 deploy 一次，公网 `Landing-Subscription*` 才会从旧的单行 3pass 落地切换到当前 `4 + 1` dual-landing 版本。
 

@@ -56,6 +56,10 @@
           "kind": "proxies"
         },
         {
+          "name": "🇭🇰 hk-a-02.example.test:443",
+          "kind": "proxies"
+        },
+        {
           "name": "🇺🇸 Transit-A-UnitedStates-SSR-01",
           "kind": "proxies"
         },
@@ -89,6 +93,10 @@
         },
         {
           "name": "🇼🇸 Transit-B-Taiwan-AnyTLS-01",
+          "kind": "proxies"
+        },
+        {
+          "name": "🇯🇵 jp-b-02.example.test:443",
           "kind": "proxies"
         },
         {

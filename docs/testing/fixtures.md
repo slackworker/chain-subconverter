@@ -189,8 +189,7 @@ tracked testdata:  internal/review/testdata/3pass-ss2022-test-subscription/
 ### Full 边界 {#full-边界}
 
 - 本样例仍是固定、Mock、仓库跟踪的数据集，不依赖真实外部订阅源
-- **Golden 为何是 18 不是 19**：review golden 与 `testfixturegen -stage1-live-base-url` 重录时，两条 transit 都只用 canonical 的 `transit-a.uri.txt` / `transit-b.uri.txt`（明文 URI 行，经 subconverter 当订阅拉取），**两条都不走 `?target=ClashMeta`**。上游 subconverter 解析 Shadowrocket 风格 `vmess://` 时，识别正则不接受 Base64 载荷末尾 **`=` 填充**，每条 URI 各静默丢 1 条 VMess → **9+9=18**。
-- **手工联调为何常见 19**：[preview-inputs.md](preview-inputs.md) 里 Sub-2 推荐 `?target=ClashMeta`（YAML 不经上述 URI 解析，VMess 保留），与 Sub-1 默认 Base64 URI 混用时为 **9+10=19**。属输入格式与 golden 不一致，不是 chain-subconverter 单独过滤；**暂不修**（与 `4+1` 落地基线无直接耦合）。
+- **中转节点数基线为 10+10=20**：两条 transit 各 10 条节点（含 Shadowrocket 风格 `vmess://`）。canonical URI 的 Base64 载荷**不带**末尾 `=` 填充，以便上游 subconverter URI 解析保留 VMess；URI 路径与 Sub-2 `?target=ClashMeta` 混用路径节点数一致。
 - 当前仍与 Smoke 场景的基础 fixture 并存；这属于分层与快速故障定界考虑，不代表复杂场景 fixture 过大而不能复用到 `smoke`
 - 浏览器级 happy path 与阻断错误 E2E 仍属于后续工作，不由本基线替代
 

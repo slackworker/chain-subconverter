@@ -4,7 +4,7 @@ vless://88888888-8888-4888-8888-888888888883@sg-b-01.example.test:443?encryption
 hysteria2://transit-b-us-01-secret@us-b-01.example.test:8443?insecure=1&sni=us-b-01.example.test#Transit-B-UnitedStates-Hysteria2-01
 tuic://aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5:transit-b-kr-01-secret@kr-b-01.example.test:443?congestion_control=bbr&udp_relay_mode=native&sni=kr-b-01.example.test&alpn=h3#Transit-B-Korea-TUIC-01
 anytls://transit-b-tw-01-secret@tw-b-01.example.test:443?peer=tw-b-01.example.test&alpn=h2#Transit-B-Taiwan-AnyTLS-01
-vmess://d3MrdGxzOmJiYmJiYmJiLWJiYmItNGJiYi04YmJiLWJiYmJiYmJiYmJiNy0wQGpwLWItMDIuZXhhbXBsZS50ZXN0OjQ0Mw==?obfs=websocket&obfsParam=jp-b-02.example.test&host=jp-b-02.example.test&path=%2Ftransit-b-jp-vmess&tls=1&ps=Transit-B-Japan-VMess-01
+vmess://d3MrdGxzOmJiYmJiYmJiLWJiYmItNGJiYi04YmJiLWJiYmJiYmJiYmJiNy0wQGpwLWItMDIuZXhhbXBsZS50ZXN0OjQ0Mw?obfs=websocket&obfsParam=jp-b-02.example.test&host=jp-b-02.example.test&path=%2Ftransit-b-jp-vmess&tls=1&ps=Transit-B-Japan-VMess-01
 ssr://aGstYi0wMi5leGFtcGxlLnRlc3Q6NDQzOm9yaWdpbjphZXMtMjU2LWdjbTpwbGFpbjpkSEpoYm5OcGRDMWlMV2hyTFRBeUxYTmxZM0psZEEvP3JlbWFya3M9VkhKaGJuTnBkQzFDTFVodmJtZExiMjVuTFZOVFVpMHdNUQ
 trojan://transit-b-us-02-secret@us-b-02.example.test:443?security=tls&sni=us-b-02.example.test#Transit-B-UnitedStates-Trojan-01
 ss://2022-blake3-aes-256-gcm:transit-b-sg-02-secret@198.51.100.123:443#Transit-B-Singapore-SS-01

@@ -11,6 +11,7 @@ proxies:
   - {name: Transit-A-Singapore-Hysteria2-01, server: sg-a-01.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-a-sg-01-secret, sni: sg-a-01.example.test, skip-cert-verify: true, udp: true}
   - {name: Transit-A-Taiwan-TUIC-01, server: tw-a-01.example.test, port: 443, type: tuic, uuid: 55555555-5555-4555-8555-555555555551, password: transit-a-tw-01-secret, alpn: [h3], udp-relay-mode: native, congestion-controller: bbr, sni: tw-a-01.example.test, udp: true}
   - {name: Transit-A-Korea-AnyTLS-01, server: kr-a-01.example.test, port: 443, type: anytls, password: transit-a-kr-01-secret, sni: kr-a-01.example.test, alpn: [h2], udp: true}
+  - {name: hk-a-02.example.test:443, server: hk-a-02.example.test, port: 443, type: vmess, uuid: 77777777-7777-4777-8777-777777777771-0, alterId: 0, cipher: ws+tls, tls: true, network: ws, ws-opts: {path: "%2Ftransit-a-hk-vmess", headers: {Host: hk-a-02.example.test}}, udp: true}
   - {name: Transit-A-UnitedStates-SSR-01, server: us-a-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-a-us-02-secret, udp: true}
   - {name: Transit-A-Japan-SS-01, server: 198.51.100.121, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-a-jp-02-secret, udp: true}
   - {name: Transit-A-Taiwan-Hysteria2-01, server: tw-a-02.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-a-tw-02-secret, sni: tw-a-02.example.test, skip-cert-verify: true, udp: true}
@@ -20,6 +21,7 @@ proxies:
   - {name: Transit-B-UnitedStates-Hysteria2-01, server: us-b-01.example.test, port: 8443, type: hysteria2, ports: 8443, password: transit-b-us-01-secret, sni: us-b-01.example.test, skip-cert-verify: true, udp: true}
   - {name: Transit-B-Korea-TUIC-01, server: kr-b-01.example.test, port: 443, type: tuic, uuid: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5, password: transit-b-kr-01-secret, alpn: [h3], udp-relay-mode: native, congestion-controller: bbr, sni: kr-b-01.example.test, udp: true}
   - {name: Transit-B-Taiwan-AnyTLS-01, server: tw-b-01.example.test, port: 443, type: anytls, password: transit-b-tw-01-secret, sni: tw-b-01.example.test, alpn: [h2], udp: true}
+  - {name: jp-b-02.example.test:443, server: jp-b-02.example.test, port: 443, type: vmess, uuid: bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb7-0, alterId: 0, cipher: ws+tls, tls: true, network: ws, ws-opts: {path: "%2Ftransit-b-jp-vmess", headers: {Host: jp-b-02.example.test}}, udp: true}
   - {name: Transit-B-HongKong-SSR-01, server: hk-b-02.example.test, port: 443, type: ss, cipher: aes-256-gcm, password: transit-b-hk-02-secret, udp: true}
   - {name: Transit-B-UnitedStates-Trojan-01, server: us-b-02.example.test, port: 443, type: trojan, password: transit-b-us-02-secret, sni: us-b-02.example.test, udp: true}
   - {name: Transit-B-Singapore-SS-01, server: 198.51.100.123, port: 443, type: ss, cipher: 2022-blake3-aes-256-gcm, password: transit-b-sg-02-secret, udp: true}
@@ -40,6 +42,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -49,6 +52,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -64,6 +68,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -73,6 +78,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -106,6 +112,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -115,6 +122,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -147,6 +155,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -156,6 +165,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -176,6 +186,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -185,6 +196,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -205,6 +217,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -214,6 +227,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -234,6 +248,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -243,6 +258,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -263,6 +279,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -272,6 +289,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -292,6 +310,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -301,6 +320,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -321,6 +341,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -330,6 +351,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -350,6 +372,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -359,6 +382,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -380,6 +404,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -389,6 +414,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -410,6 +436,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -419,6 +446,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -440,6 +468,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -449,6 +478,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -464,6 +494,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -473,6 +504,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -493,6 +525,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -502,6 +535,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -523,6 +557,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -532,6 +567,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -563,6 +599,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -572,6 +609,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -593,6 +631,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -602,6 +641,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -623,6 +663,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -632,6 +673,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -653,6 +695,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -662,6 +705,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -683,6 +727,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -692,6 +737,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -713,6 +759,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -722,6 +769,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -743,6 +791,7 @@ proxy-groups:
       - Transit-A-Singapore-Hysteria2-01
       - Transit-A-Taiwan-TUIC-01
       - Transit-A-Korea-AnyTLS-01
+      - hk-a-02.example.test:443
       - Transit-A-UnitedStates-SSR-01
       - Transit-A-Japan-SS-01
       - Transit-A-Taiwan-Hysteria2-01
@@ -752,6 +801,7 @@ proxy-groups:
       - Transit-B-UnitedStates-Hysteria2-01
       - Transit-B-Korea-TUIC-01
       - Transit-B-Taiwan-AnyTLS-01
+      - jp-b-02.example.test:443
       - Transit-B-HongKong-SSR-01
       - Transit-B-UnitedStates-Trojan-01
       - Transit-B-Singapore-SS-01
@@ -767,6 +817,7 @@ proxy-groups:
     tolerance: 50
     proxies:
       - Transit-A-HongKong-SS-01
+      - hk-a-02.example.test:443
       - Transit-B-HongKong-SS-01
       - Transit-B-HongKong-SSR-01
   - name: 🇺🇸 美国节点

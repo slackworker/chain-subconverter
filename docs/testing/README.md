@@ -80,9 +80,9 @@ non-blocking job：
 
 只改 canonical：
 
-1. 修改 `testdata/canonical-scenarios/*.stage1.json`
+1. 修改 `testdata/canonical-scenarios/`（`*.stage1.json` 与/或 transit `*.uri.txt` 等语料）
 2. `go run ./cmd/testfixturegen -repo-root .`
-3. `cd deploy/test-fixtures-worker && npm run sync && npm run check`
+3. `cd deploy/test-fixtures-worker && npm run sync && npm run check`（同步 worker 静态资产与 [preview-inputs.md](preview-inputs.md)；**勿漏**。CI `Worker Fixture Freshness` 跑同一 `check`，正文过期会失败）
 4. `go test ./...`
 
-场景细则见 [fixtures.md](fixtures.md)；在线预览粘贴数据由 worker `sync/check` 生成 [preview-inputs.md](preview-inputs.md)（勿手改正文）。
+场景细则见 [fixtures.md](fixtures.md)；在线预览粘贴数据由 worker `sync/check` 生成 [preview-inputs.md](preview-inputs.md)（勿手改正文；正文可能因本次改动面不变而无 diff，仍须跑 sync/check）。
