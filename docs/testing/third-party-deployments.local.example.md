@@ -35,13 +35,10 @@
 
 #### 本地自动复验（WSL）
 
-`E2E_*` 订阅 URL 取值见 [preview-inputs.md](preview-inputs.md)；可复制 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署) 中的完整命令。
+默认已对齐 [preview-inputs.md](preview-inputs.md)；可复制 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署) 中的完整命令。
 
 ```bash
 CHAIN_SUBCONVERTER_E2E_BASE_URL="http://<lan-ip>:11200/" \
-CHAIN_SUBCONVERTER_E2E_LANDING_INPUT="https://<fixtures-worker>/dual-landing/download/Landing-Subscription" \
-CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT="https://<fixtures-worker>/dual-landing/download/Airport-Subscription-1" \
-CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT_2="https://<fixtures-worker>/dual-landing/download/Airport-Subscription-2" \
 bash ./scripts/third-party-smoke.sh
 ```
 

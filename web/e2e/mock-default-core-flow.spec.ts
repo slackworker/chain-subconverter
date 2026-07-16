@@ -39,6 +39,7 @@ test("mock default core flow keeps generate and replay consistent", async ({ pag
 				sources: [{
 					sourceId: "landing-happy",
 					instances: [{
+						instanceId: "landing-happy::i1",
 						proxyName: "landing-happy",
 						mode: "none",
 						targetName: null,

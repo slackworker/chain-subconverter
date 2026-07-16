@@ -3,10 +3,13 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
 import type {
 	GenerateRequest,
 	Message,
+	ResolveURLResponse,
 	Stage2Catalog,
 	Stage2Bundle,
 	Stage2FlatInstance,
+	Stage2Mode,
 	Stage2Snapshot,
+	Stage2SnapshotWire,
 } from "../src/types/api";
 import { defaultSnapshotFromCatalog, flattenInstances } from "../src/lib/stage2";
 
@@ -87,15 +90,23 @@ interface ReplayableResolveRouteOptions {
 	messages?: Message[];
 }
 
+/** Raw resolve-url JSON 使用 Wire snapshot（无 client instanceId）。 */
+export type ResolveURLWireResponse = Omit<ResolveURLResponse, "stage2"> & {
+	stage2: {
+		catalog: Stage2Catalog;
+		snapshot: Stage2SnapshotWire;
+	};
+};
+
 export interface WireSnapshotInstance {
 	proxyName: string;
-	mode: Stage2FlatInstance["mode"];
+	mode: Stage2Mode;
 	targetName: string | null;
 	sourceId: string;
 	serverKey: string;
 }
 
-export function flattenWireSnapshotInstances(snapshot: Stage2Snapshot): WireSnapshotInstance[] {
+export function flattenWireSnapshotInstances(snapshot: Stage2SnapshotWire): WireSnapshotInstance[] {
 	return snapshot.servers.flatMap((server) =>
 		server.sources.flatMap((source) =>
 			source.instances.map((instance) => ({
@@ -109,7 +120,7 @@ export function flattenWireSnapshotInstances(snapshot: Stage2Snapshot): WireSnap
 	);
 }
 
-export function semanticWireSnapshotKey(snapshot: Stage2Snapshot) {
+export function semanticWireSnapshotKey(snapshot: Stage2SnapshotWire) {
 	const instances = flattenWireSnapshotInstances(snapshot);
 	return JSON.stringify({
 		instances: instances.map((instance) => ({
@@ -166,4 +177,78 @@ export async function mockReplayableResolveRoute({
 			},
 		});
 	});
+}
+
+export async function addManualSocks5FromURI(page: Page, socks5URI: string) {
+	await page.getByRole("button", { name: "+ 添加 SOCKS5" }).click();
+	const dialog = page.getByRole("dialog", { name: "添加 / 转换 SOCKS5 节点" });
+	const uriInput = dialog.locator(".a-field--socks-uri-divider input");
+	await uriInput.fill(socks5URI);
+	await uriInput.blur();
+	await expect(dialog.getByLabel("名称", { exact: true })).not.toHaveValue("", { timeout: 5_000 });
+	await dialog.getByRole("button", { name: "添加", exact: true }).click();
+	await expect(dialog).toHaveCount(0);
+}
+
+export async function addForwardRelays(page: Page, relays: string[]) {
+	await page.getByRole("button", { name: "+ 添加 端口转发" }).click();
+	const dialog = page.getByRole("dialog", { name: "添加端口转发服务" });
+	const relayInput = dialog.getByPlaceholder("输入 server:port ，按 Enter 添加多个");
+	for (const relay of relays) {
+		await relayInput.fill(relay);
+		await relayInput.press("Enter");
+	}
+	await dialog.getByRole("button", { name: "确认" }).click();
+	await expect(dialog).toHaveCount(0);
+}
+
+export async function cloneStage2Row(page: Page, proxyName: string) {
+	const row = locateStage2Row(page, proxyName);
+	await row.getByRole("button", { name: "复制" }).click();
+}
+
+export async function ensureChecked(locator: Locator, checked: boolean) {
+	if ((await locator.isChecked()) === checked) {
+		return;
+	}
+	// 点 label，确保 React controlled checkbox 走到 onChange（勿用 force setChecked 只改 DOM）
+	const label = locator.locator("xpath=ancestor::label[1]");
+	await label.click();
+	await expect(locator).toBeChecked({ checked });
+}
+
+/** 规范化 wire/golden snapshot，便于对照 preview-inputs / stage2-snapshot 金样。 */
+export function normalizeStage2SnapshotForGoldenCompare(snapshot: Stage2SnapshotWire) {
+	return {
+		chainProxyTargetGroupSwitchOptimizationEnabled: snapshot.chainProxyTargetGroupSwitchOptimizationEnabled === true,
+		servers: snapshot.servers.map((server) => ({
+			serverKey: server.serverKey,
+			aggregation: server.aggregation.enabled
+				? {
+					enabled: true as const,
+					strategy: server.aggregation.strategy ?? "fallback",
+					memberProxyNames: [...(server.aggregation.memberProxyNames ?? [])],
+				}
+				: { enabled: false as const },
+			sources: server.sources.map((source) => ({
+				sourceId: source.sourceId,
+				instances: source.instances.map((instance) => ({
+					proxyName: instance.proxyName,
+					mode: instance.mode,
+					targetName: instance.targetName ?? null,
+				})),
+			})),
+		})),
+	};
+}
+
+export async function expectAggregationFallbackOrder(page: Page, desiredDisplayNames: string[]) {
+	const orderButton = page.getByRole("row", { name: /198\.51\.100\.10/ }).getByRole("button", { name: "顺序管理" });
+	await expect(orderButton).toBeEnabled({ timeout: 15_000 });
+	await orderButton.click();
+	const panel = page.locator(".a-target-menu__panel--member-order").last();
+	await expect(panel).toBeVisible();
+	const names = (await panel.locator(".a-member-order__name").allTextContents()).map((name) => name.trim());
+	expect(names).toEqual(desiredDisplayNames);
+	await orderButton.click();
 }

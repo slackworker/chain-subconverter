@@ -136,24 +136,23 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway \
 
 ## 公网 E2E（第三方部署）
 
-订阅 URL 以 [preview-inputs.md](preview-inputs.md) 为准（勿复制到多处）。在仓库根执行；公网 app 入口勿写入 Git，见 `third-party-deployments.local.md`（同目录，gitignore）：
+默认 Stage1 输入已与 [preview-inputs.md](preview-inputs.md) 对齐（落地 URI + UI 添加 SOCKS5 + Worker 中转两行，含 Sub-2 `?target=ClashMeta`）；勿再覆盖成 `Landing-Subscription` 或去掉 `ClashMeta`。在仓库根执行；公网 app 入口勿写入 Git，见 `third-party-deployments.local.md`（同目录，gitignore）：
 
 ```bash
 CHAIN_SUBCONVERTER_E2E_BASE_URL="https://<your-public-host>/" \
-CHAIN_SUBCONVERTER_E2E_LANDING_INPUT="https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Landing-Subscription" \
-CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT="https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-1" \
-CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT_2="https://chain-subconverter-test-fixtures.slackworker.workers.dev/dual-landing/download/Airport-Subscription-2" \
 ./scripts/third-party-smoke.sh
 ```
 
-Worker 同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)。
+`third-party-smoke.sh` 会依次跑 `real-smoke` + `real-full`（full 含 Stage2 金样与 short ID 核对）。Worker 须已 `sync` 并部署到与文档相同的订阅源；见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)。
 
-发布前非阻断真实部署 E2E（需公网入口）：
+仅跑单项（需公网入口）：
 
 ```bash
 cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:smoke
 cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:full
 ```
+
+可选覆盖：`CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2…]`（设置后跳过默认 SOCKS5 添加）、`CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2…]`。取值仍以 [preview-inputs.md](preview-inputs.md) 为准。
 
 ## 高频排障
 
@@ -198,13 +197,10 @@ cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_
 
 #### 本地自动复验（WSL）
 
-`E2E_*` 订阅 URL 取值见 [preview-inputs.md](preview-inputs.md)；可复制上文「公网 E2E」中的完整命令。
+默认已对齐 [preview-inputs.md](preview-inputs.md)；可复制上文「公网 E2E」中的完整命令。
 
 ```bash
 CHAIN_SUBCONVERTER_E2E_BASE_URL="http://<lan-ip>:11200/" \
-CHAIN_SUBCONVERTER_E2E_LANDING_INPUT="https://<fixtures-worker>/dual-landing/download/Landing-Subscription" \
-CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT="https://<fixtures-worker>/dual-landing/download/Airport-Subscription-1" \
-CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT_2="https://<fixtures-worker>/dual-landing/download/Airport-Subscription-2" \
 bash ./scripts/third-party-smoke.sh
 ```
 

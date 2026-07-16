@@ -1,31 +1,56 @@
 import { expect, test } from "@playwright/test";
 
-import { loadCanonicalStage1Inputs } from "./canonicalStage1";
+import type { GenerateRequest, Stage1ConvertRequest } from "../src/types/api";
 import {
+	addForwardRelays,
+	addManualSocks5FromURI,
 	applyDefaultUiPreferences,
 	assertWireSnapshotHasNoClientIds,
+	cloneStage2Row,
+	ensureChecked,
+	expectAggregationFallbackOrder,
 	expectHTTPResponseOK,
-	flattenWireSnapshotInstances,
 	locateStage2Row,
+	normalizeStage2SnapshotForGoldenCompare,
 	selectStage2MenuOption,
+	type ResolveURLWireResponse,
 } from "./helpers";
+import { inputFromEnv, loadDualLandingGoldenArtifacts, loadPreviewManualStage1Inputs } from "./previewInputs";
 
-import type { GenerateRequest, ResolveURLResponse, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
+/**
+ * 真实部署 Full：按 docs/testing/preview-inputs.md 手工路径输入与 Stage2 操作，
+ * 并核对 stage2-snapshot / short ID / long URL payload 金样。
+ */
+const previewStage1 = loadPreviewManualStage1Inputs();
+const golden = loadDualLandingGoldenArtifacts();
 
-const canonicalStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
+const ROW = {
+	alphaSS: "🇸🇬 Alpha-SS-SG",
+	alphaSS2: "🇸🇬 Alpha-SS-SG 2",
+	alphaReality: "🇸🇬 Alpha-Reality-SG",
+	alphaReality2: "🇸🇬 Alpha-Reality-SG 2",
+	alphaReality3: "🇸🇬 Alpha-Reality-SG 3",
+	betaSS: "🇯🇵 Beta-SS-JP",
+	betaReality: "🇯🇵 Beta-Reality-JP",
+	socks: "🇭🇰 Manual-SOCKS5-HK-Fallback",
+} as const;
 
-test("real dual-landing full flow preserves stage2 orchestration across replay", async ({ page, baseURL }) => {
-	test.setTimeout(180_000);
+test("real dual-landing full flow matches preview-inputs golden path", async ({ page, baseURL }) => {
+	test.setTimeout(240_000);
 
 	const origin = baseURL?.trim();
 	if (!origin) {
 		throw new Error("real dual-landing full flow requires Playwright baseURL / CHAIN_SUBCONVERTER_E2E_BASE_URL");
 	}
 
-	const [relayA, relayB] = canonicalStage1Inputs.forwardRelayItems;
+	const [relayA, relayB] = previewStage1.forwardRelayItems;
 	if (!relayA || !relayB) {
 		throw new Error("dual-landing canonical scenario must provide two forward relay items");
 	}
+
+	const landingOverride = process.env.CHAIN_SUBCONVERTER_E2E_LANDING_INPUT?.trim();
+	const landingInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_LANDING_INPUT", previewStage1.landingInput);
+	const transitInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT", previewStage1.transitInput);
 
 	await applyDefaultUiPreferences(page);
 
@@ -38,18 +63,13 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 		timeout: 15_000,
 	});
 
-	await page.getByLabel("落地信息").fill(canonicalStage1Inputs.landingInput);
-	await page.getByLabel("中转信息").fill(canonicalStage1Inputs.transitInput);
-
-	const addRelayButton = page.getByRole("button", { name: "+ 添加 端口转发" });
-	await addRelayButton.click();
-	const relayDialog = page.getByRole("dialog", { name: "添加端口转发服务" });
-	const relayInput = relayDialog.getByPlaceholder("输入 server:port ，按 Enter 添加多个");
-	await relayInput.fill(relayA);
-	await relayInput.press("Enter");
-	await relayInput.fill(relayB);
-	await relayInput.press("Enter");
-	await relayDialog.getByRole("button", { name: "确认" }).click();
+	await page.getByLabel("落地信息").fill(landingInput);
+	if (!landingOverride) {
+		await addManualSocks5FromURI(page, previewStage1.socks5URI);
+		await expect(page.getByLabel("落地信息")).toContainText(previewStage1.expectedSocksGeneratedURI);
+	}
+	await page.getByLabel("中转信息").fill(transitInput);
+	await addForwardRelays(page, [relayA, relayB]);
 
 	const stage1ConvertResponsePromise = page.waitForResponse((resp) => resp.url().includes("/api/stage1/convert"));
 	await page.getByRole("button", { name: "转换并自动填充" }).click();
@@ -58,44 +78,67 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 
 	const stage1ConvertRequest = stage1ConvertResponse.request().postDataJSON() as Stage1ConvertRequest;
 	expect(stage1ConvertRequest.stage1Input.forwardRelayItems).toEqual([relayA, relayB]);
+	expect(stage1ConvertRequest.stage1Input.transitRawText).toBe(transitInput);
 
-	const stage1ConvertPayload = (await stage1ConvertResponse.json()) as Stage1ConvertResponse;
-	const catalogSources = stage1ConvertPayload.stage2.catalog.servers.flatMap((server) => server.sources);
-	const firstRowName = catalogSources[0]?.defaultProxyName;
-	const secondRowName = catalogSources[1]?.defaultProxyName;
-	if (!firstRowName || !secondRowName) {
-		throw new Error("dual-landing full flow requires at least two stage2 rows");
-	}
-	const preferredChainTarget = stage1ConvertPayload.stage2.catalog.chainTargets.find((target) => !target.isEmpty)?.name;
-	if (!preferredChainTarget) {
-		throw new Error("dual-landing full flow requires a non-empty chain target");
-	}
+	await expect(locateStage2Row(page, ROW.alphaSS)).toBeVisible({ timeout: 30_000 });
+	await expect(locateStage2Row(page, ROW.socks)).toBeVisible();
 
-	const firstRow = locateStage2Row(page, firstRowName);
-	const secondRow = locateStage2Row(page, secondRowName);
-	await firstRow.getByRole("button", { name: "复制" }).click();
-	const replicaRowName = `${firstRowName} 2`;
-	const replicaRow = locateStage2Row(page, replicaRowName);
-	await expect(replicaRow).toBeVisible();
+	await cloneStage2Row(page, ROW.alphaSS);
+	await expect(locateStage2Row(page, ROW.alphaSS2)).toBeVisible();
+	await cloneStage2Row(page, ROW.alphaReality);
+	await expect(locateStage2Row(page, ROW.alphaReality2)).toBeVisible();
+	await cloneStage2Row(page, ROW.alphaReality);
+	await expect(locateStage2Row(page, ROW.alphaReality3)).toBeVisible();
+
+	const alphaSS = locateStage2Row(page, ROW.alphaSS);
+	const alphaSS2 = locateStage2Row(page, ROW.alphaSS2);
+	const alphaReality = locateStage2Row(page, ROW.alphaReality);
+	const alphaReality2 = locateStage2Row(page, ROW.alphaReality2);
+	const alphaReality3 = locateStage2Row(page, ROW.alphaReality3);
+	const betaReality = locateStage2Row(page, ROW.betaReality);
+
+	await selectStage2MenuOption(page, alphaSS, 0, "链式代理");
+	await selectStage2MenuOption(page, alphaSS, 1, "🇭🇰 香港节点");
+	await selectStage2MenuOption(page, alphaSS2, 0, "链式代理");
+	await selectStage2MenuOption(page, alphaSS2, 1, "🇸🇬 新加坡节点");
+	await selectStage2MenuOption(page, alphaReality, 0, "无/直连");
+	await selectStage2MenuOption(page, alphaReality2, 0, "端口转发");
+	await selectStage2MenuOption(page, alphaReality2, 1, relayA);
+	await selectStage2MenuOption(page, alphaReality3, 0, "端口转发");
+	await selectStage2MenuOption(page, alphaReality3, 1, relayB);
+	await selectStage2MenuOption(page, betaReality, 0, "无/直连");
+
 	const aggregationModeToggle = page.getByRole("checkbox", { name: "线路聚合模式" });
-	if (!(await aggregationModeToggle.isChecked())) {
-		await aggregationModeToggle.evaluate((checkbox) => {
-			(checkbox as HTMLInputElement).click();
-		});
+	await ensureChecked(aggregationModeToggle, true);
+
+	const serverRow = page.getByRole("row", { name: /198\.51\.100\.10/ });
+	const serverAggEnable = serverRow.getByRole("checkbox", { name: "聚合" });
+	await ensureChecked(serverAggEnable, true);
+	await expect(serverRow.getByRole("button", { name: "顺序管理" })).toBeEnabled({ timeout: 10_000 });
+
+	// 先清空自动入组，再按金样 fallback 顺序勾选，避免脆弱拖拽重排
+	for (const proxyName of [ROW.alphaSS, ROW.alphaSS2, ROW.alphaReality, ROW.alphaReality2, ROW.alphaReality3]) {
+		await ensureChecked(locateStage2Row(page, proxyName).getByRole("checkbox", { name: "入组" }), false);
 	}
-	const aggregationEnableToggles = page.getByRole("checkbox", { name: "聚合" });
-	if ((await aggregationEnableToggles.count()) > 0) {
-		await aggregationEnableToggles.first().evaluate((checkbox) => {
-			(checkbox as HTMLInputElement).click();
-		});
+	for (const proxyName of [ROW.alphaReality2, ROW.alphaReality3, ROW.alphaSS, ROW.alphaSS2]) {
+		await ensureChecked(locateStage2Row(page, proxyName).getByRole("checkbox", { name: "入组" }), true);
 	}
 
-	await selectStage2MenuOption(page, firstRow, 0, "链式代理");
-	await selectStage2MenuOption(page, firstRow, 1, preferredChainTarget);
-	await selectStage2MenuOption(page, secondRow, 0, "端口转发");
-	await selectStage2MenuOption(page, secondRow, 1, relayB);
-	await selectStage2MenuOption(page, replicaRow, 0, "端口转发");
-	await selectStage2MenuOption(page, replicaRow, 1, relayA);
+	await expectAggregationFallbackOrder(page, [
+		ROW.alphaReality2,
+		ROW.alphaReality3,
+		ROW.alphaSS,
+		ROW.alphaSS2,
+	]);
+
+	const advancedToggle = page.getByLabel("2配置").getByRole("button", { name: "高级选项" });
+	if ((await advancedToggle.getAttribute("aria-expanded")) !== "true") {
+		await advancedToggle.click();
+	}
+	await ensureChecked(
+		page.getByRole("checkbox", { name: /目标策略组节点切换优化/ }),
+		true,
+	);
 
 	const generateButton = page.getByRole("button", { name: "生成链接" });
 	await expect(generateButton).toBeEnabled({ timeout: 90_000 });
@@ -106,71 +149,41 @@ test("real dual-landing full flow preserves stage2 orchestration across replay",
 
 	const generateRequest = generateResponse.request().postDataJSON() as GenerateRequest;
 	assertWireSnapshotHasNoClientIds(generateRequest);
-	const generatedInstances = flattenWireSnapshotInstances(generateRequest.stage2.snapshot);
-	const sourceSnapshotRow = generatedInstances.find((row) => row.proxyName === firstRowName);
-	const replicaSnapshotRow = generatedInstances.find((row) => row.proxyName === replicaRowName);
-	if (sourceSnapshotRow === undefined || replicaSnapshotRow === undefined) {
-		throw new Error("real dual-landing full flow requires source/replica wire snapshot rows");
-	}
-	expect(generateRequest.stage2.snapshot.servers.map((server) => server.aggregation)).toBeInstanceOf(Array);
-	expect(sourceSnapshotRow.proxyName).not.toBe(replicaSnapshotRow.proxyName);
-	expect(generatedInstances).toEqual(
-		expect.arrayContaining([
-			expect.objectContaining({
-				mode: "chain",
-				targetName: preferredChainTarget,
-			}),
-			expect.objectContaining({
-				mode: "port_forward",
-				targetName: relayA,
-			}),
-			expect.objectContaining({
-				mode: "port_forward",
-				targetName: relayB,
-			}),
-		]),
-	);
+	expect(normalizeStage2SnapshotForGoldenCompare(generateRequest.stage2.snapshot))
+		.toEqual(normalizeStage2SnapshotForGoldenCompare(golden.stage2Snapshot));
 
 	const currentLink = page.getByLabel("当前链接");
 	await expect(currentLink).not.toHaveValue("", { timeout: 30_000 });
 	const longURL = await currentLink.inputValue();
-	expect(new URL(longURL).searchParams.has("data")).toBeTruthy();
+	const longURLParsed = new URL(longURL);
+	expect(longURLParsed.searchParams.has("data")).toBeTruthy();
+	expect(`${longURLParsed.pathname}?data=${longURLParsed.searchParams.get("data")}`)
+		.toBe(golden.longURLGoldenPath);
 
 	await page.locator("label").filter({ hasText: /^短链接$/ }).click();
 	await expect(currentLink).not.toHaveValue(longURL, { timeout: 30_000 });
 	const shortURL = await currentLink.inputValue();
+	const shortID = new URL(shortURL).pathname.split("/").filter(Boolean).at(-1);
+	expect(shortID).toBe(golden.shortID);
 
 	const resolveResponse = await page.request.post(new URL("/api/resolve-url", origin).toString(), {
 		data: { url: shortURL },
 	});
 	expect(resolveResponse.ok()).toBeTruthy();
-	const resolvePayload = (await resolveResponse.json()) as ResolveURLResponse;
+	const resolvePayload = (await resolveResponse.json()) as ResolveURLWireResponse;
 	expect(resolvePayload.restoreStatus).toBe("replayable");
-	const resolvedInstances = flattenWireSnapshotInstances(resolvePayload.stage2.snapshot);
-	expect(resolvedInstances).toEqual(
-		expect.arrayContaining([
-			expect.objectContaining({
-				mode: "chain",
-				targetName: preferredChainTarget,
-			}),
-			expect.objectContaining({
-				mode: "port_forward",
-				targetName: relayA,
-			}),
-			expect.objectContaining({
-				mode: "port_forward",
-				targetName: relayB,
-			}),
-		]),
-	);
-	expect(resolvePayload.stage2.snapshot.servers.map((server) => server.aggregation))
-		.toEqual(generateRequest.stage2.snapshot.servers.map((server) => server.aggregation));
+	expect(normalizeStage2SnapshotForGoldenCompare(resolvePayload.stage2.snapshot))
+		.toEqual(normalizeStage2SnapshotForGoldenCompare(golden.stage2Snapshot));
 
 	await page.getByRole("button", { name: "反向解析" }).click();
-	await expect(firstRow.locator(".a-target-menu__trigger").nth(0)).toContainText("链式代理");
-	await expect(firstRow.locator(".a-target-menu__trigger").nth(1)).toContainText(preferredChainTarget);
-	await expect(replicaRow.locator(".a-target-menu__trigger").nth(0)).toContainText("端口转发");
-	await expect(replicaRow.locator(".a-target-menu__trigger").nth(1)).toContainText(relayA);
-	await expect(secondRow.locator(".a-target-menu__trigger").nth(0)).toContainText("端口转发");
-	await expect(secondRow.locator(".a-target-menu__trigger").nth(1)).toContainText(relayB);
+	await expect(locateStage2Row(page, ROW.alphaSS).locator(".a-target-menu__trigger").nth(0)).toContainText("链式代理");
+	await expect(locateStage2Row(page, ROW.alphaSS).locator(".a-target-menu__trigger").nth(1)).toContainText("🇭🇰 香港节点");
+	await expect(locateStage2Row(page, ROW.alphaSS2).locator(".a-target-menu__trigger").nth(1)).toContainText("🇸🇬 新加坡节点");
+	await expect(locateStage2Row(page, ROW.alphaReality).locator(".a-target-menu__trigger").nth(0)).toContainText("无/直连");
+	await expect(locateStage2Row(page, ROW.alphaReality2).locator(".a-target-menu__trigger").nth(0)).toContainText("端口转发");
+	await expect(locateStage2Row(page, ROW.alphaReality2).locator(".a-target-menu__trigger").nth(1)).toContainText(relayA);
+	await expect(locateStage2Row(page, ROW.alphaReality3).locator(".a-target-menu__trigger").nth(1)).toContainText(relayB);
+	await expect(locateStage2Row(page, ROW.betaSS).locator(".a-target-menu__trigger").nth(1)).toContainText("🇯🇵 日本节点");
+	await expect(locateStage2Row(page, ROW.betaReality).locator(".a-target-menu__trigger").nth(0)).toContainText("无/直连");
+	await expect(locateStage2Row(page, ROW.socks).locator(".a-target-menu__trigger").nth(1)).toContainText("🇭🇰 香港节点");
 });

@@ -2,25 +2,32 @@ import { existsSync, readFileSync } from "node:fs";
 
 import { expect, test } from "@playwright/test";
 
-import { loadCanonicalStage1Inputs } from "./canonicalStage1";
-import { applyDefaultUiPreferences, assertWireSnapshotHasNoClientIds, expectHTTPResponseOK, flattenWireSnapshotInstances } from "./helpers";
+import {
+	addForwardRelays,
+	addManualSocks5FromURI,
+	applyDefaultUiPreferences,
+	assertWireSnapshotHasNoClientIds,
+	expectHTTPResponseOK,
+	flattenWireSnapshotInstances,
+	type ResolveURLWireResponse,
+} from "./helpers";
+import { inputFromEnv, loadPreviewManualStage1Inputs } from "./previewInputs";
 
-import type { ResolveURLResponse, ShortLinkResponse } from "../src/types/api";
+import type { ShortLinkResponse } from "../src/types/api";
 
 /**
- * 对已部署的一体化 Compose 实例做真实 API/UI 冒烟（不 mock），覆盖
- * healthz、UI convert/generate、short-link 与 resolve round-trip。
- * 目标入口由 Playwright `baseURL` 决定；跑真实部署时请显式设置
- * `CHAIN_SUBCONVERTER_E2E_BASE_URL`。
- * 可选输入覆盖支持：
- *   CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2,_3...]
- *   CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2,_3...]
+ * 对已部署实例做真实 API/UI 冒烟（不 mock），覆盖 healthz、UI convert/generate、
+ * short-link 与 resolve round-trip。默认 Stage1 输入与 docs/testing/preview-inputs.md 一致。
  *
  *   CHAIN_SUBCONVERTER_E2E_BASE_URL=https://chain-subconverter.example.com \
  *   CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 \
- *   npm run test:e2e -- real-deployed-core-flow.spec.ts
+ *   npm run test:e2e:real:smoke
+ *
+ * 可选覆盖：
+ *   CHAIN_SUBCONVERTER_E2E_LANDING_INPUT[,_2,_3...]  （设置后跳过默认 SOCKS5 添加）
+ *   CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT[,_2,_3...]
  */
-const defaultStage1Inputs = loadCanonicalStage1Inputs("dual-landing-chain-port-forward");
+const previewStage1 = loadPreviewManualStage1Inputs();
 const devUpRuntimeFile = new URL("../../.tmp/dev-up/runtime.env", import.meta.url);
 
 function isLoopbackHostname(hostname: string) {
@@ -70,35 +77,6 @@ function resolveBackendOrigin(baseURL: string) {
 	return backendOriginFromDevUpRuntime(uiOrigin) ?? uiOrigin;
 }
 
-function inputFromEnv(name: string, fallback: string) {
-	const values: Array<{ index: number; value: string }> = [];
-	const primary = process.env[name]?.trim();
-	if (primary) {
-		values.push({ index: 1, value: primary });
-	}
-	const suffixPattern = new RegExp(`^${name}_(\\d+)$`);
-	for (const [key, rawValue] of Object.entries(process.env)) {
-		const match = key.match(suffixPattern);
-		if (!match) {
-			continue;
-		}
-		const index = Number(match[1]);
-		if (!Number.isInteger(index) || index < 2) {
-			continue;
-		}
-		const value = rawValue?.trim();
-		if (!value) {
-			continue;
-		}
-		values.push({ index, value });
-	}
-	if (values.length === 0) {
-		return fallback;
-	}
-	values.sort((left, right) => left.index - right.index);
-	return values.map((entry) => entry.value).join("\n");
-}
-
 test.describe.configure({ mode: "serial" });
 
 test("real deployed core flow validates healthz and stage3 round-trip", async ({ page, baseURL }) => {
@@ -109,8 +87,14 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 		throw new Error("deployed smoke requires Playwright baseURL / CHAIN_SUBCONVERTER_E2E_BASE_URL");
 	}
 	const expectedOrigin = resolveBackendOrigin(origin);
-	const landingInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_LANDING_INPUT", defaultStage1Inputs.landingInput);
-	const transitInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT", defaultStage1Inputs.transitInput);
+	const landingOverride = process.env.CHAIN_SUBCONVERTER_E2E_LANDING_INPUT?.trim();
+	const landingInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_LANDING_INPUT", previewStage1.landingInput);
+	const transitInput = inputFromEnv("CHAIN_SUBCONVERTER_E2E_TRANSIT_INPUT", previewStage1.transitInput);
+	const [relayA, relayB] = previewStage1.forwardRelayItems;
+	if (!relayA || !relayB) {
+		throw new Error("preview manual path requires two forward relay items");
+	}
+
 	const health = await page.request.get(`${expectedOrigin}/healthz`);
 	expect(health.ok()).toBeTruthy();
 	expect((await health.text()).trim()).toBe("ok");
@@ -129,7 +113,13 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 	});
 
 	await page.getByLabel("落地信息").fill(landingInput);
+	if (!landingOverride) {
+		await addManualSocks5FromURI(page, previewStage1.socks5URI);
+		await expect(page.getByLabel("落地信息")).toContainText(previewStage1.expectedSocksGeneratedURI);
+	}
 	await page.getByLabel("中转信息").fill(transitInput);
+	await addForwardRelays(page, [relayA, relayB]);
+
 	const stage1ConvertResponsePromise = page.waitForResponse(
 		(resp) => resp.url().includes("/api/stage1/convert"),
 	);
@@ -157,13 +147,17 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 	const generatedBody = await generatedSubResponse.text();
 	expect(generatedBody).toContain("proxies:");
 
+	const expectedLandingRawText = landingOverride
+		? landingInput
+		: `${previewStage1.landingInput}\n${previewStage1.expectedSocksGeneratedURI}`;
+
 	const generatedResolveResponse = await page.request.post(new URL("/api/resolve-url", origin).toString(), {
 		data: { url: generatedURL.toString() },
 	});
 	expect(generatedResolveResponse.ok()).toBeTruthy();
-	const generatedResolvePayload = (await generatedResolveResponse.json()) as ResolveURLResponse;
+	const generatedResolvePayload = (await generatedResolveResponse.json()) as ResolveURLWireResponse;
 	expect(generatedResolvePayload.restoreStatus).toBe("replayable");
-	expect(generatedResolvePayload.stage1Input.landingRawText).toBe(landingInput);
+	expect(generatedResolvePayload.stage1Input.landingRawText).toBe(expectedLandingRawText);
 	expect(generatedResolvePayload.stage1Input.transitRawText).toBe(transitInput);
 	expect(flattenWireSnapshotInstances(generatedResolvePayload.stage2.snapshot).length).toBeGreaterThan(0);
 	if (generatedURL.pathname.startsWith("/sub/")) {
@@ -200,11 +194,11 @@ test("real deployed core flow validates healthz and stage3 round-trip", async ({
 		data: { url: shortLinkPayload.shortUrl },
 	});
 	expect(shortResolveResponse.ok()).toBeTruthy();
-	const shortResolvePayload = (await shortResolveResponse.json()) as ResolveURLResponse;
+	const shortResolvePayload = (await shortResolveResponse.json()) as ResolveURLWireResponse;
 	expect(shortResolvePayload.longUrl).toBe(canonicalLongURL.toString());
 	expect(shortResolvePayload.shortUrl).toBe(shortLinkPayload.shortUrl);
 	expect(shortResolvePayload.restoreStatus).toBe("replayable");
-	expect(shortResolvePayload.stage1Input.landingRawText).toBe(landingInput);
+	expect(shortResolvePayload.stage1Input.landingRawText).toBe(expectedLandingRawText);
 	expect(shortResolvePayload.stage1Input.transitRawText).toBe(transitInput);
 	expect(flattenWireSnapshotInstances(shortResolvePayload.stage2.snapshot).length).toBeGreaterThan(0);
 });

@@ -185,13 +185,14 @@ tracked testdata:  internal/review/testdata/3pass-ss2022-test-subscription/
 - `internal/service` 的 `BuildStage2Init` 语义测试
 - `internal/service` 的 `resolve-url` replayable / short-link roundtrip 测试
 - `internal/api` 的 `stage1/convert`、`short-links`、`resolve-url`（long URL / short URL）handler happy path 回放测试
+- Web E2E `real-full`：按 [preview-inputs.md](preview-inputs.md) 手工路径操作并核对 Stage2 / short ID / long URL payload 金样（依赖已部署 app + 已同步 Worker）
 
 ### Full 边界 {#full-边界}
 
-- 本样例仍是固定、Mock、仓库跟踪的数据集，不依赖真实外部订阅源
+- 本样例仍是固定、Mock、仓库跟踪的数据集；`real-full` 经 Worker 拉取同一批语料，不依赖真实外部机场订阅
 - **中转节点数基线为 10+10=20**：两条 transit 各 10 条节点（含 Shadowrocket 风格 `vmess://`）。canonical URI 的 Base64 载荷**不带**末尾 `=` 填充，以便上游 subconverter URI 解析保留 VMess；URI 路径与 Sub-2 `?target=ClashMeta` 混用路径节点数一致。
 - 当前仍与 Smoke 场景的基础 fixture 并存；这属于分层与快速故障定界考虑，不代表复杂场景 fixture 过大而不能复用到 `smoke`
-- 浏览器级 happy path 与阻断错误 E2E 仍属于后续工作，不由本基线替代
+- 阻断错误类浏览器 E2E 仍属于后续工作，不由本基线替代
 
 在线预览粘贴数据见 [preview-inputs.md](preview-inputs.md)（由 worker `sync` 自动生成）。
 

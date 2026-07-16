@@ -20,8 +20,8 @@
 |---|---|---|---|
 | `mock-smoke` | `cd web && npm run test:e2e:mock:smoke` | mocked API 最小主链路回归（默认主线 + 端口转发主线） | blocking |
 | `mock-full` | `cd web && npm run test:e2e:mock:full` | mocked API 复杂编排语义回归（副本、聚合组、fallback 顺序） | blocking |
-| `real-smoke` | `cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:smoke` | 真实部署最小链路验证 | non-blocking |
-| `real-full` | `cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:full` | 真实部署复杂流程轻量验证（聚合配置可接受、可生成、可回放） | non-blocking |
+| `real-smoke` | `cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:smoke` | 真实部署最小链路；默认 Stage1 与 [preview-inputs.md](preview-inputs.md) 一致 | non-blocking |
+| `real-full` | `cd web && CHAIN_SUBCONVERTER_E2E_BASE_URL=<url> CHAIN_SUBCONVERTER_E2E_SKIP_WEB_SERVER=1 npm run test:e2e:real:full` | 真实部署按 preview-inputs 手工路径跑 Stage2 金样，并核对 short ID / long URL payload | non-blocking |
 
 聚合入口：
 
@@ -71,9 +71,10 @@ non-blocking job：
   - 副本创建后 `stage2Snapshot.rows` 行语义正确；
   - 聚合组写入 `stage2Snapshot.serverAggregationGroups`；
   - fallback 顺序重排后 `memberRowIds` 顺序与 UI 配置一致。
-- `real-full` 保持轻量：
-  - 不做脆弱拖拽手势断言；
-  - 至少校验聚合配置已被接受，并在 generate / resolve 回放链路中保持一致（含复制行、「线路聚合模式」、组内「聚合」勾选；见 `real-dual-landing-full-flow.spec.ts`）。
+- `real-full` 对齐 [preview-inputs.md](preview-inputs.md)：
+  - Stage1：落地 URI + SOCKS5 + Worker 中转 URL（含 Sub-2 `?target=ClashMeta`）+ 端口转发；
+  - Stage2：按文档操作要点配置副本 / 模式 / 入组（按金样 fallback 顺序勾选入组，避免脆弱拖拽）/ 切换优化；
+  - 断言 generate / resolve 的 snapshot 与 short ID、long URL payload 金样一致（见 `real-dual-landing-full-flow.spec.ts`）。
 - **E2E spec 变更后**：须重跑第三方 `real-smoke` + `real-full` 再更新 [third-party-deployments.md](third-party-deployments.md) 结论；勿在旧镜像结论上直接标记通过。
 
 ## fixture 维护流水线
