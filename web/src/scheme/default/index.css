@@ -1808,10 +1808,6 @@
 	);
 }
 
-.a-stage2-row-inline.is-agg-instance.is-agg-source-boundary::before {
-	top: calc(50% + var(--a-stage2-node-gap) + 0.18rem);
-}
-
 .a-stage2-row-inline.is-agg-instance.is-agg-instance-tail::before {
 	bottom: calc(50% + var(--a-stage2-node-gap));
 }
