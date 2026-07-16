@@ -110,7 +110,7 @@ describe("RuntimeStatusBadges", () => {
 		expect(mockGetRuntimeStatus).toHaveBeenCalledWith(false);
 		expect(container.textContent).toContain("Chain Subconverter - v1.2.3 © 2026");
 		expect(credit.title).toBe(
-			"Release tag: v1.2.3 · Image tag: beta-latest · Revision: 86922c3deadb · Image digest: sha256:eeff0ea63c5d5f23e3605e69486922af7b75fe02ce3ae3abe7af906605ed3c24",
+			"Release tag: v1.2.3 · Image tag: beta-latest · Revision: 86922c3 · Image digest: sha256:eeff0ea63c5d5f23e3605e69486922af7b75fe02ce3ae3abe7af906605ed3c24",
 		);
 		expect(credit.title).not.toContain("SHA:");
 		expect(container.textContent).toContain("42ms");
@@ -147,7 +147,7 @@ describe("RuntimeStatusBadges", () => {
 			throw new Error("footer credit element not found");
 		}
 
-		expect(credit.title).toBe("Release tag: v1.2.3 · Image tag: beta-latest · Revision: 86922c3deadb");
+		expect(credit.title).toBe("Release tag: v1.2.3 · Image tag: beta-latest · Revision: 86922c3");
 	});
 
 	it("keeps footer credit unchanged before runtime status is loaded", () => {

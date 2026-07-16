@@ -130,7 +130,8 @@ function shortRevision(revision: string | undefined): string | undefined {
 	if (!revision) {
 		return undefined;
 	}
-	return revision.slice(0, 12);
+	// 与 IDE Source Control Graph 默认短 hash（7 位）对齐。
+	return revision.slice(0, 7);
 }
 
 function formatAppTooltip(status: RuntimeStatusResponse, locale: Locale): string {
