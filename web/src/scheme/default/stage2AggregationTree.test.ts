@@ -5,7 +5,6 @@ import {
 	buildStage2AggregationTree,
 	buildStage2AggregationTreeFromSnapshot,
 	formatServerGroupLabel,
-	formatStage2TreeGlyph,
 	getStage2AggregationTreeRowInlineClassName,
 } from "./stage2AggregationTree";
 
@@ -57,9 +56,8 @@ describe("default nested aggregation tree projection", () => {
 			.toEqual(rows.map((row) => row.instanceId));
 	});
 
-	it("keeps glyph and row classes stable", () => {
+	it("keeps row inline classes stable", () => {
 		const nodes = buildStage2AggregationTree(rows, () => null);
-		expect(formatStage2TreeGlyph({ continuation: "", branch: "last", depth: 1 })).toBe("└── ");
 		expect(getStage2AggregationTreeRowInlineClassName(nodes, 0)).toContain("is-server");
 		expect(getStage2AggregationTreeRowInlineClassName(nodes, 3)).toContain("is-group-end");
 		expect(formatServerGroupLabel(" edge ")).toBe("edge");

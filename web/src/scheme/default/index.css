@@ -1914,29 +1914,6 @@
 	overflow: visible;
 }
 
-.a-stage2-tree-glyph {
-	flex: 0 0 24px;
-	width: 24px;
-	align-self: stretch;
-	display: block;
-	color: color-mix(in srgb, var(--color-text) 40%, transparent);
-	overflow: visible;
-	user-select: none;
-}
-
-.a-stage2-tree-glyph__line {
-	stroke: currentColor;
-	stroke-width: 1.25;
-	vector-effect: non-scaling-stroke;
-}
-
-.a-stage2-tree-glyph--placeholder {
-	flex: 0 0 24px;
-	width: 24px;
-	align-self: stretch;
-	visibility: hidden;
-}
-
 .a-stage2-tree-server {
 	background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }

@@ -7,24 +7,6 @@ import {
 } from "../../lib/stage2";
 import type { Stage2Catalog, Stage2Row, Stage2Snapshot } from "../../types/api";
 
-export type Stage2TreeBranch = "mid" | "last";
-
-/** 树状导轨语义：延续竖线、分支位置、子级导轨等。 */
-export type Stage2TreeGlyphParts = {
-	continuation: "│" | "";
-	branch: Stage2TreeBranch;
-	depth: 1 | 2;
-	/** depth 1 默认实例行下方仍有副本时，向下引出子级竖线导轨。 */
-	childGuide?: boolean;
-};
-
-export const STAGE2_TREE_GLYPH_ROOT: Stage2TreeGlyphParts = {
-	continuation: "",
-	branch: "last",
-	depth: 1,
-	childGuide: false,
-};
-
 export type Stage2TreeServerNode = {
 	kind: "server";
 	server: string;
@@ -38,8 +20,6 @@ export type Stage2TreeRowNode = {
 	row: Stage2Row;
 	rowKey: string;
 	stableKey: string;
-	depth: 1 | 2;
-	glyphParts: Stage2TreeGlyphParts;
 	isDefaultInstance: boolean;
 };
 
@@ -53,50 +33,6 @@ function getRowServerKey(row: Stage2Row, _getRowMeta: Stage2RowMetaLookup): stri
 
 function getRowDisplayServer(row: Stage2Row, _getRowMeta: Stage2RowMetaLookup): string {
 	return row.serverKey.trim();
-}
-
-function buildDefaultInstanceGlyphParts(
-	sourceBranch: Stage2TreeBranch,
-	hasDuplicatesBelow: boolean,
-): Stage2TreeGlyphParts {
-	return {
-		continuation: "",
-		branch: sourceBranch,
-		depth: 1,
-		childGuide: hasDuplicatesBelow,
-	};
-}
-
-function buildDuplicateInstanceGlyphParts(
-	sourceBranch: Stage2TreeBranch,
-	duplicateBranch: Stage2TreeBranch,
-): Stage2TreeGlyphParts {
-	return {
-		continuation: sourceBranch === "mid" ? "│" : "",
-		branch: duplicateBranch,
-		depth: 2,
-	};
-}
-
-export function formatStage2TreeGlyph(parts: Stage2TreeGlyphParts): string {
-	const connector = parts.branch === "mid" ? "├── " : "└── ";
-	if (parts.depth === 1) {
-		return connector;
-	}
-	const indent = parts.continuation === "│" ? "   " : "    ";
-	return `${parts.continuation}${indent}${connector}`;
-}
-
-/** SVG 导轨占位宽度（px），与 Stage2TreeGlyph 渲染一致。 */
-export const STAGE2_TREE_GLYPH_WIDTH_PX = 24;
-
-export function getStage2TreeGlyphWidthPx(_parts?: Stage2TreeGlyphParts): number {
-	return STAGE2_TREE_GLYPH_WIDTH_PX;
-}
-
-/** 列宽 canvas 测量用等宽占位，对齐 SVG 导轨 + flex gap。 */
-export function formatStage2TreeGlyphMeasureSpacer(_parts?: Stage2TreeGlyphParts): string {
-	return "\u2007".repeat(3);
 }
 
 function partitionSourceGroups(rows: Stage2Row[]): Map<string, Stage2Row[]> {
@@ -183,41 +119,17 @@ export function buildStage2AggregationTree(
 
 		const sourceGroups = getSourceGroupsInRowOrder(serverRows);
 
-		sourceGroups.forEach((groupRows, sourceIndex) => {
-			const sourceBranch: Stage2TreeBranch = sourceIndex < sourceGroups.length - 1 ? "mid" : "last";
-			const orderedRows = groupRows;
-			const defaultInstanceRowKey = getStage2RowStrictKey(orderedRows[0]);
-			const duplicateRowsInGroup = orderedRows.slice(1);
+		sourceGroups.forEach((groupRows) => {
+			const defaultInstanceRowKey = getStage2RowStrictKey(groupRows[0]);
 
-			orderedRows.forEach((row) => {
+			groupRows.forEach((row) => {
 				const rowKey = getStage2RowStrictKey(row);
-				const isDefaultInstance = rowKey === defaultInstanceRowKey;
-				if (isDefaultInstance) {
-					nodes.push({
-						kind: "row",
-						row,
-						rowKey,
-						stableKey: getStage2RowStableKey(row),
-						depth: 1,
-						glyphParts: buildDefaultInstanceGlyphParts(sourceBranch, duplicateRowsInGroup.length > 0),
-						isDefaultInstance: true,
-					});
-					return;
-				}
-
-				const duplicateRows = duplicateRowsInGroup;
-				const duplicateIndex = duplicateRows.findIndex((candidate) => getStage2RowStrictKey(candidate) === rowKey);
-				const duplicateBranch: Stage2TreeBranch =
-					duplicateIndex >= 0 && duplicateIndex < duplicateRows.length - 1 ? "mid" : "last";
-
 				nodes.push({
 					kind: "row",
 					row,
 					rowKey,
 					stableKey: getStage2RowStableKey(row),
-					depth: 2,
-					glyphParts: buildDuplicateInstanceGlyphParts(sourceBranch, duplicateBranch),
-					isDefaultInstance: false,
+					isDefaultInstance: rowKey === defaultInstanceRowKey,
 				});
 			});
 		});
@@ -251,25 +163,16 @@ export function buildStage2AggregationTreeFromSnapshot(
 			anchorRowKey: getStage2RowStrictKey(anchorRow),
 			sourceFlagEmoji: detectServerGroupSourceFlagEmoji(serverRows),
 		});
-		server.sources.forEach((source, sourceIndex) => {
-			const sourceBranch: Stage2TreeBranch = sourceIndex < server.sources.length - 1 ? "mid" : "last";
+		server.sources.forEach((source) => {
 			source.instances.forEach((instance, instanceIndex) => {
 				const row = flatById.get(instance.instanceId);
 				if (!row) return;
-				const isDefaultInstance = instanceIndex === 0;
 				nodes.push({
 					kind: "row",
 					row,
 					rowKey: getStage2RowStrictKey(row),
 					stableKey: getStage2RowStableKey(row),
-					depth: isDefaultInstance ? 1 : 2,
-					glyphParts: isDefaultInstance
-						? buildDefaultInstanceGlyphParts(sourceBranch, source.instances.length > 1)
-						: buildDuplicateInstanceGlyphParts(
-							sourceBranch,
-							instanceIndex < source.instances.length - 1 ? "mid" : "last",
-						),
-					isDefaultInstance,
+					isDefaultInstance: instanceIndex === 0,
 				});
 			});
 		});

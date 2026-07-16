@@ -12,7 +12,6 @@ import {
 import { formatModeReason } from "../../lib/mode-reason";
 import {
 	buildStage2AggregationTreeFromSnapshot,
-	formatStage2TreeGlyphMeasureSpacer,
 	getServerBlockAggregationEnabled,
 	getStage2AggregationTreeRowInlineClassName,
 	type Stage2TreeNode,
@@ -161,7 +160,7 @@ export function Stage2AggregationTree({
 			});
 
 			return {
-				nodeLabel: `${formatStage2TreeGlyphMeasureSpacer(node.glyphParts)}${getStage2RowDisplayName(node.row)}`,
+				nodeLabel: getStage2RowDisplayName(node.row),
 				landingNodeType: meta?.landingNodeType ?? "--",
 				modeOptionLabels,
 				targetLabel,

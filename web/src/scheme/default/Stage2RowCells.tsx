@@ -9,7 +9,6 @@ import {
 	getStage2TargetDisplayLabel,
 } from "../../lib/stage2";
 import type { ServerAggregationGroup, Stage2Row } from "../../types/api";
-import type { Stage2TreeGlyphParts } from "./stage2AggregationTree";
 import { CopyIcon, PencilIcon, TrashIcon } from "./Icons";
 import { Stage2MemberOrderList } from "./Stage2MemberOrderList";
 import {
@@ -79,8 +78,6 @@ interface Stage2RowNameCellProps {
 	nameEditableHint?: string;
 	rowErrors: { code: string; message: string }[];
 	copy: Stage2Copy;
-	glyphParts?: Stage2TreeGlyphParts;
-	reserveTreeGlyphColumn?: boolean;
 	wrapperClassName?: string;
 	sourceLandingName?: string;
 	isDefaultInstance: boolean;
@@ -96,125 +93,6 @@ interface Stage2RowNameCellProps {
 	toolbarPlaceholder?: boolean;
 }
 
-const STAGE2_TREE_GLYPH_WIDTH = 24;
-/** 归一化行高，配合 preserveAspectRatio="none" 随单元格拉伸。 */
-const STAGE2_TREE_VIEW_HEIGHT = 100;
-const STAGE2_TREE_SPINE_X = 8;
-const STAGE2_TREE_DEPTH2_BRANCH_X = 20;
-const STAGE2_TREE_BRANCH_Y = 50;
-/** 所有层级横线统一延伸至导轨右缘，与节点名左缘对齐。 */
-const STAGE2_TREE_BRANCH_END_X = STAGE2_TREE_GLYPH_WIDTH;
-/** 向相邻行延伸，跨过单元格 padding / border 间隙。 */
-const STAGE2_TREE_LINE_BLEED = 14;
-
-function Stage2TreeGlyphLine({
-	x1,
-	y1,
-	x2,
-	y2,
-}: {
-	x1: number;
-	y1: number;
-	x2: number;
-	y2: number;
-}) {
-	return (
-		<line
-			x1={x1}
-			y1={y1}
-			x2={x2}
-			y2={y2}
-			className="a-stage2-tree-glyph__line"
-			strokeLinecap="round"
-		/>
-	);
-}
-
-function Stage2TreeBranchConnector({
-	x,
-	branch,
-	extendDown = false,
-	extendUp = false,
-}: {
-	x: number;
-	branch: Stage2TreeGlyphParts["branch"];
-	extendDown?: boolean;
-	extendUp?: boolean;
-}) {
-	const verticalStart = extendUp ? -STAGE2_TREE_LINE_BLEED : 0;
-	const verticalEnd =
-		branch === "mid" ? STAGE2_TREE_VIEW_HEIGHT + (extendDown ? STAGE2_TREE_LINE_BLEED : 0) : STAGE2_TREE_BRANCH_Y;
-
-	return (
-		<>
-			<Stage2TreeGlyphLine x1={x} y1={verticalStart} x2={x} y2={verticalEnd} />
-			<Stage2TreeGlyphLine
-				x1={x}
-				y1={STAGE2_TREE_BRANCH_Y}
-				x2={STAGE2_TREE_BRANCH_END_X}
-				y2={STAGE2_TREE_BRANCH_Y}
-			/>
-		</>
-	);
-}
-
-/** 父行：从统一高度的横线处向下引出子级竖线导轨。 */
-function Stage2TreeChildGuideDescent() {
-	return (
-		<Stage2TreeGlyphLine
-			x1={STAGE2_TREE_DEPTH2_BRANCH_X}
-			y1={STAGE2_TREE_BRANCH_Y}
-			x2={STAGE2_TREE_DEPTH2_BRANCH_X}
-			y2={STAGE2_TREE_VIEW_HEIGHT + STAGE2_TREE_LINE_BLEED}
-		/>
-	);
-}
-
-export function Stage2TreeGlyph({
-	parts,
-	placeholder = false,
-}: {
-	parts: Stage2TreeGlyphParts;
-	placeholder?: boolean;
-}) {
-	if (placeholder) {
-		return <span className="a-stage2-tree-glyph a-stage2-tree-glyph--placeholder" aria-hidden="true" />;
-	}
-
-	const branchX = parts.depth === 1 ? STAGE2_TREE_SPINE_X : STAGE2_TREE_DEPTH2_BRANCH_X;
-	const hasAncestorSpine = parts.depth === 2 && parts.continuation === "│";
-	const ancestorSpineContinuesBelow = hasAncestorSpine;
-
-	return (
-		<svg
-			className="a-stage2-tree-glyph"
-			viewBox={`0 0 ${STAGE2_TREE_GLYPH_WIDTH} ${STAGE2_TREE_VIEW_HEIGHT}`}
-			preserveAspectRatio="none"
-			aria-hidden="true"
-		>
-			{hasAncestorSpine ? (
-				<Stage2TreeGlyphLine
-					x1={STAGE2_TREE_SPINE_X}
-					y1={-STAGE2_TREE_LINE_BLEED}
-					x2={STAGE2_TREE_SPINE_X}
-					y2={
-						ancestorSpineContinuesBelow
-							? STAGE2_TREE_VIEW_HEIGHT + STAGE2_TREE_LINE_BLEED
-							: STAGE2_TREE_BRANCH_Y
-					}
-				/>
-			) : null}
-			{parts.depth === 1 && parts.childGuide ? <Stage2TreeChildGuideDescent /> : null}
-			<Stage2TreeBranchConnector
-				x={branchX}
-				branch={parts.branch}
-				extendDown={parts.branch === "mid"}
-				extendUp={parts.depth === 2}
-			/>
-		</svg>
-	);
-}
-
 export function Stage2RowNameCell({
 	row,
 	rowKey,
@@ -223,8 +101,6 @@ export function Stage2RowNameCell({
 	nameEditableHint,
 	rowErrors,
 	copy,
-	glyphParts,
-	reserveTreeGlyphColumn = false,
 	wrapperClassName = "a-stage2-tree-name",
 	sourceLandingName,
 	isDefaultInstance,
@@ -244,9 +120,6 @@ export function Stage2RowNameCell({
 			className={wrapperClassName}
 			title={sourceLandingName && !isDefaultInstance && !readOnlyLabel ? sourceLandingName : undefined}
 		>
-			{glyphParts || reserveTreeGlyphColumn ? (
-				<Stage2TreeGlyph parts={glyphParts ?? { continuation: "", branch: "last", depth: 1 }} placeholder={reserveTreeGlyphColumn} />
-			) : null}
 			<div className="a-stage2-row-name-field">
 				{readOnlyLabel !== undefined ? (
 					<div className="a-input a-stage2-row-name-input a-stage2-tree-server-name" aria-readonly="true">
