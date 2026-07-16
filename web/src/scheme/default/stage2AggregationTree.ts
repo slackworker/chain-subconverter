@@ -258,6 +258,7 @@ function getStage2SourceToneClassNameFromMap(
 type Stage2InstanceInlineContext = {
 	blockRowNodes: Stage2TreeRowNode[];
 	rowNode: Stage2TreeRowNode;
+	toneBySourceId: Map<string, number>;
 	serverAggregationEnabled: boolean;
 	isAggInstance: boolean;
 	isAggInstanceTail: boolean;
@@ -265,9 +266,15 @@ type Stage2InstanceInlineContext = {
 };
 
 function buildStage2InstanceRowInlineClassName(context: Stage2InstanceInlineContext): string {
-	const { blockRowNodes, rowNode, serverAggregationEnabled, isAggInstance, isAggInstanceTail, isAggMember } =
-		context;
-	const toneBySourceId = buildStage2SourceToneMap(blockRowNodes.map((node) => node.row));
+	const {
+		blockRowNodes,
+		rowNode,
+		toneBySourceId,
+		serverAggregationEnabled,
+		isAggInstance,
+		isAggInstanceTail,
+		isAggMember,
+	} = context;
 	const rowIndexInBlock = blockRowNodes.findIndex((candidate) => candidate.rowKey === rowNode.rowKey);
 	const sourceLandingName = getStage2RowSourceLandingName(rowNode.row);
 	const previousSourceLandingName =
@@ -335,10 +342,21 @@ export function getStage2FlatRowInlineClassName(
  * - source 组：`is-source-spine-start` / `is-source-spine-end`（同 flat 表）
  * - server 聚合块：`is-agg-instance` / `is-agg-instance-tail` / `is-agg-source-boundary`（仅 instance 行）
  */
+function collectStage2TreeRows(nodes: Stage2TreeNode[]): Stage2Row[] {
+	return nodes
+		.filter((candidate): candidate is Stage2TreeRowNode => candidate.kind === "row")
+		.map((node) => node.row);
+}
+
 export function getStage2AggregationTreeRowInlineClassName(
 	nodes: Stage2TreeNode[],
 	index: number,
-	options?: { serverAggregationEnabled?: boolean; isAggMember?: boolean },
+	options?: {
+		serverAggregationEnabled?: boolean;
+		isAggMember?: boolean;
+		/** 与平铺表共用；应基于 stage2Rows 行序构建，勿按 server 块重算。 */
+		toneBySourceId?: Map<string, number>;
+	},
 ): string {
 	const node = nodes[index];
 	const serverAggregationEnabled = options?.serverAggregationEnabled ?? true;
@@ -364,10 +382,12 @@ export function getStage2AggregationTreeRowInlineClassName(
 	const blockRowNodes = nodes
 		.slice(blockStart + 1, blockEnd + 1)
 		.filter((candidate): candidate is Stage2TreeRowNode => candidate.kind === "row");
+	const toneBySourceId = options?.toneBySourceId ?? buildStage2SourceToneMap(collectStage2TreeRows(nodes));
 
 	return buildStage2InstanceRowInlineClassName({
 		blockRowNodes,
 		rowNode: node,
+		toneBySourceId,
 		serverAggregationEnabled,
 		isAggInstance: serverAggregationEnabled,
 		isAggInstanceTail: index === blockEnd,

@@ -119,12 +119,72 @@ describe("default nested aggregation tree projection", () => {
 
 	it("keeps adjacent different sources on distinct tones in aggregation tree blocks", () => {
 		const nodes = buildStage2AggregationTree(rows, () => null);
-		const sourceAClasses = getStage2AggregationTreeRowInlineClassName(nodes, 1);
-		const sourceBClasses = getStage2AggregationTreeRowInlineClassName(nodes, 3);
+		const toneBySourceId = buildStage2SourceToneMap(rows);
+		const sourceAClasses = getStage2AggregationTreeRowInlineClassName(nodes, 1, { toneBySourceId });
+		const sourceBClasses = getStage2AggregationTreeRowInlineClassName(nodes, 3, { toneBySourceId });
 		const sourceATone = sourceAClasses.match(/is-source-tone-(\d)/)?.[1];
 		const sourceBTone = sourceBClasses.match(/is-source-tone-(\d)/)?.[1];
 		expect(sourceATone).toBeDefined();
 		expect(sourceBTone).toBeDefined();
 		expect(sourceATone).not.toBe(sourceBTone);
+	});
+
+	it("uses the same source tone map as the flat table across server blocks", () => {
+		const multiServerRows: Stage2Row[] = [
+			{
+				instanceId: "source-a::i1",
+				instanceIndex: 0,
+				sourceId: "source-a",
+				serverKey: "edge",
+				proxyName: "Edge A",
+				mode: "none",
+				targetName: null,
+			},
+			{
+				instanceId: "source-b::i1",
+				instanceIndex: 0,
+				sourceId: "source-b",
+				serverKey: "edge",
+				proxyName: "Edge B",
+				mode: "none",
+				targetName: null,
+			},
+			{
+				instanceId: "source-c::i1",
+				instanceIndex: 0,
+				sourceId: "source-c",
+				serverKey: "core",
+				proxyName: "Core C",
+				mode: "none",
+				targetName: null,
+			},
+			{
+				instanceId: "source-a::i2",
+				instanceIndex: 1,
+				sourceId: "source-a",
+				serverKey: "core",
+				proxyName: "Core A",
+				mode: "none",
+				targetName: null,
+			},
+		];
+		const toneBySourceId = buildStage2SourceToneMap(multiServerRows);
+		const nodes = buildStage2AggregationTree(multiServerRows, () => null);
+		const coreSourceARowIndex = nodes.findIndex(
+			(node) => node.kind === "row" && node.row.instanceId === "source-a::i2",
+		);
+		expect(coreSourceARowIndex).toBeGreaterThan(0);
+
+		const flatToneClass = getStage2FlatRowInlineClassName(
+			multiServerRows,
+			3,
+			multiServerRows[3],
+			true,
+			toneBySourceId,
+		);
+		const treeToneClass = getStage2AggregationTreeRowInlineClassName(nodes, coreSourceARowIndex, {
+			toneBySourceId,
+		});
+		expect(treeToneClass).toContain(flatToneClass.match(/is-source-tone-\d/)?.[0] ?? "");
 	});
 });

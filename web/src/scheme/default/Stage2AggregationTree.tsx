@@ -12,6 +12,7 @@ import {
 import { formatModeReason } from "../../lib/mode-reason";
 import {
 	buildStage2AggregationTreeFromSnapshot,
+	buildStage2SourceToneMap,
 	getServerBlockAggregationEnabled,
 	getStage2AggregationTreeRowInlineClassName,
 	type Stage2TreeNode,
@@ -119,6 +120,7 @@ export function Stage2AggregationTree({
 		() => buildStage2AggregationTreeFromSnapshot(state.stage2Snapshot, state.stage2Catalog),
 		[state.stage2Snapshot, state.stage2Catalog],
 	);
+	const sourceToneBySourceId = useMemo(() => buildStage2SourceToneMap(stage2Rows), [stage2Rows]);
 
 	const stage2ColumnMeasureInput = useMemo(() => {
 		if (treeNodes.length === 0) {
@@ -206,6 +208,7 @@ export function Stage2AggregationTree({
 							node={node}
 							nodeIndex={nodeIndex}
 							treeNodes={treeNodes}
+							sourceToneBySourceId={sourceToneBySourceId}
 							workflow={workflow}
 							locale={locale}
 							copy={copy}
@@ -230,6 +233,7 @@ function Stage2AggregationTreeRow({
 	node,
 	nodeIndex,
 	treeNodes,
+	sourceToneBySourceId,
 	workflow,
 	locale,
 	copy,
@@ -246,6 +250,7 @@ function Stage2AggregationTreeRow({
 	node: Stage2TreeNode;
 	nodeIndex: number;
 	treeNodes: Stage2TreeNode[];
+	sourceToneBySourceId: Map<string, number>;
 	workflow: AppWorkflowViewModel;
 	locale: Stage2Locale;
 	copy: Stage2Copy & Record<string, string>;
@@ -292,6 +297,7 @@ function Stage2AggregationTreeRow({
 	if (node.kind === "server") {
 		const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex, {
 			serverAggregationEnabled,
+			toneBySourceId: sourceToneBySourceId,
 		});
 		const anchorRow = stage2Rows.find((candidate) => getStage2RowStrictKey(candidate) === node.anchorRowKey);
 		if (!anchorRow) {
@@ -408,6 +414,7 @@ function Stage2AggregationTreeRow({
 	const rowInlineClassName = getStage2AggregationTreeRowInlineClassName(treeNodes, nodeIndex, {
 		serverAggregationEnabled,
 		isAggMember: row.instanceId ? memberChecked : undefined,
+		toneBySourceId: sourceToneBySourceId,
 	});
 	const canDeleteRow = canDeleteStage2Row(rowKey);
 	const deleteRowTitle = canDeleteRow ? undefined : copy.keepOneInstance;
