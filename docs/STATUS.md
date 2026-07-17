@@ -62,5 +62,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-07-17：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`beta-latest` / `v3.3.0-beta.1` @ `77b6d19` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md) |
-| **本地自动化基线** | 2026-07-17：`go test ./...`、`npm run test`、`test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**；见 [runbook.md](testing/runbook.md) |
+| **第三方部署** | 2026-07-17：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`beta-latest` / `v3.3.0-beta.2` @ `a21c693` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md) |
+| **本地自动化基线** | 2026-07-17：`go test ./...`、`npm run test`、`build:default`、`docker compose -f deploy/docker-compose.yml config` **通过**；`beta` CI @ `a21c693` **通过**；见 [runbook.md](testing/runbook.md) |
