@@ -481,7 +481,7 @@ Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing instance
 - 只允许覆写当前快照引用到的既有 `proxy-groups`；不得为该能力新增新的策略组名
 - 覆写对象按 `targetName` 定位；最终该 instance 的 `dialer-proxy` 仍保持 `dialer-proxy: <targetName>`
 - 组成员列表沿用 `full-base pass` 与 `1.3` 出组后的结果，不因切换优化开关而重新展开成员
-- 切换优化仅统一写入 `timeout = 500` 与 `max-failed-times = 1`；其余健康检查参数（含 `type`、`url`、`interval`、`lazy`、`tolerance` 等）保持模板 / full-base 原值
+- 切换优化仅统一写入 `timeout = 1000` 与 `max-failed-times = 1`；其余健康检查参数（含 `type`、`url`、`interval`、`lazy`、`tolerance` 等）保持模板 / full-base 原值
 
 ### 3.3.2 server 聚合组追加（Pass 3 后）
 
@@ -489,7 +489,7 @@ Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing instance
 
 每条追加组固定写入以下受管快速判错参数：
 
-- `timeout = 500`
+- `timeout = 1000`
 - `max-failed-times = 1`
 
 当 `strategy` 为 `fallback`、`url-test` 或 `load-balance` 时，还需写入与模板一致的基线健康检查字段：`url = https://cp.cloudflare.com/generate_204`、`interval = 300`；不写入 `lazy`、`tolerance` 等额外字段。`strategy = select` 时仅写入 `name`、`type` 与 `proxies`。

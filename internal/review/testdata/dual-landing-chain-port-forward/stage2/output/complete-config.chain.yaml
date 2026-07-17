@@ -965,7 +965,7 @@ proxy-groups:
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
-    timeout: 500
+    timeout: 1000
     max-failed-times: 1
     proxies:
       - Transit-A-HongKong-SS-01
@@ -987,7 +987,7 @@ proxy-groups:
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
-    timeout: 500
+    timeout: 1000
     max-failed-times: 1
     proxies:
       - Transit-A-Japan-Trojan-01
@@ -998,7 +998,7 @@ proxy-groups:
     url: https://cp.cloudflare.com/generate_204
     interval: 300
     tolerance: 50
-    timeout: 500
+    timeout: 1000
     max-failed-times: 1
     proxies:
       - Transit-A-Singapore-Hysteria2-01
@@ -1029,7 +1029,7 @@ proxy-groups:
     type: fallback
     url: https://cp.cloudflare.com/generate_204
     interval: 300
-    timeout: 500
+    timeout: 1000
     max-failed-times: 1
     proxies:
       - 🇸🇬 Alpha-Reality-SG 2

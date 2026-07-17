@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	switchOptimizationTimeout        = "500"
+	switchOptimizationTimeout        = "1000"
 	switchOptimizationMaxFailedTimes = "1"
 )
 

@@ -125,7 +125,7 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_DeduplicatesMembersBy
 		"    type: fallback",
 		"    url: https://cp.cloudflare.com/generate_204",
 		"    interval: 300",
-		"    timeout: 500",
+		"    timeout: 1000",
 		"    max-failed-times: 1",
 		"    proxies:",
 		"      - HK Landing",

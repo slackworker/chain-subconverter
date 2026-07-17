@@ -965,7 +965,7 @@ func TestRenderCompleteConfigFromSource_AppliesSwitchOptimizationOnManagedPass3P
 		t.Fatalf("RenderCompleteConfigFromSource() error = %v", err)
 	}
 
-	if !strings.Contains(renderedConfig, "    timeout: 500") || !strings.Contains(renderedConfig, "    max-failed-times: 1") {
+	if !strings.Contains(renderedConfig, "    timeout: 1000") || !strings.Contains(renderedConfig, "    max-failed-times: 1") {
 		t.Fatalf("rendered config should include switch optimization fields on managed pass3 path:\n%s", renderedConfig)
 	}
 	if strings.Contains(renderedConfig, "    lazy: false") {

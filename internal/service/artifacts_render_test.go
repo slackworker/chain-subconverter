@@ -228,7 +228,7 @@ func TestRenderCompleteConfig_AppendsServerAggregationGroup(t *testing.T) {
 	if !strings.Contains(rendered, "      - HK Landing\n      - HK Landing Copy") {
 		t.Fatalf("rendered config is missing server aggregation group members:\n%s", rendered)
 	}
-	if !strings.Contains(rendered, "    timeout: 500\n    max-failed-times: 1") {
+	if !strings.Contains(rendered, "    timeout: 1000\n    max-failed-times: 1") {
 		t.Fatalf("rendered config is missing server aggregation fast-fail profile:\n%s", rendered)
 	}
 }
@@ -298,7 +298,7 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationOverrides(t *testing.T) {
 
 	for _, want := range []string{
 		"    interval: 300",
-		"    timeout: 500",
+		"    timeout: 1000",
 		"    max-failed-times: 1",
 		"    tolerance: 50",
 	} {
@@ -436,13 +436,13 @@ func TestRenderCompleteConfig_AppliesSwitchOptimizationAndServerAggregation(t *t
 	for _, want := range []string{
 		"  - name: 🇭🇰 香港节点",
 		"    interval: 300",
-		"    timeout: 500",
+		"    timeout: 1000",
 		"    max-failed-times: 1",
 		"    tolerance: 50",
 		"  - name: landing.example.com",
 		"    type: fallback",
 		"    interval: 300",
-		"    timeout: 500",
+		"    timeout: 1000",
 		"    max-failed-times: 1",
 		"      - HK Landing",
 		"      - HK Landing Copy",
@@ -711,7 +711,7 @@ func TestRenderCompleteConfig_KeepsLandingMembersInManagedURLTestAggregation(t *
 		strings.Contains(rendered, "  - name: 🇭🇰 香港节点\n    type: url-test\n    proxies:\n      - HK Landing Copy") {
 		t.Fatalf("region url-test group should strip all landing members:\n%s", rendered)
 	}
-	if !strings.Contains(rendered, "  - name: landing.example.com\n    type: url-test\n    url: https://cp.cloudflare.com/generate_204\n    interval: 300\n    timeout: 500\n    max-failed-times: 1\n    proxies:\n      - HK Landing\n      - HK Landing Copy") {
+	if !strings.Contains(rendered, "  - name: landing.example.com\n    type: url-test\n    url: https://cp.cloudflare.com/generate_204\n    interval: 300\n    timeout: 1000\n    max-failed-times: 1\n    proxies:\n      - HK Landing\n      - HK Landing Copy") {
 		t.Fatalf("managed url-test aggregation must keep landing members:\n%s", rendered)
 	}
 }
