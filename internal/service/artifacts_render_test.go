@@ -752,3 +752,32 @@ func TestStripLandingNodesFromProxyGroups_ExcludesManagedAggregationNames(t *tes
 		t.Fatalf("non-excluded url-test group should strip landing member:\n%s", rendered)
 	}
 }
+
+func TestStage2StripLandingNames_OnlyUsesProxyNames(t *testing.T) {
+	snapshot := Stage2Snapshot{
+		Servers: []Stage2SnapshotServer{{
+			ServerKey: "landing.example.com",
+			Sources: []Stage2SnapshotSource{{
+				SourceID: "HK Landing",
+				Instances: []Stage2Instance{
+					{ProxyName: "🇭🇰 Renamed Landing", Mode: "none"},
+					{ProxyName: "🇭🇰 Renamed Landing 2", Mode: "none"},
+				},
+			}},
+		}},
+	}
+
+	got := stage2StripLandingNames(snapshot)
+	if _, ok := got["🇭🇰 Renamed Landing"]; !ok {
+		t.Fatalf("expected renamed proxyName in strip set: %#v", got)
+	}
+	if _, ok := got["🇭🇰 Renamed Landing 2"]; !ok {
+		t.Fatalf("expected copied proxyName in strip set: %#v", got)
+	}
+	if _, ok := got["HK Landing"]; ok {
+		t.Fatalf("must not include discovery sourceId when proxyName differs: %#v", got)
+	}
+	if len(got) != 2 {
+		t.Fatalf("strip set size = %d, want 2: %#v", len(got), got)
+	}
+}

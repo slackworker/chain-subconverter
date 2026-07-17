@@ -22,7 +22,6 @@ type managedPass3Prepared struct {
 	prepared                      PreparedConversion
 	fixtures                      ConversionFixtures
 	fixturesForSnapshotValidation ConversionFixtures
-	landingProxies                []resolvedLandingProxy
 	managedLandingYAML            string
 	managedTransitProxiesYAML     string
 }
@@ -183,8 +182,7 @@ func (pipeline *CorePipeline) prepareManagedPass3Render() (managedPass3Prepared,
 	// Snapshot validation must keep Stage1 discovery identity as source of truth.
 	fixturesForSnapshotValidation.FullBaseYAML = ""
 
-	landingProxies, err := validateGenerateSnapshot(pipeline.stage1Input, pipeline.stage2Snapshot, fixturesForSnapshotValidation)
-	if err != nil {
+	if _, err := validateGenerateSnapshot(pipeline.stage1Input, pipeline.stage2Snapshot, fixturesForSnapshotValidation); err != nil {
 		if prepared.Cleanup != nil {
 			prepared.Cleanup()
 		}
@@ -218,7 +216,6 @@ func (pipeline *CorePipeline) prepareManagedPass3Render() (managedPass3Prepared,
 		prepared:                      prepared,
 		fixtures:                      fixtures,
 		fixturesForSnapshotValidation: fixturesForSnapshotValidation,
-		landingProxies:                landingProxies,
 		managedLandingYAML:            managedLandingYAML,
 		managedTransitProxiesYAML:     managedTransitProxiesYAML,
 	}, nil
@@ -284,7 +281,7 @@ func (pipeline *CorePipeline) renderManagedPass3CompleteConfig(preparedRender ma
 	rendered, err := stripLandingNodesFromCompleteConfigYAML(
 		fullBaseYAML,
 		pipeline.stage2Snapshot,
-		stage2StripLandingNames(preparedRender.landingProxies, pipeline.stage2Snapshot),
+		stage2StripLandingNames(pipeline.stage2Snapshot),
 		regionGroupNames,
 		proxyGroupChainTargetNameSet(catalog),
 	)

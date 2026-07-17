@@ -143,16 +143,10 @@ func recognizedRegionGroupSet(fixtures ConversionFixtures) (map[string]struct{},
 	return result, nil
 }
 
-func stage2StripLandingNames(landingProxies []resolvedLandingProxy, snapshot Stage2Snapshot) map[string]struct{} {
+func stage2StripLandingNames(snapshot Stage2Snapshot) map[string]struct{} {
 	refs := FlattenStage2Instances(snapshot)
-	stripNames := make(map[string]struct{}, len(landingProxies)+len(refs)*2)
-	for _, landing := range landingProxies {
-		stripNames[landing.Name] = struct{}{}
-	}
+	stripNames := make(map[string]struct{}, len(refs))
 	for _, ref := range refs {
-		if sourceID := strings.TrimSpace(ref.SourceID); sourceID != "" {
-			stripNames[sourceID] = struct{}{}
-		}
 		if proxyName := strings.TrimSpace(ref.Instance.ProxyName); proxyName != "" {
 			stripNames[proxyName] = struct{}{}
 		}

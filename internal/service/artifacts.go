@@ -119,8 +119,7 @@ func BuildLongURLPayload(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot)
 func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot, fixtures ConversionFixtures) (string, error) {
 	stage1Input = NormalizeStage1Input(stage1Input)
 	stage2Snapshot = NormalizeStage2Snapshot(stage2Snapshot)
-	landingProxies, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures)
-	if err != nil {
+	if _, err := validateGenerateSnapshot(stage1Input, stage2Snapshot, fixtures); err != nil {
 		return "", err
 	}
 	regionMatchers, err := loadRegionMatchers(fixtures.TemplateConfig)
@@ -128,7 +127,7 @@ func RenderCompleteConfig(stage1Input Stage1Input, stage2Snapshot Stage2Snapshot
 		return "", newInternalResponseError("failed to load region matchers", fmt.Errorf("load region matchers: %w", err))
 	}
 
-	landingNames := stage2StripLandingNames(landingProxies, stage2Snapshot)
+	landingNames := stage2StripLandingNames(stage2Snapshot)
 	regionGroupNames := make(map[string]struct{}, len(regionMatchers))
 	for _, matcher := range regionMatchers {
 		regionGroupNames[matcher.TargetName] = struct{}{}

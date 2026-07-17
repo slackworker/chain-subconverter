@@ -226,7 +226,7 @@
    - 所有 `type: url-test` 的策略组
    - 所有 `type: smart` 的策略组
 2. 排除目标：`3.3.2` 自建 / 受管 server 聚合策略组（按 `2.7` 推导名识别）。即使其 `type` 为 `url-test` / `smart`，也不得从中剔除落地成员；管线顺序上出组发生在聚合组追加之前，本条同时约束任何等价实现不得事后从聚合组回剔
-3. 从上述目标组（扣除排除项后）的成员列表中剔除落地身份名；剔除集合 = 当前 `landing-discovery pass` 全部 `proxy.name`（各源 `sourceId`）∪ snapshot 全部 instance `proxyName`
+3. 从上述目标组（扣除排除项后）的成员列表中剔除落地成员名；剔除集合 = 当前 snapshot 全部 instance 的 `proxyName`（trim 后非空）。Pass 3 托管 landing 仅以 `proxyName` 写出，不得再并入 discovery 原始名 / `sourceId`（避免与同名中转节点误剔）
 4. 若某名称同时出现在多个目标组中，必须在每个命中的目标组内都剔除
 5. 完成剔除后的结果，才是后续校验与订阅渲染统一使用的 `baseCompleteConfig`
 6. 在执行 2.3 的区域策略组成员统计前，先应用剔除语义；区域策略组成员统计只计入中转节点（非地域的 `url-test` / `smart` 出组不影响 `chainTargets[]` 收集口径）

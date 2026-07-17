@@ -301,7 +301,7 @@ instanceId = trim(sourceId) + "::i" + N
 
 - convert Pipeline 终点由 `buildStage2Init` 升级为 `buildStage2Bundle`（产出 catalog + 默认 snapshot）
 - Pass 3 托管 landing：按树 DFS 展开全部 instances，用 `sourceId` 从 Pass 1 取连接参数，以 `proxyName` 写出
-- 出组剔除集合：全部 Pass 1 `sourceId` ∪ 全部 snapshot `proxyName`
+- 出组剔除集合：全部 snapshot instance `proxyName`（与 Pass 3 托管 landing 写出名一致；不含 discovery `sourceId`）
 - 聚合组渲染：仅 `enabled=true` 的 server；成员与顺序按 §6；命名规则见 [04 §2.7 / §3.3.2](04-business-rules.md)（字段改为 `servers[].aggregation`）
 - 切换优化：仍由 `chainProxyTargetGroupSwitchOptimizationEnabled` 全局开关控制；作用对象为 `mode=chain` 且目标为 `kind=proxy-groups` 的 **instances**
 
