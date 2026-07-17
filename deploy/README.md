@@ -25,7 +25,7 @@ APP_IMAGE="ghcr.io/slackworker/chain-subconverter:latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
 DEFAULT_TEMPLATE_URL="https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 TRUSTED_PROXY_CIDRS="172.16.0.0/12"
-SHORT_LINK_CAPACITY="1000"
+SHORT_LINK_CAPACITY="100"
 # --- 可选（默认注释；见下方环境变量表）---
 # USER_FACING_BASE_URL=""
 # TEMPLATE_ALLOW_PRIVATE_NETWORKS="false"
@@ -155,7 +155,7 @@ environment:
 | `SUBCONVERTER_IMAGE` | `subconverter.image` | `…/subconverter:integration-…` | 锁定版本 | 集成 subconverter 镜像 |
 | `DEFAULT_TEMPLATE_URL` | `CHAIN_…_DEFAULT_TEMPLATE_URL` | slackworker fork Raw | 自托管模板 | 阶段 1 默认模板；经 `/api/runtime-config` 下发 |
 | `TRUSTED_PROXY_CIDRS` | `CHAIN_…_TRUSTED_PROXY_CIDRS` | `172.16.0.0/12` | 反代 peer 网段不同 | 命中后方信任 `X-Forwarded-*`；HTTPS 推断与限速分桶 |
-| `SHORT_LINK_CAPACITY` | `CHAIN_…_SHORT_LINK_CAPACITY` | `1000` | 容量需求 | 短链索引上限；若下调后出现 `used > capacity`，运行时状态会先显示超容，首次写请求再按 LRU 收敛 |
+| `SHORT_LINK_CAPACITY` | `CHAIN_…_SHORT_LINK_CAPACITY` | `100` | 容量需求 | 短链索引上限；若下调后出现 `used > capacity`，运行时状态会先显示超容，首次写请求再按 LRU 收敛 |
 | `USER_FACING_BASE_URL` | `CHAIN_…_USER_FACING_BASE_URL` | 空 | 固定域名/多入口 | 浏览器与最终链接；勿填 `http://app:11200` |
 | `TEMPLATE_ALLOW_PRIVATE_NETWORKS` | `CHAIN_…_TEMPLATE_ALLOW_*` | `false` | 可信内网模板源 | 允许拉取私网模板 URL（SSRF 边界见 SECURITY） |
 | `WRITE_REQUESTS_PER_MINUTE` | `CHAIN_…_WRITE_*` | `60` | 调试 | 四写接口共享 per-IP 限速；`0` 关闭 |

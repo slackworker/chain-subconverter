@@ -13,6 +13,7 @@
 - 默认 **`/`**（`default`）；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（日常集成 · `dev-latest` 手动）· `beta`（预发布 · `beta-latest`）· `main`（稳定线 · `latest`；当前止于 v3.0.0-beta.4，**无 v3.0 GA**）
 - 契约与实现边界： [spec/02–05](spec/)（含 Pipeline hard-break、长链 v5、恢复冲突、snapshot-first 三 pass、stage2 复制/改名/行序、server 聚合；§3.3.3 仅向直接包含该聚合全部成员的 select 注入，见 [04 §1.1.3 / §1.3 / §2.1.2 / §2.7 / §3.2.1 / §3.3.3](spec/04-business-rules.md)；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](spec/06-stage2-model.md)）
+- 短链索引默认容量：`100`（`SHORT_LINK_CAPACITY` / [spec 03 §短链接](spec/03-backend-api.md)）
 
 ## 分支与提交流程
 
