@@ -347,6 +347,23 @@ func (source *dualLandingChainPortForwardSource) Convert(_ context.Context, _ su
 	return source.result, nil
 }
 
+func (source *dualLandingChainPortForwardSource) ConvertWithPlan(_ context.Context, _ subconverter.Request, plan subconverter.ConvertPlan) (subconverter.ThreePassResult, error) {
+	result := source.result
+	if !plan.IncludeFullBase {
+		result.FullBase = subconverter.PassResult{}
+	}
+	return result, nil
+}
+
+func (source *dualLandingChainPortForwardSource) RenderManagedPass3(_ context.Context, _ PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error) {
+	return SynthesizeManagedPass3FullBaseYAML(
+		source.result.FullBase.YAML,
+		source.result.LandingDiscovery.YAML,
+		managedLandingYAML,
+		managedTransitProxiesYAML,
+	)
+}
+
 func dualLandingChainPortForwardStage1Input(t *testing.T) Stage1Input {
 	t.Helper()
 

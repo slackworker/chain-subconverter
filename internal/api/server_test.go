@@ -17,6 +17,7 @@ import (
 	"github.com/slackworker/chain-subconverter/internal/config"
 	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
+	"github.com/slackworker/chain-subconverter/internal/testfixtures"
 )
 
 type fakeConversionSource struct {
@@ -25,6 +26,11 @@ type fakeConversionSource struct {
 	result             subconverter.ThreePassResult
 	err                error
 	defaultTemplateURL string
+}
+
+type fakeManagedConversionSource struct {
+	fakeConversionSource
+	templateConfig string
 }
 
 const (
@@ -46,6 +52,60 @@ func (source *fakeConversionSource) ConvertWithPlan(_ context.Context, request s
 
 func (source *fakeConversionSource) DefaultTemplateURL() string {
 	return source.defaultTemplateURL
+}
+
+func (source *fakeManagedConversionSource) PrepareConversion(_ context.Context, stage1Input service.Stage1Input) (service.PreparedConversion, error) {
+	normalized := service.NormalizeStage1Input(stage1Input)
+	return service.PreparedConversion{
+		Request: subconverter.Request{
+			LandingRawText: normalized.LandingRawText,
+			TransitRawText: normalized.TransitRawText,
+			Options: subconverter.AdvancedOptions{
+				Emoji:          normalized.AdvancedOptions.Emoji,
+				UDP:            normalized.AdvancedOptions.UDP,
+				SkipCertVerify: normalized.AdvancedOptions.SkipCertVerify,
+				Config:         normalized.AdvancedOptions.Config,
+				Include:        append([]string(nil), normalized.AdvancedOptions.Include...),
+				Exclude:        append([]string(nil), normalized.AdvancedOptions.Exclude...),
+			},
+		},
+		TemplateConfig: source.templateConfig,
+	}, nil
+}
+
+func (source *fakeManagedConversionSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error) {
+	return service.SynthesizeManagedPass3FullBaseYAML(
+		source.result.FullBase.YAML,
+		source.result.LandingDiscovery.YAML,
+		managedLandingYAML,
+		managedTransitProxiesYAML,
+	)
+}
+
+func dualLandingChainPortForwardTemplateConfig(t *testing.T) string {
+	t.Helper()
+
+	scenario, err := testfixtures.LoadStage1Scenario(filepath.Join("..", "..", "testdata", "canonical-scenarios", "dual-landing-chain-port-forward.stage1.json"))
+	if err != nil {
+		t.Fatalf("LoadStage1Scenario() error = %v", err)
+	}
+	if scenario.TemplateFixture == nil {
+		t.Fatal("TemplateFixture should not be nil")
+	}
+	content, err := scenario.ReadRelativeFile(scenario.TemplateFixture.ContentFile)
+	if err != nil {
+		t.Fatalf("ReadRelativeFile(%q) error = %v", scenario.TemplateFixture.ContentFile, err)
+	}
+	return content
+}
+
+func dualLandingManagedConversionSource(t *testing.T) *fakeManagedConversionSource {
+	t.Helper()
+	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
+	return &fakeManagedConversionSource{
+		fakeConversionSource: fakeConversionSource{result: loadThreePassResult(t, fixtureDir)},
+		templateConfig:       dualLandingChainPortForwardTemplateConfig(t),
+	}
 }
 
 func TestStage1ConvertHandler_HappyPath(t *testing.T) {
@@ -813,9 +873,7 @@ func TestSubscriptionHandler_DualLandingChainPortForwardHappyPath(t *testing.T) 
 	var generateResponse service.GenerateResponse
 	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
 
-	handler := mustNewTestHandler(t, &fakeConversionSource{
-		result: loadThreePassResult(t, fixtureDir),
-	})
+	handler := mustNewTestHandler(t, dualLandingManagedConversionSource(t))
 
 	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
 	recorder := httptest.NewRecorder()

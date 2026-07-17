@@ -522,6 +522,15 @@ func (source *reviewFixtureSource) PrepareConversion(_ context.Context, stage1In
 	}, nil
 }
 
+func (source *reviewFixtureSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error) {
+	return service.SynthesizeManagedPass3FullBaseYAML(
+		source.result.FullBase.YAML,
+		source.result.LandingDiscovery.YAML,
+		managedLandingYAML,
+		managedTransitProxiesYAML,
+	)
+}
+
 func loadThreePassResultFromDirectory(fixtureDir string) (subconverter.ThreePassResult, error) {
 	landingRequestURL, err := readFixtureText(filepath.Join(fixtureDir, "stage1", "output", "landing-discovery.url.txt"))
 	if err != nil {

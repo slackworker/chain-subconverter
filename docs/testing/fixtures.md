@@ -208,3 +208,5 @@ Worker 同步:       cd deploy/test-fixtures-worker && npm run sync && npm run c
 ```
 
 `testfixturegen` 会同时刷新 `stage1/input/*` 与 `stage2/output/*`（generate、short-links、long-url、complete-config）。额外 live Stage 1 重录时刷新 `stage1/output/*` 与 `stage1-convert.*`，不覆盖 `stage2/input/stage2-snapshot.json`。
+
+`complete-config.chain.yaml` 按托管 Pass 3 语义离线合成（`SynthesizeManagedPass3FullBaseYAML`）：以 stage1 `full-base` 为骨架，拼入托管 landing/transit，并将策略组中的 discovery 落地名展开为 snapshot `proxyName`（含副本），再走出组与 §3.3.3 注入。

@@ -85,9 +85,14 @@ func (source *fakeManagedSnapshotSource) ConvertWithPlan(_ context.Context, _ su
 	return result, nil
 }
 
-func (source *fakeManagedSnapshotSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, _ string, _ string) (string, error) {
+func (source *fakeManagedSnapshotSource) RenderManagedPass3(_ context.Context, _ service.PreparedConversion, managedLandingYAML string, managedTransitProxiesYAML string) (string, error) {
 	source.renderManagedPass3Calls++
-	return source.result.FullBase.YAML, nil
+	return service.SynthesizeManagedPass3FullBaseYAML(
+		source.result.FullBase.YAML,
+		source.result.LandingDiscovery.YAML,
+		managedLandingYAML,
+		managedTransitProxiesYAML,
+	)
 }
 
 func TestBuildDefaultArtifacts_HappyPath(t *testing.T) {
@@ -147,7 +152,7 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 	}
 
 	fixtureDir := filepath.Join("testdata", "dual-landing-chain-port-forward")
-	source := &fakeTemplatePreparingSource{
+	stage1Source := &fakeTemplatePreparingSource{
 		request: subconverter.Request{
 			LandingRawText: testCase.Stage1Input.LandingRawText,
 			TransitRawText: testCase.Stage1Input.TransitRawText,
@@ -164,7 +169,7 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 		result:         loadThreePassResult(t, fixtureDir),
 	}
 
-	stage1Bundle, err := BuildStage1Artifacts(context.Background(), source, testCase)
+	stage1Bundle, err := BuildStage1Artifacts(context.Background(), stage1Source, testCase)
 	if err != nil {
 		t.Fatalf("BuildStage1Artifacts() error = %v", err)
 	}
@@ -181,7 +186,11 @@ func TestBuildDualLandingChainPortForwardArtifacts_HappyPath(t *testing.T) {
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/template-diagnostics.json", "🇭🇰 香港节点")
 	assertArtifactContains(t, stage1Bundle.Files, "stage1/output/template-diagnostics.json", "🇯🇵 日本节点")
 
-	stage2Bundle, err := BuildStage2Artifacts(context.Background(), source, testCase, "http://localhost:11200", 0)
+	stage2Source := &fakeManagedSnapshotSource{
+		result:         loadThreePassResult(t, fixtureDir),
+		templateConfig: dualLandingChainPortForwardTemplateConfig(t),
+	}
+	stage2Bundle, err := BuildStage2Artifacts(context.Background(), stage2Source, testCase, "http://localhost:11200", 0)
 	if err != nil {
 		t.Fatalf("BuildStage2Artifacts() error = %v", err)
 	}
