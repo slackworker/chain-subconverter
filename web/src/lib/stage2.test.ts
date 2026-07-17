@@ -130,6 +130,57 @@ describe("nested stage2 utilities", () => {
 			.toEqual(["landing-a::i1", "landing-a::i2"]);
 	});
 
+	it("hydrates aggregation membership from wire memberProxyNames", () => {
+		const wire = {
+			servers: [{
+				serverKey: "edge-a",
+				aggregation: {
+					enabled: true,
+					groupName: "Edge Agg",
+					strategy: "fallback" as const,
+					memberProxyNames: ["Landing A 2", "Landing A"],
+				},
+				sources: [{
+					sourceId: "landing-a",
+					instances: [
+						{ proxyName: "Landing A", mode: "none" as const, targetName: null },
+						{ proxyName: "Landing A 2", mode: "none" as const, targetName: null },
+					],
+				}],
+			}],
+		};
+		const hydrated = hydrateInstanceIds(wire);
+		expect(hydrated.servers[0].aggregation).toEqual({
+			enabled: true,
+			groupName: "Edge Agg",
+			strategy: "fallback",
+			memberLocalInstanceIds: ["landing-a::i2", "landing-a::i1"],
+		});
+		expect(hydrated.servers[0].aggregation).not.toHaveProperty("memberProxyNames");
+	});
+
+	it("remaps client memberLocalInstanceIds when hydrate recompresses ordinals", () => {
+		const snapshot: Stage2Snapshot = {
+			servers: [{
+				serverKey: "edge-a",
+				aggregation: {
+					enabled: true,
+					strategy: "url-test",
+					memberLocalInstanceIds: ["landing-a::i1", "landing-a::i3"],
+				},
+				sources: [{
+					sourceId: "landing-a",
+					instances: [
+						{ instanceId: "landing-a::i1", proxyName: "Landing A", mode: "none", targetName: null },
+						{ instanceId: "landing-a::i3", proxyName: "Landing A 2", mode: "none", targetName: null },
+					],
+				}],
+			}],
+		};
+		expect(hydrateInstanceIds(snapshot).servers[0].aggregation.memberLocalInstanceIds)
+			.toEqual(["landing-a::i1", "landing-a::i2"]);
+	});
+
 	it("strips disabled aggregation drafts and maps members for request snapshots", () => {
 		const snapshot: Stage2Snapshot = defaultSnapshotFromCatalog(catalog);
 		snapshot.servers[0].aggregation = {

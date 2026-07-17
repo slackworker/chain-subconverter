@@ -616,7 +616,7 @@
 
 - `restoreStatus` 只能是 `replayable` 或 `conflicted`
 - `restoreConflicts[]` 为可选数组；`restoreStatus = replayable` 时可省略或返回空数组，`restoreStatus = conflicted` 时必须非空
-- 传入长链接时，先解码 `stage1Input` 与编码态 snapshot（v5）；响应 snapshot 不含 `instanceId`（前端 `hydrateInstanceIds`）
+- 传入长链接时，先解码 `stage1Input` 与编码态 snapshot（v5）；响应 snapshot 为 Wire 形（不含 `instanceId` / `memberLocalInstanceIds`）；前端须 `hydrateInstanceIds`（见 [06 §9](06-stage2-model.md)）
 - 传入短链接或裸 `shortID` 时，先解析为长链接，再解码同一份快照
 - 传入短链接或裸 `shortID` 且解析成功时，成功响应必须额外返回规范化 `shortUrl`；传入长链接时不返回该字段
 - 裸 `shortID` 仅接受当前短链编码 token；其他非 URL 文本必须按 `INVALID_URL` 处理

@@ -203,7 +203,7 @@
 - 提供复制/删除实例（至少保留每个 `sourceId` 一个 instance）
 - 复制时：`proxyName` 按 `原名 2`、`原名 3`… 派生；`instanceId` 分配新 ordinal（见 [06 §5](06-stage2-model.md)）
 - 改名时仅改 `proxyName`；`instanceId` 与 `memberLocalInstanceIds` **不变**
-- convert/resolve 响应后须 `hydrateInstanceIds`；`generate` 前须 `normalizeSnapshotForRequest`（strip `instanceId`，`memberLocalInstanceIds` → `memberProxyNames`）
+- convert/resolve 响应后须 `hydrateInstanceIds`（补 `instanceId`，并将 Wire `memberProxyNames` → Client `memberLocalInstanceIds`）；`generate` 前须 `normalizeSnapshotForRequest`（strip `instanceId`，`memberLocalInstanceIds` → `memberProxyNames`）
 
 ### 2.4 第二列：节点类型
 

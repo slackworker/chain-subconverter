@@ -61,22 +61,85 @@ export function nextOrdinalForSource(snapshot: Stage2Snapshot, sourceId: string)
 	return max + 1;
 }
 
-export function hydrateInstanceIds(snapshot: Stage2Snapshot): Stage2Snapshot {
+type AggregationHydrateInput = {
+	enabled: boolean;
+	groupName?: string;
+	strategy?: AggregationStrategy;
+	memberLocalInstanceIds?: string[];
+	memberProxyNames?: string[];
+};
+
+function hydrateServerAggregation(
+	raw: AggregationHydrateInput | undefined,
+	sources: Stage2SnapshotSource[],
+	idRemap: Map<string, string>,
+): Stage2Aggregation {
+	if (!raw?.enabled) {
+		return { enabled: false };
+	}
+	const byProxyName = new Map<string, string>();
+	const knownIds = new Set<string>();
+	for (const source of sources) {
+		for (const instance of source.instances) {
+			byProxyName.set(instance.proxyName.trim(), instance.instanceId);
+			knownIds.add(instance.instanceId);
+		}
+	}
+	const wireMembers = Array.isArray(raw.memberProxyNames) ? raw.memberProxyNames : null;
+	let memberLocalInstanceIds: string[] | undefined;
+	if (wireMembers && wireMembers.length > 0) {
+		memberLocalInstanceIds = wireMembers
+			.map((name) => byProxyName.get(String(name).trim()) ?? "")
+			.filter((id) => id !== "");
+	} else if (Array.isArray(raw.memberLocalInstanceIds) && raw.memberLocalInstanceIds.length > 0) {
+		memberLocalInstanceIds = raw.memberLocalInstanceIds
+			.map((id: string) => {
+				const trimmed = id.trim();
+				return idRemap.get(trimmed) ?? trimmed;
+			})
+			.filter((id: string) => knownIds.has(id));
+	}
 	return {
-		...snapshot,
-		servers: snapshot.servers.map((server) => ({
-			...server,
-			sources: server.sources.map((source) => {
+		enabled: true,
+		...(raw.groupName?.trim() ? { groupName: raw.groupName.trim() } : {}),
+		strategy: raw.strategy ?? "fallback",
+		...(memberLocalInstanceIds ? { memberLocalInstanceIds } : {}),
+	};
+}
+
+/** Convert/resolve 入站：补 Client `instanceId`，并把 Wire `memberProxyNames` 还原为 `memberLocalInstanceIds`。 */
+export function hydrateInstanceIds(snapshot: Stage2Snapshot | Stage2SnapshotWire): Stage2Snapshot {
+	return {
+		chainProxyTargetGroupSwitchOptimizationEnabled: snapshot.chainProxyTargetGroupSwitchOptimizationEnabled,
+		servers: snapshot.servers.map((server) => {
+			const idRemap = new Map<string, string>();
+			const sources = server.sources.map((source) => {
 				let ordinal = 1;
 				return {
-					...source,
-					instances: source.instances.map((instance) => ({
-						...instance,
-						instanceId: makeStage2OrdinalId(source.sourceId, ordinal++),
-					})),
+					sourceId: source.sourceId,
+					instances: source.instances.map((instance) => {
+						const newId = makeStage2OrdinalId(source.sourceId, ordinal++);
+						const oldId = "instanceId" in instance ? String(instance.instanceId ?? "").trim() : "";
+						if (oldId) idRemap.set(oldId, newId);
+						return {
+							proxyName: instance.proxyName,
+							mode: instance.mode,
+							targetName: instance.targetName,
+							instanceId: newId,
+						};
+					}),
 				};
-			}),
-		})),
+			});
+			return {
+				serverKey: server.serverKey,
+				aggregation: hydrateServerAggregation(
+					server.aggregation as AggregationHydrateInput,
+					sources,
+					idRemap,
+				),
+				sources,
+			};
+		}),
 	};
 }
 

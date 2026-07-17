@@ -55,7 +55,7 @@
 | `POST /api/resolve-url` | **不带**（仅 `url`） | **解码后树（Wire）** | 建议返回 |
 
 - **convert**：返回 `catalog` + 默认 `snapshot`；reconvert 时前端本地 merge，**不**把旧 snapshot 传给后端
-- **resolve**：恢复后返回 Wire snapshot；是否补全 Client `instanceId` 由前端本地 hydrate 决定
+- **resolve**：恢复后返回 Wire snapshot；前端本地 hydrate 须补全 Client `instanceId`，并把 `memberProxyNames` 还原为 `memberLocalInstanceIds`
 - **全局 reset**：无独立 API；再调 convert，用返回的默认 `snapshot` **整份覆盖**（跳过 merge）
 - **局部 reset**：纯前端；按 `sourceId` 取 catalog `default*` 覆盖目标 instance
 - **废弃**：`POST /api/stage2/reset`（路由、handler、实现均删除）
@@ -267,7 +267,7 @@ instanceId = trim(sourceId) + "::i" + N
 
 | 操作 | 规则 |
 |------|------|
-| hydrate 实例 ID | convert/resolve/reconvert 后，按每个 `sourceId` 下 `instances[]` 顺序分配 `i1..iN` |
+| hydrate（入站） | convert/resolve/reconvert 后：按每个 `sourceId` 下 `instances[]` 顺序分配 `instanceId = i1..iN`；若 aggregation 含 Wire `memberProxyNames`，按该数组顺序映射为本 server 子树内对应 `instanceId` 写入 `memberLocalInstanceIds` 并丢弃 Wire 字段；若已是 Client 成员列表，则按旧→新 `instanceId` 重映射（配合 ordinal 压紧） |
 | 复制实例 | 同 `sourceId` 下追加；`proxyName` 派生 `基名 2/3…`；`instanceId` 分配 `maxOrdinal+1` |
 | 删除实例 | 禁止删除某 `sourceId` 的最后一个 instance |
 | 改名 | 仅改 `proxyName`；`instanceId` / `memberLocalInstanceIds` 不级联变更 |
