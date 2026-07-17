@@ -62,21 +62,40 @@ func appendServerAggregationGroupsToCompleteConfigYAML(fullYAML string, snapshot
 	return injectAggregationGroupsIntoSelectProxyGroups(result, managedGroups)
 }
 
-func isDirectExcludedProxyGroupName(name string) bool {
-	return strings.Contains(name, "直连") || strings.Contains(strings.ToLower(name), "direct")
-}
-
 func shouldInjectAggregationIntoProxyGroup(groupName, groupType string, managedNames map[string]struct{}) bool {
 	if groupType != "select" {
-		return false
-	}
-	if isDirectExcludedProxyGroupName(groupName) {
 		return false
 	}
 	if _, isManaged := managedNames[groupName]; isManaged {
 		return false
 	}
 	return true
+}
+
+func selectContainsAllDirectMembers(selectMembers, aggregationMembers []string) bool {
+	if len(aggregationMembers) == 0 {
+		return false
+	}
+	memberSet := make(map[string]struct{}, len(selectMembers))
+	for _, member := range selectMembers {
+		memberSet[member] = struct{}{}
+	}
+	for _, needed := range aggregationMembers {
+		if _, ok := memberSet[needed]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func matchingAggregationNamesForSelect(selectMembers []string, managedGroups []managedServerAggregationGroup) []string {
+	matched := make([]string, 0, len(managedGroups))
+	for _, group := range managedGroups {
+		if selectContainsAllDirectMembers(selectMembers, group.Members) {
+			matched = append(matched, group.Name)
+		}
+	}
+	return matched
 }
 
 func prependAggregationNamesToProxies(existing, names []string) []string {
@@ -108,21 +127,19 @@ func injectAggregationGroupsIntoSelectProxyGroups(fullYAML string, managedGroups
 		return fullYAML, nil
 	}
 
-	aggregationNames := make([]string, 0, len(managedGroups))
 	managedNames := make(map[string]struct{}, len(managedGroups))
 	for _, group := range managedGroups {
-		aggregationNames = append(aggregationNames, group.Name)
 		managedNames[group.Name] = struct{}{}
 	}
 
 	return rewriteCompleteConfigYAML(fullYAML, func(root *yaml.Node, lines []string, deletedLines map[int]struct{}, replacedLines map[int]string) error {
-		return applyAggregationInjectionToProxyGroups(root, aggregationNames, managedNames, lines, deletedLines, replacedLines)
+		return applyAggregationInjectionToProxyGroups(root, managedGroups, managedNames, lines, deletedLines, replacedLines)
 	})
 }
 
 func applyAggregationInjectionToProxyGroups(
 	root *yaml.Node,
-	aggregationNames []string,
+	managedGroups []managedServerAggregationGroup,
 	managedNames map[string]struct{},
 	lines []string,
 	deletedLines map[int]struct{},
@@ -167,7 +184,7 @@ func applyAggregationInjectionToProxyGroups(
 			}
 		}
 
-		if err := applyAggregationInjectionLines(groupNode, aggregationNames, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
+		if err := applyAggregationInjectionLines(groupNode, managedGroups, lines, startIndex, endIndex, deletedLines, replacedLines); err != nil {
 			return fmt.Errorf("inject aggregation groups into %q: %w", nameNode.Value, err)
 		}
 	}
@@ -177,7 +194,7 @@ func applyAggregationInjectionToProxyGroups(
 
 func applyAggregationInjectionLines(
 	groupNode *yaml.Node,
-	aggregationNames []string,
+	managedGroups []managedServerAggregationGroup,
 	lines []string,
 	startIndex int,
 	endIndex int,
@@ -195,17 +212,27 @@ func applyAggregationInjectionLines(
 	}
 
 	existingMembers := make([]string, 0, len(membersNode.Content))
+	memberLineIndexes := make([]int, 0, len(membersNode.Content))
 	for _, memberNode := range membersNode.Content {
 		if memberNode.Kind != yaml.ScalarNode {
 			continue
 		}
 		existingMembers = append(existingMembers, memberNode.Value)
 		if memberNode.Line > 0 {
-			deletedLines[memberNode.Line-1] = struct{}{}
+			memberLineIndexes = append(memberLineIndexes, memberNode.Line-1)
 		}
 	}
 
-	newMembers := prependAggregationNamesToProxies(existingMembers, aggregationNames)
+	matchedNames := matchingAggregationNamesForSelect(existingMembers, managedGroups)
+	if len(matchedNames) == 0 {
+		return nil
+	}
+
+	for _, lineIndex := range memberLineIndexes {
+		deletedLines[lineIndex] = struct{}{}
+	}
+
+	newMembers := prependAggregationNamesToProxies(existingMembers, matchedNames)
 
 	proxiesLineIndex := proxyGroupProxiesLineIndex(groupNode)
 	if proxiesLineIndex < 0 || proxiesLineIndex >= len(lines) {

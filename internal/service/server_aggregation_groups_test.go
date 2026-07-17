@@ -389,7 +389,7 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsAggregationInt
 	}
 }
 
-func TestAppendServerAggregationGroupsToCompleteConfigYAML_ExcludesDirectSelectGroups(t *testing.T) {
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsOnlyWhenSelectContainsAllDirectMembers(t *testing.T) {
 	fullYAML := strings.Join([]string{
 		"mixed-port: 7890",
 		"proxies:",
@@ -408,6 +408,21 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_ExcludesDirectSelectG
 		"    type: select",
 		"    proxies:",
 		"      - HK Landing",
+		"  - name: 🌐 完整成员",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"      - OTHER",
+		"  - name: 🧭 仅挂地域组",
+		"    type: select",
+		"    proxies:",
+		"      - 香港",
+		"  - name: 香港",
+		"    type: url-test",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
 		"",
 	}, "\n")
 
@@ -418,7 +433,7 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_ExcludesDirectSelectG
 		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
 	}
 
-	expectedDirectBlocks := []string{
+	unchangedBlocks := []string{
 		strings.Join([]string{
 			"  - name: 🎯 全球直连",
 			"    type: select",
@@ -431,15 +446,71 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_ExcludesDirectSelectG
 			"    proxies:",
 			"      - DIRECT",
 		}, "\n"),
+		strings.Join([]string{
+			"  - name: 💬 即时通讯",
+			"    type: select",
+			"    proxies:",
+			"      - HK Landing",
+		}, "\n"),
+		strings.Join([]string{
+			"  - name: 🧭 仅挂地域组",
+			"    type: select",
+			"    proxies:",
+			"      - 香港",
+		}, "\n"),
 	}
-	for _, block := range expectedDirectBlocks {
+	for _, block := range unchangedBlocks {
 		if !strings.Contains(rendered, block) {
-			t.Fatalf("direct-excluded select group should remain unchanged:\n%s", rendered)
+			t.Fatalf("select without all direct aggregation members should remain unchanged:\n%s", rendered)
 		}
 	}
 
-	if !strings.Contains(rendered, "      - landing.example.com\n      - HK Landing") {
-		t.Fatalf("non-direct select group should still receive aggregation injection:\n%s", rendered)
+	expectedFullMembersBlock := strings.Join([]string{
+		"  - name: 🌐 完整成员",
+		"    type: select",
+		"    proxies:",
+		"      - landing.example.com",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"      - OTHER",
+	}, "\n")
+	if !strings.Contains(rendered, expectedFullMembersBlock) {
+		t.Fatalf("select containing all direct aggregation members should receive injection:\n%s", rendered)
+	}
+}
+
+func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsIntoDirectNamedSelectWhenMembersMatch(t *testing.T) {
+	fullYAML := strings.Join([]string{
+		"mixed-port: 7890",
+		"proxies:",
+		"- {name: HK Landing, type: ss, server: landing.example.com, port: 443}",
+		"- {name: HK Landing Copy, type: ss, server: landing.example.com, port: 443}",
+		"proxy-groups:",
+		"  - name: 🎯 全球直连",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+		"",
+	}, "\n")
+
+	snapshot := aggregationInjectionTestSnapshot("landing.example.com", "hk-1", "hk-2")
+
+	rendered, err := appendServerAggregationGroupsToCompleteConfigYAML(fullYAML, snapshot)
+	if err != nil {
+		t.Fatalf("appendServerAggregationGroupsToCompleteConfigYAML() error = %v", err)
+	}
+
+	expectedBlock := strings.Join([]string{
+		"  - name: 🎯 全球直连",
+		"    type: select",
+		"    proxies:",
+		"      - landing.example.com",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedBlock) {
+		t.Fatalf("direct-named select that directly contains all members should still receive injection:\n%s", rendered)
 	}
 }
 
@@ -455,6 +526,10 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsMultipleAggreg
 		"    proxies:",
 		"      - HK Landing",
 		"      - SG Landing",
+		"  - name: 仅 HK",
+		"    type: select",
+		"    proxies:",
+		"      - HK Landing",
 		"",
 	}, "\n")
 
@@ -503,6 +578,17 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_InjectsMultipleAggreg
 	}, "\n")
 	if !strings.Contains(rendered, expectedSelectBlock) {
 		t.Fatalf("multiple aggregations should be prepended in snapshot order:\n%s", rendered)
+	}
+
+	expectedHKOnlyBlock := strings.Join([]string{
+		"  - name: 仅 HK",
+		"    type: select",
+		"    proxies:",
+		"      - landing-a.example.com",
+		"      - HK Landing",
+	}, "\n")
+	if !strings.Contains(rendered, expectedHKOnlyBlock) {
+		t.Fatalf("select should only receive aggregations whose members it directly contains:\n%s", rendered)
 	}
 }
 
@@ -594,6 +680,7 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_DoesNotInjectIntoMana
 		"    type: select",
 		"    proxies:",
 		"      - HK Landing",
+		"      - HK Landing Copy",
 		"",
 	}, "\n")
 
@@ -634,6 +721,18 @@ func TestAppendServerAggregationGroupsToCompleteConfigYAML_DoesNotInjectIntoMana
 	}, "\n")
 	if !strings.Contains(rendered, expectedManagedGroupBlock) {
 		t.Fatalf("managed select aggregation group should only contain node members:\n%s", rendered)
+	}
+
+	expectedExistingSelectBlock := strings.Join([]string{
+		"  - name: 💬 即时通讯",
+		"    type: select",
+		"    proxies:",
+		"      - landing.example.com",
+		"      - HK Landing",
+		"      - HK Landing Copy",
+	}, "\n")
+	if !strings.Contains(rendered, expectedExistingSelectBlock) {
+		t.Fatalf("existing select with all members should receive injection once:\n%s", rendered)
 	}
 }
 

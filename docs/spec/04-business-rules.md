@@ -502,15 +502,17 @@ Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing instance
 
 ### 3.3.3 server 聚合组注入 select 策略组（Pass 3 后）
 
-在 `3.3.2` 向 `proxy-groups` 末尾追加聚合策略组之后，必须将所有已成功渲染的聚合组名（与 `3.3.2` 使用同一套 `enabled = true` 推导名）按 snapshot `servers[]` 迭代顺序 prepend 到最终 YAML 中既有 `type: select` 策略组的 `proxies` 列表首位。
+在 `3.3.2` 向 `proxy-groups` 末尾追加聚合策略组之后，对每个已成功渲染的聚合组（与 `3.3.2` 使用同一套 `enabled = true` 推导名与成员列表），将其组名 prepend 到最终 YAML 中满足成员条件的既有 `type: select` 策略组的 `proxies` 列表首位。
 
 注入规则：
 
-- 目标组：最终 YAML 中 `type: select` 的既有策略组（以 YAML `type` 为准）
-- 排除目标：组名含「直连」（字面）或 `direct`（大小写不敏感）；以及 `3.3.2` 新生成的全部聚合策略组（不向聚合组自身注入）
+- 目标组：最终 YAML 中 `type: select` 的既有策略组（以 YAML `type` 为准），且该组 `proxies` **直接**包含该聚合组的**全部**成员 `proxyName`（超集可；缺任一则不注入该聚合）
+- 成员判定只看目标组 `proxies` 的直接标量成员；不做跨组传递闭包（目标组只挂地域组名、不直接列出落地节点时，不注入）
+- 每个聚合单独匹配：同一 select 可命中多个聚合；只注入命中的那些
+- 排除目标：`3.3.2` 新生成的全部聚合策略组（不向聚合组自身注入）。**不再**按组名排除「直连」/`direct`
 - 成员去重：若聚合组名已存在于目标组 `proxies`，先从原位置移除再 prepend，保证位于默认选择位（首位）
-- 多聚合组时按 snapshot server 顺序置于最前：`[Agg1, Agg2, …, 原成员…]`
-- 无 `enabled` 聚合组时跳过，不改 YAML
+- 多聚合组命中同一 select 时，按 snapshot `servers[]` 迭代顺序置于最前：`[Agg1, Agg2, …, 原成员…]`
+- 无 `enabled` 聚合组，或某 select 未命中任一聚合时，不改该组 YAML
 
 本步不修改聚合组自身的 `proxies`、不修改 `proxies[]` 节点定义、不回写 `chainTargets[]`；不修改 `type` 为 `select` 以外的策略组。
 
