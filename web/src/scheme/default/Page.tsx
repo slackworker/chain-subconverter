@@ -862,11 +862,11 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 					>
 						{colorMode === "dark" ? (
 							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-								<circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
+								<circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
 								<path
 									d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
 									stroke="currentColor"
-									strokeWidth="1.8"
+									strokeWidth="2"
 									strokeLinecap="round"
 								/>
 							</svg>
@@ -875,7 +875,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 								<path
 									d="M21 14.5A8.5 8.5 0 0 1 9.5 3a8.5 8.5 0 1 0 11.5 11.5Z"
 									stroke="currentColor"
-									strokeWidth="1.8"
+									strokeWidth="2"
 									strokeLinecap="round"
 									strokeLinejoin="round"
 								/>
@@ -894,7 +894,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 							<path
 								d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 6v-3.5c0-1 .1-1.4-.5-2c2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0c-2.4-1.6-3.5-1.3-3.5-1.3a4.2 4.2 0 0 0-.1 3.2 4.6 4.6 0 0 0-1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6.6-.6 1.2-.5 2V22"
 								stroke="currentColor"
-								strokeWidth="1.8"
+								strokeWidth="2"
 								strokeLinecap="round"
 								strokeLinejoin="round"
 							/>

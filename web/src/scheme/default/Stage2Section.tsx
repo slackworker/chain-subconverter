@@ -295,41 +295,45 @@ export function Stage2Section({
 							{copy.advancedOptions}
 						</button>
 						{stage2AdvancedOpen ? (
-							<div className="a-check-row a-check-row--stage2-advanced a-check-row--tail-reset">
-								<label className="a-check a-check--switch">
-									<input
-										className="a-switch__input"
-										type="checkbox"
-										checked={switchOptimizationEnabled}
-										disabled={!isStage2Editable}
-										aria-label={copy.switchOptimizationLabel}
-										onChange={(event) =>
-											workflow.handleSwitchOptimizationChange(event.target.checked)}
-									/>
-									<span className="a-switch" aria-hidden />
-									<span className="a-advanced__switch-label">
-										{copy.switchOptimizationLabel}{" "}
-										<Tooltip content={copy.switchOptimizationHint}>
-											<span
-												className="a-hint"
-												aria-label={copy.switchOptimizationHintAria}
-											>
-												?
+							<div className="a-advanced">
+								<div className="a-advanced__body">
+									<div className="a-check-row a-check-row--stage2-advanced a-check-row--tail-reset">
+										<label className="a-check a-check--switch">
+											<input
+												className="a-switch__input"
+												type="checkbox"
+												checked={switchOptimizationEnabled}
+												disabled={!isStage2Editable}
+												aria-label={copy.switchOptimizationLabel}
+												onChange={(event) =>
+													workflow.handleSwitchOptimizationChange(event.target.checked)}
+											/>
+											<span className="a-switch" aria-hidden />
+											<span className="a-advanced__switch-label">
+												{copy.switchOptimizationLabel}{" "}
+												<Tooltip content={copy.switchOptimizationHint}>
+													<span
+														className="a-hint"
+														aria-label={copy.switchOptimizationHintAria}
+													>
+														?
+													</span>
+												</Tooltip>
 											</span>
-										</Tooltip>
-									</span>
-								</label>
-								<button
-									type="button"
-									className="a-stage-action-reset"
-									disabled={!isStage2Editable || isResettingStage2 || isGenerating}
-									aria-busy={isResettingStage2 || undefined}
-									title={copy.stage2Reset}
-									onClick={() => void workflow.handleStage2Reset()}
-								>
-									<ResetIcon className="a-icon" aria-hidden />
-									<span>{copy.stage2Reset}</span>
-								</button>
+										</label>
+										<button
+											type="button"
+											className="a-stage-action-reset"
+											disabled={!isStage2Editable || isResettingStage2 || isGenerating}
+											aria-busy={isResettingStage2 || undefined}
+											title={copy.stage2Reset}
+											onClick={() => void workflow.handleStage2Reset()}
+										>
+											<ResetIcon className="a-icon" aria-hidden />
+											<span>{copy.stage2Reset}</span>
+										</button>
+									</div>
+								</div>
 							</div>
 						) : null}
 					</>

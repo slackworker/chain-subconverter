@@ -3,7 +3,7 @@
 	z-index: 61;
 	max-width: min(20rem, calc(100vw - 1rem));
 	padding: 0.45rem 0.6rem;
-	border-radius: 8px;
+	border-radius: 10px;
 	font-size: 0.8rem;
 	line-height: 1.45;
 	color: var(--color-ink, #1a1a1a);
