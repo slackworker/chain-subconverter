@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:522b0ef4fad601fd09c2afbd72e5c44590994edbb20c9981f3155725e39df578`，`dev` @ `1cc49df`）。正式里程碑见 [`v3.2.0-beta.3`](../../RELEASES.md#v320-beta3)。
+> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:310c5118ae6262233dd396c2b06a144f77cd4e241bf8f30286c8de6e19ec0bca`，`dev` @ `dbdd43a`）。正式里程碑见 [`v3.2.0-beta.3`](../../RELEASES.md#v320-beta3)。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
@@ -31,7 +31,7 @@
 
 ## 内网一体化 — vps-01（2026-07-17）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:522b0ef4…`，`dev` @ `1cc49df`）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:310c5118…`，`dev` @ `dbdd43a`）；`subconverter:integration-chain-subconverter`
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)）
@@ -44,7 +44,7 @@
 
 ## 公网 HTTPS 一体化 — vps-02（2026-07-17）
 
-- **镜像 tag**：与 vps-01 同 tag（`dev-latest`，`dev` @ `1cc49df`）；`subconverter:integration-chain-subconverter` 同 vps-01
+- **镜像 tag**：与 vps-01 同 tag（`dev-latest`，`dev` @ `dbdd43a`）；`subconverter:integration-chain-subconverter` 同 vps-01
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致 `longUrl` 为 `http://`）
@@ -61,7 +61,7 @@
 - **部署形态**：`app`（Koyeb）与 `subconverter`（vps-02 独立 Compose）分属两套 Docker；`UPSTREAM` / `FACING` 跨公网互访
 - **chain-subconverter**：Koyeb（**demo preview**）
 - **subconverter**：vps-02 独立 Compose（`GET /version` 正常）
-- **镜像 tag**：Koyeb app `dev-latest`（`dev` @ `1cc49df`）；subconverter `integration-chain-subconverter`
+- **镜像 tag**：Koyeb app `dev-latest`（`dev` @ `dbdd43a`）；subconverter `integration-chain-subconverter`
 - **回归**：Koyeb 公网入口 WSL `third-party-smoke.sh`；subconverter `/version` 正常
 - **结果**：**smoke + full 通过**
 - **关键发现**：跨平台双 Docker 形态下 `real-smoke` 与 `real-full` 均通过
