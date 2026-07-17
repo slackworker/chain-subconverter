@@ -13,23 +13,76 @@
 说明：
 
 - `CI` 不再在 tag push 上重复执行；`main` 合并后由 `CI` 成功触发 Docker 发布；tag / 手动发布经 `Publish Validation` 一次性校验同 SHA 的 `CI` 已成功。
-- `beta-latest` 与版本 tag（如 `v3.2.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
+- `beta-latest` 与版本 tag（如 `v3.3.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
 
 ---
 
-## Unreleased
+## v3.3.0-beta.1
+
+**Tag:** `v3.3.0-beta.1`  
+**日期:** 2026-07-17  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.2.0-beta.3](#v320-beta3) 基础上，完成 **Stage 2 嵌套树模型**（`servers → sources → instances`）与 **长链接 `statePayload v5`** 硬切；废弃平铺 `rows[]` / `serverAggregationGroups[]` 与 `POST /api/stage2/reset`。**不兼容** 3.2 及更早长链接载荷（v4 及更旧）；已分享链接须用 3.3 重新转换并生成。
 
 ### 变更摘要
 
-- **`resolve-url` 旧版载荷**：非当前 `statePayload` 版本时，若 `stage1Input` 仍可解析则还原 Stage1，Stage2 为空并以 `LEGACY_PAYLOAD_VERSION` 进入只读冲突态；`GET /sub` / 短链创建仍整包拒绝旧版。
-- **协议切换约定**：以后 bump 长链版本时，发版说明须声明 Stage1 是「兼容还原」（默认）还是「完全丢失」，以及 Convert 及后续是否不兼容（见 [06 §7](docs/spec/06-stage2-model.md)）。
+#### Stage 2 嵌套树（核心）
 
-### 相对 v5 的兼容声明（本轮行为澄清，未 bump `v`）
+- **权威形状**：`servers[] → sources[] → instances[]`；UI 平铺仅为 DFS 投影。唯一事实源见 [spec 06](docs/spec/06-stage2-model.md)。
+- **Client / Wire 分层**：前端编辑期可用 `instanceId`（`sourceId::iN`）；API / v5 只传业务字段与 `proxyName`；聚合成员 Wire 字段为 `memberProxyNames[]`。
+- **废弃**：平铺 `rows[]` + 外挂 `serverAggregationGroups[]`、会话/编码双语义 `rowId`、`POST /api/stage2/reset`。
+- **默认 `/` UI**：聚合树 / 平铺表 / 复制改名 / 成员序均按嵌套树与 `proxyName` 工作。
+
+#### 长链接 / 短链
+
+- **长链接 payload `v=5`**（3.2 为 `v=4`）：编码态存嵌套树；规范化规则见 [06 §7](docs/spec/06-stage2-model.md)。
+- **`GET /sub` / 短链创建**：非当前版本整包拒绝。
+- **`resolve-url` 旧版载荷**：若 `stage1Input` 仍可按现行契约解析，则还原 Stage1，Stage2 为空，并以 `LEGACY_PAYLOAD_VERSION` 进入只读冲突态；不得静默迁移旧 Stage2。
+
+#### 协议切换声明（v4 → v5）
 
 | 层 | 结论 |
 |----|------|
 | Stage1 输入 | **兼容还原**（`resolve-url` 尽力填回） |
 | Convert 及后续（Stage2 / generate / 订阅读取） | **不兼容**旧 `v`（含 v4 平铺行载荷）；须重新转换并生成 |
+
+以后 bump `longURLSchemaVersion` 时，发版说明须同样声明 Stage1 与 Convert 及后续的兼容口径（见 [06 §7](docs/spec/06-stage2-model.md)、[MAINTENANCE.md](docs/MAINTENANCE.md)）。
+
+#### 其他
+
+- **聚合组注入**：收紧向 `select` 策略组注入的成员条件（仅向直接包含该聚合全部成员的 select 注入）。
+- **Managed Pass3 / fixture**：`RenderManagedPass3` 与 review fixture 生成对齐嵌套树与双托管语义。
+- **默认 `/` 聚合树**：source tone 映射与样式修订。
+- **短链默认容量**：`SHORT_LINK_CAPACITY` 默认由 `1000` 下调为 `100`；下调后溢出条目按既有 LRU 裁剪。
+
+### 测试
+
+- 2026-07-17：`go test ./...`、`cd web && npm run test`、`cd web && npm run test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**
+- 第三方部署：2026-07-17 三种形态 `dev-latest` @ `dbdd43a` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
+
+### 自部署
+
+打 tag 后将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.3.0-beta.1"
+```
+
+### 从 v3.2.0-beta.3 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留（默认容量若从更高值下调，溢出条目会按 LRU 裁剪）。
+2. **长链接 / 短链**：**3.2 生成的 v4 链接无法完整恢复**；`resolve-url` 最多还原 Stage1 并进入只读冲突态。须在 3.3 界面重新「转换并自动填充」后生成 v5 链接再分享。
+3. **API 客户端**：勿再发送平铺 `rows[]` / `serverAggregationGroups[]`，勿调用已删除的 `POST /api/stage2/reset`。
+4. 探索性 `/ui/b1|b2|c1|c2` 非发布门禁（见 [runbook](docs/testing/runbook.md)）。
+
+### Beta 说明
+
+仍属预发布；安全与部署注意同 [v3.2.0-beta.3](#v320-beta3) 与 [SECURITY.md](SECURITY.md)。本轮发版仅更新 `beta` 分支；镜像通过 `v3.3.0-beta.1` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
 
 ---
 

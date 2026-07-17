@@ -1,18 +1,19 @@
 # 项目状态
 
-> 最近更新：2026-07-17 · **3.2 Beta 线** 最新 tag [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
+> 最近更新：2026-07-17 · **3.3 Beta 线** 发版说明 [`v3.3.0-beta.1`](../RELEASES.md#v330-beta1)（待打 tag）· **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.2 Beta 线最新 tag**：[`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)（beta 线重整：v3.1 聚合 + v3.2 行身份 + 聚合组注入 + Docker CI；Beta 发版不同步 `main`）
+- **3.3 Beta 线**：[`v3.3.0-beta.1`](../RELEASES.md#v330-beta1)（Stage2 嵌套树 + 长链 v5 + `resolve-url` 旧版 Stage1 还原；发版说明已就绪，**待打 tag**；Beta 发版不同步 `main`）
+- **3.2 Beta 线**：止于 [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
-- **Phase 0–4 已完成**；维护期以 3.2 Beta 发版收口、回归与测试/文档债为主
+- **Phase 0–4 已完成**；维护期以 3.3 Beta 发版收口、回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（日常集成 · `dev-latest` 手动）· `beta`（预发布 · `beta-latest`）· `main`（稳定线 · `latest`；当前止于 v3.0.0-beta.4，**无 v3.0 GA**）
-- 契约与实现边界： [spec/02–05](spec/)（含 Pipeline hard-break、长链 v5、恢复冲突、snapshot-first 三 pass、stage2 复制/改名/行序、server 聚合；§3.3.3 仅向直接包含该聚合全部成员的 select 注入，见 [04 §1.1.3 / §1.3 / §2.1.2 / §2.7 / §3.2.1 / §3.3.3](spec/04-business-rules.md)；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](spec/06-stage2-model.md)）
+- 契约与实现边界： [spec/02–06](spec/)（含嵌套树 Stage2、Pipeline hard-break、长链 v5、恢复冲突、snapshot-first 三 pass、server 聚合；§3.3.3 仅向直接包含该聚合全部成员的 select 注入，见 [04 §1.1.3 / §1.3 / §2.7 / §3.2.1 / §3.3.3](spec/04-business-rules.md)；Stage2 权威 [06](spec/06-stage2-model.md)；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](spec/06-stage2-model.md)）
 - 短链索引默认容量：`100`（`SHORT_LINK_CAPACITY` / [spec 03 §短链接](spec/03-backend-api.md)）
 
 ## 分支与提交流程

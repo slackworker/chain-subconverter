@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:310c5118ae6262233dd396c2b06a144f77cd4e241bf8f30286c8de6e19ec0bca`，`dev` @ `dbdd43a`）。正式里程碑见 [`v3.2.0-beta.3`](../../RELEASES.md#v320-beta3)。
+> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:dev-latest`（digest `sha256:310c5118ae6262233dd396c2b06a144f77cd4e241bf8f30286c8de6e19ec0bca`，`dev` @ `dbdd43a`）。正式里程碑见 [`v3.3.0-beta.1`](../../RELEASES.md#v330-beta1)。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
