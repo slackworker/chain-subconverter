@@ -17,6 +17,46 @@
 
 ---
 
+## v3.3.0-beta.2
+
+**Tag:** `v3.3.0-beta.2`  
+**日期:** 2026-07-17  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.3.0-beta.1](#v330-beta1) 基础上修复 **`resolve-url` / convert hydrate 后聚合组成员丢失**：入站须将 Wire `memberProxyNames[]` 还原为 Client `memberLocalInstanceIds[]`，否则反向解析后实例「入组」勾选为空。
+
+### 变更摘要
+
+- **hydrate 入组映射**：`hydrateInstanceIds` 在补 `instanceId` 的同时，按同 server 内 `proxyName → instanceId` 把 `memberProxyNames` 映射回 `memberLocalInstanceIds`（见 [06 §9](docs/spec/06-stage2-model.md)）。
+- **测试 / 文档**：补充单测；spec `02` / `03` / `06` 与 STATUS 契约句同步入站映射约定。
+
+### 测试
+
+- 2026-07-17：发布前本地自动化基线见本轮 CI / runbook（`go test`、web 单测、E2E mock、scheme build）
+
+### 自部署
+
+将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或固定版本（镜像 tag 无 v 前缀）
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:3.3.0-beta.2"
+```
+
+### 从 v3.3.0-beta.1 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。
+2. 行为兼容：长链仍为 `v=5`；已生成链接无需重发。仅修复反向解析后聚合勾选丢失。
+
+### Beta 说明
+
+仍属预发布；本轮发版仅更新 `beta` 分支；镜像通过 `v3.3.0-beta.2` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
+
+---
+
 ## v3.3.0-beta.1
 
 **Tag:** `v3.3.0-beta.1`  
