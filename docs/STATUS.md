@@ -1,12 +1,12 @@
 # 项目状态
 
-> 最近更新：2026-07-17 · **3.3 Beta 线** 发版说明 [`v3.3.0-beta.1`](../RELEASES.md#v330-beta1)（待打 tag）· **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
+> 最近更新：2026-07-17 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.1`](../RELEASES.md#v330-beta1) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.3 Beta 线**：[`v3.3.0-beta.1`](../RELEASES.md#v330-beta1)（Stage2 嵌套树 + 长链 v5 + `resolve-url` 旧版 Stage1 还原；发版说明已就绪，**待打 tag**；Beta 发版不同步 `main`）
+- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.1`](../RELEASES.md#v330-beta1)（Stage2 嵌套树 + 长链 v5 + `resolve-url` 旧版 Stage1 还原；Beta 发版不同步 `main`）
 - **3.2 Beta 线**：止于 [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
@@ -62,5 +62,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-07-17：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`dev-latest` @ `dbdd43a` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md) |
+| **第三方部署** | 2026-07-17：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`beta-latest` / `v3.3.0-beta.1` @ `77b6d19` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md) |
 | **本地自动化基线** | 2026-07-17：`go test ./...`、`npm run test`、`test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**；见 [runbook.md](testing/runbook.md) |

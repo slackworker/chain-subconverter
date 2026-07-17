@@ -61,16 +61,16 @@
 ### 测试
 
 - 2026-07-17：`go test ./...`、`cd web && npm run test`、`cd web && npm run test:e2e:mock:all`、全 scheme build、`docker compose -f deploy/docker-compose.yml config` **通过**
-- 第三方部署：2026-07-17 三种形态 `dev-latest` @ `dbdd43a` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
+- 第三方部署：2026-07-17 三种形态 `beta-latest` / `v3.3.0-beta.1` @ `77b6d19`（digest `sha256:5c14d6c7…`）**real-smoke + real-full 通过** — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
 
 ### 自部署
 
-打 tag 后将 `APP_IMAGE` 设为：
+将 `APP_IMAGE` 设为：
 
 ```bash
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
-# 或
-APP_IMAGE="ghcr.io/slackworker/chain-subconverter:v3.3.0-beta.1"
+# 或固定版本（镜像 tag 无 v 前缀）
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:3.3.0-beta.1"
 ```
 
 ### 从 v3.2.0-beta.3 升级
