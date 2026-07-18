@@ -81,19 +81,20 @@ func (client *Client) ConvertWithPlan(ctx context.Context, request Request, plan
 	if err != nil {
 		return ThreePassResult{}, err
 	}
-	landingYAML, err := client.executePass(ctx, "landing-discovery", requestURLs.LandingDiscovery)
+	userAgent := EffectiveUserAgent(request.UserAgent)
+	landingYAML, err := client.executePass(ctx, "landing-discovery", requestURLs.LandingDiscovery, userAgent)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
 
-	transitYAML, err := client.executePass(ctx, "transit-discovery", requestURLs.TransitDiscovery)
+	transitYAML, err := client.executePass(ctx, "transit-discovery", requestURLs.TransitDiscovery, userAgent)
 	if err != nil {
 		return ThreePassResult{}, err
 	}
 
 	fullBase := PassResult{}
 	if plan.IncludeFullBase {
-		fullBaseYAML, err := client.executePass(ctx, "full-base", requestURLs.FullBase)
+		fullBaseYAML, err := client.executePass(ctx, "full-base", requestURLs.FullBase, userAgent)
 		if err != nil {
 			return ThreePassResult{}, err
 		}
@@ -157,7 +158,7 @@ func BuildRequestURLsWithPlan(baseURL string, request Request, plan ConvertPlan)
 	}, nil
 }
 
-func (client *Client) executePass(ctx context.Context, pass string, rawURL string) (string, error) {
+func (client *Client) executePass(ctx context.Context, pass string, rawURL string, userAgent string) (string, error) {
 	if err := client.acquire(); err != nil {
 		return "", err
 	}
@@ -173,6 +174,7 @@ func (client *Client) executePass(ctx context.Context, pass string, rawURL strin
 		applog.SubconverterPass(pass, time.Since(start).Milliseconds(), passErr)
 		return "", NewUnavailableError(pass, passErr, WithUnavailableUserInputSource(unavailableUserInputSourceForPass(pass)))
 	}
+	req.Header.Set("User-Agent", EffectiveUserAgent(userAgent))
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {

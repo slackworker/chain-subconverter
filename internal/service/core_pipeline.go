@@ -155,6 +155,7 @@ func (pipeline *CorePipeline) prepareManagedPass3Render() (managedPass3Prepared,
 	if err != nil {
 		return managedPass3Prepared{}, err
 	}
+	applyUpstreamUserAgent(pipeline.ctx, &prepared.Request)
 
 	result, err := executeSourceConvertWithPlan(pipeline.ctx, pipeline.source, prepared.Request, subconverter.Stage1InitConvertPlan())
 	if err != nil {

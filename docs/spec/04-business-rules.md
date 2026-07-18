@@ -66,6 +66,7 @@
 补充规则：
 
 - “跳过证书验证”这一高级选项的业务语义对应上游 `skip_cert_verify`；实际传给 `subconverter` 的查询参数名为 `scv`
+- **上游 `User-Agent`（拉机场用）**：本项目调用 `subconverter` 时必须设置 HTTP `User-Agent` 请求头（不依赖上游 `ua=` 查询参数）。默认值为 `clash.meta/1.19.20`。`GET /sub` 与 `GET /sub/<id>` 若收到非空客户端 `User-Agent`，则优先将该值作为上游 `User-Agent`；`convert` / `generate` / `resolve-url` 等浏览器侧入口不得转发浏览器 UA，一律使用默认值。上游 `subconverter` 拉远程订阅时通常会转发该请求头
 - `config` 必须是阶段 1 快照中显式保存的远程 HTTP(S) 模板 URL；前端初始值来自部署默认模板 URL，部署默认模板 URL 必须可配置，默认值为 `https://raw.githubusercontent.com/slackworker/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini`
 - `chain-subconverter` 必须先拉取 `config` 指向的模板，再把后端托管的内部模板 URL 传给 `subconverter`
 - `chain-subconverter` 不得把用户提供的远程模板 URL 直接透传给 `subconverter`

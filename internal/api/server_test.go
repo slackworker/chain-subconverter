@@ -866,6 +866,55 @@ func TestSubscriptionHandler_HappyPath(t *testing.T) {
 	}
 }
 
+func TestSubscriptionHandler_ForwardsClientUserAgentToUpstreamRequest(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	source := &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}
+	handler := mustNewTestHandler(t, source)
+
+	const clientUA = "clash-verge/v2.4.5"
+	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
+	request.Header.Set("User-Agent", clientUA)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if source.gotRequest.UserAgent != clientUA {
+		t.Fatalf("upstream UserAgent = %q, want %q", source.gotRequest.UserAgent, clientUA)
+	}
+}
+
+func TestSubscriptionHandler_OmitsUserAgentOverrideWhenClientHeaderAbsent(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	source := &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}
+	handler := mustNewTestHandler(t, source)
+
+	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
+	request.Header.Del("User-Agent")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if source.gotRequest.UserAgent != "" {
+		t.Fatalf("upstream UserAgent = %q, want empty so default applies at subconverter client", source.gotRequest.UserAgent)
+	}
+}
+
 func TestSubscriptionHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
 	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))

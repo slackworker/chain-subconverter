@@ -16,6 +16,10 @@ type Request struct {
 	TransitRawText string
 	Options        AdvancedOptions
 	ExtraQuery     url.Values
+	// UserAgent is the override sent as HTTP User-Agent when calling upstream subconverter.
+	// Empty means use DefaultUserAgent. Upstream subconverter typically forwards this header
+	// when fetching remote subscriptions.
+	UserAgent string
 }
 
 type PassResult struct {

@@ -94,6 +94,62 @@ func TestConvert_HappyPathUsesGoldenRequestShape(t *testing.T) {
 	}
 }
 
+func TestConvert_SetsDefaultUserAgent(t *testing.T) {
+	var gotAgents []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAgents = append(gotAgents, r.Header.Get("User-Agent"))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(gotAgents) != 3 {
+		t.Fatalf("request count mismatch: got %d want 3", len(gotAgents))
+	}
+	for i, agent := range gotAgents {
+		if agent != DefaultUserAgent {
+			t.Fatalf("User-Agent %d = %q, want %q", i, agent, DefaultUserAgent)
+		}
+	}
+}
+
+func TestConvert_UsesOverrideUserAgent(t *testing.T) {
+	const wantAgent = "clash-verge/v2.4.5"
+	var gotAgents []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAgents = append(gotAgents, r.Header.Get("User-Agent"))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("proxies:\n- {name: test, type: ss}\n"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL+"/sub?", 2*time.Second, 10)
+	_, err := client.Convert(context.Background(), Request{
+		LandingRawText: "landing",
+		TransitRawText: "transit",
+		UserAgent:      wantAgent,
+	})
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(gotAgents) != 3 {
+		t.Fatalf("request count mismatch: got %d want 3", len(gotAgents))
+	}
+	for i, agent := range gotAgents {
+		if agent != wantAgent {
+			t.Fatalf("User-Agent %d = %q, want %q", i, agent, wantAgent)
+		}
+	}
+}
+
 func TestConvert_PropagatesOptionalQueryParameters(t *testing.T) {
 	var got []*url.URL
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

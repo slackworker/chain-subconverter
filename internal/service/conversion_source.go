@@ -138,6 +138,7 @@ func executeConversionWithPlan(
 	if prepared.Cleanup != nil {
 		defer prepared.Cleanup()
 	}
+	applyUpstreamUserAgent(ctx, &prepared.Request)
 	prepared.Request.ExtraQuery = mergeExtraQuery(prepared.Request.ExtraQuery, extraQuery)
 
 	result, err := executeSourceConvertWithPlan(ctx, source, prepared.Request, plan)

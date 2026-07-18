@@ -367,8 +367,9 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 		return
 	}
 
+	ctx := service.WithUpstreamUserAgent(request.Context(), request.Header.Get("User-Agent"))
 	renderedConfig, err := service.RenderCompleteConfigFromSource(
-		request.Context(),
+		ctx,
 		handler.source,
 		payload.Stage1Input,
 		payload.Stage2Snapshot,
