@@ -132,7 +132,7 @@ tracked testdata:  internal/review/testdata/3pass-ss2022-test-subscription/
 
 这些附加材料当前主要用于统一数据源与后续派生：
 
-- 当前模板 URL 已固定为 Aethersailor 默认模板 URL；`template-config.ini` 只保存当前 Full 回放实际消费的 region matcher 快照，而不是整套上游模板。这样可以把 pinned 内容收敛在“会影响 Stage 1 自动识别 / Stage 2 默认填充”的最小语义面，避免把大量与本回放无关的规则、策略组和上游格式漂移一并引入 fixture 噪音
+- 当前模板 URL 已固定为默认模板 URL（`slackworker/Custom_OpenClash_Rules`）；`template-config.ini` 只保存当前 Full 回放实际消费的 region matcher 快照，而不是整套上游模板。这样可以把 pinned 内容收敛在“会影响 Stage 1 自动识别 / Stage 2 默认填充”的最小语义面，避免把大量与本回放无关的规则、策略组和上游格式漂移一并引入 fixture 噪音
 - 两份 transit 内容文件当前各自固定 `10` 条节点；合计覆盖 `8` 类协议与 `6` 个地域（HK / JP / US / SG / TW / KR），且不混入手动 SOCKS5 的 `tg://socks` 入口语义
 - `stage1/input/landing.txt` 现直接派生 canonical 的 `landingItems + manualSocks5Items.generatedURI`，即仓库跟踪的 review Stage 1 输入默认就是 `4 + 1` 行
 - 浏览器自动化若需要验证 “+ 添加 SOCKS5” 表单填写 / `socks5://` 解析 / `tg://socks` 追加，应直接从 canonical 的 `landingItems` 这 `4` 条起步，再在 UI 中手动追加同一条 SOCKS5 样例，而不是复用 review `landing.txt`

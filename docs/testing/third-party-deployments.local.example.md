@@ -25,7 +25,7 @@
 - **Compose 路径**：
 - **镜像 tag**：
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：
-- **DEFAULT_TEMPLATE_URL**：（与 [deploy/docker-compose.yml](../../deploy/docker-compose.yml) 保持一致；旧设备可能仍指向 upstream `Aethersailor/...`，须手动同步）
+- **DEFAULT_TEMPLATE_URL**：（与 [deploy/docker-compose.yml](../../deploy/docker-compose.yml) 保持一致；旧设备可能仍指向旧 fork `Aethersailor-Custom_OpenClash_Rules/...`，须手动同步）
 
 #### 运维摘要
 

@@ -163,7 +163,7 @@ export const LOCALES: Record<Locale, LocaleDict> = {
 		templateUrl: "订阅转换模板",
 		templateUrlHint: "请填入包含地域（区域）策略分组的订阅转换模板 URL。未自定义时由服务端使用部署默认模板。",
 		templateUrlHintAria: "订阅转换模板说明",
-		templatePlaceholder: "请使用带地域分组的模板，留空将使用推荐的 Aethersailor 模板",
+		templatePlaceholder: "请使用带地域分组的模板，留空将使用推荐的默认模板",
 		templateResetDefault: "恢复默认",
 		includeTags: "包含节点 (include)",
 		excludeTags: "排除节点 (exclude)",

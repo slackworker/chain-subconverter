@@ -23,7 +23,7 @@ APP_DIR="$HOME/chain-subconverter"
 HOST_PORT="11200"
 APP_IMAGE="ghcr.io/slackworker/chain-subconverter:latest"
 SUBCONVERTER_IMAGE="ghcr.io/slackworker/subconverter:integration-chain-subconverter"
-DEFAULT_TEMPLATE_URL="https://raw.githubusercontent.com/slackworker/Aethersailor-Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
+DEFAULT_TEMPLATE_URL="https://raw.githubusercontent.com/slackworker/Custom_OpenClash_Rules/refs/heads/main/cfg/Custom_Clash.ini"
 TRUSTED_PROXY_CIDRS="172.16.0.0/12"
 SHORT_LINK_CAPACITY="100"
 # --- 可选（默认注释；见下方环境变量表）---
