@@ -17,6 +17,47 @@
 
 ---
 
+## v3.3.0-beta.3
+
+**Tag:** `v3.3.0-beta.3`  
+**日期:** 2026-07-18  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.3.0-beta.2](#v330-beta2) 基础上：**默认模板仓库迁移**至 `slackworker/Custom_OpenClash_Rules`，并修复前端在 runtime-config 失败时仍回退硬编码模板 URL 的行为（空值保持为空）。
+
+### 变更摘要
+
+- **默认模板 URL**：Compose / 后端默认、fixture 与文档中的 `DEFAULT_TEMPLATE_URL` 从旧 `Aethersailor-Custom_OpenClash_Rules` fork 切换到 `Custom_OpenClash_Rules`。
+- **前端空模板处理**：`useAppWorkflow` 与各 scheme 在 runtime 配置缺失或为空时不再填入硬编码默认模板，避免陈旧回退 URL。
+
+### 测试
+
+- 2026-07-18：发布前本地自动化基线见本轮 CI / runbook（`go test`、web 单测、`build:default`、`docker compose config`）
+
+### 自部署
+
+将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或固定版本（镜像 tag 无 v 前缀）
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:3.3.0-beta.3"
+```
+
+### 从 v3.3.0-beta.2 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。
+2. 若设备 compose 仍指向旧 `Aethersailor-Custom_OpenClash_Rules` 模板 URL，请对照 [deploy/docker-compose.yml](deploy/docker-compose.yml) 合并后再 `up --force-recreate app`（仅 `pull` 不会改已有 env）。
+3. 行为兼容：长链仍为 `v=5`；已生成链接无需重发。
+
+### Beta 说明
+
+仍属预发布；本轮发版仅更新 `beta` 分支；镜像通过 `v3.3.0-beta.3` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
+
+---
+
 ## v3.3.0-beta.2
 
 **Tag:** `v3.3.0-beta.2`  

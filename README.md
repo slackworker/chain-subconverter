@@ -2,7 +2,7 @@
 
 **节点 → 配置/订阅**：准备落地和中转节点/订阅，通过网页交互完成 **Mihomo** 链式代理的配置，输出完整 YAML 配置或订阅 URL。
 
-> [v3.3.0-beta.2](RELEASES.md#v330-beta2) 已发布（3.3 Beta 线；修复 resolve hydrate 聚合入组；Stage 2 嵌套树 + 长链 `v5`）。上一里程碑：[v3.3.0-beta.1](RELEASES.md#v330-beta1)。
+> [v3.3.0-beta.3](RELEASES.md#v330-beta3) 已发布（3.3 Beta 线；默认模板仓库迁移 + 空模板 URL 不再前端回退；Stage 2 嵌套树 + 长链 `v5`）。上一里程碑：[v3.3.0-beta.2](RELEASES.md#v330-beta2)。
 
 ## 主要能力
 

@@ -1,12 +1,12 @@
 # 项目状态
 
-> 最近更新：2026-07-17 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.2`](../RELEASES.md#v330-beta2) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
+> 最近更新：2026-07-18 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.3`](../RELEASES.md#v330-beta3) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.2`](../RELEASES.md#v330-beta2)（相对 beta.1：修复 resolve/convert hydrate 后聚合入组丢失；嵌套树 + 长链 v5；Beta 发版不同步 `main`）
+- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.3`](../RELEASES.md#v330-beta3)（相对 beta.2：默认模板仓库迁移 + 前端空模板不再硬编码回退；嵌套树 + 长链 v5；Beta 发版不同步 `main`）
 - **3.2 Beta 线**：止于 [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
