@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { getErrorResponse, postGenerate, postResolveURL, postShortLink, postStage1Convert } from "../lib/api";
-import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "../lib/defaults";
+import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH, DEFAULT_TEMPLATE_URL } from "../lib/defaults";
 import {
 	clearBlockingErrorsSupersededByStage2Stale,
 	clearStage1FieldErrors,
@@ -33,7 +33,6 @@ import {
 	hydrateStage1Input,
 	initialAppState,
 	initialStage1Input,
-	isInitialStage1Input,
 	normalizeRawTextareaInput,
 	toStage1InputPayload,
 } from "../lib/state";
@@ -356,6 +355,7 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isResettingStage2, setIsResettingStage2] = useState(false);
 	const [isCreatingShortUrl, setIsCreatingShortUrl] = useState(false);
+	const deploymentDefaultTemplateURLRef = useRef("");
 
 	const stage2Rows = flattenInstances(state.stage2Snapshot, state.stage2Catalog);
 	const modeOptions = getModeOptions(state.stage2Catalog);
@@ -399,13 +399,35 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 			? { label: "Short URL Ready", tone: "success" }
 			: { label: "Long URL Ready", tone: "success" };
 
+	function buildStage1BaselineInput(defaultTemplateURL = deploymentDefaultTemplateURLRef.current): Stage1Input {
+		const normalizedTemplateURL = defaultTemplateURL.trim();
+		return {
+			...initialStage1Input,
+			advancedOptions: {
+				...initialStage1Input.advancedOptions,
+				config: normalizedTemplateURL === "" ? null : normalizedTemplateURL,
+			},
+		};
+	}
+
 	function applyDefaultTemplateURL(templateURL: string) {
 		const normalizedTemplateURL = templateURL.trim();
 		if (normalizedTemplateURL === "") {
 			return;
 		}
+		const previousDeploymentDefault = deploymentDefaultTemplateURLRef.current.trim();
+		deploymentDefaultTemplateURLRef.current = normalizedTemplateURL;
 		updateStage1Input((current) => {
-			if ((current.advancedOptions.config ?? "").trim() !== "") {
+			const currentConfig = (current.advancedOptions.config ?? "").trim();
+			// Keep user edits; replace empty / previous deployment default / stale frontend bundle fallback.
+			if (
+				currentConfig !== "" &&
+				currentConfig !== previousDeploymentDefault &&
+				currentConfig !== DEFAULT_TEMPLATE_URL
+			) {
+				return current;
+			}
+			if (currentConfig === normalizedTemplateURL) {
 				return current;
 			}
 			return {
@@ -453,13 +475,19 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function handleStage1Reset() {
-		if (isConverting || isInitialStage1Input(state.stage1Input)) {
+		const baseline = buildStage1BaselineInput();
+		if (
+			isConverting ||
+			JSON.stringify(toStage1InputPayload(state.stage1Input)) === JSON.stringify(toStage1InputPayload(baseline))
+		) {
 			return;
 		}
-		updateStage1Input(() => initialStage1Input);
+		updateStage1Input(() => baseline);
 	}
 
-	const isStage1AtInitial = isInitialStage1Input(state.stage1Input);
+	const isStage1AtInitial =
+		JSON.stringify(toStage1InputPayload(state.stage1Input)) ===
+		JSON.stringify(toStage1InputPayload(buildStage1BaselineInput()));
 
 	function getStage1FieldErrors(field: string) {
 		return getFieldErrors(state.blockingErrors, field);

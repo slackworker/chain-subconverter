@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import type { AppPageProps } from "../../lib/composition";
-import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import { getGlobalPrimaryBlockingErrors } from "../../lib/notices";
 import { RuntimeStatusBadges } from "../../lib/RuntimeStatusBadges";
 import { GlobalBlockingBanner } from "./GlobalBlockingBanner";
@@ -46,7 +45,7 @@ export function SchemePage({
 	}, [colorMode]);
 
 	const copy = SHELL_LOCALES[locale];
-	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || "";
 	const globalBlockingErrors = getGlobalPrimaryBlockingErrors(
 		workflow.state.blockingErrors,
 		workflow.responseOriginStage,

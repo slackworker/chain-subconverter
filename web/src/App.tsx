@@ -4,7 +4,7 @@ import { useAppWorkflow } from "./hooks/useAppWorkflow";
 import { copyTextToClipboard } from "./lib/clipboard";
 import { debugError, debugLog } from "./lib/debug-log";
 import { getRuntimeConfig } from "./lib/api";
-import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH, DEFAULT_TEMPLATE_URL } from "./lib/defaults";
+import { DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH } from "./lib/defaults";
 import type { OutputActions } from "./lib/composition";
 import type { RuntimeConfigResponse } from "./types/api";
 import { useUIScheme } from "./lib/scheme-context";
@@ -56,8 +56,9 @@ export default function App() {
 			})
 			.catch(() => {
 				if (!cancelled) {
+					// Do not poison the form with the frontend bundle fallback URL when runtime-config fails.
 					setRuntimeConfig({
-						defaultTemplateURL: DEFAULT_TEMPLATE_URL,
+						defaultTemplateURL: "",
 						maxPublicLongURLLength: DEFAULT_MAX_PUBLIC_LONG_URL_LENGTH,
 					});
 				}

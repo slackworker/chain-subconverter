@@ -23,7 +23,6 @@ import {
 import type { BlockingError, Stage2Row } from "../../types/api";
 import type { WorkflowLogEntry } from "../../lib/state";
 import { formatWorkflowLogTime, getWorkflowLogLevelLabel } from "../../lib/workflow-log-display";
-import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import "./index.css";
 
 const MODE_LABELS: Record<Stage2Row["mode"], string> = {
@@ -167,7 +166,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [showLog, setShowLog] = useState(false);
 
 	const { workflowLog } = workflow;
-	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || "";
 
 	const globalErrors = useMemo(
 		() => getGlobalPrimaryBlockingErrors(workflow.state.blockingErrors, workflow.responseOriginStage, primaryBlockingFeedbackPlacement),

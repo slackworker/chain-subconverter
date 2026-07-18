@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
-import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import {
 	getGlobalPrimaryBlockingErrors,
 	getOriginStageLabel,
@@ -705,7 +704,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const localizedStage1Status = getStatusLabel(stage1Status.label, locale);
 	const localizedStage2Status = getStatusLabel(stage2Status.label, locale);
 	const localizedStage3Status = getStatusLabel(stage3Status.label, locale);
-	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || "";
 	const currentTemplateURL = state.stage1Input.advancedOptions.config ?? "";
 
 	useEffect(() => {
@@ -1026,7 +1025,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 										<button
 											type="button"
 											className="a-template-url-row__reset"
-											disabled={currentTemplateURL.trim() === templateDefaultURL}
+											disabled={templateDefaultURL === "" || currentTemplateURL.trim() === templateDefaultURL}
 											aria-label={copy.templateResetDefault}
 											title={copy.templateResetDefault}
 											onClick={() =>

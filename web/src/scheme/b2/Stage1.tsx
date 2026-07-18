@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { AppWorkflowViewModel } from "../../hooks/useAppWorkflow";
-import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import {
 	appendForwardRelayItems,
 	buildManualSocks5URI,
@@ -39,7 +38,7 @@ function appendMultilineLine(currentValue: string, nextLine: string) {
 
 export function Stage1({
 	workflow,
-	templateDefaultURL = DEFAULT_TEMPLATE_URL,
+	templateDefaultURL = "",
 	colorMode,
 }: {
 	workflow: AppWorkflowViewModel;
@@ -192,7 +191,7 @@ export function Stage1({
 								<button
 									type="button"
 									className={outlineButton(colorMode)}
-									disabled={currentTemplateURL.trim() === templateDefaultURL}
+									disabled={templateDefaultURL === "" || currentTemplateURL.trim() === templateDefaultURL}
 									onClick={() =>
 										updateStage1Input((current) => ({
 											...current,

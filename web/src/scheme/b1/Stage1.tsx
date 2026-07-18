@@ -9,7 +9,6 @@ import { LOCALES, type Locale } from "./locales";
 import { LineNumberTextarea } from "../b2/LineNumberTextarea";
 import { accentLink, tagListShell } from "../b2/theme";
 import { StageStatusBadge } from "./StageStatusBadge";
-import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 
 interface Stage1Props {
 	workflow: AppWorkflowViewModel;
@@ -63,7 +62,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 		setPortForwardDraftTags(null);
 	};
 
-	const defaultTemplateURL = runtimeConfig?.defaultTemplateURL || DEFAULT_TEMPLATE_URL;
+	const defaultTemplateURL = runtimeConfig?.defaultTemplateURL?.trim() || "";
 	const currentTemplateURL = stage1Input.advancedOptions.config ?? "";
 
 	const handleResetTemplateURL = () => {
@@ -187,7 +186,7 @@ export function Stage1({ workflow, locale, colorMode, runtimeConfig }: Stage1Pro
 								<button
 									type="button"
 									onClick={handleResetTemplateURL}
-									disabled={currentTemplateURL.trim() === defaultTemplateURL.trim()}
+									disabled={defaultTemplateURL === "" || currentTemplateURL.trim() === defaultTemplateURL.trim()}
 									className={`px-3.5 py-2.5 rounded-lg border text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${isDark ? "border-zinc-800 hover:border-zinc-700 bg-zinc-900 disabled:opacity-40 text-zinc-300" : "border-slate-200 hover:border-slate-300 bg-slate-100 disabled:opacity-40 text-slate-700"}`}
 									title={copy.templateResetDefault}
 								>

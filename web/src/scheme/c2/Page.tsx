@@ -1,7 +1,6 @@
 import { useId, useMemo, useState } from "react";
 
 import type { AppPageProps } from "../../lib/composition";
-import { DEFAULT_TEMPLATE_URL } from "../../lib/defaults";
 import { getGlobalPrimaryBlockingErrors } from "../../lib/notices";
 import {
 	appendForwardRelayItems,
@@ -178,7 +177,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 	const [exclDraft, setExclDraft] = useState("");
 
 	const { stage1Input } = workflow.state;
-	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || DEFAULT_TEMPLATE_URL;
+	const templateDefaultURL = runtimeConfig?.defaultTemplateURL?.trim() || "";
 	const currentTemplateURL = stage1Input.advancedOptions.config ?? "";
 	const stage1Empty = stage1Input.landingRawText.trim() === "" && stage1Input.transitRawText.trim() === "";
 
@@ -494,7 +493,7 @@ export function SchemePage({ workflow, outputActions, primaryBlockingFeedbackPla
 											<button
 												type="button"
 												className="c-btn c-btn--sm"
-												disabled={currentTemplateURL.trim() === templateDefaultURL}
+												disabled={templateDefaultURL === "" || currentTemplateURL.trim() === templateDefaultURL}
 												onClick={() =>
 													workflow.updateStage1Input((cur) => ({
 														...cur,
