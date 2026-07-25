@@ -34,7 +34,9 @@
 
 ### 测试
 
-- 2026-07-25：发布前本地自动化基线见本轮 CI / runbook（`go test`、web 单测、全 scheme `build`、`docker compose config`）
+- 2026-07-25：`go test ./...`、`cd web && npm run test`、`cd web && npm run build:default`（及 `b1`/`b2`/`c1`/`c2`）、`docker compose -f deploy/docker-compose.yml config` **通过**；`beta` CI @ `c3abe06` **通过**
+- 第三方部署：2026-07-25 三种形态 `beta-latest` / `v3.3.0-beta.4` @ `c3abe06`（digest `sha256:ca3e90ab…`）**real-smoke + real-full 通过** — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
+- 镜像：`3.3.0-beta.4` / `beta-latest` digest `sha256:ca3e90ab5cabfc7a3f36d0fa6b02229c43b79ab440e8b38012d4d97f7b31c60c`
 
 ### 自部署
 
