@@ -17,6 +17,46 @@
 
 ---
 
+## v3.3.0-beta.4
+
+**Tag:** `v3.3.0-beta.4`  
+**日期:** 2026-07-25  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.3.0-beta.3](#v330-beta3) 基础上：为上游 `subconverter` 调用设置明确的 HTTP `User-Agent`（默认 `clash.meta/1.19.20`），并在订阅读取入口优先转发客户端 UA，以提升与订阅源的兼容性。
+
+### 变更摘要
+
+- **上游 `User-Agent`**：调用 `subconverter` 时必须设置 HTTP `User-Agent` 请求头（不依赖上游 `ua=` 查询参数）；默认 `clash.meta/1.19.20`。
+- **订阅入口转发**：`GET /sub` 与 `GET /sub/<id>` 若收到非空客户端 `User-Agent`，则优先作为上游 UA；`convert` / `generate` / `resolve-url` 等浏览器侧入口一律使用默认值（见 [04 §0.2.2](docs/spec/04-business-rules.md)）。
+
+### 测试
+
+- 2026-07-25：发布前本地自动化基线见本轮 CI / runbook（`go test`、web 单测、全 scheme `build`、`docker compose config`）
+
+### 自部署
+
+将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或固定版本（镜像 tag 无 v 前缀）
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:3.3.0-beta.4"
+```
+
+### 从 v3.3.0-beta.3 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。
+2. 行为兼容：长链仍为 `v=5`；已生成链接无需重发。订阅客户端 UA 会在 `GET /sub*` 时转发到上游拉订阅请求。
+
+### Beta 说明
+
+仍属预发布；本轮发版仅更新 `beta` 分支；镜像通过 `v3.3.0-beta.4` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
+
+---
+
 ## v3.3.0-beta.3
 
 **Tag:** `v3.3.0-beta.3`  

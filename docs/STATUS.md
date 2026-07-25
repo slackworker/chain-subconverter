@@ -1,12 +1,12 @@
 # 项目状态
 
-> 最近更新：2026-07-18 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.3`](../RELEASES.md#v330-beta3) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
+> 最近更新：2026-07-25 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.4`](../RELEASES.md#v330-beta4) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.3`](../RELEASES.md#v330-beta3)（相对 beta.2：默认模板仓库迁移 + 前端空模板不再硬编码回退；嵌套树 + 长链 v5；Beta 发版不同步 `main`）
+- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.4`](../RELEASES.md#v330-beta4)（相对 beta.3：上游 `User-Agent` 默认 `clash.meta/1.19.20`，`GET /sub*` 优先转发客户端 UA；嵌套树 + 长链 v5；Beta 发版不同步 `main`）
 - **3.2 Beta 线**：止于 [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
@@ -62,5 +62,5 @@
 
 | 类别 | 摘要 |
 |------|------|
-| **第三方部署** | 2026-07-18：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`beta-latest` / `v3.3.0-beta.3` @ `7a970a9` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md) |
-| **本地自动化基线** | 2026-07-18：`go test ./...`、`npm run test`、`build:default`、`docker compose -f deploy/docker-compose.yml config` **通过**；`beta` CI @ `7a970a9` **通过**；见 [runbook.md](testing/runbook.md) |
+| **第三方部署** | 2026-07-18：三种形态（vps-01 内网 / vps-02 公网 HTTPS / Koyeb 双 Docker）`beta-latest` / `v3.3.0-beta.3` @ `7a970a9` **real-smoke + real-full 通过** — 见 [third-party-deployments.md](testing/third-party-deployments.md)（`v3.3.0-beta.4` 发版后待覆盖） |
+| **本地自动化基线** | 2026-07-25：`go test ./...`、`npm run test`、`build:default`（及 `b1`/`b2`/`c1`/`c2`）、`docker compose -f deploy/docker-compose.yml config` **通过**；`beta` CI 待同 SHA 门禁；见 [runbook.md](testing/runbook.md) |
