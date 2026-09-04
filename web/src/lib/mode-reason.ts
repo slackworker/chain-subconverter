@@ -83,6 +83,18 @@ function formatRestoreConflictReason(
 			return locale === "zh"
 				? "当前快照使用的模板 URL 暂时不可用"
 				: "The template URL used by this snapshot is temporarily unavailable";
+		case "SOURCE_FETCH_FAILED": {
+			const userInputSource = typeof reasonArgs?.userInputSource === "string"
+				? reasonArgs.userInputSource.trim()
+				: "";
+			if (userInputSource === "landing") {
+				return locale === "zh" ? "落地源暂时不可用" : "The landing source is temporarily unavailable";
+			}
+			if (userInputSource === "transit") {
+				return locale === "zh" ? "中转源暂时不可用" : "The transit source is temporarily unavailable";
+			}
+			return locale === "zh" ? "订阅源暂时不可用" : "A subscription source is temporarily unavailable";
+		}
 		case "LEGACY_PAYLOAD_VERSION": {
 			const payloadVersion = asNumber(reasonArgs?.payloadVersion);
 			const currentVersion = asNumber(reasonArgs?.currentVersion);
@@ -140,6 +152,7 @@ export function formatModeReason(
 		case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
 		case "SERVER_AGGREGATION_SERVER_MISMATCH":
 		case "TEMPLATE_CONFIG_UNAVAILABLE":
+		case "SOURCE_FETCH_FAILED":
 		case "LEGACY_PAYLOAD_VERSION":
 		case "INVALID_REQUEST":
 			return formatRestoreConflictReason(reasonCode, reasonArgs, locale);

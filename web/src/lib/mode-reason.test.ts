@@ -50,6 +50,21 @@ describe("formatModeReason", () => {
 		).toBe("当前快照使用的模板 URL 已失效或不再可用");
 	});
 
+	it("formats landing and transit source fetch restore conflicts", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "SOURCE_FETCH_FAILED",
+				reasonArgs: { userInputSource: "transit" },
+			}),
+		).toBe("中转源暂时不可用");
+		expect(
+			formatModeReason({
+				reasonCode: "SOURCE_FETCH_FAILED",
+				reasonArgs: { userInputSource: "landing" },
+			}),
+		).toBe("落地源暂时不可用");
+	});
+
 	it("formats legacy payload version restore conflicts", () => {
 		expect(
 			formatModeReason({

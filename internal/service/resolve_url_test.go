@@ -232,7 +232,7 @@ func TestResolveURLFromSource_RejectsSchemaInvalidLongURLPayload(t *testing.T) {
 			stage1InputWithTemplate(Stage1Input{}),
 			Stage2Snapshot{
 				Rows: []Stage2Row{{
-					Mode:            "unsupported",
+					Mode: "unsupported",
 				}},
 			},
 		),
@@ -568,6 +568,134 @@ func TestResolveURLFromSource_DowngradesTemplateConfigFieldErrorToConflicted(t *
 	if response.RestoreConflicts[0].ReasonArgs["field"] != "config" {
 		t.Fatalf("restore conflict field mismatch: got %#v", response.RestoreConflicts[0].ReasonArgs)
 	}
+}
+
+func TestResolveURLFromSource_DowngradesTransitSourceFetchToConflicted(t *testing.T) {
+	assertResolveURLSourceFetchConflicted(t, subconverter.UnavailableInputSourceTransit, subconverter.NewUnavailableError(
+		"transit-discovery",
+		errors.New("unexpected HTTP status 502"),
+		subconverter.WithUnavailableUserInputSource(subconverter.UnavailableInputSourceTransit),
+	))
+}
+
+func TestResolveURLFromSource_DowngradesLandingSourceFetchToConflicted(t *testing.T) {
+	assertResolveURLSourceFetchConflicted(t, subconverter.UnavailableInputSourceLanding, subconverter.NewUnavailableError(
+		"landing-discovery",
+		errors.New("unexpected HTTP status 403"),
+		subconverter.WithUnavailableUserInputSource(subconverter.UnavailableInputSourceLanding),
+	))
+}
+
+func TestResolveURLFromSource_DowngradesTransitTimeoutToConflicted(t *testing.T) {
+	assertResolveURLSourceFetchConflicted(t, subconverter.UnavailableInputSourceTransit, subconverter.NewUnavailableError(
+		"transit-discovery pass",
+		context.DeadlineExceeded,
+		subconverter.WithUnavailableUserInputSource(subconverter.UnavailableInputSourceTransit),
+	))
+}
+
+func TestResolveURLFromSource_TransitServiceUnreachableStillFails(t *testing.T) {
+	_, _, longURL := mustEncodeRestoreSourceFetchFixture(t)
+	source := &fakeConversionSource{
+		err: subconverter.NewUnavailableError("transit-discovery pass", errors.New("dial tcp 127.0.0.1:25500: connect: connection refused")),
+	}
+
+	_, err := ResolveURLFromSource(context.Background(), "http://localhost:11200", source, nil, longURL, 0, InputLimits{})
+	if err == nil {
+		t.Fatal("expected resolve-url to fail when subconverter itself is unreachable")
+	}
+	if !subconverter.IsUnavailable(err) {
+		t.Fatalf("expected unavailable error, got %T: %v", err, err)
+	}
+}
+
+func TestBuildGenerateResponseFromSource_TransitSourceFetchStillFails(t *testing.T) {
+	stage1Input, snapshot, _ := mustEncodeRestoreSourceFetchFixture(t)
+	source := &fakeConversionSource{
+		err: subconverter.NewUnavailableError(
+			"transit-discovery",
+			errors.New("unexpected HTTP status 502"),
+			subconverter.WithUnavailableUserInputSource(subconverter.UnavailableInputSourceTransit),
+		),
+	}
+
+	_, err := BuildGenerateResponseFromSource(context.Background(), "http://localhost:11200", source, GenerateRequest{
+		Stage1Input:    stage1Input,
+		Stage2Snapshot: snapshot,
+	}, 0, InputLimits{})
+	if err == nil {
+		t.Fatal("expected generate to keep failing on transit source fetch")
+	}
+	if !subconverter.IsUnavailable(err) {
+		t.Fatalf("expected unavailable error, got %T: %v", err, err)
+	}
+}
+
+func assertResolveURLSourceFetchConflicted(t *testing.T, wantSource subconverter.UnavailableUserInputSource, convertErr error) {
+	t.Helper()
+	stage1Input, snapshot, longURL := mustEncodeRestoreSourceFetchFixture(t)
+	source := &fakeConversionSource{err: convertErr}
+
+	response, err := ResolveURLFromSource(context.Background(), "http://localhost:11200", source, nil, longURL, 0, InputLimits{})
+	if err != nil {
+		t.Fatalf("ResolveURLFromSource() error = %v", err)
+	}
+	if response.RestoreStatus != "conflicted" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "conflicted")
+	}
+	if response.Stage1Input.LandingRawText != stage1Input.LandingRawText {
+		t.Fatalf("landingRawText mismatch: got %q want %q", response.Stage1Input.LandingRawText, stage1Input.LandingRawText)
+	}
+	if response.Stage1Input.TransitRawText != stage1Input.TransitRawText {
+		t.Fatalf("transitRawText mismatch: got %q want %q", response.Stage1Input.TransitRawText, stage1Input.TransitRawText)
+	}
+	if len(FlatStage2Rows(response.Stage2.Snapshot)) != len(FlatStage2Rows(snapshot)) {
+		t.Fatalf("stage2Snapshot rows mismatch: got %d want %d", len(FlatStage2Rows(response.Stage2.Snapshot)), len(FlatStage2Rows(snapshot)))
+	}
+	if response.Stage2.Catalog.Servers != nil && len(response.Stage2.Catalog.Servers) != 0 {
+		t.Fatalf("expected no rebuilt catalog, got %#v", response.Stage2.Catalog)
+	}
+	if len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected no blocking errors, got %v", response.BlockingErrors)
+	}
+	if len(response.Messages) != 1 || response.Messages[0].Code != "RESTORE_CONFLICT" {
+		t.Fatalf("messages mismatch: got %v", response.Messages)
+	}
+	if !strings.Contains(response.Messages[0].Message, "暂时不可用") {
+		t.Fatalf("message should mention temporary unavailability, got %q", response.Messages[0].Message)
+	}
+	if len(response.RestoreConflicts) != 1 || response.RestoreConflicts[0].ReasonCode != "SOURCE_FETCH_FAILED" {
+		t.Fatalf("restoreConflicts mismatch: got %v", response.RestoreConflicts)
+	}
+	if response.RestoreConflicts[0].ReasonArgs["userInputSource"] != string(wantSource) {
+		t.Fatalf("userInputSource mismatch: got %#v want %q", response.RestoreConflicts[0].ReasonArgs, wantSource)
+	}
+}
+
+func mustEncodeRestoreSourceFetchFixture(t *testing.T) (Stage1Input, Stage2Snapshot, string) {
+	t.Helper()
+	stage1Input := stage1InputWithTemplate(Stage1Input{
+		LandingRawText: "https://landing.example/sub",
+		TransitRawText: "https://transit.example/sub",
+	})
+	snapshot := Stage2Snapshot{
+		Servers: []Stage2SnapshotServer{{
+			ServerKey:   "edge",
+			Aggregation: Stage2Aggregation{Enabled: false},
+			Sources: []Stage2SnapshotSource{{
+				SourceID: "HK 01",
+				Instances: []Stage2Instance{{
+					ProxyName: "HK 01",
+					Mode:      "none",
+				}},
+			}},
+		}},
+	}
+	longURL, err := EncodeLongURL("http://localhost:11200", BuildLongURLPayload(stage1Input, snapshot), 0)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+	return stage1Input, NormalizeStage2Snapshot(snapshot), longURL
 }
 
 func TestResolveURLFromSource_UsesManagedLandingPass3ForRestoreValidation(t *testing.T) {

@@ -331,8 +331,8 @@
 - 阶段 3 的长/短链接可作为页面状态恢复来源
 - 前端通过 `resolve-url` 恢复页面时，成功响应只消费后端返回的 `stage1Input`、`stage2`（`catalog` + `snapshot`）、`restoreStatus` 与 `messages[]`；其中 `messages[]` 作为后端消息源追加到 workflow log，而不是覆盖整个历史；失败响应按 [03-backend-api](03-backend-api.md) 的错误契约展示 `blockingErrors[]`
 - `restoreStatus = replayable` 时，前端按正常可编辑态恢复阶段 1 与阶段 2，用户可直接继续编辑和生成
-- `restoreStatus = conflicted` 时，前端仍恢复阶段 1 输入与阶段 2 快照用于展示（旧版载荷可能仅有 Stage1、Stage2 为空），但阶段 2 必须进入只读冲突态
-- 只读冲突态下，前端必须禁用阶段 2 编辑控件与“生成链接”按钮，并显著提示用户需重新执行「转换并自动填充」；`LEGACY_PAYLOAD_VERSION` 等 `restoreConflicts[]` 文案须本地映射
+- `restoreStatus = conflicted` 时，前端仍恢复阶段 1 输入与阶段 2 快照用于展示（旧版载荷可能仅有 Stage1、Stage2 为空；落地/中转源暂时不可用时 Stage1 必须还原、Stage2 只读），但阶段 2 必须进入只读冲突态
+- 只读冲突态下，前端必须禁用阶段 2 编辑控件与“生成链接”按钮，并显著提示用户需重新执行「转换并自动填充」；`LEGACY_PAYLOAD_VERSION`、`SOURCE_FETCH_FAILED` 等 `restoreConflicts[]` 文案须本地映射
 - 只读冲突态下，阶段 1 输入与「转换并自动填充」必须仍可用；用户唯一允许的继续路径是重新执行转换，再进入后续配置和生成流程
 
 ---

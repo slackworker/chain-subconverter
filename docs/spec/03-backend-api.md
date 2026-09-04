@@ -623,6 +623,7 @@
 - 若传入长链接携带 `data` 与可选 `download=1` 之外的 query，必须返回 `INVALID_LONG_URL`
 - 若解码出的 `stage1Input` 不满足当前接口契约或输入上限，接口按失败响应返回；失败响应不包含 `restoreStatus`
 - 本接口对**当前版本**载荷执行的 Pipeline 步骤见 [04 §1.1.1](04-business-rules.md)：与 `POST /api/generate` 同口径，完成至 `postProcess` 的内部校验
+- 解码成功后，若 Pipeline 因落地或中转源拉取失败（`problemClass = source_fetch_failed`，`userInputSource = landing | transit`）而无法完成，必须返回 `200` + `restoreStatus = conflicted` + `restoreConflicts[]` 含 `SOURCE_FETCH_FAILED`（`reasonArgs.userInputSource` 为 `landing` 或 `transit`），并返回该 `stage1Input` 与编码态 `stage2.snapshot`（无重建 catalog）；不得当作接口失败丢弃已解码输入。模板 URL 暂时不可用/已失效的既有降级同此返回形状。`convert` / `generate` / `GET /sub*` 不得套用本条
 - **旧版载荷特例**（`v` ≠ 当前）：不得把旧 Stage2 当成当前树解码或迁移；若 `stage1Input` 仍可按现行契约解析，则返回 `200` + `restoreStatus = conflicted` + `restoreConflicts[]` 含 `LEGACY_PAYLOAD_VERSION`（`reasonArgs.payloadVersion` / `reasonArgs.currentVersion`），并返回该 `stage1Input` 与空 `stage2.snapshot`（无 catalog）；**不**执行 generate 同口径 Pipeline。若 Stage1 亦不可解析，则失败且无 `restoreStatus`
 - `restoreStatus` 的判定规则见 [04-business-rules](04-business-rules.md)
 - `restoreStatus = replayable` 表示该恢复快照可直接继续编辑和继续生成
@@ -636,7 +637,7 @@
 - `400`：`INVALID_REQUEST`、`INVALID_URL`；两者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
 - `429`：`RATE_LIMITED`；必须返回 `scope = global`；可返回 `retryable = true`
 - `422`：`INVALID_LONG_URL`、`SHORT_URL_NOT_FOUND`；两者都必须返回 `scope = stage3_field` 与 `context.field = currentLinkInput`
-- `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`
+- `503`：`SUBCONVERTER_UNAVAILABLE`、`SHORT_LINK_STORE_UNAVAILABLE`；两者都必须返回 `scope = global`；如需显式标记可重试，可返回 `retryable = true`。落地/中转 `source_fetch_failed` 不走本条，见上文 `conflicted` 降级
 - `500`：`INTERNAL_ERROR`；必须返回 `scope = global`
 
 ### 8. `GET /sub/<id>`

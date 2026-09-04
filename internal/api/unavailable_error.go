@@ -1,11 +1,7 @@
 package api
 
 import (
-	"context"
-	"errors"
-	"net"
 	"net/http"
-	"strings"
 
 	"github.com/slackworker/chain-subconverter/internal/service"
 	"github.com/slackworker/chain-subconverter/internal/subconverter"
@@ -18,7 +14,6 @@ const (
 
 	unavailableInputSourceLanding         = string(subconverter.UnavailableInputSourceLanding)
 	unavailableInputSourceTransit         = string(subconverter.UnavailableInputSourceTransit)
-	unavailableInputSourceStage1Input     = string(subconverter.UnavailableInputSourceStage1Input)
 	unavailableInputSourceManagedTemplate = string(subconverter.UnavailableInputSourceManagedTemplate)
 )
 
@@ -55,87 +50,11 @@ func buildUnavailableBlockingError(err error) service.BlockingError {
 }
 
 func classifyUnavailableError(err error) unavailableClassification {
-	classification := unavailableClassification{problemClass: unavailableProblemServiceUnreachable}
-
-	var unavailableErr *subconverter.Error
-	if !errors.As(err, &unavailableErr) {
-		return classification
-	}
-	if classified, ok := classificationFromUnavailableMetadata(unavailableErr, unavailableErr.Cause); ok {
-		return classified
-	}
-
-	op := strings.ToLower(strings.TrimSpace(unavailableErr.Op))
-	cause := unavailableErr.Cause
-
-	switch {
-	case op == "acquire subconverter slot":
-		classification.problemClass = unavailableProblemServiceUnreachable
-	case strings.Contains(op, "parse landing-discovery result") || strings.Contains(op, "validate landing-discovery names"):
-		classification.problemClass = unavailableProblemConversionResultInvalid
-		classification.userInputSource = unavailableInputSourceLanding
-	case strings.Contains(op, "parse transit-discovery result") || strings.Contains(op, "validate transit-discovery names"):
-		classification.problemClass = unavailableProblemConversionResultInvalid
-		classification.userInputSource = unavailableInputSourceTransit
-	case strings.Contains(op, "parse full-base") || strings.Contains(op, "validate full-base region proxy-groups"):
-		classification.problemClass = unavailableProblemConversionResultInvalid
-		classification.userInputSource = unavailableInputSourceManagedTemplate
-	case strings.Contains(op, "landing-discovery"):
-		classification.userInputSource = unavailableInputSourceLanding
-		classifyPassFailure(&classification, cause)
-	case strings.Contains(op, "transit-discovery"):
-		classification.userInputSource = unavailableInputSourceTransit
-		classifyPassFailure(&classification, cause)
-	case strings.Contains(op, "full-base"):
-		classification.userInputSource = unavailableInputSourceStage1Input
-		classifyPassFailure(&classification, cause)
-	default:
-		classifyPassFailure(&classification, cause)
-	}
-
-	return classification
-}
-
-func classificationFromUnavailableMetadata(unavailableErr *subconverter.Error, cause error) (unavailableClassification, bool) {
-	if unavailableErr == nil {
-		return unavailableClassification{}, false
-	}
-
-	metadata := unavailableErr.UnavailableMetadata()
-	if metadata == (subconverter.UnavailableMetadata{}) {
-		return unavailableClassification{}, false
-	}
-
-	classification := unavailableClassification{
-		problemClass:    string(metadata.ProblemClass),
-		userInputSource: string(metadata.UserInputSource),
-	}
-	if classification.problemClass == "" {
-		classification.problemClass = unavailableProblemServiceUnreachable
-		classifyPassFailure(&classification, cause)
-		return classification, true
-	}
-	if classification.problemClass == unavailableProblemSourceFetchFailed && isUnavailableTimeout(cause) {
-		classification.timedOut = true
-	}
-	return classification, true
-}
-
-func classifyPassFailure(classification *unavailableClassification, cause error) {
-	if isUnavailableTimeout(cause) {
-		classification.problemClass = unavailableProblemSourceFetchFailed
-		classification.timedOut = true
-		return
-	}
-
-	trimmedCause := strings.ToLower(strings.TrimSpace(errorMessage(cause)))
-	switch {
-	case strings.HasPrefix(trimmedCause, "unexpected http status "):
-		classification.problemClass = unavailableProblemSourceFetchFailed
-	case trimmedCause == "empty response body":
-		classification.problemClass = unavailableProblemConversionResultInvalid
-	default:
-		classification.problemClass = unavailableProblemServiceUnreachable
+	classified := subconverter.ClassifyUnavailable(err)
+	return unavailableClassification{
+		problemClass:    string(classified.ProblemClass),
+		userInputSource: string(classified.UserInputSource),
+		timedOut:        classified.TimedOut,
 	}
 }
 
@@ -186,19 +105,4 @@ func unavailableSourceLabel(userInputSource string) string {
 	default:
 		return "阶段 1 输入"
 	}
-}
-
-func isUnavailableTimeout(err error) bool {
-	if errors.Is(err, context.DeadlineExceeded) {
-		return true
-	}
-	var netErr net.Error
-	return errors.As(err, &netErr) && netErr.Timeout()
-}
-
-func errorMessage(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
 }

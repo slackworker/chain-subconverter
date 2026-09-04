@@ -21,7 +21,7 @@ func restoreReasonArgsFromContext(context map[string]any) map[string]any {
 	}
 
 	reasonArgs := make(map[string]any, len(context))
-	for _, key := range []string{"sourceId", "proxyName", "serverKey", "field"} {
+	for _, key := range []string{"sourceId", "proxyName", "serverKey", "field", "userInputSource"} {
 		if value, ok := context[key]; ok {
 			reasonArgs[key] = value
 		}

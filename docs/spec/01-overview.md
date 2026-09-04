@@ -13,7 +13,7 @@
 - **单一状态载荷**：长链接规范态仅承载 `statePayload v5`；订阅读取 / 短链创建 / 完整恢复拒绝非当前版本。`resolve-url` 对旧版载荷可尽力还原 `stage1Input`（见 [06 §7](06-stage2-model.md)）
 - **最终配置延迟交付**：`convert` 与 `generate` 不返回 YAML；`completeConfig` 只在订阅链接被打开或下载时即时生成
 - **输入职责清晰**：所有原始输入在阶段 1 完成；阶段 2 只编辑 `stage2.snapshot`
-- **恢复可裁决**：`resolve` 只返回 `replayable` 或 `conflicted`；`conflicted` 仅允许只读恢复（含旧版载荷仅还原 Stage1 的情形）
+- **恢复可裁决**：`resolve` 只返回 `replayable` 或 `conflicted`；`conflicted` 仅允许只读恢复（含旧版载荷仅还原 Stage1、以及落地/中转源暂时不可用仍还原 Stage1 的情形）
 
 ## 数据流概览
 

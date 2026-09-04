@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/slackworker/chain-subconverter/internal/subconverter"
 )
 
 // ResolveURLRequest is the request payload for POST /api/resolve-url.
@@ -57,7 +59,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 		WithStage2Snapshot(payload.Stage2Snapshot)
 	validationMessages, err := pipeline.ValidateGenerateDryRun()
 	if err != nil {
-		if restoreStatus, messages, restoreConflicts, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
+		if restoreStatus, messages, restoreConflicts, downgraded := downgradeRestorePipelineError(err); downgraded {
 			return ResolveURLResponse{
 				LongURL:          resolved,
 				ShortURL:         shortURL,
@@ -109,14 +111,14 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 			append([]Message{}, validationMessages...),
 			restoreWorkflowMessages("replayable")...,
 		),
-		BlockingErrors:   []BlockingError{},
+		BlockingErrors: []BlockingError{},
 	}, nil
 }
 
 func buildLegacyStage1OnlyResolveResponse(longURL, shortURL string, payload LongURLPayload) ResolveURLResponse {
 	return ResolveURLResponse{
-		LongURL:  longURL,
-		ShortURL: shortURL,
+		LongURL:       longURL,
+		ShortURL:      shortURL,
 		RestoreStatus: "conflicted",
 		RestoreConflicts: []RestoreConflict{{
 			ReasonCode: "LEGACY_PAYLOAD_VERSION",
@@ -136,6 +138,13 @@ func buildLegacyStage1OnlyResolveResponse(longURL, shortURL string, payload Long
 		}},
 		BlockingErrors: []BlockingError{},
 	}
+}
+
+func downgradeRestorePipelineError(err error) (string, []Message, []RestoreConflict, bool) {
+	if restoreStatus, messages, restoreConflicts, downgraded := downgradeRestoreTemplateFixtureError(err); downgraded {
+		return restoreStatus, messages, restoreConflicts, true
+	}
+	return downgradeRestoreSourceFetchError(err)
 }
 
 func downgradeRestoreTemplateFixtureError(err error) (string, []Message, []RestoreConflict, bool) {
@@ -160,6 +169,30 @@ func downgradeRestoreTemplateFixtureError(err error) (string, []Message, []Resto
 		}}, []RestoreConflict{restoreConflict}, true
 	}
 	return "", nil, nil, false
+}
+
+func downgradeRestoreSourceFetchError(err error) (string, []Message, []RestoreConflict, bool) {
+	classified := subconverter.ClassifyUnavailable(err)
+	if classified.ProblemClass != subconverter.UnavailableProblemSourceFetchFailed {
+		return "", nil, nil, false
+	}
+	source := classified.UserInputSource
+	if source != subconverter.UnavailableInputSourceLanding && source != subconverter.UnavailableInputSourceTransit {
+		return "", nil, nil, false
+	}
+
+	sourceLabel := "「落地信息」"
+	if source == subconverter.UnavailableInputSourceTransit {
+		sourceLabel = "「中转信息」"
+	}
+	return "conflicted", []Message{{
+			Level:   "warning",
+			Code:    "RESTORE_CONFLICT",
+			Message: "当前快照的" + sourceLabel + "暂时不可用，已恢复输入与快照供参考；请检查订阅链接或节点内容后重新转换。",
+		}}, []RestoreConflict{{
+			ReasonCode: "SOURCE_FETCH_FAILED",
+			ReasonArgs: map[string]any{"userInputSource": string(source)},
+		}}, true
 }
 
 func resolveLongURLPayload(ctx context.Context, publicBaseURL string, shortLinkResolver ShortLinkResolver, rawURL string, maxLongURLLength int, limits InputLimits) (string, string, LongURLPayload, bool, error) {

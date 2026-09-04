@@ -182,8 +182,6 @@ func TestStage1ConvertHandler_DualLandingChainPortForwardHappyPath(t *testing.T)
 	}
 }
 
-
-
 func TestStage1ConvertHandler_NormalizesEmptyAdvancedOptionLists(t *testing.T) {
 	fixtureDir := fixtureDirectory(t)
 	source := &fakeConversionSource{
@@ -517,6 +515,60 @@ func TestResolveURLHandler_MapsShortURLNotFoundToSpecModel(t *testing.T) {
 		Scope:   "stage3_field",
 		Context: map[string]any{"field": "currentLinkInput"},
 	})
+}
+
+func TestResolveURLHandler_DowngradesTransitSourceFetchToConflicted(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+	var requestPayload service.GenerateRequest
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.request.json"), &requestPayload)
+
+	longURL, err := service.EncodeLongURL(
+		"http://example.com",
+		service.BuildLongURLPayload(requestPayload.Stage1Input, stage2SnapshotFromGenerateRequest(requestPayload)),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		err: subconverter.NewUnavailableError(
+			"transit-discovery",
+			errors.New("unexpected HTTP status 502"),
+			subconverter.WithUnavailableUserInputSource(subconverter.UnavailableInputSourceTransit),
+		),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/api/resolve-url", strings.NewReader(`{"url":"`+longURL+`"}`))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var response service.ResolveURLResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode response JSON: %v", err)
+	}
+	if response.RestoreStatus != "conflicted" {
+		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "conflicted")
+	}
+	if response.Stage1Input.LandingRawText != requestPayload.Stage1Input.LandingRawText {
+		t.Fatalf("landingRawText was not restored")
+	}
+	if response.Stage1Input.TransitRawText != requestPayload.Stage1Input.TransitRawText {
+		t.Fatalf("transitRawText was not restored")
+	}
+	if len(response.BlockingErrors) != 0 {
+		t.Fatalf("expected no blocking errors, got %v", response.BlockingErrors)
+	}
+	if len(response.RestoreConflicts) != 1 || response.RestoreConflicts[0].ReasonCode != "SOURCE_FETCH_FAILED" {
+		t.Fatalf("restoreConflicts mismatch: got %v", response.RestoreConflicts)
+	}
+	if response.RestoreConflicts[0].ReasonArgs["userInputSource"] != "transit" {
+		t.Fatalf("userInputSource mismatch: got %#v", response.RestoreConflicts[0].ReasonArgs)
+	}
 }
 
 func TestResolveURLHandler_MapsDecodeFailuresToStage3FieldScope(t *testing.T) {
@@ -1958,7 +2010,6 @@ func normalizeStage1ConvertResponseForContract(response service.Stage1ConvertRes
 	normalized.Stage2.Catalog.Servers = servers
 	return normalized
 }
-
 
 func stage2SnapshotFromGenerateRequest(request service.GenerateRequest) service.Stage2Snapshot {
 	if len(request.Stage2.Snapshot.Servers) > 0 {

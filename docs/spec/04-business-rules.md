@@ -189,14 +189,15 @@
 |------|----------|
 | `POST /api/stage1/convert` | `prepareTemplate` → `pass1Discover` → `pass2Discover` → `applyEmoji` → `buildStage2Bundle` |
 | `POST /api/generate` | 完整 Pipeline 至 `postProcess` 的内部 dry-run 校验；编码 `statePayload v5`，但不返回 `completeConfig` |
-| `POST /api/resolve-url` | 先解码 v5 载荷并执行与 `generate` 同口径的完整内部校验；成功后返回 `replayable` 或 `conflicted`。若载荷 `v` 非当前版本但 `stage1Input` 仍可按现行契约解析，则返回 `conflicted` 且仅还原 Stage1（Stage2 为空），不得迁移旧 Stage2 |
+| `POST /api/resolve-url` | 先解码 v5 载荷并执行与 `generate` 同口径的完整内部校验；成功后返回 `replayable` 或 `conflicted`。若载荷 `v` 非当前版本但 `stage1Input` 仍可按现行契约解析，则返回 `conflicted` 且仅还原 Stage1（Stage2 为空），不得迁移旧 Stage2。落地/中转 `source_fetch_failed` 的返回形状见 [§3.2.1](#321-恢复链接时的可重放性判定) |
 | `GET /sub?...` 与 `GET /sub/<id>` | 完整 Pipeline 至 `postProcess`；即时渲染 `completeConfig` |
 
 硬约束：
 
-- `resolve` 不得使用“仅结构校验”的降级路径
+- `resolve` 不得使用“仅结构校验”的降级路径：解码后仍须按 `generate` 同口径执行 Pipeline；差异只在失败时“返回什么”
 - 订阅读取不得跳过 Pass 1/2 直接复用历史中间产物
 - 以上入口全部走同一条核心编排主干，差异仅在“返回什么”
+- `convert` / `generate` / `GET /sub*` 在任一必需 pass 失败时仍整体失败；`resolve-url` 对落地/中转 `source_fetch_failed` 的成功降级见 [§3.2.1](#321-恢复链接时的可重放性判定)
 
 ### 1.2 输出
 
@@ -436,10 +437,17 @@
 判定规则：
 
 - 后端必须基于恢复出的 `stage1Input` 执行与生成阶段同口径的 Pipeline 与校验
-- 若任一必需 pass 失败，`resolve-url` 返回失败响应；`restoreStatus` 只用于“解码成功且校验过程可完成”的请求
+- `restoreStatus` 只出现在解码成功的成功响应中
 - 后端必须用恢复出的 snapshot 执行与生成阶段一致的逐 instance 校验
 - 只要所有 instance 满足 [06 §4](06-stage2-model.md) 且 `mode` / `targetName` 仍可在当前候选集合中解析，则视为 `replayable`
 - 任一 instance 或任一聚合出现引用失效，即判定 `restoreStatus = conflicted`，并返回结构化 `restoreConflicts[]`
+
+解码成功后的 Pipeline 失败：
+
+- 模板 URL 暂时不可用或已失效：返回 `200` + `conflicted`，仍返回原始 `stage1Input` 与编码态 `stage2.snapshot`（不重建 catalog）
+- 落地或中转源拉取失败（`problemClass = source_fetch_failed` 且 `userInputSource = landing | transit`，含超时与上游非成功 HTTP 响应）：同上，`restoreConflicts[].reasonCode = SOURCE_FETCH_FAILED`，`reasonArgs.userInputSource` 为 `landing` 或 `transit`
+- 转换服务本身不可达（`service_unreachable`）、`conversion_result_invalid`、full-base 失败，以及其他非上列可降级失败：仍返回失败响应；失败响应不含 `restoreStatus` / `stage1Input`
+- `convert` / `generate` / `GET /sub*` 对上述源拉取失败仍整体失败，不得套用本条降级
 
 补充规则：
 
