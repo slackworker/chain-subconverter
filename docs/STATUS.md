@@ -1,19 +1,19 @@
 # 项目状态
 
-> 最近更新：2026-09-04 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.4`](../RELEASES.md#v330-beta4) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
+> 最近更新：2026-09-05 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.4`](../RELEASES.md#v330-beta4) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
 **唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
-- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.4`](../RELEASES.md#v330-beta4)（相对 beta.3：上游 `User-Agent` 默认 `clash.meta/1.19.20`，`GET /sub*` 优先转发客户端 UA；嵌套树 + 长链 v5；Beta 发版不同步 `main`）
+- **3.3 Beta 线最新 tag**：[`v3.3.0-beta.4`](../RELEASES.md#v330-beta4)（相对 beta.3：上游 `User-Agent` 默认 `clash.meta/1.19.20`，`GET /sub*` 转发非浏览器类客户端 UA、浏览器预览走默认值；嵌套树 + 长链 v5；Beta 发版不同步 `main`）
 - **3.2 Beta 线**：止于 [`v3.2.0-beta.3`](../RELEASES.md#v320-beta3)
 - **3.1 Beta 线**：[`v3.1.0-beta.1`](../RELEASES.md#v310-beta1)（止于 beta.1）
 - **3.0 Beta 线**：[`v3.0.0-beta.1`](../RELEASES.md#v300-beta1) … [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（止于 beta.4）
 - **Phase 0–4 已完成**；维护期以 3.3 Beta 发版收口、回归与测试/文档债为主
 - 默认 **`/`**（`default`）；`/ui/b1`、`/ui/b2`、`/ui/c1`、`/ui/c2` 为四路探索性方案（见 [spec 02 §方案分级](spec/02-frontend-spec.md)）
 - 分支：`dev`（日常集成 · `dev-latest` 手动）· `beta`（预发布 · `beta-latest`）· `main`（稳定线 · `latest`；当前止于 v3.0.0-beta.4，**无 v3.0 GA**）
-- 契约与实现边界： [spec/02–06](spec/)（含嵌套树 Stage2、Pipeline hard-break、长链 v5、恢复冲突、snapshot-first 三 pass、server 聚合；§3.3.3 仅向直接包含该聚合全部成员的 select 注入，见 [04 §1.1.3 / §1.3 / §2.7 / §3.2.1 / §3.3.3](spec/04-business-rules.md)；Stage2 权威 [06](spec/06-stage2-model.md)；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](spec/06-stage2-model.md)；`resolve-url` 落地/中转 `source_fetch_failed` 降级为 `conflicted` 仍还原 Stage1，见 [04 §3.2.1](spec/04-business-rules.md)；resolve/convert hydrate 须 `memberProxyNames`→`memberLocalInstanceIds`，见 [06 §9](spec/06-stage2-model.md)；上游 `User-Agent` 默认 `clash.meta/1.19.20` 且 `GET /sub*` 优先转发客户端 UA，见 [04 §0.2.2](spec/04-business-rules.md)）
+- 契约与实现边界： [spec/02–06](spec/)（含嵌套树 Stage2、Pipeline hard-break、长链 v5、恢复冲突、snapshot-first 三 pass、server 聚合；§3.3.3 仅向直接包含该聚合全部成员的 select 注入，见 [04 §1.1.3 / §1.3 / §2.7 / §3.2.1 / §3.3.3](spec/04-business-rules.md)；Stage2 权威 [06](spec/06-stage2-model.md)；`resolve-url` 旧版 Stage1 尽力还原见 [06 §7](spec/06-stage2-model.md)；`resolve-url` 落地/中转 `source_fetch_failed` 降级为 `conflicted` 仍还原 Stage1，见 [04 §3.2.1](spec/04-business-rules.md)；resolve/convert hydrate 须 `memberProxyNames`→`memberLocalInstanceIds`，见 [06 §9](spec/06-stage2-model.md)；上游 `User-Agent` 默认 `clash.meta/1.19.20`，`GET /sub*` 转发非浏览器类客户端 UA、浏览器预览走默认值，渲染失败复用 generate 同因错误码，见 [04 §0.2.2](spec/04-business-rules.md) / [03 §8–9](spec/03-backend-api.md)）
 - 短链索引默认容量：`100`（`SHORT_LINK_CAPACITY` / [spec 03 §短链接](spec/03-backend-api.md)）
 
 ## 分支与提交流程

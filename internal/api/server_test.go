@@ -967,6 +967,112 @@ func TestSubscriptionHandler_OmitsUserAgentOverrideWhenClientHeaderAbsent(t *tes
 	}
 }
 
+func TestSubscriptionHandler_DoesNotForwardBrowserFamilyUserAgent(t *testing.T) {
+	fixtureDir := fixtureDirectory(t)
+
+	var generateResponse service.GenerateResponse
+	readJSONFixture(t, filepath.Join(fixtureDir, "stage2", "output", "generate.response.json"), &generateResponse)
+
+	source := &fakeConversionSource{
+		result: loadThreePassResult(t, fixtureDir),
+	}
+	handler := mustNewTestHandler(t, source)
+
+	request := httptest.NewRequest(http.MethodGet, generateResponse.LongURL, nil)
+	request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+	if source.gotRequest.UserAgent != "" {
+		t.Fatalf("upstream UserAgent = %q, want empty so default applies for browser-family UA", source.gotRequest.UserAgent)
+	}
+}
+
+func TestSubscriptionHandler_MapsTemplateUnavailableToSpecModel(t *testing.T) {
+	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusBadGateway)
+		_, _ = writer.Write([]byte("unavailable"))
+	}))
+	defer templateServer.Close()
+
+	handler := mustNewTestHandler(t, newManagedSourceForTemplateFetchTests(t, "https://templates.example.com/default.ini"))
+	request := httptest.NewRequest(http.MethodGet, encodeSubscriptionLongURL(t, templateServer.URL), nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	retryable := true
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:      "TEMPLATE_CONFIG_UNAVAILABLE",
+		Message:   "模板 URL 当前不可用：无法从 127.0.0.1 拉取模板内容。",
+		Scope:     "global",
+		Retryable: &retryable,
+	})
+}
+
+func TestSubscriptionHandler_MapsInvalidTemplateConfigToSpecModel(t *testing.T) {
+	templateServer := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+	}))
+	defer templateServer.Close()
+
+	handler := mustNewTestHandler(t, newManagedSourceForTemplateFetchTests(t, "https://templates.example.com/default.ini"))
+	request := httptest.NewRequest(http.MethodGet, encodeSubscriptionLongURL(t, templateServer.URL), nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
+		Code:    "INVALID_TEMPLATE_CONFIG",
+		Message: "template content is empty",
+		Scope:   "stage1_field",
+		Context: map[string]any{"field": "config"},
+	})
+}
+
+func TestSubscriptionHandler_MapsUntypedRenderFailureToRenderFailed(t *testing.T) {
+	longURL := encodeSubscriptionLongURL(t, "https://templates.example.com/default.ini")
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		err: errors.New("parse full-base YAML: unexpected content"),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, longURL, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusInternalServerError, service.BlockingError{
+		Code:    "RENDER_FAILED",
+		Message: internalErrorUserMessage,
+		Scope:   "global",
+	})
+}
+
+func TestSubscriptionHandler_MapsUnparseableDiscoveryYAMLToUnavailable(t *testing.T) {
+	longURL := encodeSubscriptionLongURL(t, "https://templates.example.com/default.ini")
+	handler := mustNewTestHandler(t, &fakeConversionSource{
+		result: subconverter.ThreePassResult{
+			LandingDiscovery: subconverter.PassResult{YAML: "<html>not clash yaml</html>"},
+			TransitDiscovery: subconverter.PassResult{YAML: "<html>not clash yaml</html>"},
+		},
+	})
+
+	request := httptest.NewRequest(http.MethodGet, longURL, nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	assertBlockingError(t, recorder, http.StatusServiceUnavailable, service.BlockingError{
+		Code:    "SUBCONVERTER_UNAVAILABLE",
+		Message: "转换服务已响应，但返回结果不完整或未成功应用所需规则。请检查阶段 1 输入和模板设置后重试。",
+		Scope:   "global",
+		Context: map[string]any{"diagnostic": map[string]any{
+			"problemClass":    unavailableProblemConversionResultInvalid,
+			"userInputSource": unavailableInputSourceLanding,
+		}},
+		Retryable: boolPtr(true),
+	})
+}
+
 func TestSubscriptionHandler_DualLandingChainPortForwardHappyPath(t *testing.T) {
 	fixtureDir := fixtureDirectoryNamed(t, dualLandingChainPortForwardFixtureName)
 	expectedConfig := readTextFixture(t, filepath.Join(fixtureDir, "stage2", "output", "complete-config.chain.yaml"))
@@ -1831,6 +1937,58 @@ func mustNewTestHandler(t *testing.T, source service.ConversionSource, options .
 	t.Helper()
 
 	return mustNewTestHandlerWithShortLinks(t, source, service.NewInMemoryShortLinkStore(), options...)
+}
+
+func encodeSubscriptionLongURL(t *testing.T, templateURL string) string {
+	t.Helper()
+
+	longURL, err := service.EncodeLongURL(
+		"http://localhost:11200",
+		service.BuildLongURLPayload(
+			service.Stage1Input{AdvancedOptions: service.AdvancedOptions{Config: stringPtr(templateURL)}},
+			service.Stage2Snapshot{
+				Rows: []service.Stage2Row{{
+					RowID:                 "hk-1",
+					SourceLandingNodeName: "HK 01",
+					ProxyName:             "HK 01",
+					Mode:                  "none",
+					TargetName:            nil,
+				}},
+			},
+		),
+		0,
+	)
+	if err != nil {
+		t.Fatalf("EncodeLongURL() error = %v", err)
+	}
+	return longURL
+}
+
+func newManagedSourceForTemplateFetchTests(t *testing.T, defaultTemplateURL string) *service.ManagedConversionSource {
+	t.Helper()
+
+	client, err := subconverter.NewClient(config.Subconverter{
+		UpstreamBaseURL: "http://localhost:25511/sub?",
+		Timeout:         time.Second,
+		MaxInFlight:     1,
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	source, err := service.NewManagedConversionSource(
+		client,
+		service.NewInMemoryTemplateContentStore(),
+		"http://localhost:11200",
+		time.Second,
+		service.ManagedConversionSourceOptions{
+			DefaultTemplateURL:   defaultTemplateURL,
+			AllowPrivateNetworks: true,
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewManagedConversionSource() error = %v", err)
+	}
+	return source
 }
 
 func mustNewTestHandlerWithShortLinks(t *testing.T, source service.ConversionSource, shortLinkStore service.ShortLinkStore, options ...HandlerOption) *Handler {

@@ -651,9 +651,9 @@
 - 仅即时生成 YAML，暂不提供 YAML 缓存
 - 外部契约始终等价于“短链接是长链接的别名”
 - 本入口只接受短链路径参数与可选 `download=1`；不接受状态覆写或透传 query
-- 客户端非空 `User-Agent` 的上游转发规则见 [04 §0.2.2](04-business-rules.md)
+- 客户端 `User-Agent` 的上游转发规则见 [04 §0.2.2](04-business-rules.md)
 - 成功 `200`：正文为 UTF-8 YAML；`Content-Type: text/yaml; charset=utf-8`；`Cache-Control: private, no-store`（或 `no-cache, no-store, must-revalidate`）；`Content-Disposition` 默认 `inline; filename="<id>.yaml"`；存在查询参数 `download=1` 时改为 `attachment`（文件名规则不变）
-- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」；`400` `INVALID_REQUEST`；`429` `RATE_LIMITED`；`422` `SHORT_URL_NOT_FOUND`；`503` `SUBCONVERTER_UNAVAILABLE` 或 `SHORT_LINK_STORE_UNAVAILABLE`；`500` `RENDER_FAILED`（解码成功、依赖可用，但 YAML 渲染管线因内部原因失败）或 `INTERNAL_ERROR`；均为 `scope = global`；`429` 与 `503` 可返回 `retryable = true`
+- 失败：正文为 JSON，`Content-Type: application/json; charset=utf-8`，结构同本文「消息与错误模型」。解码/查找失败：`400` `INVALID_REQUEST`；`429` `RATE_LIMITED`；`422` `SHORT_URL_NOT_FOUND` 或 `INVALID_LONG_URL`；`503` `SHORT_LINK_STORE_UNAVAILABLE`。解码成功后的渲染管线失败必须复用与 `POST /api/generate` 相同原因的同一套 `blockingErrors[].code` / HTTP 状态 / `scope`（含 `TEMPLATE_CONFIG_UNAVAILABLE`、`INVALID_TEMPLATE_CONFIG`、`SUBCONVERTER_UNAVAILABLE`、阶段 2 校验码、`INTERNAL_ERROR`）；仅当渲染失败且无法归入上述 typed 错误时，才返回 `500` `RENDER_FAILED`（`scope = global`，`message` 为脱敏内部文案）。`429` 与 `503` 可返回 `retryable = true`
 
 ### 9. `GET /sub?...`
 
@@ -669,13 +669,13 @@
 - 服务端仅即时生成 YAML，暂不提供 YAML 缓存
 - 其外部契约与短链接一致，差别仅在于长链接直接携带完整快照
 - 除 `data` 与可选 `download=1` 外，不接受任何其他 query；否则必须返回 `INVALID_LONG_URL`
-- 客户端非空 `User-Agent` 的上游转发规则见 [04 §0.2.2](04-business-rules.md)
+- 客户端 `User-Agent` 的上游转发规则见 [04 §0.2.2](04-business-rules.md)
 - HTTP 成功与失败协定同上一节；成功时默认 `Content-Disposition` 的 `filename` 为 `subscription.yaml`
 - 增量失败语义（下表以「解码管线」指 `query parse → data(base64url → gunzip → JSON parse) → schema 结构校验 → 输入上限校验`）：
   - `400` `INVALID_REQUEST`：`data` 参数缺失
   - `429` `RATE_LIMITED`：命中服务端读接口限速；`scope = global`
   - `422` `INVALID_LONG_URL`：解码管线任一步骤失败；`scope = global`
-  - `500` `RENDER_FAILED`：解码成功、依赖可用，但 YAML 渲染管线因内部原因失败；`scope = global`
+  - 解码成功后的渲染失败：与上一节相同，复用 generate 同因错误码；无法归类时才 `500` `RENDER_FAILED`
 
 ---
 

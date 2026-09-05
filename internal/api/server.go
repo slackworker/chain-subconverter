@@ -158,7 +158,6 @@ func (handler *Handler) handleRuntimeConfig(writer http.ResponseWriter, request 
 	})
 }
 
-
 func (handler *Handler) handleGenerate(writer http.ResponseWriter, request *http.Request) {
 	var payload service.GenerateRequest
 	if err := decodeJSONBody(writer, request, &payload); err != nil {
@@ -367,7 +366,7 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 		return
 	}
 
-	ctx := service.WithUpstreamUserAgent(request.Context(), request.Header.Get("User-Agent"))
+	ctx := service.WithUpstreamUserAgent(request.Context(), subconverter.ForwardableSubscriptionUserAgent(request.Header.Get("User-Agent")))
 	renderedConfig, err := service.RenderCompleteConfigFromSource(
 		ctx,
 		handler.source,
@@ -376,12 +375,7 @@ func (handler *Handler) renderSubscription(writer http.ResponseWriter, request *
 		handler.inputLimits,
 	)
 	if err != nil {
-		if subconverter.IsUnavailable(err) {
-			writeUnavailableBlockingError(writer, request, err)
-			return
-		}
-		logOperationFailure(request, http.StatusInternalServerError, "RENDER_FAILED", "global", nil, err)
-		writeBlockingError(writer, request, http.StatusInternalServerError, "RENDER_FAILED", internalErrorUserMessage, "global", nil, nil)
+		writeSubscriptionRenderError(writer, request, err)
 		return
 	}
 
@@ -437,6 +431,18 @@ func writeJSON(writer http.ResponseWriter, statusCode int, value any) {
 }
 
 func writeOperationError(writer http.ResponseWriter, request *http.Request, operation string, err error) {
+	writeMappedOperationError(writer, request, operation, err, "INTERNAL_ERROR", internalErrorUserMessage)
+}
+
+func writeSubscriptionRenderError(writer http.ResponseWriter, request *http.Request, err error) {
+	operation := "render_subscription"
+	if request != nil && request.URL != nil {
+		operation = operationForRequest(request.Method, request.URL.Path)
+	}
+	writeMappedOperationError(writer, request, operation, err, "RENDER_FAILED", internalErrorUserMessage)
+}
+
+func writeMappedOperationError(writer http.ResponseWriter, request *http.Request, operation string, err error, fallbackCode string, fallbackMessage string) {
 	if subconverter.IsUnavailable(err) {
 		requestInfo, _ := RequestContextFrom(request.Context())
 		classification := classifyUnavailableError(err)
@@ -474,8 +480,8 @@ func writeOperationError(writer http.ResponseWriter, request *http.Request, oper
 		return
 	}
 
-	logOperationFailure(request, http.StatusInternalServerError, "INTERNAL_ERROR", "global", nil, err)
-	writeBlockingError(writer, request, http.StatusInternalServerError, "INTERNAL_ERROR", internalErrorUserMessage, "global", nil, nil)
+	logOperationFailure(request, http.StatusInternalServerError, fallbackCode, "global", nil, err)
+	writeBlockingError(writer, request, http.StatusInternalServerError, fallbackCode, fallbackMessage, "global", nil, nil)
 }
 
 func writeBlockingError(writer http.ResponseWriter, request *http.Request, statusCode int, code string, message string, scope string, context map[string]any, retryable *bool) {
