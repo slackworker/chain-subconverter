@@ -34,9 +34,9 @@
 
 ### 测试
 
-- 2026-09-05：`go test ./...`、`cd web && npm run test`、`test:e2e:mock:smoke` / `mock:full`、`build:default`、`docker compose -f deploy/docker-compose.yml config` **通过**；`dev` CI @ `815714f` **通过**；digest 与第三方部署待 record
-- 第三方部署：待三形态 `real-smoke` + `real-full`
-- 镜像：待 `docker-publish`
+- 2026-09-05：`go test ./...`、`cd web && npm run test`、`test:e2e:mock:smoke` / `mock:full`、`build:default`、`docker compose -f deploy/docker-compose.yml config` **通过**；`beta` CI @ `abb3dae` **通过**
+- 第三方部署：2026-09-05 三种形态 `beta-latest` / `v3.3.0-beta.5` @ `abb3dae`（digest `sha256:5ed685ed…`）**real-smoke + real-full 通过** — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
+- 镜像：`3.3.0-beta.5` / `beta-latest` digest `sha256:5ed685ed82891273b221d9240a5690be1e9c0f7d410784a84e112dd91ad7d7ee`
 
 ### 自部署
 

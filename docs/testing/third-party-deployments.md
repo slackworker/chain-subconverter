@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:ca3e90ab5cabfc7a3f36d0fa6b02229c43b79ab440e8b38012d4d97f7b31c60c`，tag `v3.3.0-beta.4` @ `c3abe06`；固定版本镜像 tag 为 `3.3.0-beta.4`）。正式里程碑见 [`v3.3.0-beta.4`](../../RELEASES.md#v330-beta4)。
+> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:5ed685ed82891273b221d9240a5690be1e9c0f7d410784a84e112dd91ad7d7ee`，tag `v3.3.0-beta.5` @ `abb3dae`；固定版本镜像 tag 为 `3.3.0-beta.5`）。正式里程碑见 [`v3.3.0-beta.5`](../../RELEASES.md#v330-beta5)。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
@@ -21,50 +21,50 @@
 
 | 形态 | 设备 / 平台 | 最近回归 | 结果 |
 |------|-------------|----------|------|
-| **内网一体化** | vps-01（LAN Compose） | 2026-07-25 | **smoke + full 通过** |
-| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-07-25 | **smoke + full 通过** |
-| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-07-25 | **smoke + full 通过** |
+| **内网一体化** | vps-01（LAN Compose） | 2026-09-05 | **smoke + full 通过** |
+| **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-09-05 | **smoke + full 通过** |
+| **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-09-05 | **smoke + full 通过** |
 
 外网测试订阅源（Worker fixture）的同步与 deploy 见 [deploy/test-fixtures-worker/README.md](../../deploy/test-fixtures-worker/README.md)，不记入本表。
 
 ---
 
-## 内网一体化 — vps-01（2026-07-25）
+## 内网一体化 — vps-01（2026-09-05）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:ca3e90ab…`，`v3.3.0-beta.4` @ `c3abe06`）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:5ed685ed…`，`v3.3.0-beta.5` @ `abb3dae`）；`subconverter:integration-chain-subconverter`
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)）
-- **回归**：切至 `beta-latest` 后 `docker compose pull && up`；WSL `third-party-smoke.sh`（`real-smoke` + `real-full`）
+- **回归**：切至 `beta-latest` 后 `docker compose pull && up --force-recreate app`；WSL `third-party-smoke.sh`（`real-smoke` + `real-full`）
 - **结果**：**smoke + full 通过**
-- **关键发现**：LAN 内网入口无反代时无需 `TRUSTED_PROXY_CIDRS`；`runtime-status` 报告 `v3.3.0-beta.4` / `c3abe06`
+- **关键发现**：LAN 内网入口无反代时无需 `TRUSTED_PROXY_CIDRS`；`runtime-status` 报告 `v3.3.0-beta.5` / `abb3dae`
 - **细节**：SSH、入口 URL、smoke 命令见 [third-party-deployments.local.md](third-party-deployments.local.md)
 
 ---
 
-## 公网 HTTPS 一体化 — vps-02（2026-07-25）
+## 公网 HTTPS 一体化 — vps-02（2026-09-05）
 
-- **镜像 tag**：与 vps-01 同 tag（`beta-latest`，`v3.3.0-beta.4` @ `c3abe06`）；`subconverter:integration-chain-subconverter` 同 vps-01
+- **镜像 tag**：与 vps-01 同 tag（`beta-latest`，`v3.3.0-beta.5` @ `abb3dae`）；`subconverter:integration-chain-subconverter` 同 vps-01
 - **设备**：公网 VPS（OpenResty → `127.0.0.1:11200`）
 - **USER_FACING_BASE_URL**：未设置
 - **TRUSTED_PROXY_CIDRS**：`172.16.0.0/12`（缺省会导致 `longUrl` 为 `http://`）
 - **DEFAULT_TEMPLATE_URL**：同 vps-01
-- **回归**：公网 HTTPS 入口；切至 `beta-latest` 后 `docker compose pull && up`；WSL `third-party-smoke.sh`
+- **回归**：公网 HTTPS 入口；切至 `beta-latest` 后 `docker compose pull && up --force-recreate app`；WSL `third-party-smoke.sh`
 - **结果**：**smoke + full 通过**
-- **关键发现**：HTTPS 公网入口须配置 `TRUSTED_PROXY_CIDRS`；`real-smoke` 与 `real-full` 均通过
+- **关键发现**：HTTPS 公网入口须配置 `TRUSTED_PROXY_CIDRS`（本轮仍在，未改 compose env）；独立 `subconverter-external` `/version` 正常，未升级；`real-smoke` 与 `real-full` 均通过
 - **细节**：SSH、域名、smoke 命令见 [third-party-deployments.local.md](third-party-deployments.local.md)
 
 ---
 
-## 双 Docker 分离 — Koyeb + vps-02（2026-07-25）
+## 双 Docker 分离 — Koyeb + vps-02（2026-09-05）
 
 - **部署形态**：`app`（Koyeb）与 `subconverter`（vps-02 独立 Compose）分属两套 Docker；`UPSTREAM` / `FACING` 跨公网互访
 - **chain-subconverter**：Koyeb（**demo preview**）
-- **subconverter**：vps-02 独立 Compose（`GET /version` 正常）
-- **镜像 tag**：Koyeb app `beta-latest`（`v3.3.0-beta.4` @ `c3abe06`）；subconverter `integration-chain-subconverter`
+- **subconverter**：vps-02 独立 Compose（`GET /version` 正常，本轮未动）
+- **镜像 tag**：Koyeb app `beta-latest`（`v3.3.0-beta.5` @ `abb3dae`）；subconverter `integration-chain-subconverter`
 - **回归**：Koyeb 公网入口 WSL `third-party-smoke.sh`；subconverter `/version` 正常
 - **结果**：**smoke + full 通过**
-- **关键发现**：跨平台双 Docker 形态下 `real-smoke` 与 `real-full` 均通过
+- **关键发现**：跨平台双 Docker 形态下 `real-smoke` 与 `real-full` 均通过；`runtime-status` 报告 `v3.3.0-beta.5` / `abb3dae`
 - **细节**：各平台入口、Compose 路径、smoke 命令见 [third-party-deployments.local.md](third-party-deployments.local.md)
 
 ---
