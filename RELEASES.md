@@ -17,6 +17,48 @@
 
 ---
 
+## v3.3.0-beta.5
+
+**Tag:** `v3.3.0-beta.5`  
+**日期:** 2026-09-05  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.3.0-beta.4](#v330-beta4) 基础上：修复 `resolve-url` 拉源失败时丢掉已解码 Stage1 的问题，以及浏览器预览 `GET /sub*` 转发浏览器 UA、渲染失败被抹成泛化错误码的问题。
+
+### 变更摘要
+
+- **`resolve-url` 拉源失败**：落地/中转订阅拉取失败时返回 `conflicted` 并保留已解码 Stage1，而不是丢弃载荷（见 [04 §3.2.1](docs/spec/04-business-rules.md)）。
+- **浏览器 `/sub` 预览**：浏览器类 User-Agent 不再转发到 `GET /sub*`（网页预览走默认 `clash.meta/1.19.20`）；渲染失败映射真实错误码，而不是泛化的 `RENDER_FAILED`（见 [04 §0.2.2](docs/spec/04-business-rules.md) / [03 §8–9](docs/spec/03-backend-api.md)）。
+
+### 测试
+
+- 2026-09-05：`go test ./...`、`cd web && npm run test`、`test:e2e:mock:smoke` / `mock:full`、`build:default`、`docker compose -f deploy/docker-compose.yml config` **通过**；`dev` CI @ `815714f` **通过**；digest 与第三方部署待 record
+- 第三方部署：待三形态 `real-smoke` + `real-full`
+- 镜像：待 `docker-publish`
+
+### 自部署
+
+将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或固定版本（镜像 tag 无 v 前缀）
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:3.3.0-beta.5"
+```
+
+### 从 v3.3.0-beta.4 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。无需改 compose 默认 env。
+2. 行为兼容：长链仍为 `v=5`；已生成链接无需重发。
+
+### Beta 说明
+
+仍属预发布；本轮发版仅更新 `beta` 分支；镜像通过 `v3.3.0-beta.5` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
+
+---
+
 ## v3.3.0-beta.4
 
 **Tag:** `v3.3.0-beta.4`  
