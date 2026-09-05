@@ -74,9 +74,43 @@ curl http://localhost:11200/healthz
 
 Compose 用于预览与集成验证，不替代日常 frontend HMR 调试；未发布到 GHCR 的本地源码构建请走 `dev-up`。
 
-## 发版检查
+## 完整更新（发版）
 
-发版 / beta.N 前**检查清单**。分支与镜像口径见 [../STATUS.md](../STATUS.md)；部署见 [deploy/README.md](../../deploy/README.md)；设备结论**覆盖**写入 [third-party-deployments.md](third-party-deployments.md)（不滚历史）。
+**唯一步骤源**。分支用途表见 [../STATUS.md](../STATUS.md)；版本说明见 [../../RELEASES.md](../../RELEASES.md)；何时改哪份文档见 [../MAINTENANCE.md](../MAINTENANCE.md)；部署命令见 [../../deploy/README.md](../../deploy/README.md)；敏感入口只写 gitignore 的 [third-party-deployments.local.md](third-party-deployments.local.md)。不在 RELEASES / STATUS 复制本节命令块、deploy heredoc 或 digest。
+
+### 选版本
+
+- 仅增量 `fix`、无新用户能力、无长链 `v=` bump：同一 3.x 线 `3.x.0-beta.N+1`（3.3 惯例）。
+- 新用户能力但仍属当前大线：先问，再决定 `3.x.1-beta.1` 还是继续 `beta.N`。
+- 下一条功能里程碑：`3.(x+1).0-beta.1`。
+- 晋级 `main` / 发 `:latest` / GA：单独里程碑。Beta 线**默认不同步** `main`。
+
+### 两次文档 commit 与 tag SHA
+
+1. **prepare**：写进**将被 tag 的提交**——[RELEASES.md](../../RELEASES.md) 新节、STATUS 页眉/当前结论、根 README 版本句。测试栏可先写本地/CI 基线；digest 与第三方结论留到 record。
+2. **tag**：打在 prepare commit 上，不是后续 record。
+3. **record**：tag 之后的 follow-up（不进镜像、不改 tag）——覆盖 [third-party-deployments.md](third-party-deployments.md)、补 RELEASES 测试/digest、STATUS「最近验证」。再 **ff 回 `beta` 与 `dev`**。
+
+### 一轮完整更新
+
+1. 本地门禁（下节「发布前完整检查」）。失败则停，不推送。
+2. `git push origin dev`；`gh run watch --exit-status` 等该 commit 的 `CI`。不发 `dev-latest`（除非只要预览镜像）。
+3. prepare commit → push `dev` → `git checkout beta && git merge --ff-only dev && git push origin beta` → 等 **该 SHA** 上 `ci.yml` `event: push` 成功（`docker-publish` 的 Publish Validation 卡这个）。
+4. `git tag -a vX.Y.Z-beta.N -m "vX.Y.Z-beta.N"` 并 `git push origin` 该 tag。
+5. `gh release create`：正文对齐 RELEASES 该节。历史 Beta 标 **Latest**、**不**加 `--prerelease`（会成为 GitHub Latest）；改主意先问。
+6. 等 `Build and Push Docker Image`。`docker buildx imagetools inspect` 记下无 `v` 前缀的版本 tag（`v3.3.0-beta.5` → `3.3.0-beta.5`）与同期 `beta-latest` 的 manifest digest（二者应相同）。
+7. 三形态只换镜像：无仓库默认 env 变更时 **不要**重跑 deploy heredoc。入口 / SSH 见 `third-party-deployments.local.md`；命令见 [deploy/README.md](../../deploy/README.md)。
+8. 每台确认 `/healthz` 与 `/api/runtime-status` 的 `releaseTag` 与 tag SHA。独立 subconverter 只 `curl /version`，无异常则不动。
+9. 对三个 `CHAIN_SUBCONVERTER_E2E_BASE_URL` 各跑一次 `./scripts/third-party-smoke.sh`（`real-smoke` + `real-full`）。**不要**设 `E2E_LANDING_INPUT` / `TRANSIT_INPUT*`。
+10. record commit → ff `beta` 与 `dev` 并 push。可选：device-ops `docs/inventory/hosts.md`（及 yaml）镜像/digest + `docs/audits/` 一条；只动 inventory/audit，勿顺手提交无关脏文件。
+
+镜像触发事实仍以 `.github/workflows/ci.yml` / `docker-publish.yml` 为准：`v*` tag 产出无 `v` 前缀版本 tag；`*-beta.*` 同期打 `beta-latest`；`dev-latest` 仅手动；`:latest` 只在 `main` 上 CI 成功后。
+
+### 何时停止对外分发
+
+CI 红、镜像校验失败、任一台 `healthz` / `runtime-status` 对不上、任一形态 `real-smoke` / `real-full` 失败且分不清代码回归与外部漂移 → **停下问人**，不写「通过」。不自行改版本号、不回滚生产、不打补丁 tag。设备 compose 与仓库默认 env 漂移时同样停下（改现场 compose 还是只 pull）。
+
+其余失败信号见下文「失败升级条件」。
 
 ### 发布前冻结项
 

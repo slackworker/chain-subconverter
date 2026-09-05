@@ -19,6 +19,7 @@
 | [STATUS.md](STATUS.md) | 状态、backlog、最近验证 |
 | [ROADMAP.md](ROADMAP.md) | 阶段结论、维护期非目标 |
 | [MAINTENANCE.md](MAINTENANCE.md) | 何时改哪份文档 |
+| [testing/runbook.md](testing/runbook.md) | 发版与本地命令 |
 
 ## 开发者与 AI Agent
 

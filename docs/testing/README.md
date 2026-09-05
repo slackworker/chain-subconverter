@@ -7,7 +7,7 @@
 | 我想… | 只读 |
 |------|------|
 | 了解测试分层与 CI 门禁 | 本文 |
-| 本地开发 / 发版前跑命令 | [runbook.md](runbook.md) |
+| 发版与本地命令 | [runbook.md](runbook.md) |
 | 改金样 / 理解 Smoke 与 Full 场景 | [fixtures.md](fixtures.md) |
 | 查第三方设备回归结论 | [third-party-deployments.md](third-party-deployments.md) |
 | 在线预览粘贴假数据 | [preview-inputs.md](preview-inputs.md) |

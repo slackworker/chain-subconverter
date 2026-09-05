@@ -2,7 +2,7 @@
 
 > 最近更新：2026-09-05 · **3.3 Beta 线** 最新 tag [`v3.3.0-beta.5`](../RELEASES.md#v330-beta5) · **dev** 日常集成 · **beta** 预发布收口 · **main** 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)（**尚无 v3.0 正式版 / GA**）
 
-**唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；发版检查见 [testing/runbook.md](testing/runbook.md)。
+**唯一**状态快照：维护期结论、backlog、最近验证。阶段见 [ROADMAP.md](ROADMAP.md)；完整更新步骤见 [testing/runbook.md](testing/runbook.md)。
 
 ## 当前结论
 
@@ -28,9 +28,8 @@
 
 ### 提交约定
 
-- **日常改动**：直接提交 `dev`。后端、共享层、`default`、探索方案可在同一 commit 内集成验证。
-- **推 `dev`**：触发 CI；需要预览镜像时手动发布 `dev-latest`。
-- **`beta` 收口**：回归通过后，将已验证 `dev` 快照合入 `beta` 并打 Beta tag（见 [runbook.md](testing/runbook.md)）。Beta 发版**不同步** `main`（见 [RELEASES.md](../RELEASES.md)）。
+日常改动直接提交 `dev`。推送、合 `beta`、打 tag、镜像与覆盖写文档的步骤见 [runbook.md](testing/runbook.md)。Beta 发版**默认不同步** `main`。
+
 - **同步 `main`**：单独里程碑（如 v3.0 GA 或整条 Beta 线晋级稳定线）。当前 `main` 止于 [`v3.0.0-beta.4`](../RELEASES.md#v300-beta4)，仓库**从未发布 v3.0 正式版**；届时整包快进或 merge，而非日常按目录拆分提交。
 - **可选工具**：需把部分已 stage 改动单独落到 `main` 时，可用 `scripts/commit-current-changes-to-main.sh` 或 VS Code 任务 `git: commit staged changes to main`；非日常流程。
 

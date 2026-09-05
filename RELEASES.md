@@ -2,18 +2,9 @@
 
 只记录当前 3.x 关键版本；完整历史见 [GitHub Releases](https://github.com/slackworker/chain-subconverter/releases) 与对应 tag。
 
-## 当前发布流水线（2026-06 起）
+## 当前发布流水线
 
-为避免同一提交在 `beta` 与 `v*` tag 上重复构建镜像，发布流程统一为：
-
-1. 推送到 `dev`：触发 `CI`（门禁回归）。
-2. 合并到 `beta`：再次触发 `CI`（发布前门禁）。
-3. 打 `v*` tag：触发 `Build and Push Docker Image`（含发布校验与多架构镜像发布）。
-
-说明：
-
-- `CI` 不再在 tag push 上重复执行；`main` 合并后由 `CI` 成功触发 Docker 发布；tag / 手动发布经 `Publish Validation` 一次性校验同 SHA 的 `CI` 已成功。
-- `beta-latest` 与版本 tag（如 `v3.3.0-beta.1`）由 tag 发布流程同期产出；建议生产部署固定版本 tag 或 digest。
+完整更新步骤见 [docs/testing/runbook.md](docs/testing/runbook.md)。CI / 镜像触发见 `.github/workflows/ci.yml` 与 `docker-publish.yml`：`v*` tag 产出无 `v` 前缀的版本镜像，`*-beta.*` 同期打 `beta-latest`。建议生产部署固定版本 tag 或 digest。
 
 ---
 
