@@ -458,18 +458,13 @@ func writeMappedOperationError(writer http.ResponseWriter, request *http.Request
 	}
 
 	if responseErr, ok := service.AsResponseError(err); ok {
-		blockingError := responseErr.BlockingError()
-		logOperationFailure(request, responseErr.StatusCode(), blockingError.Code, blockingError.Scope, blockingError.Retryable, err)
-		writeBlockingError(
-			writer,
-			request,
-			responseErr.StatusCode(),
-			blockingError.Code,
-			blockingError.Message,
-			blockingError.Scope,
-			blockingError.Context,
-			blockingError.Retryable,
-		)
+		blockingErrors := responseErr.BlockingErrors()
+		if len(blockingErrors) == 0 {
+			blockingErrors = []service.BlockingError{responseErr.BlockingError()}
+		}
+		primary := blockingErrors[0]
+		logOperationFailure(request, responseErr.StatusCode(), primary.Code, primary.Scope, primary.Retryable, err)
+		writeBlockingErrors(writer, request, responseErr.StatusCode(), blockingErrors)
 		return
 	}
 
@@ -485,26 +480,35 @@ func writeMappedOperationError(writer http.ResponseWriter, request *http.Request
 }
 
 func writeBlockingError(writer http.ResponseWriter, request *http.Request, statusCode int, code string, message string, scope string, context map[string]any, retryable *bool) {
+	writeBlockingErrors(writer, request, statusCode, []service.BlockingError{{
+		Code:      code,
+		Message:   message,
+		Scope:     scope,
+		Context:   context,
+		Retryable: retryable,
+	}})
+}
+
+func writeBlockingErrors(writer http.ResponseWriter, request *http.Request, statusCode int, blockingErrors []service.BlockingError) {
+	if len(blockingErrors) == 0 {
+		blockingErrors = []service.BlockingError{{
+			Code:    "INTERNAL_ERROR",
+			Message: internalErrorUserMessage,
+			Scope:   "global",
+		}}
+	}
 	if request != nil {
-		SetRequestErrorCode(request.Context(), code)
+		SetRequestErrorCode(request.Context(), blockingErrors[0].Code)
 	}
 	if recorder, ok := writer.(interface{ SetAccessLogErrorCode(string) }); ok {
-		recorder.SetAccessLogErrorCode(code)
+		recorder.SetAccessLogErrorCode(blockingErrors[0].Code)
 	}
 	writeJSON(writer, statusCode, struct {
 		Messages       []service.Message       `json:"messages"`
 		BlockingErrors []service.BlockingError `json:"blockingErrors"`
 	}{
-		Messages: []service.Message{},
-		BlockingErrors: []service.BlockingError{
-			{
-				Code:      code,
-				Message:   message,
-				Scope:     scope,
-				Context:   context,
-				Retryable: retryable,
-			},
-		},
+		Messages:       []service.Message{},
+		BlockingErrors: blockingErrors,
 	})
 }
 

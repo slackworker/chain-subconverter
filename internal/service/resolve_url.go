@@ -76,7 +76,7 @@ func ResolveURLFromSource(ctx context.Context, publicBaseURL string, source Conv
 				LongURL:          resolved,
 				ShortURL:         shortURL,
 				RestoreStatus:    "conflicted",
-				RestoreConflicts: []RestoreConflict{RestoreConflictFromError(err)},
+				RestoreConflicts: RestoreConflictsFromError(err),
 				Stage1Input:      payload.Stage1Input,
 				Stage2:           Stage2Bundle{Snapshot: payload.Stage2Snapshot},
 				Messages: []Message{{

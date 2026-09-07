@@ -1610,11 +1610,28 @@ func TestGenerateHandler_MapsRowsetMismatchToSpecModel(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 
-	assertBlockingError(t, recorder, http.StatusUnprocessableEntity, service.BlockingError{
-		Code:    "STAGE2_ROWSET_MISMATCH",
-		Message: "stage2 instance set mismatch",
-		Scope:   "global",
-	})
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status mismatch: got %d want %d, body=%s", recorder.Code, http.StatusUnprocessableEntity, recorder.Body.String())
+	}
+	var response struct {
+		BlockingErrors []service.BlockingError `json:"blockingErrors"`
+	}
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatalf("decode error response JSON: %v", err)
+	}
+	if len(response.BlockingErrors) < 1 || response.BlockingErrors[0].Code != "STAGE2_ROWSET_MISMATCH" || response.BlockingErrors[0].Scope != "global" {
+		t.Fatalf("expected STAGE2_ROWSET_MISMATCH first, got %v", response.BlockingErrors)
+	}
+	hasLandingNotFound := false
+	for _, blockingError := range response.BlockingErrors {
+		if blockingError.Code == "LANDING_NODE_NOT_FOUND" {
+			hasLandingNotFound = true
+			break
+		}
+	}
+	if !hasLandingNotFound {
+		t.Fatalf("expected LANDING_NODE_NOT_FOUND alongside rowset mismatch, got %v", response.BlockingErrors)
+	}
 }
 
 func TestGenerateHandler_AllowsInternalLongURLBeyondPublicBudget(t *testing.T) {

@@ -440,7 +440,7 @@
 - `restoreStatus` 只出现在解码成功的成功响应中
 - 后端必须用恢复出的 snapshot 执行与生成阶段一致的逐 instance 校验
 - 只要所有 instance 满足 [06 §4](06-stage2-model.md) 且 `mode` / `targetName` 仍可在当前候选集合中解析，则视为 `replayable`
-- 任一 instance 或任一聚合出现引用失效，即判定 `restoreStatus = conflicted`，并返回结构化 `restoreConflicts[]`
+- 任一 instance 或任一聚合出现引用失效，即判定 `restoreStatus = conflicted`，并返回结构化 `restoreConflicts[]`；该数组必须覆盖**全部**已判定冲突（每个失效 instance / 聚合一条），不得只返回第一条；`STAGE2_ROWSET_MISMATCH` 按缺失落地逐条，且 `reasonArgs.sourceId` 为该落地名
 
 解码成功后的 Pipeline 失败：
 

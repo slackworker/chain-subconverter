@@ -6,9 +6,10 @@ import (
 )
 
 type ResponseError struct {
-	statusCode    int
-	blockingError BlockingError
-	cause         error
+	statusCode          int
+	blockingError       BlockingError
+	extraBlockingErrors []BlockingError
+	cause               error
 }
 
 type stage2InstanceErrorRef struct {
@@ -51,6 +52,16 @@ func (err *ResponseError) BlockingError() BlockingError {
 	return err.blockingError
 }
 
+func (err *ResponseError) BlockingErrors() []BlockingError {
+	if err == nil {
+		return nil
+	}
+	out := make([]BlockingError, 0, 1+len(err.extraBlockingErrors))
+	out = append(out, err.blockingError)
+	out = append(out, err.extraBlockingErrors...)
+	return out
+}
+
 func AsResponseError(err error) (*ResponseError, bool) {
 	var responseErr *ResponseError
 	if !errors.As(err, &responseErr) {
@@ -74,7 +85,11 @@ func newResponseError(statusCode int, code string, message string, scope string,
 }
 
 func newGlobalValidationError(code string, message string, cause error) error {
-	return newResponseError(http.StatusUnprocessableEntity, code, message, "global", nil, nil, cause)
+	return newGlobalValidationErrorContext(code, message, nil, cause)
+}
+
+func newGlobalValidationErrorContext(code string, message string, context map[string]any, cause error) error {
+	return newResponseError(http.StatusUnprocessableEntity, code, message, "global", context, nil, cause)
 }
 
 func newStage1FieldValidationError(code string, message string, field string, cause error) error {
@@ -115,9 +130,25 @@ func newStage2InstanceErrorContext(ref stage2InstanceErrorRef, field string) map
 }
 
 func newStage2ServerValidationError(code string, message string, serverKey string, cause error) error {
+	return newStage2ServerValidationErrorContext(code, message, serverKey, nil, cause)
+}
+
+func newStage2ServerValidationErrorContext(code string, message string, serverKey string, extra map[string]any, cause error) error {
 	context := map[string]any{}
 	if serverKey != "" {
 		context["serverKey"] = serverKey
+	}
+	for key, value := range extra {
+		if value == nil {
+			continue
+		}
+		if text, ok := value.(string); ok && text == "" {
+			continue
+		}
+		context[key] = value
+	}
+	if len(context) == 0 {
+		context = nil
 	}
 	return newResponseError(http.StatusUnprocessableEntity, code, message, "stage2_server", context, nil, cause)
 }
@@ -151,4 +182,31 @@ func newStage3ActionValidationError(code string, message string, action string, 
 
 func newInternalResponseError(message string, cause error) error {
 	return newResponseError(http.StatusInternalServerError, "INTERNAL_ERROR", message, "global", nil, nil, cause)
+}
+
+func joinResponseErrors(errs []error) error {
+	var first *ResponseError
+	var extras []BlockingError
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+		responseErr, ok := AsResponseError(err)
+		if !ok {
+			return err
+		}
+		if first == nil {
+			cloned := *responseErr
+			first = &cloned
+			extras = append(extras, cloned.extraBlockingErrors...)
+			continue
+		}
+		extras = append(extras, responseErr.blockingError)
+		extras = append(extras, responseErr.extraBlockingErrors...)
+	}
+	if first == nil {
+		return nil
+	}
+	first.extraBlockingErrors = extras
+	return first
 }

@@ -237,7 +237,9 @@
 - `scope = stage3_field` 时，`context.field` 必填；当前前端默认使用 `currentLinkInput` 作为 Stage 3 当前链接输入框的稳定字段键
 - `scope = stage3_action` 时，`context.action` 为可选字段；若返回，则其值必须只承担动作来源说明，不得替代 `originStage`
 - `blockingErrors[]` 非空时，本次请求视为失败；失败响应不得返回对应成功载荷字段
+- 相互独立的 `stage2_instance` / `stage2_server` 业务校验失败（如多个 instance 同时 `TARGET_NOT_FOUND`）必须**逐条**写入 `blockingErrors[]`，不得 fail-fast 只返回第一条；请求体结构非法（`400 INVALID_REQUEST`）与内部错误仍可立即返回
 - `restoreConflicts[]` 只在 `restoreStatus = conflicted` 的成功响应中返回；每个元素都必须包含 `reasonCode`，`reasonArgs` 可选；`reasonCode` 与 `blockingErrors[].code` 共享同一稳定原因码命名空间
+- `restoreConflicts[]` 必须列出本次判定到的**全部**可定位冲突，不得只返回首条；同一原因码可对应多条（每条仍须带齐 `reasonArgs` 定位字段）
 - `STAGE1_INPUT_TOO_LARGE` 与 `TOO_MANY_UPSTREAM_URLS` 用于阶段 1 输入边界校验；具体边界见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE` 用于必需转换 pass 失败；具体触发条件见 [04-business-rules](04-business-rules.md)
 - `SUBCONVERTER_UNAVAILABLE.message` 必须是面向最终用户的业务化提示，不得出现 pass 名称、容器主机名、内部请求 URL、查询串或原始技术错误串
@@ -511,7 +513,7 @@
 - `STAGE1_INPUT_TOO_LARGE`、`TOO_MANY_UPSTREAM_URLS`：都必须返回 `scope = stage1_field`，且 `context.field` 必须指向 `landingRawText` 或 `transitRawText`
 - `CHAIN_TARGET_NAME_CONFLICT`：必须返回 `scope = global`
 - `INVALID_TEMPLATE_CONFIG`：必须返回 `scope = stage1_field` 与 `context.field = config`
-- `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`
+- `STAGE2_ROWSET_MISMATCH`：必须返回 `scope = global`；若能定位到缺失落地，须带 `context.sourceId`（恢复时写入 `restoreConflicts[].reasonArgs.sourceId`）
 - `DUPLICATE_PROXY_NAME`、`MISSING_TARGET`、`TARGET_NOT_FOUND`、`DUPLICATE_FORWARD_RELAY_TARGET`、`EMPTY_CHAIN_TARGET`：须 `scope = stage2_instance`，`context.sourceId` 与 `context.proxyName` 必填；列级错误加 `context.field`
 - `LANDING_NODE_NOT_FOUND`：实例引用缺失时须 `scope = stage2_instance`；聚合成员引用缺失落地时须 `scope = global` 或 `stage2_server`
 - `INVALID_SERVER_AGGREGATION_GROUP`、`DUPLICATE_SERVER_AGGREGATION_GROUP`、`SERVER_AGGREGATION_MEMBER_NOT_FOUND`、`SERVER_AGGREGATION_GROUP_TOO_SMALL`、`SERVER_AGGREGATION_SERVER_MISMATCH`：默认 `scope = stage2_server`（`context.serverKey`）；无法定位时可用 `global`

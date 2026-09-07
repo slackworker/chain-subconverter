@@ -3,16 +3,36 @@ package service
 // RestoreConflictFromError extracts a structured restore conflict from a
 // ResponseError produced by restore validation.
 func RestoreConflictFromError(err error) RestoreConflict {
-	responseErr, ok := AsResponseError(err)
-	if !ok {
+	conflicts := RestoreConflictsFromError(err)
+	if len(conflicts) == 0 {
 		return RestoreConflict{ReasonCode: "RESTORE_VALIDATION_FAILED"}
 	}
+	return conflicts[0]
+}
 
-	blockingError := responseErr.BlockingError()
-	return RestoreConflict{
-		ReasonCode: blockingError.Code,
-		ReasonArgs: restoreReasonArgsFromContext(blockingError.Context),
+func RestoreConflictsFromError(err error) []RestoreConflict {
+	responseErr, ok := AsResponseError(err)
+	if !ok {
+		return []RestoreConflict{{ReasonCode: "RESTORE_VALIDATION_FAILED"}}
 	}
+
+	conflicts := make([]RestoreConflict, 0, len(responseErr.BlockingErrors()))
+	for _, blockingError := range responseErr.BlockingErrors() {
+		if !isRestoreConflictCode(blockingError.Code) {
+			continue
+		}
+		conflicts = append(conflicts, RestoreConflict{
+			ReasonCode: blockingError.Code,
+			ReasonArgs: restoreReasonArgsFromContext(blockingError.Context),
+		})
+	}
+	if len(conflicts) == 0 {
+		return []RestoreConflict{{
+			ReasonCode: responseErr.BlockingError().Code,
+			ReasonArgs: restoreReasonArgsFromContext(responseErr.BlockingError().Context),
+		}}
+	}
+	return conflicts
 }
 
 func restoreReasonArgsFromContext(context map[string]any) map[string]any {

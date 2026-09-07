@@ -1,5 +1,5 @@
 import type { ResponseOriginStage } from "./state";
-import type { BlockingError, Message, Stage2Row } from "../types/api";
+import type { BlockingError, Message, RestoreConflict, Stage2Row } from "../types/api";
 
 type NoticePlacement = "global" | "stage-local";
 
@@ -106,6 +106,43 @@ function matchesStage2RowError(error: BlockingError, row: Stage2Row | string) {
 
 export function getRowErrors(errors: BlockingError[], row: Stage2Row | string) {
 	return errors.filter((error) => matchesStage2RowError(error, row));
+}
+
+export function restoreConflictsAsRowErrors(conflicts: RestoreConflict[]): BlockingError[] {
+	const errors: BlockingError[] = [];
+	for (const conflict of conflicts) {
+		const sourceId = trimContextValue(conflict.reasonArgs?.sourceId);
+		const proxyName = trimContextValue(conflict.reasonArgs?.proxyName);
+		if (sourceId === "" || proxyName === "") {
+			continue;
+		}
+		errors.push({
+			code: conflict.reasonCode,
+			message: restoreConflictRowMessage(conflict.reasonCode),
+			scope: "stage2_instance",
+			context: conflict.reasonArgs,
+		});
+	}
+	return errors;
+}
+
+function restoreConflictRowMessage(reasonCode: string): string {
+	switch (reasonCode) {
+		case "TARGET_NOT_FOUND":
+			return "target not found";
+		case "LANDING_NODE_NOT_FOUND":
+			return "landing node not found";
+		case "EMPTY_CHAIN_TARGET":
+			return "chain target is empty";
+		case "DUPLICATE_PROXY_NAME":
+			return "duplicate proxy name";
+		default:
+			return reasonCode;
+	}
+}
+
+export function getRestoreConflictRowErrors(conflicts: RestoreConflict[], row: Stage2Row | string) {
+	return getRowErrors(restoreConflictsAsRowErrors(conflicts), row);
 }
 
 export function clearStage1FieldErrors(errors: BlockingError[], fields: string | string[]) {

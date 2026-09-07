@@ -11,6 +11,7 @@ import {
 	getOriginStageLabel,
 	getPrimaryBlockingErrorsForStage,
 	getRowErrors,
+	getRestoreConflictRowErrors,
 	getStage3FieldErrors,
 	getVisibleMessages,
 	shouldPromoteStage2StaleNotice,
@@ -503,10 +504,13 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 	}
 
 	function getStage2RowErrors(rowKey: string) {
+		const row = findStage2RowByKey(stage2Rows, rowKey);
+		if (state.restoreStatus === "conflicted") {
+			return row ? getRestoreConflictRowErrors(state.restoreConflicts, row) : [];
+		}
 		if (!isStage2Editable) {
 			return [];
 		}
-		const row = findStage2RowByKey(stage2Rows, rowKey);
 		return row ? getRowErrors(state.blockingErrors, row) : getRowErrors(state.blockingErrors, rowKey);
 	}
 

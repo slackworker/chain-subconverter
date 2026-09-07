@@ -41,6 +41,24 @@ describe("formatModeReason", () => {
 		).toBe("行「HK 02」：引用的目标在当前模板中不存在");
 	});
 
+	it("formats rowset mismatch restore conflicts with landing identity", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "STAGE2_ROWSET_MISMATCH",
+				reasonArgs: { sourceId: "HK Landing" },
+			}),
+		).toBe("当前环境缺少落地节点「HK Landing」对应的 Stage 2 实例");
+	});
+
+	it("formats aggregation restore conflicts with locating args", () => {
+		expect(
+			formatModeReason({
+				reasonCode: "SERVER_AGGREGATION_MEMBER_NOT_FOUND",
+				reasonArgs: { serverKey: "hk.example.com", proxyName: "ghost-a" },
+			}),
+		).toBe("行「ghost-a」：恢复的配置引用了当前环境中不存在的聚合成员行");
+	});
+
 	it("formats template config restore conflicts", () => {
 		expect(
 			formatModeReason({

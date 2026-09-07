@@ -74,6 +74,8 @@
 - 共享层通知承载模型固定为 4 类：主阻断反馈承载位、全局 workflow log、阶段内嵌工作流状态槽位、字段/行级局部定位提示
 - 本节只定义“每类承载区装什么”，不定义创建、清除、压制与降级时机；后者以 [04 §4](04-business-rules.md) 为准
 - 主阻断反馈承载位只承载当前失败请求的 `blockingErrors[]`；单次失败请求只能有 1 个主阻断反馈承载位
+- 同 `code`+`message` 的多条 `stage2_instance` 错误在主阻断位合并为一条摘要；行级高亮必须覆盖全部命中 instance，不得只标第一行
+- 只读冲突横幅列出 `restoreConflicts[]` 的全部条目；行级高亮同样覆盖其中带 `sourceId`+`proxyName` 的每一条
 - 方案层可选择 `stage-local` 或 `global-only` 两种主反馈承载策略；若展示 Stage 1 / 2 / 3 来源标签，只能由请求入口或工作流上下文派生，不得由 `scope` 反推
 - `SUBCONVERTER_UNAVAILABLE` 的主提示与 `blockingErrors[].context.diagnostic` 只允许映射为业务化文案；不得直接暴露内部 pass、容器主机名、内部 URL、查询串或原始技术错误
 - 全局 workflow log 承载当前页面会话内的用户可读工作流历史；后端 `messages[]` 只是其中一种消息源，不等同于整个日志系统

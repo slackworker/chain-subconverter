@@ -35,7 +35,8 @@ function formatRowRef(reasonArgs: Record<string, unknown> | undefined, locale: M
 	const instanceId = typeof reasonArgs?.instanceId === "string" ? reasonArgs.instanceId.trim() : "";
 	const proxyName = typeof reasonArgs?.proxyName === "string" ? reasonArgs.proxyName.trim() : "";
 	const sourceId = typeof reasonArgs?.sourceId === "string" ? reasonArgs.sourceId.trim() : "";
-	const label = proxyName || instanceId || sourceId;
+	const serverKey = typeof reasonArgs?.serverKey === "string" ? reasonArgs.serverKey.trim() : "";
+	const label = proxyName || instanceId || sourceId || serverKey;
 	if (!label) {
 		return "";
 	}
@@ -63,22 +64,33 @@ function formatRestoreConflictReason(
 			return locale === "zh"
 				? `${rowPrefix}引用的链式目标当前不可用`
 				: `${rowPrefix}references a chain target that is currently unavailable`;
-		case "STAGE2_ROWSET_MISMATCH":
+		case "STAGE2_ROWSET_MISMATCH": {
+			const landingName = typeof reasonArgs?.sourceId === "string" ? reasonArgs.sourceId.trim() : "";
+			if (landingName) {
+				return locale === "zh"
+					? `当前环境缺少落地节点「${landingName}」对应的 Stage 2 实例`
+					: `The current environment has no Stage 2 instance for landing "${landingName}"`;
+			}
 			return locale === "zh"
 				? "恢复的配置与当前可生成的 Stage 2 行集合不一致"
 				: "The restored configuration no longer matches the current Stage 2 row set";
+		}
+		case "DUPLICATE_PROXY_NAME":
+			return locale === "zh"
+				? `${rowPrefix}节点名称与其它实例重复`
+				: `${rowPrefix}proxy name is duplicated by another instance`;
 		case "SERVER_AGGREGATION_MEMBER_NOT_FOUND":
 			return locale === "zh"
-				? "恢复的配置引用了当前环境中不存在的聚合成员行"
-				: "The restored configuration references an aggregation member row that no longer exists";
+				? `${rowPrefix}恢复的配置引用了当前环境中不存在的聚合成员行`
+				: `${rowPrefix}references an aggregation member row that no longer exists`;
 		case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
 			return locale === "zh"
-				? "恢复的配置引用的聚合组已不满足最小成员数量"
-				: "A restored aggregation group no longer meets the minimum member count";
+				? `${rowPrefix}恢复的配置引用的聚合组已不满足最小成员数量`
+				: `${rowPrefix}aggregation group no longer meets the minimum member count`;
 		case "SERVER_AGGREGATION_SERVER_MISMATCH":
 			return locale === "zh"
-				? "恢复的配置存在跨 server 聚合成员不一致"
-				: "The restored configuration has aggregation members from mismatched servers";
+				? `${rowPrefix}恢复的配置存在跨 server 聚合成员不一致`
+				: `${rowPrefix}has aggregation members from mismatched servers`;
 		case "TEMPLATE_CONFIG_UNAVAILABLE":
 			return locale === "zh"
 				? "当前快照使用的模板 URL 暂时不可用"
@@ -148,6 +160,7 @@ export function formatModeReason(
 		case "LANDING_NODE_NOT_FOUND":
 		case "EMPTY_CHAIN_TARGET":
 		case "STAGE2_ROWSET_MISMATCH":
+		case "DUPLICATE_PROXY_NAME":
 		case "SERVER_AGGREGATION_MEMBER_NOT_FOUND":
 		case "SERVER_AGGREGATION_GROUP_TOO_SMALL":
 		case "SERVER_AGGREGATION_SERVER_MISMATCH":

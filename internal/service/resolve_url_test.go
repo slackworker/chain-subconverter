@@ -120,11 +120,14 @@ func TestResolveURLFromSource_Conflicted(t *testing.T) {
 	if response.RestoreStatus != "conflicted" {
 		t.Fatalf("restoreStatus mismatch: got %q want %q", response.RestoreStatus, "conflicted")
 	}
-	if len(response.RestoreConflicts) != 1 {
-		t.Fatalf("expected 1 restore conflict, got %d: %v", len(response.RestoreConflicts), response.RestoreConflicts)
+	if len(response.RestoreConflicts) != 2 {
+		t.Fatalf("expected 2 restore conflicts, got %d: %v", len(response.RestoreConflicts), response.RestoreConflicts)
 	}
 	if response.RestoreConflicts[0].ReasonCode != "STAGE2_ROWSET_MISMATCH" {
 		t.Fatalf("restore conflict reasonCode mismatch: got %q want %q", response.RestoreConflicts[0].ReasonCode, "STAGE2_ROWSET_MISMATCH")
+	}
+	if response.RestoreConflicts[1].ReasonCode != "LANDING_NODE_NOT_FOUND" {
+		t.Fatalf("second restore conflict reasonCode mismatch: got %q want LANDING_NODE_NOT_FOUND", response.RestoreConflicts[1].ReasonCode)
 	}
 	if len(response.Messages) != 1 {
 		t.Fatalf("expected 1 message, got %d: %v", len(response.Messages), response.Messages)

@@ -10,6 +10,7 @@ import {
 	getGlobalPrimaryBlockingErrors,
 	getPrimaryBlockingErrorsForStage,
 	getRowErrors,
+	getRestoreConflictRowErrors,
 	mergeDuplicateProxyNameErrors,
 	shouldPromoteStage2StaleNotice,
 } from "./notices";
@@ -157,5 +158,30 @@ describe("notice helpers", () => {
 			targetNotFoundError,
 		]);
 		expect(clearStage2RowErrors([globalError, targetNotFoundError], clonedInstance)).toEqual([globalError]);
+	});
+
+	it("maps each restore conflict onto its own instance row", () => {
+		const defaultInstance = stage2Row({
+			instanceId: "HK 01::i1",
+			sourceId: "HK 01",
+			proxyName: "HK 01",
+			instanceIndex: 0,
+		});
+		const clonedInstance = stage2Row({
+			instanceId: "HK 01::i2",
+			sourceId: "HK 01",
+			proxyName: "HK 01 2",
+			instanceIndex: 1,
+		});
+		const conflicts = [
+			{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { sourceId: "HK 01", proxyName: "HK 01", field: "targetName" } },
+			{ reasonCode: "TARGET_NOT_FOUND", reasonArgs: { sourceId: "HK 01", proxyName: "HK 01 2", field: "targetName" } },
+		];
+
+		expect(getRestoreConflictRowErrors(conflicts, defaultInstance)).toHaveLength(1);
+		expect(getRestoreConflictRowErrors(conflicts, clonedInstance)).toHaveLength(1);
+		expect(getRestoreConflictRowErrors(conflicts, defaultInstance)[0]?.message).toBe("target not found");
+		expect(getRestoreConflictRowErrors(conflicts, defaultInstance)[0]?.context?.proxyName).toBe("HK 01");
+		expect(getRestoreConflictRowErrors(conflicts, clonedInstance)[0]?.context?.proxyName).toBe("HK 01 2");
 	});
 });

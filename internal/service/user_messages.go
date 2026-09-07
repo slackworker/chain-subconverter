@@ -86,6 +86,8 @@ func restoreConflictMessage(err error) string {
 		return "恢复的配置引用了当前不可用的链式目标，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	case "STAGE2_ROWSET_MISMATCH":
 		return "恢复的配置与当前可生成的 Stage 2 行集合不一致，页面已进入只读冲突态。请重新执行转换并自动填充。"
+	case "DUPLICATE_PROXY_NAME":
+		return "恢复的配置包含重复的节点名称，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	default:
 		return "恢复的配置已无法直接复用，页面已进入只读冲突态。请重新执行转换并自动填充。"
 	}
