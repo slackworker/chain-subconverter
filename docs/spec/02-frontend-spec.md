@@ -81,6 +81,7 @@
 - workflow log 可追加少量本地生成的用户可读事件，但不得写入内部调试噪声；纯 UI 回声默认不进入 workflow log
 - 阶段内嵌工作流状态槽位只承载 `stale`、`awaiting`、`conflicted` 等状态提示，不等同于阻断反馈
 - 字段/行级局部定位提示只负责把用户带到具体修正位置，不单独构成新的主通知区
+- `scope = stage2_instance` 的行级高亮与清除必须**同时**匹配 `context.sourceId` 与 `context.proxyName`；不得只按 `sourceId` 把同一源下其他 instance（复制行）标为错误行
 - 共享层不允许同一请求同时出现两个并列主反馈位，也不推荐把多个阶段消息区与全局区设计为同权重主消息堆栈
 
 ---

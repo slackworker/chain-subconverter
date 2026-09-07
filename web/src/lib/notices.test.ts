@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { BlockingError } from "../types/api";
+import type { BlockingError, Stage2Row } from "../types/api";
 import {
 	clearStage1FieldErrors,
 	clearDuplicateProxyNameErrors,
@@ -9,6 +9,7 @@ import {
 	dedupeBlockingErrorsForDisplay,
 	getGlobalPrimaryBlockingErrors,
 	getPrimaryBlockingErrorsForStage,
+	getRowErrors,
 	mergeDuplicateProxyNameErrors,
 	shouldPromoteStage2StaleNotice,
 } from "./notices";
@@ -38,6 +39,23 @@ const stage3ActionError: BlockingError = {
 	message: "short link failed",
 	scope: "stage3_action",
 };
+
+const targetNotFoundError: BlockingError = {
+	code: "TARGET_NOT_FOUND",
+	message: "target not found",
+	scope: "stage2_instance",
+	context: { sourceId: "HK 01", proxyName: "HK 01 2", field: "targetName" },
+};
+
+function stage2Row(overrides: Partial<Stage2Row> & Pick<Stage2Row, "instanceId" | "proxyName" | "sourceId">): Stage2Row {
+	return {
+		instanceIndex: 0,
+		serverKey: "edge",
+		mode: "chain",
+		targetName: "missing-group",
+		...overrides,
+	};
+}
 
 const duplicateProxyNameError: BlockingError = {
 	code: "DUPLICATE_PROXY_NAME",
@@ -109,5 +127,35 @@ describe("notice helpers", () => {
 			duplicateProxyNameError,
 			stage2RowError,
 		]);
+	});
+
+	it("localizes TARGET_NOT_FOUND to the matching instance, not every clone of the same source", () => {
+		const defaultInstance = stage2Row({
+			instanceId: "HK 01::i1",
+			sourceId: "HK 01",
+			proxyName: "HK 01",
+			instanceIndex: 0,
+		});
+		const clonedInstance = stage2Row({
+			instanceId: "HK 01::i2",
+			sourceId: "HK 01",
+			proxyName: "HK 01 2",
+			instanceIndex: 1,
+		});
+		const otherSource = stage2Row({
+			instanceId: "HK 02::i1",
+			sourceId: "HK 02",
+			proxyName: "HK 02",
+		});
+
+		expect(getRowErrors([targetNotFoundError], clonedInstance)).toEqual([targetNotFoundError]);
+		expect(getRowErrors([targetNotFoundError], defaultInstance)).toEqual([]);
+		expect(getRowErrors([targetNotFoundError], otherSource)).toEqual([]);
+		expect(getRowErrors([targetNotFoundError], clonedInstance.instanceId)).toEqual([]);
+		expect(clearStage2RowErrors([globalError, targetNotFoundError], defaultInstance)).toEqual([
+			globalError,
+			targetNotFoundError,
+		]);
+		expect(clearStage2RowErrors([globalError, targetNotFoundError], clonedInstance)).toEqual([globalError]);
 	});
 });

@@ -84,30 +84,24 @@ export function getStage3FieldErrors(errors: BlockingError[], field: string) {
 	return errors.filter((error) => error.scope === "stage3_field" && error.context?.field === field);
 }
 
-function getStage2RowMatchKeys(row: Stage2Row | string) {
-	const values = typeof row === "string"
-		? [row]
-		: [row.instanceId, row.proxyName, row.sourceId];
-	const keys = new Set<string>();
-	for (const value of values) {
-		const trimmed = String(value ?? "").trim();
-		if (trimmed !== "") {
-			keys.add(trimmed);
-		}
-	}
-	return keys;
+function trimContextValue(value: unknown): string {
+	return String(value ?? "").trim();
 }
 
+/** `stage2_instance` 必须同时匹配 sourceId + proxyName，不能只按 sourceId 命中同源复制行。 */
 function matchesStage2RowError(error: BlockingError, row: Stage2Row | string) {
 	if (error.scope !== "stage2_instance") {
 		return false;
 	}
-	const keys = getStage2RowMatchKeys(row);
-	if (keys.size === 0) {
+	const errorSourceId = trimContextValue(error.context?.sourceId);
+	const errorProxyName = trimContextValue(error.context?.proxyName);
+	if (errorSourceId === "" || errorProxyName === "") {
 		return false;
 	}
-	return ["proxyName", "sourceId"]
-		.some((contextKey) => keys.has(String(error.context?.[contextKey] ?? "").trim()));
+	if (typeof row === "string") {
+		return false;
+	}
+	return row.sourceId.trim() === errorSourceId && row.proxyName.trim() === errorProxyName;
 }
 
 export function getRowErrors(errors: BlockingError[], row: Stage2Row | string) {
