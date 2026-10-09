@@ -1,6 +1,6 @@
 # 第三方设备部署回归记录（公开结论）
 
-> **当前验证镜像**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:5ed685ed82891273b221d9240a5690be1e9c0f7d410784a84e112dd91ad7d7ee`，tag `v3.3.0-beta.5` @ `abb3dae`；固定版本镜像 tag 为 `3.3.0-beta.5`）。正式里程碑见 [`v3.3.0-beta.5`](../../RELEASES.md#v330-beta5)。
+> **当前验证镜像**：软路由 vps-01 为 `ghcr.io/slackworker/chain-subconverter:3.3.0-beta.6`（与 `beta-latest` 同 digest `sha256:21822d293485ec681c028bb7d5ae77b03d034112fb19a381225953579d1c2fff`，`v3.3.0-beta.6` @ `2ec74b2`）。vps-02 与 Koyeb 本轮未更新，仍为 `v3.3.0-beta.5`。正式里程碑见 [`v3.3.0-beta.6`](../../RELEASES.md#v330-beta6)。
 
 按 [runbook.md](runbook.md) 字段记录**当前一轮**结论；部署步骤见 [../../deploy/README.md](../../deploy/README.md)。E2E 命令见 [runbook.md#公网-e2e第三方部署](runbook.md#公网-e2e第三方部署)。
 
@@ -21,7 +21,7 @@
 
 | 形态 | 设备 / 平台 | 最近回归 | 结果 |
 |------|-------------|----------|------|
-| **内网一体化** | vps-01（LAN Compose） | 2026-09-05 | **smoke + full 通过** |
+| **内网一体化** | vps-01（LAN Compose） | 2026-10-09 | **smoke + full 通过** |
 | **公网 HTTPS 一体化** | vps-02（反代 + Compose） | 2026-09-05 | **smoke + full 通过** |
 | **双 Docker 分离** | Koyeb + vps-02（demo preview） | 2026-09-05 | **smoke + full 通过** |
 
@@ -29,15 +29,15 @@
 
 ---
 
-## 内网一体化 — vps-01（2026-09-05）
+## 内网一体化 — vps-01（2026-10-09）
 
-- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:beta-latest`（digest `sha256:5ed685ed…`，`v3.3.0-beta.5` @ `abb3dae`）；`subconverter:integration-chain-subconverter`
+- **镜像 tag**：`ghcr.io/slackworker/chain-subconverter:3.3.0-beta.6`（与 `beta-latest` 同 digest `sha256:21822d29…`，`v3.3.0-beta.6` @ `2ec74b2`）；`subconverter:integration-chain-subconverter` 未动
 - **设备**：内网 LAN Compose，`HOST_PORT=11200`
 - **USER_FACING_BASE_URL** / **TRUSTED_PROXY_CIDRS**：均未设置
 - **DEFAULT_TEMPLATE_URL**：slackworker fork（见 [deploy/docker-compose.yml](../../deploy/docker-compose.yml)）
-- **回归**：切至 `beta-latest` 后 `docker compose pull && up --force-recreate app`；WSL `third-party-smoke.sh`（`real-smoke` + `real-full`）
+- **回归**：compose 中 app 镜像由手工预览的 `dev-latest` 改为固定 `3.3.0-beta.6` 后 `docker compose pull && up --force-recreate app`；WSL `third-party-smoke.sh`（`real-smoke` + `real-full`）
 - **结果**：**smoke + full 通过**
-- **关键发现**：LAN 内网入口无反代时无需 `TRUSTED_PROXY_CIDRS`；`runtime-status` 报告 `v3.3.0-beta.5` / `abb3dae`
+- **关键发现**：LAN 内网入口无反代时无需 `TRUSTED_PROXY_CIDRS`；`runtime-status` 报告 `v3.3.0-beta.6` / `2ec74b2`。vps-02 与 Koyeb 本轮未更新
 - **细节**：SSH、入口 URL、smoke 命令见 [third-party-deployments.local.md](third-party-deployments.local.md)
 
 ---

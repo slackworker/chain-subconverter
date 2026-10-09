@@ -25,9 +25,9 @@
 
 ### 测试
 
-- 2026-10-09：`go test ./...`、`cd web && npm run test`、`test:e2e:mock:smoke` / `mock:full`、`build:default`（及 `b1`/`b2`/`c1`/`c2`）、`docker compose -f deploy/docker-compose.yml config` **通过**；`dev` CI @ `1ddfadc` **通过**；digest 与第三方部署待 record
-- 第三方部署：待三形态 `real-smoke` + `real-full`
-- 镜像：待 `docker-publish`
+- 2026-10-09：`go test ./...`、`cd web && npm run test`、`test:e2e:mock:smoke` / `mock:full`、`build:default`（及 `b1`/`b2`/`c1`/`c2`）、`docker compose -f deploy/docker-compose.yml config` **通过**；`dev` CI @ `1ddfadc` **通过**；`beta` CI @ `2ec74b2` **通过**
+- 第三方部署：2026-10-09 软路由 vps-01 固定镜像 `3.3.0-beta.6` @ `2ec74b2`（digest `sha256:21822d29…`）**real-smoke + real-full 通过**。vps-02 与 Koyeb 本轮未更新，仍为 `v3.3.0-beta.5` — 见 [third-party-deployments.md](docs/testing/third-party-deployments.md)
+- 镜像：`3.3.0-beta.6` / `beta-latest` digest `sha256:21822d293485ec681c028bb7d5ae77b03d034112fb19a381225953579d1c2fff`
 
 ### 自部署
 
