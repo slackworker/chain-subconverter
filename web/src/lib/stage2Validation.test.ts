@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { Stage2FlatInstance } from "../types/api";
-import { collectDuplicateProxyNameErrors, normalizeProxyName } from "./stage2Validation";
+import type { Stage2Catalog, Stage2FlatInstance } from "../types/api";
+import {
+	collectDuplicateProxyNameErrors,
+	collectUnresolvedTargetErrors,
+	normalizeProxyName,
+	rowErrorsWithUnresolvedTargets,
+} from "./stage2Validation";
 
 function row(overrides: Partial<Stage2FlatInstance> & Pick<Stage2FlatInstance, "instanceId" | "sourceId" | "proxyName">): Stage2FlatInstance {
 	return {
@@ -43,5 +48,47 @@ describe("stage2Validation", () => {
 				field: "proxyName",
 			},
 		});
+	});
+
+	it("flags chain and port-forward targets that are absent from the current catalog", () => {
+		const catalog: Stage2Catalog = {
+			availableModes: ["none", "chain", "port_forward"],
+			chainTargets: [{ name: "HK Relay Group", kind: "proxy-groups" }],
+			forwardRelays: [{ name: "relay.example:1080" }],
+			servers: [],
+		};
+		const errors = collectUnresolvedTargetErrors([
+			row({ instanceId: "a::i1", sourceId: "a", proxyName: "HK 01", mode: "chain", targetName: "Old Group" }),
+			row({ instanceId: "b::i1", sourceId: "b", proxyName: "HK 02", mode: "chain", targetName: "HK Relay Group" }),
+			row({ instanceId: "c::i1", sourceId: "c", proxyName: "HK 03", mode: "port_forward", targetName: "missing:1" }),
+			row({ instanceId: "d::i1", sourceId: "d", proxyName: "HK 04", mode: "none", targetName: "Old Group" }),
+			row({ instanceId: "e::i1", sourceId: "e", proxyName: "HK 05", mode: "chain", targetName: "  " }),
+		], catalog);
+
+		expect(errors.map((error) => error.context?.proxyName)).toEqual(["HK 01", "HK 03"]);
+		expect(errors.every((error) => error.code === "TARGET_NOT_FOUND" && error.context?.field === "targetName")).toBe(true);
+	});
+
+	it("keeps a stored target error without duplicating the live locator", () => {
+		const catalog: Stage2Catalog = {
+			availableModes: ["chain"],
+			chainTargets: [],
+			forwardRelays: [],
+			servers: [],
+		};
+		const missing = row({
+			instanceId: "a::i1",
+			sourceId: "a",
+			proxyName: "HK 01",
+			mode: "chain",
+			targetName: "Old Group",
+		});
+		const stored = collectUnresolvedTargetErrors([missing], catalog);
+
+		expect(rowErrorsWithUnresolvedTargets(stored, missing, catalog)).toEqual(stored);
+		expect(rowErrorsWithUnresolvedTargets([], missing, {
+			...catalog,
+			chainTargets: [{ name: "Old Group", kind: "proxies" }],
+		})).toEqual([]);
 	});
 });

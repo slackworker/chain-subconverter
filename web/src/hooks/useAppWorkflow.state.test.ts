@@ -114,4 +114,41 @@ describe("useAppWorkflow nested state", () => {
 		state = applyDuplicateProxyNameValidationState(state);
 		expect(state.blockingErrors).toEqual([]);
 	});
+
+	it("clears only the edited row when its target changes", () => {
+		let state = cloneStage2RowState(convertedState(), "landing::i1");
+		state = updateStage2RowState(state, "landing::i2", (instance) => ({
+			...instance,
+			proxyName: "Landing 2",
+		}));
+		const landingError = {
+			code: "TARGET_NOT_FOUND",
+			message: "target not found",
+			scope: "stage2_instance" as const,
+			context: { sourceId: "landing", proxyName: "Landing", field: "targetName" },
+		};
+		const cloneError = {
+			...landingError,
+			context: { sourceId: "landing", proxyName: "Landing 2", field: "targetName" },
+		};
+		const serverError = {
+			code: "SERVER_AGGREGATION_GROUP_TOO_SMALL",
+			message: "aggregation group is too small",
+			scope: "stage2_server" as const,
+			context: { serverKey: "edge" },
+		};
+		state = {
+			...state,
+			responseOriginStage: "stage2",
+			blockingErrors: [landingError, cloneError, serverError],
+		};
+
+		state = updateStage2RowState(state, "landing::i1", (instance) => ({
+			...instance,
+			mode: "chain",
+			targetName: "Transit",
+		}));
+
+		expect(state.blockingErrors).toEqual([cloneError, serverError]);
+	});
 });

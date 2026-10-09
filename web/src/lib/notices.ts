@@ -158,6 +158,14 @@ export function clearStage2RowErrors(errors: BlockingError[], row: Stage2Row | s
 	return errors.filter((error) => !matchesStage2RowError(error, row));
 }
 
+export function clearStage2ServerErrors(errors: BlockingError[], serverKey: string) {
+	const key = serverKey.trim();
+	if (key === "") {
+		return errors;
+	}
+	return errors.filter((error) => !(error.scope === "stage2_server" && trimContextValue(error.context?.serverKey) === key));
+}
+
 export function isDuplicateProxyNameError(error: BlockingError) {
 	return error.code === "DUPLICATE_PROXY_NAME" && error.scope === "stage2_instance";
 }

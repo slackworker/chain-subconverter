@@ -2,6 +2,8 @@ import {
 	clearBlockingErrorsSupersededByStage2Stale,
 	clearDuplicateProxyNameErrors,
 	clearStage1FieldErrors,
+	clearStage2RowErrors,
+	clearStage2ServerErrors,
 	clearStage3ActionErrors,
 	clearStage3FieldErrors,
 	mergeDuplicateProxyNameErrors,
@@ -31,6 +33,7 @@ import type {
 	Stage2Bundle,
 	Stage2Catalog,
 	Stage2Instance,
+	Stage2Row,
 	Stage2Snapshot,
 } from "../types/api";
 
@@ -41,9 +44,20 @@ function expireGeneratedOutput(current: AppState) {
 	};
 }
 
-function clearStage2Errors(current: AppState) {
-	return current.blockingErrors.filter((error) =>
-		error.scope !== "stage2_instance" && error.scope !== "stage2_server");
+function instanceErrorRow(sourceId: string, proxyName: string): Stage2Row {
+	return {
+		instanceId: "",
+		instanceIndex: 0,
+		sourceId,
+		serverKey: "",
+		proxyName,
+		mode: "none",
+		targetName: null,
+	};
+}
+
+function withoutStage2ServerErrors(errors: BlockingError[]) {
+	return errors.filter((error) => error.scope !== "stage2_server");
 }
 
 interface RequestStartStateOptions {
@@ -381,12 +395,17 @@ export function applyShortURLCreationFailureState(current: AppState, options: Sh
 	});
 }
 
-function withStage2Mutation(current: AppState, snapshot: Stage2Snapshot, drafts = current.aggregationDraftsByServerKey): AppState {
+function withStage2Mutation(
+	current: AppState,
+	snapshot: Stage2Snapshot,
+	drafts = current.aggregationDraftsByServerKey,
+	reviseErrors?: (errors: BlockingError[]) => BlockingError[],
+): AppState {
 	if (snapshot === current.stage2Snapshot && drafts === current.aggregationDraftsByServerKey) return current;
 	return {
 		...current,
 		...expireGeneratedOutput(current),
-		blockingErrors: clearStage2Errors(current),
+		blockingErrors: reviseErrors ? reviseErrors(current.blockingErrors) : current.blockingErrors,
 		stage2Snapshot: snapshot,
 		aggregationDraftsByServerKey: drafts,
 	};
@@ -409,7 +428,15 @@ export function updateStage2RowState(
 	if (!path) return current;
 	const next = updater(path.instance);
 	const snapshot = updateInstance(current.stage2Snapshot, instanceId, () => next);
-	return withStage2Mutation(current, snapshot);
+	const modeOrTargetChanged = next.mode !== path.instance.mode || next.targetName !== path.instance.targetName;
+	return withStage2Mutation(
+		current,
+		snapshot,
+		current.aggregationDraftsByServerKey,
+		modeOrTargetChanged
+			? (errors) => clearStage2RowErrors(errors, instanceErrorRow(path.source.sourceId, path.instance.proxyName))
+			: undefined,
+	);
 }
 
 export function updateStage2ProxyNameState(
@@ -453,7 +480,14 @@ export function cloneStage2RowState(current: AppState, instanceId: string): AppS
 }
 
 export function deleteStage2RowState(current: AppState, instanceId: string): AppState {
-	return withStage2Mutation(current, deleteInstance(current.stage2Snapshot, instanceId));
+	const path = findInstance(current.stage2Snapshot, instanceId);
+	if (!path || path.source.instances.length <= 1) return current;
+	return withStage2Mutation(
+		current,
+		deleteInstance(current.stage2Snapshot, instanceId),
+		current.aggregationDraftsByServerKey,
+		(errors) => clearStage2RowErrors(errors, instanceErrorRow(path.source.sourceId, path.instance.proxyName)),
+	);
 }
 
 function enabledAggregation(
@@ -483,6 +517,7 @@ export function setServerAggregationEnabledState(
 			current,
 			updateServerAggregation(current.stage2Snapshot, serverKey, () => ({ enabled: false })),
 			drafts,
+			(errors) => clearStage2ServerErrors(errors, server.serverKey),
 		);
 	}
 	const draft = current.aggregationDraftsByServerKey[server.serverKey];
@@ -493,6 +528,7 @@ export function setServerAggregationEnabledState(
 		current,
 		updateServerAggregation(current.stage2Snapshot, serverKey, () => aggregation),
 		drafts,
+		(errors) => clearStage2ServerErrors(errors, server.serverKey),
 	);
 }
 
@@ -506,6 +542,8 @@ export function updateServerAggregationStrategyState(
 	return withStage2Mutation(
 		enabled,
 		updateServerAggregation(enabled.stage2Snapshot, serverKey, (aggregation) => ({ ...aggregation, strategy })),
+		enabled.aggregationDraftsByServerKey,
+		(errors) => clearStage2ServerErrors(errors, serverKey),
 	);
 }
 
@@ -526,7 +564,12 @@ export function updateServerAggregationGroupState(
 		if (checked) members.push(memberInstanceId);
 		return { ...aggregation, strategy, memberLocalInstanceIds: members };
 	});
-	next = withStage2Mutation(next, snapshot);
+	next = withStage2Mutation(
+		next,
+		snapshot,
+		next.aggregationDraftsByServerKey,
+		(errors) => clearStage2ServerErrors(errors, serverKey),
+	);
 	return next;
 }
 
@@ -542,6 +585,8 @@ export function updateServerAggregationGroupNameState(
 			...aggregation,
 			...(normalized ? { groupName: normalized } : { groupName: undefined }),
 		})),
+		current.aggregationDraftsByServerKey,
+		(errors) => clearStage2ServerErrors(errors, serverKey),
 	);
 }
 
@@ -578,6 +623,8 @@ function moveMember(
 			members.splice(target, 0, member);
 			return { ...aggregation, memberLocalInstanceIds: members };
 		}),
+		current.aggregationDraftsByServerKey,
+		(errors) => clearStage2ServerErrors(errors, serverKey),
 	);
 }
 
@@ -609,5 +656,5 @@ export function clearServerAggregationGroupsState(current: AppState): AppState {
 		if (server.aggregation.enabled) drafts[server.serverKey] = { ...server.aggregation };
 		snapshot = updateServerAggregation(snapshot, server.serverKey, () => ({ enabled: false }));
 	}
-	return withStage2Mutation(current, snapshot, drafts);
+	return withStage2Mutation(current, snapshot, drafts, withoutStage2ServerErrors);
 }

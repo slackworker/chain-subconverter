@@ -546,6 +546,8 @@ Pass 3 后不再对 landing `proxies[]` 做上述 YAML 补丁；landing instance
 - 用户点击“转换并自动填充”后，`stage2Stale` 的正文提示应立即隐藏；若转换成功，`stage2Stale` 清除；若转换失败，`stage2Stale` 作为数据状态保留，但不要求继续以主提示与本次失败反馈并列显示
 - `stage1_field` 错误在对应字段值发生变化时必须清除；若某字段因交互联动被隐藏并清空，其历史 `stage1_field` 错误也必须同步清除
 - `stage2_instance` 错误在对应 instance 的 `mode` 或 `targetName` 变化时必须清除；`stage2_server` 错误在对应 server 聚合配置变化时必须清除
+- 清除按 instance / server 粒度执行：修改某一 instance 的 `mode` 或 `targetName` 只清除该 instance 的 `stage2_instance` 错误；修改某一 server 的聚合配置只清除该 server 的 `stage2_server` 错误。不得因其中一行的修改清除其它行仍有效的错误或行级高亮
+- 阶段 2 可编辑期间，前端根据当前 snapshot 与 catalog 维持「目标不在对应候选中」的行级定位（口径见 [02](02-frontend-spec.md) 行级高亮）。该定位不是新的主阻断反馈；转换成功并 merge 后即可用，不必等生成请求。该行目标重新落在候选内，或 `mode` / `targetName` 变化后不再构成失效目标时，只去掉这一行的定位
 - `stage3_field` 错误在对应字段值发生变化时必须清除；当前默认对应 Stage 3 的 `currentLinkInput`
 - `stage3_action` 错误在同一动作被重新触发，或其依赖的 Stage 3 当前链接来源发生变化时必须清除
 - 当阶段 2 进入 `stale` 或 `conflicted` 时，已有 `stage2_instance` / `stage2_server` 错误必须隐藏或降级，不再作为当前主提示与工作流状态提示竞争

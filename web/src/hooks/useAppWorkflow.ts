@@ -29,7 +29,7 @@ import {
 	normalizeSnapshotForRequest,
 	pickNextTarget,
 } from "../lib/stage2";
-import { collectDuplicateProxyNameErrors } from "../lib/stage2Validation";
+import { collectDuplicateProxyNameErrors, rowErrorsWithUnresolvedTargets } from "../lib/stage2Validation";
 import {
 	hydrateStage1Input,
 	initialAppState,
@@ -508,10 +508,10 @@ export function useAppWorkflow(maxPublicLongURLLength = DEFAULT_MAX_PUBLIC_LONG_
 		if (state.restoreStatus === "conflicted") {
 			return row ? getRestoreConflictRowErrors(state.restoreConflicts, row) : [];
 		}
-		if (!isStage2Editable) {
+		if (!isStage2Editable || !row) {
 			return [];
 		}
-		return row ? getRowErrors(state.blockingErrors, row) : getRowErrors(state.blockingErrors, rowKey);
+		return rowErrorsWithUnresolvedTargets(getRowErrors(state.blockingErrors, row), row, state.stage2Catalog);
 	}
 
 	function getPrimaryBlockingErrors(stage: ResponseOriginStage) {

@@ -84,6 +84,7 @@
 - 阶段内嵌工作流状态槽位只承载 `stale`、`awaiting`、`conflicted` 等状态提示，不等同于阻断反馈
 - 字段/行级局部定位提示只负责把用户带到具体修正位置，不单独构成新的主通知区
 - `scope = stage2_instance` 的行级高亮与清除必须**同时**匹配 `context.sourceId` 与 `context.proxyName`；不得只按 `sourceId` 把同一源下其他 instance（复制行）标为错误行
+- 阶段 2 可编辑时，行级高亮还必须覆盖当前 snapshot 相对 catalog 已能判定的失效目标（`TARGET_NOT_FOUND`：`mode = chain` 且 `targetName` 非空但不在 `chainTargets[].name`，或 `mode = port_forward` 且 `targetName` 非空但不在 `forwardRelays[].name`）。该高亮在「转换并自动填充」成功并完成本地 merge 后立即生效，不依赖下一次「生成链接」；只去掉已被修正的那一行，其它行保持到各自被修正。清除粒度见 [04 §4](04-business-rules.md)
 - 共享层不允许同一请求同时出现两个并列主反馈位，也不推荐把多个阶段消息区与全局区设计为同权重主消息堆栈
 
 ---

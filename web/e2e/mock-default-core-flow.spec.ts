@@ -6,6 +6,7 @@ import {
 	locateStage2Row,
 	mockReplayableResolveRoute,
 	mockRuntimeConfig,
+	selectStage2MenuOption,
 } from "./helpers";
 
 import type { GenerateRequest, Stage1ConvertRequest, Stage1ConvertResponse } from "../src/types/api";
@@ -250,4 +251,118 @@ test("mock default restore conflict keeps stage2 snapshot readonly", async ({ pa
 	await expect(page.getByRole("button", { name: "生成链接" })).toBeDisabled();
 
 	expect(resolveRequests).toEqual([shortId]);
+});
+
+test("unresolved targets stay marked after convert and after fixing another row", async ({ page }) => {
+	const shortId = "stale-targets";
+	const shortURL = "http://127.0.0.1:11200/s/stale-targets";
+	const longURL = "http://127.0.0.1:11200/sub?data=stale-targets";
+	const validTarget = "HK Relay Group";
+	const catalog = {
+		availableModes: ["none", "chain"] as const,
+		chainTargets: [{ name: validTarget, kind: "proxy-groups" as const }],
+		forwardRelays: [],
+		servers: ["HK 01", "HK 02"].map((sourceId) => ({
+			serverKey: `source:${sourceId}`,
+			sources: [{
+				sourceId,
+				landingNodeType: "ss",
+				defaultProxyName: sourceId,
+				defaultMode: "chain" as const,
+				defaultTargetName: validTarget,
+			}],
+		})),
+	};
+
+	await applyDefaultUiPreferences(page);
+	await mockRuntimeConfig(page);
+
+	await page.route("**/api/resolve-url", async (route) => {
+		await route.fulfill({
+			json: {
+				longUrl: longURL,
+				shortUrl: shortURL,
+				restoreStatus: "conflicted",
+				restoreConflicts: ["HK 01", "HK 02"].map((proxyName) => ({
+					reasonCode: "TARGET_NOT_FOUND",
+					reasonArgs: { proxyName, sourceId: proxyName, field: "targetName" },
+				})),
+				stage1Input: {
+					landingRawText: "ss://hk-01\nss://hk-02",
+					transitRawText: "https://example.com/transit.txt",
+					forwardRelayItems: [],
+					advancedOptions: {
+						emoji: true,
+						udp: true,
+						skipCertVerify: null,
+						config: null,
+						include: null,
+						exclude: null,
+					},
+				},
+				stage2: {
+					catalog,
+					snapshot: {
+						servers: [
+							{ sourceId: "HK 01", targetName: "Old Group A" },
+							{ sourceId: "HK 02", targetName: "Old Group B" },
+						].map(({ sourceId, targetName }) => ({
+							serverKey: `source:${sourceId}`,
+							aggregation: { enabled: false },
+							sources: [{
+								sourceId,
+								instances: [{ proxyName: sourceId, mode: "chain", targetName }],
+							}],
+						})),
+					},
+				},
+				messages: [],
+				blockingErrors: [],
+			},
+		});
+	});
+
+	await page.route("**/api/stage1/convert", async (route) => {
+		await route.fulfill({
+			json: {
+				stage2: {
+					catalog,
+					snapshot: {
+						servers: catalog.servers.map((server) => ({
+							serverKey: server.serverKey,
+							aggregation: { enabled: false },
+							sources: server.sources.map((source) => ({
+								sourceId: source.sourceId,
+								instances: [{
+									proxyName: source.defaultProxyName,
+									mode: source.defaultMode,
+									targetName: source.defaultTargetName,
+								}],
+							})),
+						})),
+					},
+				},
+				messages: [],
+				blockingErrors: [],
+			},
+		});
+	});
+
+	await page.goto("/");
+	await page.getByLabel("当前链接").fill(shortId);
+	await page.getByRole("button", { name: "反向解析" }).click();
+
+	const rowA = locateStage2Row(page, "HK 01");
+	const rowB = locateStage2Row(page, "HK 02");
+	await expect(rowA).toHaveClass(/a-table__row--error/);
+	await expect(rowB).toHaveClass(/a-table__row--error/);
+
+	await page.getByRole("button", { name: "转换并自动填充" }).click();
+	await expect(page.getByText("请重新执行「转换并自动填充」后再继续。")).toHaveCount(0);
+	await expect(rowA).toHaveClass(/a-table__row--error/);
+	await expect(rowB).toHaveClass(/a-table__row--error/);
+
+	await selectStage2MenuOption(page, rowA, 1, validTarget);
+	await expect(rowA).not.toHaveClass(/a-table__row--error/);
+	await expect(rowB).toHaveClass(/a-table__row--error/);
 });
