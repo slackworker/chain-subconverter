@@ -8,6 +8,48 @@
 
 ---
 
+## v3.3.0-beta.6
+
+**Tag:** `v3.3.0-beta.6`  
+**日期:** 2026-10-09  
+**镜像:** `ghcr.io/slackworker/chain-subconverter:beta-latest`（版本 tag 与 `beta-latest` 同期；对外部署建议固定 tag/digest）
+
+### 概述
+
+在 [v3.3.0-beta.5](#v330-beta5) 基础上：反向解析后，阶段 2 里引用了当前模板中不存在的目标时，红色错误行会留下来，改一行不会把其它错误行一起清掉。
+
+### 变更摘要
+
+- **失效目标行级高亮**：阶段 2 可编辑后，链式或端口转发目标不在当前候选中的行立即标红，不必先点「生成链接」（见 [02 行级高亮](docs/spec/02-frontend-spec.md) / [04 §4](docs/spec/04-business-rules.md)）。
+- **按行清除**：只清除被修改的那一行的阶段 2 错误；其它行的错误标记保持到各自被修正。
+
+### 测试
+
+- 2026-10-09：`go test ./...`、`cd web && npm run test`、`test:e2e:mock:smoke` / `mock:full`、`build:default`（及 `b1`/`b2`/`c1`/`c2`）、`docker compose -f deploy/docker-compose.yml config` **通过**；`dev` CI @ `1ddfadc` **通过**；digest 与第三方部署待 record
+- 第三方部署：待三形态 `real-smoke` + `real-full`
+- 镜像：待 `docker-publish`
+
+### 自部署
+
+将 `APP_IMAGE` 设为：
+
+```bash
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:beta-latest"
+# 或固定版本（镜像 tag 无 v 前缀）
+APP_IMAGE="ghcr.io/slackworker/chain-subconverter:3.3.0-beta.6"
+```
+
+### 从 v3.3.0-beta.5 升级
+
+1. 拉取新镜像并重启 Compose；短链数据卷可保留。无需改 compose 默认 env。
+2. 行为兼容：长链仍为 `v=5`；已生成链接无需重发。
+
+### Beta 说明
+
+仍属预发布；本轮发版仅更新 `beta` 分支；镜像通过 `v3.3.0-beta.6` tag 发布流程产出（含 `beta-latest`），**不同步 `main`**。
+
+---
+
 ## v3.3.0-beta.5
 
 **Tag:** `v3.3.0-beta.5`  
